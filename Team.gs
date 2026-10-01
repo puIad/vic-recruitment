@@ -162,8 +162,8 @@ function lockCheck_() {
   return { drafts: drafts.length, share: bool_(S_().SHARE_FILES_WITH_BINOME) && !bool_(S_().TEST_MODE), problems: problems };
 }
 
-function lockBinomesCore_() {
-  const t0 = Date.now();
+function lockBinomesCore_(budgetMs) {
+  const t0 = Date.now(), budget = Math.max(30000, Math.min(270000, Number(budgetMs) || 270000));
   let created = 0, stopped = false;
   withLock_(() => {
     const ctx = loadCtx_();
@@ -171,7 +171,7 @@ function lockBinomesCore_() {
     for (let i = 0; i < ctx.bin.data.length; i++) {
       const r = ctx.bin.data[i];
       if (String(r[BI.Status]).toUpperCase() !== 'DRAFT' || !String(r[BI.Binome]).trim()) continue;
-      if (Date.now() - t0 > 270000) { stopped = true; break; }
+      if (Date.now() - t0 > budget) { stopped = true; break; }
       const b = { code: String(r[BI.Binome]).trim(), tag: String(r[BI.Tag]).trim() };
       const members = [[r[BI['Member 1']], r[BI['Email 1']]], [r[BI['Member 2']], r[BI['Email 2']]]]
         .filter(m => String(m[0]).trim() || String(m[1]).trim()).map(m => ({ name: String(m[0]).trim(), email: String(m[1]).trim().toLowerCase() }));

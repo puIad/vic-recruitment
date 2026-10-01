@@ -27,6 +27,20 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
 - Code change: `npm test && npx clasp push && npx clasp update-deployment AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT`
   (same URL, new version).
 
+## Vercel front (PLAN-VERCEL.md) — built 2026-10-01
+- `web/` = static `index.html` (port of Index.html) + Node functions `api/{login,callback,run,logout}.js`, deployed by Vercel
+  from Git (root `web/`, `main` = production) at https://vic-recruitment.vercel.app. Visitors sign in with Google; `/api/run`
+  calls the script through the Apps Script API **as the visitor** (`scripts.run`), so Drive still decides access.
+- API executable deployment: `AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU` (Vercel env
+  `SCRIPT_API_DEPLOYMENT_ID`). A script change now updates **both** deployments:
+  `npx clasp push && npx clasp update-deployment <WEBAPP_ID> && npx clasp update-deployment <API_ID>`.
+  Bump `API_VERSION` in WebApp.gs **and** web/index.html together when webAccess/webState/webRun change shape.
+- Vercel env (Production): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY` (32 random bytes, base64; rotating it
+  signs everyone out), `SCRIPT_API_DEPLOYMENT_ID`, `APP_ORIGIN=https://vic-recruitment.vercel.app`.
+- Setup is owner-only from the web; the trigger owner is recorded in script property `TRIGGER_OWNER` (handover: delete it).
+- Local preview of the Vercel app on mock Google: `node test/webdev.js` → http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
+  (`?as=stranger@g.enp.edu.dz` = no-access view). Tests: `test/vercel.test.js` (in `npm test`).
+
 ## Next
 1. Open the web app (or Master → VIC Recruitment menu) → authorize → run **Setup** (adds TEST_MODE + TRUSTED_BACKUPS
    rows, renames Team col E to "Exclude").

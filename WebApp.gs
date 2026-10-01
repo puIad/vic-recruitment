@@ -26,28 +26,42 @@ function appUrl_() { try { return ScriptApp.getService().getUrl(); } catch (e) {
 /** Google's account picker, coming back to this web app with the chosen account. */
 function switchUrl_() { return 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(appUrl_()); }
 
+/** Bumped when webAccess/webState/webRun change shape; the Vercel front (web/index.html) checks it. */
+const API_VERSION = 1;
+const DOMAIN = 'g.enp.edu.dz';
+
 /**
- * Can the signed-in account edit the Master? {ok, email, reason}. The script runs as that account,
- * so opening the sheet is the real test: NO_PROJECT = can't open it, READ_ONLY = can open, can't edit.
+ * Can the signed-in account edit the Master? {ok, email, reason, owner}. The script runs as that account,
+ * so opening the sheet is the real test: DOMAIN = not an @g.enp.edu.dz account, NO_PROJECT = can't open it,
+ * READ_ONLY = can open, can't edit. owner = this account owns the Master (only the owner may run Setup).
  */
 function access_() {
   const email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  if (!email) return { ok: false, email: '', reason: 'NO_EMAIL' };
+  if (!email) return { ok: false, email: '', reason: 'NO_EMAIL', owner: false };
+  if (email.split('@')[1] !== DOMAIN) return { ok: false, email: email, reason: 'DOMAIN', owner: false };
   let ss = null;
   try { ss = ss_(); } catch (e) { /* this account can't open the Master */ }
-  if (!ss) return { ok: false, email: email, reason: 'NO_PROJECT' };
+  if (!ss) return { ok: false, email: email, reason: 'NO_PROJECT', owner: false };
   try {
     const owner = ss.getOwner();
-    const editors = ss.getEditors().map(u => u.getEmail()).concat(owner ? [owner.getEmail()] : []);
-    if (editors.map(e => String(e).toLowerCase()).indexOf(email) >= 0) return { ok: true, email: email };
+    const ownerEmail = owner ? String(owner.getEmail()).toLowerCase() : '';
+    const editors = ss.getEditors().map(u => String(u.getEmail()).toLowerCase()).concat(ownerEmail ? [ownerEmail] : []);
+    if (editors.indexOf(email) >= 0) return { ok: true, email: email, owner: email === ownerEmail };
   } catch (e) { /* viewers can't list the editors */ }
-  return { ok: false, email: email, reason: 'READ_ONLY' };
+  return { ok: false, email: email, reason: 'READ_ONLY', owner: false };
 }
 function isAdmin_() { return access_().ok; }
 
+/** First call of the Vercel front: never throws, so it can show the no-access view. */
+function webAccess() {
+  const a = access_();
+  return { ok: a.ok, email: a.email, reason: a.reason || '', owner: !!a.owner, v: API_VERSION };
+}
+
 /** Everything the dashboard shows, read-only. Dates are pre-formatted (google.script.run can't return Date). */
 function webState() {
-  if (!isAdmin_()) throw new Error('Not allowed');
+  const a = access_();
+  if (!a.ok) throw new Error('Not allowed');
   _settings = null;
   const s = S_();
   const ctx = loadCtx_();
@@ -78,6 +92,7 @@ function webState() {
 
   return {
     user: Session.getActiveUser().getEmail(),
+    owner: a.owner, v: API_VERSION,
     switchUrl: switchUrl_(),
     updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm'),
     links: {
@@ -113,9 +128,12 @@ function webState() {
   };
 }
 
-/** One entry point for every dashboard button. Returns {messages[], result}. */
+/** One entry point for every dashboard button. Returns {messages[], result}. args.budgetMs (lock): the Vercel front sends
+ *  ~200s so the run ends before its 300s function limit; the old dashboard and the menu keep 270s. */
 function webRun(action, args) {
-  if (!isAdmin_()) throw new Error('Not allowed');
+  const a = access_();
+  if (!a.ok) throw new Error('Not allowed');
+  if (action === 'setup' && !a.owner) throw new Error('Only the owner of the master sheet can run Setup');
   args = args || {};
   _webOut = [];
   try {
@@ -125,7 +143,7 @@ function webRun(action, args) {
       case 'importTeam': result = importTeamCore_(args.link, !!args.replace); break;
       case 'draft': draftBinomes(); break;
       case 'lockCheck': result = lockCheck_(); break;
-      case 'lock': lockBinomesCore_(); break;
+      case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;
       case 'digest': sendDailyDigest(); _webOut.push('Digest sent to ' + (adminEmails_().join(', ') || 'nobody (ADMIN_EMAIL is empty)')); break;
       case 'reassign': reassignCore_(args.code, args.binome); break;

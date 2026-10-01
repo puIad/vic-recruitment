@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Apps Script for the VIC 2026 recruitment master sheet",
   "scripts": {
-    "test": "node test/unit.test.js && node test/e2e.test.js && node test/web.test.js",
+    "test": "node test/unit.test.js && node test/e2e.test.js && node test/web.test.js && node test/vercel.test.js",
     "push": "clasp push",
     "deploy": "clasp push && clasp create-deployment"
   },

@@ -76,7 +76,7 @@ assert(/AccountChooser\?continue=https%3A%2F%2Fscript.google.com/.test(call('web
 run('var __realSession = Session; var __as = e => { Session = { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }; __as("stranger@g.enp.edu.dz")');
 assert.throws(() => call('webState'), /Not allowed/);
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
-assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY' }));
+assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY', owner: false }));
 let page = run('doGet()');
 assert.deepStrictEqual([page._file, page._vars.email, page._vars.reason], ['NoAccess', 'stranger@g.enp.edu.dz', 'READ_ONLY'], 'no-access screen');
 run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { throw new Error("You do not have permission to access the requested document.") }');
@@ -86,6 +86,28 @@ run('SpreadsheetApp.openById = __open');
 run('ss_().addEditor("helper@g.enp.edu.dz"); __as("Helper@g.enp.edu.dz")');
 assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of the Master gets in, no extra deployment');
 assert.strictEqual(run('doGet()._file'), 'Index');
+
+// Vercel front (scripts.run): webAccess never throws, domain + owner rules, setup owner-only, trigger owner guard
+assert.deepStrictEqual(call('webAccess'), { ok: true, email: 'helper@g.enp.edu.dz', reason: '', owner: false, v: 1 });
+assert.strictEqual(call('webState').owner, false);
+assert.throws(() => call('webRun', 'setup'), /Only the owner/, 'an editor cannot run Setup');
+assert.throws(() => run('installTriggers_(ss_())'), /triggers belong to admin@g.enp.edu.dz/, 'menu path: a second account cannot double the triggers');
+run('ss_().addEditor("someone@gmail.com"); __as("someone@gmail.com")');
+assert.deepStrictEqual(call('webAccess'), { ok: false, email: 'someone@gmail.com', reason: 'DOMAIN', owner: false, v: 1 }, 'non-ENP editor refused');
+assert.throws(() => call('webRun', 'sync'), /Not allowed/);
+{
+  run('__as("stranger@g.enp.edu.dz")');
+  assert.strictEqual(call('webAccess').reason, 'READ_ONLY');
+}
+run('__as("admin@g.enp.edu.dz")');
+assert.deepStrictEqual([call('webAccess').owner, call('webState').owner, call('webState').v], [true, true, 1]);
+assert.strictEqual(run('__props.TRIGGER_OWNER'), 'admin@g.enp.edu.dz', 'setup records the trigger owner');
+const before = run('__triggers.length');
+call('webRun', 'setup');
+assert.strictEqual(run('__triggers.length'), before + 3, 'owner can reinstall');
+run('__props.TRIGGER_OWNER = "helper@g.enp.edu.dz"');
+assert.throws(() => call('webRun', 'setup'), /triggers belong to helper/, 'TRIGGER_OWNER wins over the Master owner');
+run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
 run('__as("")');
 assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
 assert.throws(() => call('webState'), /Not allowed/);
