@@ -19,6 +19,7 @@ other users' triggers).
 | §4 Manual: owner sign-in, dashboard, Sync | ✅ verified in production logs (Sync 57 s, ran as the visitor) |
 | §4 Manual: editor, non-editor ENP (no-access view), multi-account browser, sign-out, Lock near the limit | ⏳ needs other accounts |
 | Risk: time triggers still fire after the GCP switch | ⏳ check the Log tab for automatic syncs/digest |
+| Extra: Settings editable from the dashboard (`saveSettings`, web app @9 / API @10) | ✅ live; manual check pending |
 | §5.4 Share the Vercel URL with the 10 editors | ⏳ |
 | §5.5 Once proven: `doGet` → link to Vercel, update STATUS/HANDOFF | ⏳ |
 | §5.6 After recruitment: `vic.rh@g.enp.edu.dz` → Cloud owner (+ Vercel/Master handover, delete `TRIGGER_OWNER`) | ⏳ |

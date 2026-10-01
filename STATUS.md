@@ -41,18 +41,36 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
   (Cloud project switch + scopes OK). Still to check with other people: an editor, a non-editor ENP account (no-access
   view), a multi-account browser, sign-out, Lock near the time limit; and that the time triggers still fire after the
   GCP switch (Log tab). Then share the URL with the editors; once proven, `doGet` → link to Vercel (plan §5).
+- **Fixes after the production check (2026-10-01), all live** (script then: web app @7, API @8; front: Vercel from `main`):
+  - `1c6224d` An account removed from the Master got "View only" instead of "No access": the bound script still hands
+    back its Master, so `access_()` now asks Drive (`DriveApp.getFileById`) before calling it READ_ONLY → else NO_PROJECT.
+  - `1c6224d` Signing out no longer burns the Google grant: the refresh token stays sealed (marked out) until the 48h end,
+    so signing back in with the same account skips the consent screen. The stored grant is revoked only when a
+    different account signs in.
+  - `a977d7a` A no-access visitor briefly saw the dashboard layout while the access check ran. The page now boots gated,
+    on the gate card in a "Checking your access…" state, and shows the dashboard only once `webAccess` says ok.
+- **Settings are editable on the Vercel dashboard** (2026-10-01, script web app @9 / API @10, front `165f022` + friendly names/icons):
+  the Settings card is a form (friendly names + icons, switches/dropdowns/fields), saved through `webRun('saveSettings')` into the
+  Settings tab, which stays the source of truth (`SETTING_UI` in web/index.html maps key → name/icon; add a row there when adding a
+  setting to `SETTINGS_DEFAULTS`). Changing SYNC_EVERY_MINUTES / DIGEST_HOUR still needs Setup (owner) to reschedule the triggers.
+  The old Apps Script dashboard (`Index.html`) stays read-only.
 - Setup is owner-only from the web; the trigger owner is recorded in script property `TRIGGER_OWNER` (handover: delete it).
 - Local preview of the Vercel app on mock Google: `node test/webdev.js` → http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
   (`?as=stranger@g.enp.edu.dz` = no-access view). Tests: `test/vercel.test.js` (in `npm test`).
 
 ## Next
-1. Open the web app (or Master → VIC Recruitment menu) → authorize → run **Setup** (adds TEST_MODE + TRUSTED_BACKUPS
-   rows, renames Team col E to "Exclude").
-2. Import team (link empty → OT Database tab) → Draft binomes → review.
-3. Test run in TEST_MODE: lock, submit test registrations + interview forms, check Tracker/Alerts, then delete the
+1. Finish the Vercel manual checks with other accounts: an editor, a removed/non-editor ENP account (should see
+   "No access", with no dashboard flash), a viewer ("View only"), a multi-account browser, sign-out → sign back in
+   within 48h (no consent screen), Lock near the time limit. Check the Log tab that the time triggers still fire.
+2. Run **Setup** from https://vic-recruitment.vercel.app (owner only): adds TEST_MODE + TRUSTED_BACKUPS rows, renames
+   Team col E to "Exclude".
+3. Import team (link empty → OT Database tab) → Draft binomes → review.
+4. Test run in TEST_MODE: lock, submit test registrations + interview forms, check Tracker/Alerts, then delete the
    test rows/files (HANDOFF §8.6).
-4. Reword 2026 forms (still say 2025 in places).
-5. Launch only when proven: TEST_MODE = FALSE → Lock for real → share the registration form → watch Alerts.
+5. Reword 2026 forms (still say 2025 in places). Verify the two guessed OT emails (Rami, Meriem Hayet).
+6. Share the Vercel URL with the editors; once proven, point `doGet` at Vercel (PLAN-VERCEL §5.5). Optional: rotate the
+   OAuth client secret (it was pasted in the build chat).
+7. Launch only when proven: TEST_MODE = FALSE → Lock for real → share the registration form → watch Alerts.
 
 ## Open questions
 See HANDOFF §7 (board interviewing, leftover non-HR members, ALL weight, confirmation email, 1st-choice check).

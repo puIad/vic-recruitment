@@ -312,7 +312,8 @@ a.kpi:hover .go { opacity: 1; transform: none; }
 .tool small { font-size: 12.5px; color: var(--ink-3); }
 .sform { display: grid; gap: 14px; font-size: 13px; }
 .sform label { display: grid; gap: 4px; }
-.sform label > b { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.sform label > b { font-size: 12.5px; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 7px; }
+.sform label > b .i { width: 15px; height: 15px; color: var(--ink-3); }
 .sform label > small { color: var(--ink-3); line-height: 1.35; }
 .sform input:not([type=checkbox]), .sform select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card, transparent); color: var(--ink); }
 .sform .sw { display: flex; align-items: center; gap: 8px; }
@@ -1040,6 +1041,16 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       : 'Contacted, date and notes are carried over to the new binome sheet.';
   }
 
+  const SETTING_UI = { // key: [friendly name, icon]
+    ADMIN_EMAIL: ['Admin emails', 'mail'], TEST_MODE: ['Test mode', 'flask'], TIMEZONE: ['Timezone', 'clock'],
+    HOURS_NOT_CONTACTED: ['Alert: not contacted after (hours)', 'bell'], HOURS_NO_INTERVIEW_DATE: ['Alert: no interview date after (hours)', 'clock'],
+    HOURS_AFTER_INTERVIEW_NO_FORM: ['Alert: no interview form after (hours)', 'form'], INSTANT_EMAIL_MIN_SEVERITY: ['Instant email from alert level', 'bell'],
+    NOTIFY_BINOME_ON_ALERT: ['Email binomes about alerts', 'send'], NOTIFY_BINOME_ON_NEW_INTERVIEWEE: ['Email binomes about new interviewees', 'userplus'],
+    SHARE_FILES_WITH_BINOME: ['Share sheets with binomes', 'share'], ASSIGNMENTS_OPEN: ['Assigning new registrants', 'play'],
+    BALANCE_BY: ['Balance interviewees by', 'sliders'], ALL_BINOME_WEIGHT: ['Board binome load weight', 'updown'],
+    EMAIL_DOMAIN: ['Registrant email domain', 'mail'], TRUSTED_BACKUPS: ['Trusted backup interviewers', 'users'],
+    SYNC_EVERY_MINUTES: ['Auto-sync every (minutes)', 'sync'], DIGEST_HOUR: ['Daily digest hour (0–23)', 'repeat'],
+  };
   function renderSettings() {
     const form = $('#settings');
     if (form.dataset.dirty) return; // don't wipe unsaved edits on an auto-refresh
@@ -1048,7 +1059,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       const ctl = k.type === 'bool' ? '<span class="sw"><input type="checkbox" id="' + id + '" data-key="' + s.key + '"' + (v === true || /^(true|yes|oui|1|vrai)$/i.test(String(v)) ? ' checked' : '') + '>On</span>'
         : k.type === 'enum' ? '<select id="' + id + '" data-key="' + s.key + '">' + k.options.map(o => '<option' + (String(o) === String(v) ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
         : '<input id="' + id + '" data-key="' + s.key + '" type="' + (k.type === 'number' ? 'number' : 'text') + '" value="' + esc(v) + '">';
-      return '<label><b class="mono">' + esc(s.key) + '</b>' + ctl + '<small>' + esc(s.help) + '</small></label>';
+      const m = SETTING_UI[s.key] || [s.key, 'sliders'];
+      return '<label title="' + esc(s.key) + '"><b>' + I(m[1]) + esc(m[0]) + '</b>' + ctl + '<small>' + esc(s.help) + '</small></label>';
     }).join('');
   }
   function settingsValues() {
