@@ -1,10 +1,11 @@
-// Loads Code.gs + WebApp.gs into the Apps Script mock, runs setup like the editor would,
+// Loads the .gs files into the Apps Script mock, runs setup like the editor would,
 // then switches to web-app conditions (no active spreadsheet, getUi() throws).
 const fs = require('fs'), vm = require('vm');
 
 module.exports = function seed() {
   const ctx = vm.createContext({ console, Proxy, JSON, Math });
-  for (const f of ['test/mockgas.js', 'Code.gs', 'WebApp.gs']) vm.runInContext(fs.readFileSync(__dirname + '/../' + f, 'utf8'), ctx, { filename: f });
+  vm.runInContext(fs.readFileSync(__dirname + '/mockgas.js', 'utf8'), ctx, { filename: 'test/mockgas.js' });
+  require('./gs')(ctx);
   const run = code => vm.runInContext(code, ctx);
   run(`
 var REG_H = ["Timestamp","Email address","First Name","Family Name","E-mail Address","Birth Date","Phone Number","Facebook Link","Discord Username  ","Field of Study ","Year of Study","How did you discover VIC?","Why do you want to be part of the Vision & Innovation Club family?","Have you had previous experience in other clubs? If yes, please mention them.  ","What's your first department choice?","What's your 2nd department choice?","Why did you choose the IT Department as your top preference?  ","Do you have any experience with Graphic Design?","Why did you choose the COMM Department as your top preference?  ","Why did you choose the HR Department as your top preference?  ","Why did you choose the FLER Department as your top preference?  ","Which days or times are you usually available for an interview?  ","Will you be able to attend your interview on time once the date is shared?  ","Anything to add?"];

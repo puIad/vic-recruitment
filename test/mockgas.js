@@ -1,4 +1,4 @@
-// Minimal in-memory mock of the Apps Script services used by Code.gs (evaluated inside the same vm realm)
+// Minimal in-memory mock of the Apps Script services used by the .gs files (evaluated inside the same vm realm)
 var __files = {};     // id -> {kind, obj, lastUpdated, parent, editors}
 var __outbox = [];
 var __uiQueue = [];   // scripted answers for prompts/alerts

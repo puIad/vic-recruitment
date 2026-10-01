@@ -4,5 +4,6 @@
   "scriptExtensions": [".gs"],
   "htmlExtensions": [".html"],
   "jsonExtensions": [".json"],
-  "skipSubdirectories": true
+  "skipSubdirectories": true,
+  "filePushOrder": ["Config.gs"]
 }

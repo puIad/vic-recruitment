@@ -1,5 +1,15 @@
 **/**
 !appsscript.json
-!Code.gs
+!Config.gs
+!Matching.gs
+!Rules.gs
+!Sheets.gs
+!BinomeFiles.gs
+!Registrations.gs
+!Interviews.gs
+!Sync.gs
+!Setup.gs
+!Team.gs
+!Actions.gs
 !WebApp.gs
 !Index.html

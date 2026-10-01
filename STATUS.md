@@ -3,7 +3,7 @@
 Updated 2026-10-01. Full history, decisions and Drive IDs: [HANDOFF.md](HANDOFF.md) (Cowork session, 2026-09-30 → 10-01).
 
 ## What this is
-Apps Script (`Code.gs`, v2) for the VIC 2026 recruitment master sheet: binome pairing, registration routing,
+Apps Script (v2, split into `Config.gs` + feature files, see the header of `Config.gs`) for the VIC 2026 recruitment master sheet: binome pairing, registration routing,
 per-binome sheets, interview-form validation/autocorrect, alerts + daily digest.
 Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD83B1_-X9D-vXfNEJBYcmu5P6MKQAT`).
 

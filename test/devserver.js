@@ -1,4 +1,4 @@
-// Local preview of the dashboard: real Code.gs/WebApp.gs on the mock, Index.html served with a google.script.run shim.
+// Local preview of the dashboard: real .gs files on the mock, Index.html served with a google.script.run shim.
 //   node test/devserver.js [port]        then open http://localhost:8787
 //   --empty  start before the team import (to see the launch sequence from step 01)
 const http = require('http'), fs = require('fs');

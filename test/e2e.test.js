@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const ctx = vm.createContext({ console, Proxy, JSON, Math });
 vm.runInContext(fs.readFileSync(__dirname + '/mockgas.js', 'utf8'), ctx);
-vm.runInContext(fs.readFileSync(__dirname + '/../Code.gs', 'utf8'), ctx);
+require('./gs')(ctx);
 const run = code => vm.runInContext(code, ctx);
 
 run(`

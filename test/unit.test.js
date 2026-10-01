@@ -1,8 +1,8 @@
-// Unit tests for the pure logic in Code.gs
+// Unit tests for the pure logic (Matching.gs, Rules.gs)
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
-const src = fs.readFileSync(__dirname + '/../Code.gs', 'utf8');
 const ctx = vm.createContext({ console });
-vm.runInContext(src + '\n;globalThis.__x = {parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch};', ctx);
+require('./gs')(ctx);
+vm.runInContext('globalThis.__x = {parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch};', ctx);
 const X = ctx.__x;
 const D = iso => vm.runInContext('new Date("' + iso + '")', ctx);
 let pass = 0; const t = (name, fn) => { try { fn(); pass++; } catch (e) { console.log('FAIL', name, '\n ', e.message); process.exitCode = 1; } };

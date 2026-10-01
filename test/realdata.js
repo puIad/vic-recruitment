@@ -9,7 +9,7 @@ function newCtx(seed) {
   const M = Object.create(Math); M.random = seeded(seed);
   const c = vm.createContext({ console: { log() {}, warn() {}, error: console.error }, Proxy, JSON, Math: M });
   vm.runInContext(fs.readFileSync(__dirname + '/mockgas.js', 'utf8'), c);
-  vm.runInContext(fs.readFileSync(__dirname + '/../Code.gs', 'utf8'), c);
+  require('./gs')(c);
   c.REG_H = R["'Registration Responses'!A1:AN3"].values[0];
   c.INT_H = R["'Interview Responses'!A1:AS2"].values[0];
   vm.runInContext(`
