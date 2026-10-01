@@ -37,6 +37,10 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
   Bump `API_VERSION` in WebApp.gs **and** web/index.html together when webAccess/webState/webRun change shape.
 - Vercel env (Production): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY` (32 random bytes, base64; rotating it
   signs everyone out), `SCRIPT_API_DEPLOYMENT_ID`, `APP_ORIGIN=https://vic-recruitment.vercel.app`.
+- **Verified in production 2026-10-01**: owner sign-in → webAccess/webState/Sync through scripts.run as the visitor
+  (Cloud project switch + scopes OK). Still to check with other people: an editor, a non-editor ENP account (no-access
+  view), a multi-account browser, sign-out, Lock near the time limit; and that the time triggers still fire after the
+  GCP switch (Log tab). Then share the URL with the editors; once proven, `doGet` → link to Vercel (plan §5).
 - Setup is owner-only from the web; the trigger owner is recorded in script property `TRIGGER_OWNER` (handover: delete it).
 - Local preview of the Vercel app on mock Google: `node test/webdev.js` → http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
   (`?as=stranger@g.enp.edu.dz` = no-access view). Tests: `test/vercel.test.js` (in `npm test`).

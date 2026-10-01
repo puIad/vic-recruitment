@@ -1,6 +1,6 @@
 # PLAN — Vercel front, Apps Script back
 
-Status: **built** (2026-10-01): script side deployed, `web/` + tests in the repo. Live state and IDs: STATUS.md.
+Status: **built and live** (2026-10-01): https://vic-recruitment.vercel.app, owner sign-in + Sync verified in production. Live state and IDs: STATUS.md.
 Deviations: web tests live in `test/vercel.test.js` (not `web/test/`, which would be deployed); CSRF = required `X-VIC`
 header + foreign-Origin refusal (some clients omit Origin on same-origin POST); local mock = in-process fetch mock
 (`test/googlemock.js`) instead of `SCRIPT_RUN_URL`; trigger guard = recorded `TRIGGER_OWNER` (Apps Script can't list
