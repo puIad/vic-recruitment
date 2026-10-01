@@ -1,28 +1,49 @@
 /******************************************************************************
  * VIC RECRUITMENT 2026 — web dashboard
  * -----------------------------------------------------------------------------
- * Add this file (WebApp.gs) and the HTML file "Index" next to Code.gs, then
- * Deploy → New deployment → Web app · Execute as: Me · Who has access: Only myself.
- * Only the script owner and the emails in Settings › ADMIN_EMAIL get past doGet.
+ * Deployed (appsscript.json) as: Execute as the user accessing the web app ·
+ * Who has access: anyone in the domain. Google asks each visitor for permission
+ * once, then everything runs with *their* Drive access: an account that can edit
+ * the Master sheet gets the dashboard, any other account gets NoAccess.html
+ * with a switch-account button. One deployment serves every admin.
  ******************************************************************************/
 
 function doGet() {
-  if (!isAdmin_()) {
-    return HtmlService.createHtmlOutput('<p style="font-family:sans-serif;padding:24px">This dashboard is only for the recruitment admins.</p>')
-      .setTitle('VIC Recruitment');
+  const a = access_();
+  if (!a.ok) {
+    const t = HtmlService.createTemplateFromFile('NoAccess');
+    t.email = a.email; t.reason = a.reason; t.switchUrl = switchUrl_(); t.appUrl = appUrl_();
+    return t.evaluate()
+      .setTitle('VIC Recruitment · no access')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('VIC Recruitment 2026')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-/** Owner or listed admin. An empty active-user email (Google hides it across domains) is denied. */
-function isAdmin_() {
-  const me = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  if (!me) return false;
-  if (me === String(Session.getEffectiveUser().getEmail() || '').toLowerCase()) return true;
-  return adminEmails_().map(e => e.toLowerCase()).indexOf(me) >= 0;
+function appUrl_() { try { return ScriptApp.getService().getUrl(); } catch (e) { return ''; } }
+/** Google's account picker, coming back to this web app with the chosen account. */
+function switchUrl_() { return 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(appUrl_()); }
+
+/**
+ * Can the signed-in account edit the Master? {ok, email, reason}. The script runs as that account,
+ * so opening the sheet is the real test: NO_PROJECT = can't open it, READ_ONLY = can open, can't edit.
+ */
+function access_() {
+  const email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
+  if (!email) return { ok: false, email: '', reason: 'NO_EMAIL' };
+  let ss = null;
+  try { ss = ss_(); } catch (e) { /* this account can't open the Master */ }
+  if (!ss) return { ok: false, email: email, reason: 'NO_PROJECT' };
+  try {
+    const owner = ss.getOwner();
+    const editors = ss.getEditors().map(u => u.getEmail()).concat(owner ? [owner.getEmail()] : []);
+    if (editors.map(e => String(e).toLowerCase()).indexOf(email) >= 0) return { ok: true, email: email };
+  } catch (e) { /* viewers can't list the editors */ }
+  return { ok: false, email: email, reason: 'READ_ONLY' };
 }
+function isAdmin_() { return access_().ok; }
 
 /** Everything the dashboard shows, read-only. Dates are pre-formatted (google.script.run can't return Date). */
 function webState() {
@@ -57,6 +78,7 @@ function webState() {
 
   return {
     user: Session.getActiveUser().getEmail(),
+    switchUrl: switchUrl_(),
     updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm'),
     links: {
       master: ss_().getUrl(),

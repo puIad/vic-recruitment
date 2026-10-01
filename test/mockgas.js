@@ -102,6 +102,8 @@ MockSS.prototype = {
   getActiveSheet() { return this.active; }, setActiveSheet(s) { this.active = s; return s; }, moveActiveSheet() { },
   setSpreadsheetTimeZone() { }, setSpreadsheetLocale() { }, toast(m) { __uiLog.push('TOAST: ' + m); },
   addEditor(e) { __files[this.id].editors.push(e); return this; },
+  getEditors() { return __files[this.id].editors.map(e => ({ getEmail: () => e })); },
+  getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; },
 };
 
 var SpreadsheetApp = {
@@ -151,5 +153,9 @@ var LockService = { getScriptLock() { return { tryLock: () => true, waitLock: ()
 var MailApp = { sendEmail(o) { __outbox.push(o); } };
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };
 var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { } };
-var ScriptApp = { getProjectTriggers() { return __triggers; }, deleteTrigger() { }, newTrigger(h) { const c = chain({ create: () => { __triggers.push({ getHandlerFunction: () => h }); } }); return c; } };
+var HtmlService = {
+  createHtmlOutputFromFile: f => chain({ _file: f }),
+  createTemplateFromFile: f => ({ evaluate() { return chain({ _file: f, _vars: Object.assign({}, this) }); } }),
+};
+var ScriptApp = { getService() { return { getUrl: () => 'https://script.google.com/macros/s/TEST/exec' }; }, getProjectTriggers() { return __triggers; }, deleteTrigger() { }, newTrigger(h) { const c = chain({ create: () => { __triggers.push({ getHandlerFunction: () => h }); } }); return c; } };
 var Logger = { log: console.log };

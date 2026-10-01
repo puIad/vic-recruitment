@@ -70,12 +70,25 @@ assert(/Setup done/.test(out.messages[0]), 'setup works without an active spread
 assert.throws(() => call('webRun', 'nope'), /Unknown action/);
 assert.strictEqual(run('_webOut'), null, 'buffer reset after a throw');
 
-// access control
-run('var __realSession = Session; Session = { getEffectiveUser: () => ({ getEmail: () => "admin@g.enp.edu.dz" }), getActiveUser: () => ({ getEmail: () => "stranger@g.enp.edu.dz" }) }');
+// access control: the web app runs as the visitor, so access = can this account edit the Master
+assert.strictEqual(run('doGet()._file'), 'Index', 'owner gets the dashboard');
+assert(/AccountChooser\?continue=https%3A%2F%2Fscript.google.com/.test(call('webState').switchUrl), 'switch-account link');
+run('var __realSession = Session; var __as = e => { Session = { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }; __as("stranger@g.enp.edu.dz")');
 assert.throws(() => call('webState'), /Not allowed/);
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
-run('Session.getActiveUser = () => ({ getEmail: () => "" })');
-assert.throws(() => call('webState'), /Not allowed/, 'hidden email is denied');
+assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY' }));
+let page = run('doGet()');
+assert.deepStrictEqual([page._file, page._vars.email, page._vars.reason], ['NoAccess', 'stranger@g.enp.edu.dz', 'READ_ONLY'], 'no-access screen');
+run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { throw new Error("You do not have permission to access the requested document.") }');
+assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'an account that cannot open the Master');
+assert.strictEqual(run('doGet()._vars.reason'), 'NO_PROJECT');
+run('SpreadsheetApp.openById = __open');
+run('ss_().addEditor("helper@g.enp.edu.dz"); __as("Helper@g.enp.edu.dz")');
+assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of the Master gets in, no extra deployment');
+assert.strictEqual(run('doGet()._file'), 'Index');
+run('__as("")');
+assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
+assert.throws(() => call('webState'), /Not allowed/);
 run('Session = __realSession');
 
 console.log('WEB OK');

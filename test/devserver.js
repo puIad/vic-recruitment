@@ -25,6 +25,17 @@ window.google = { script: { get run() {
 } } };
 </script>`;
 const port = +process.argv.find(a => /^\d+$/.test(a)) || 8787;
+// Just enough of HtmlService templates (<? code ?>, <?= escaped ?>) to preview NoAccess.html
+function template(file, vars) {
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let js = 'let out = "";\n';
+  fs.readFileSync(__dirname + '/../' + file, 'utf8').split(/(<\?=?[\s\S]*?\?>)/).forEach(p => {
+    if (p.startsWith('<?=')) js += 'out += esc(' + p.slice(3, -2) + ');\n';
+    else if (p.startsWith('<?')) js += p.slice(2, -2) + '\n';
+    else js += 'out += ' + JSON.stringify(p) + ';\n';
+  });
+  return new Function('esc', ...Object.keys(vars), js + 'return out;')(esc, ...Object.values(vars));
+}
 http.createServer((req, res) => {
   if (req.method === 'POST' && req.url === '/rpc') {
     let body = '';
@@ -38,6 +49,13 @@ http.createServer((req, res) => {
       } catch (e) { out = { error: e.message }; }
       setTimeout(() => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(out)); }, 350);
     });
+    return;
+  }
+  if (req.url.startsWith('/no-access')) { // /no-access?reason=NO_PROJECT|READ_ONLY|NO_EMAIL&email=…
+    const q = new URL(req.url, 'http://x').searchParams;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.end(template('NoAccess.html', { reason: q.get('reason') || 'NO_PROJECT', email: q.has('email') ? q.get('email') : 'someone@g.enp.edu.dz',
+      switchUrl: 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent('http://localhost:' + port + '/'), appUrl: '/' }));
     return;
   }
   const html = fs.readFileSync(__dirname + '/../Index.html', 'utf8').replace('<head>', '<head>' + SHIM);

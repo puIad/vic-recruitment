@@ -21,7 +21,9 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
 
 ## Deploy (clasp, linked via `.clasp.json`)
 - Web app: https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec
-  (execute as you, only you; set in `appsscript.json`).
+  (set in `appsscript.json`: runs as the visitor, open to g.enp.edu.dz accounts). Google asks each visitor for
+  permission once; anyone who can **edit the Master** gets the dashboard, other accounts get `NoAccess.html` with a
+  switch-account button. Add an admin = share the Master with them as editor (same URL, no extra deployment).
 - Code change: `npm test && npx clasp push && npx clasp update-deployment AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT`
   (same URL, new version).
 
