@@ -83,6 +83,9 @@ run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { thr
 assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'an account that cannot open the Master');
 assert.strictEqual(run('doGet()._vars.reason'), 'NO_PROJECT');
 run('SpreadsheetApp.openById = __open');
+run('var __drive = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("No item with the given ID could be found.") }');
+assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'bound Master handed back to an account Drive says has no access → not "view only"');
+run('DriveApp.getFileById = __drive');
 run('ss_().addEditor("helper@g.enp.edu.dz"); __as("Helper@g.enp.edu.dz")');
 assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of the Master gets in, no extra deployment');
 assert.strictEqual(run('doGet()._file'), 'Index');

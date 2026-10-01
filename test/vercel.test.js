@@ -87,6 +87,23 @@ const rpc = (cookie, fn, ...args) => invoke('run', { method: 'POST', cookie, bod
   r = await cb('s', 's'); assert.strictEqual(r.status, 403, 'unticked permissions refused'); assert(/Permissions missing/.test(r.body));
   tokenReply = Object.assign({}, tokenReply, { scope: allScopes, refresh_token: undefined });
   r = await cb('s', 's'); assert.deepStrictEqual([r.status, r.headers.location], [302, '/api/login?consent=1'], 'no refresh token → retry once with consent');
+  // back within 48h (signed out, same account): Google sends no refresh token → reuse the stored one, no consent screen
+  const cbWith = (sessCookie) => invoke('callback', { url: '/api/callback?code=c&state=s', cookie: S.PKCE_COOKIE + '=' + encodeURIComponent(S.seal({ state: 's', verifier: 'v', consent: false })) + '; ' + S.COOKIE + '=' + encodeURIComponent(S.seal(sessCookie)) });
+  tokenReply = Object.assign({}, tokenReply, { id_token: idt({ email: 'a@g.enp.edu.dz' }) });
+  const iat0 = Date.now() - 10 * 3600e3;
+  r = await cbWith({ email: 'a@g.enp.edu.dz', rt: 'rt:kept', iat: iat0, out: true });
+  const back = S.open(r.jar[S.COOKIE]);
+  assert.deepStrictEqual([r.status, r.headers.location, back.rt, back.iat, back.out], [302, '/', 'rt:kept', iat0, undefined], 'same account within 48h: grant reused, window kept');
+  r = await cbWith({ email: 'a@g.enp.edu.dz', rt: 'rt:kept', iat: Date.now() - 49 * 3600e3, out: true });
+  assert.strictEqual(r.headers.location, '/api/login?consent=1', 'past 48h: consent again');
+  r = await cbWith({ email: 'b@g.enp.edu.dz', rt: 'rt:other', iat: iat0, out: true });
+  assert.strictEqual(r.headers.location, '/api/login?consent=1', "another account's grant is never reused");
+  g.log.revoked.length = 0;
+  tokenReply = Object.assign({}, tokenReply, { refresh_token: 'rt:new' });
+  r = await cbWith({ email: 'a@g.enp.edu.dz', rt: 'rt:kept', iat: iat0 });
+  assert.deepStrictEqual([S.open(r.jar[S.COOKIE]).rt, g.log.revoked], ['rt:new', []], 'same account re-consents: the old token is not revoked (that would end the new grant too)');
+  r = await cbWith({ email: 'b@g.enp.edu.dz', rt: 'rt:other', iat: iat0 });
+  assert.deepStrictEqual(g.log.revoked, ['rt:other'], 'another account takes over: its grant is revoked');
   global.fetch = realFetch;
 
   // --- run proxy: gates
@@ -145,12 +162,17 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   assert.deepStrictEqual([r.status, r.json.code], [401, 'SIGNED_OUT']);
   g.opts.scriptStatus = 200;
 
-  // --- logout revokes
+  // --- logout: signed out, grant kept until its 48h end
   g.log.revoked.length = 0;
   assert.strictEqual((await invoke('logout', { method: 'POST', cookie: admin, origin: 'https://evil.test' })).status, 403);
   assert.strictEqual((await invoke('logout', { method: 'POST', cookie: admin, xvic: null })).status, 403, 'logout needs the header too');
   r = await invoke('logout', { method: 'POST', cookie: admin });
-  assert.deepStrictEqual([r.status, g.log.revoked, r.jar[S.COOKIE]], [200, ['rt:admin@g.enp.edu.dz'], '']);
+  const out = S.open(r.jar[S.COOKIE]);
+  assert.deepStrictEqual([r.status, g.log.revoked, out.out, out.rt, out.at], [200, [], true, 'rt:admin@g.enp.edu.dz', undefined]);
+  r = await rpc(S.COOKIE + '=' + encodeURIComponent(r.jar[S.COOKIE]), 'webAccess');
+  assert.deepStrictEqual([r.status, r.json.code], [401, 'SIGNED_OUT'], 'a signed-out cookie cannot call the script');
+  r = await invoke('logout', { method: 'POST', cookie: sess('admin@g.enp.edu.dz', { iat: Date.now() - 49 * 3600e3 }) });
+  assert.deepStrictEqual([g.log.revoked, r.jar[S.COOKIE]], [['rt:admin@g.enp.edu.dz'], ''], 'past 48h: logout revokes');
 
   // --- front: the one RPC wrapper is the proxy, version matches the script
   const html = require('fs').readFileSync(__dirname + '/../web/index.html', 'utf8');

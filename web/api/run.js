@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return S.sendJson(res, 405, { error: 'POST only' });
   if (!S.sameOrigin(req)) return S.sendJson(res, 403, { error: 'Bad origin' });
   const s = S.open(S.cookies(req)[S.COOKIE]);
-  if (!s) return S.sendJson(res, 401, { error: 'Signed out', code: 'SIGNED_OUT' });
+  if (!s || s.out) return S.sendJson(res, 401, { error: 'Signed out', code: 'SIGNED_OUT' });
   if (S.expired(s)) {
     await S.revoke(s.rt);
     S.addCookie(res, S.clearSession());

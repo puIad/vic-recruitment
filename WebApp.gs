@@ -48,6 +48,8 @@ function access_() {
     const editors = ss.getEditors().map(u => String(u.getEmail()).toLowerCase()).concat(ownerEmail ? [ownerEmail] : []);
     if (editors.indexOf(email) >= 0) return { ok: true, email: email, owner: email === ownerEmail };
   } catch (e) { /* viewers can't list the editors */ }
+  // The bound script hands back its Master even to an account with no access at all: ask Drive whether it can see it.
+  try { DriveApp.getFileById(ss.getId()); } catch (e) { return { ok: false, email: email, reason: 'NO_PROJECT', owner: false }; }
   return { ok: false, email: email, reason: 'READ_ONLY', owner: false };
 }
 function isAdmin_() { return access_().ok; }
