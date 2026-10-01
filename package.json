@@ -1,0 +1,26 @@
+{
+  "name": "vic-recruitment-2026",
+  "version": "1.0.0",
+  "description": "Apps Script for the VIC 2026 recruitment master sheet",
+  "scripts": {
+    "test": "node test/unit.test.js && node test/e2e.test.js && node test/web.test.js",
+    "push": "clasp push",
+    "deploy": "clasp push && clasp create-deployment"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/puIad/vic-recruitment-2026.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/puIad/vic-recruitment-2026/issues"
+  },
+  "homepage": "https://github.com/puIad/vic-recruitment-2026#readme",
+  "devDependencies": {
+    "@google/clasp": "^3.4.1"
+  },
+  "private": true
+}

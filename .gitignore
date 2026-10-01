@@ -2,3 +2,4 @@ test/data/
 data/
 /graphify-out/
 .claude/rules/aios
+node_modules/
