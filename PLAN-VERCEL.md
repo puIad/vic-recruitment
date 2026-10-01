@@ -6,6 +6,26 @@ header + foreign-Origin refusal (some clients omit Origin on same-origin POST); 
 (`test/googlemock.js`) instead of `SCRIPT_RUN_URL`; trigger guard = recorded `TRIGGER_OWNER` (Apps Script can't list
 other users' triggers).
 
+## Progress (2026-10-01)
+
+| Step | State |
+|---|---|
+| §1 Google Cloud: project, Apps Script API, Internal consent, OAuth client, script switched to the project | ✅ done by Mourad; confirmed by a working `scripts.run` call |
+| §2 Script: scopes + `executionApi`, `webAccess`, DOMAIN/owner checks, Setup owner-only, lock budget, `API_VERSION`, trigger-owner guard, tests | ✅ pushed; web app redeployed @5 (same URL) |
+| §2.4 API executable deployment | ✅ `AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU` (@6) |
+| §3 `web/` app (index, login, callback, run, logout, session, vercel.json) | ✅ commits `3d26dcd`, `61542b8` |
+| §3 Vercel project `vic-recruitment` from Git, root `web/`, previews protected, 5 env vars (secret + key Sensitive) | ✅ `maxDuration: 300` accepted on Hobby |
+| §4 Automated tests (`npm test`: unit, e2e, web, vercel) | ✅ all green |
+| §4 Manual: owner sign-in, dashboard, Sync | ✅ verified in production logs (Sync 57 s, ran as the visitor) |
+| §4 Manual: editor, non-editor ENP (no-access view), multi-account browser, sign-out, Lock near the limit | ⏳ needs other accounts |
+| Risk: time triggers still fire after the GCP switch | ⏳ check the Log tab for automatic syncs/digest |
+| §5.4 Share the Vercel URL with the 10 editors | ⏳ |
+| §5.5 Once proven: `doGet` → link to Vercel, update STATUS/HANDOFF | ⏳ |
+| §5.6 After recruitment: `vic.rh@g.enp.edu.dz` → Cloud owner (+ Vercel/Master handover, delete `TRIGGER_OWNER`) | ⏳ |
+
+Note: the OAuth client secret was pasted in the build chat; rotate it in Cloud Console → Credentials if that matters,
+then update `GOOGLE_CLIENT_SECRET` in Vercel and redeploy.
+
 ## Decisions (from the grilling session)
 
 | # | Decision |
