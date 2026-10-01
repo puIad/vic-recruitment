@@ -335,6 +335,10 @@ body.gated > :not(.gate) { display: none !important; }
 .g-tip { border-top: 1px dashed var(--line); padding: 16px 30px 20px; font-size: 12.5px; color: var(--ink-3); display: flex; gap: 10px; }
 .g-tip svg { flex: none; margin-top: 2px; }
 .g-tip b { color: var(--ink-2); font-weight: 600; }
+/* booting: the gate shows "checking" until webAccess answers, so no dashboard layout flashes */
+.gate.checking .g-actions, .gate.checking .g-tip { display: none; }
+.gate.checking .g-hero { padding-bottom: 30px; }
+.g-ring { width: 26px; height: 26px; border-radius: 50%; border: 3px solid currentColor; border-right-color: transparent; animation: rot .8s linear infinite; }
 .g-foot { text-align: center; font-size: 12px; color: var(--ink-3); margin-top: 18px; }
 @media (max-width: 520px) {
   .g-hero { padding: 24px 20px 4px; } .g-account { margin: 18px 20px 0; } .g-steps { margin: 20px 20px 0; }
@@ -344,8 +348,8 @@ body.gated > :not(.gate) { display: none !important; }
 .stamp button.switch:hover { text-decoration-color: var(--accent); }
 </style>
 </head>
-<body>
-<div class="gate" id="gate" hidden role="main" aria-labelledby="g-title">
+<body class="gated">
+<div class="gate checking" id="gate" role="main" aria-busy="true" aria-labelledby="g-title">
   <header class="g-band"><div class="g-brand"><svg width="44" height="44" viewBox="0 0 46 46" aria-hidden="true">
       <circle cx="23" cy="23" r="21.5" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
       <path d="M6 23c4.6-7.4 10.3-11 17-11s12.4 3.6 17 11c-4.6 7.4-10.3 11-17 11S10.6 30.4 6 23z" fill="none" stroke="#fff" stroke-width="2"/>
@@ -354,10 +358,10 @@ body.gated > :not(.gate) { display: none !important; }
   <div class="g-main">
     <section class="g-card">
       <div class="g-hero">
-        <div class="g-seal" id="g-seal" aria-hidden="true"></div>
+        <div class="g-seal in" id="g-seal" aria-hidden="true"><div class="g-ring"></div></div>
         <p class="g-eyebrow" id="g-eyebrow">Access check</p>
-        <h2 id="g-title"></h2>
-        <p class="g-lead" id="g-lead"></p>
+        <h2 id="g-title">Checking your access…</h2>
+        <p class="g-lead" id="g-lead">Hold on while we confirm your account can open the dashboard.</p>
       </div>
       <div class="g-account" id="g-account" hidden>
         <div class="g-avatar" id="g-avatar" aria-hidden="true"></div>
@@ -605,8 +609,7 @@ body.gated > :not(.gate) { display: none !important; }
     p.textContent = mode === 'noaccess' ? 'Switch account' : mode === 'error' ? 'Sign in again' : 'Sign in with Google';
     p.onclick = () => (bad ? signOut('/api/login') : (location.href = '/api/login'));
     $('#g-retry').onclick = () => location.reload();
-    document.body.classList.add('gated');
-    $('#gate').hidden = false;
+    $('#gate').classList.remove('checking'); $('#gate').removeAttribute('aria-busy');
     p.focus();
   }
   // Long actions must not outlive the 48h sign-in: offer to sign in again first.
@@ -915,6 +918,7 @@ body.gated > :not(.gate) { display: none !important; }
     if (a.v !== API_VERSION) toast('The page and the script are on different versions (page ' + API_VERSION + ', script ' + a.v + '). Reload the page; if this stays, tell the admin.', true);
     if (!a.ok) return showGate('noaccess', a);
     owner = a.owner;
+    $('#gate').hidden = true; document.body.classList.remove('gated');
     const setupRow = $('[data-action="setup"]').closest('.tool');
     if (setupRow) setupRow.hidden = !owner; // Setup installs triggers: owner only (the script enforces it too)
     refresh();
