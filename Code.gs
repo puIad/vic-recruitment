@@ -18,6 +18,7 @@ const CONFIG = {
 // Editable in the "Settings" tab (the values below are only the defaults)
 const SETTINGS_DEFAULTS = [
   ['ADMIN_EMAIL', '', 'Who receives alerts + the daily digest (comma-separate several emails)'],
+  ['TEST_MODE', true, 'TRUE = nothing leaves the admins: emails to anyone else are dropped and binome files are not shared. Set FALSE only for the real launch'],
   ['TIMEZONE', 'Africa/Algiers', 'Timezone used for every date/time'],
   ['HOURS_NOT_CONTACTED', 24, 'Alert if an interviewee is still "Not yet" contacted this many hours after registering'],
   ['HOURS_NO_INTERVIEW_DATE', 48, 'Alert if no interview date is set this many hours after registering'],
@@ -627,6 +628,10 @@ function alertBuffer_(ctx) {
 }
 
 function mail_(to, subject, html) {
+  if (bool_(S_().TEST_MODE) && adminEmails_().map(e => e.toLowerCase()).indexOf(String(to).trim().toLowerCase()) < 0) {
+    console.log('TEST_MODE: email to ' + to + ' not sent: ' + subject);
+    return;
+  }
   try {
     MailApp.sendEmail({ to: to, subject: subject, htmlBody: html, name: 'VIC Recruitment Bot' });
   } catch (e) { console.error('Mail to ' + to + ' failed: ' + e); }
@@ -724,7 +729,7 @@ function createBinomeFile_(b, members) {
   p.addEditor(me);
   p.removeEditors(p.getEditors().filter(u => u.getEmail() !== me.getEmail()));
   if (p.canDomainEdit()) p.setDomainEdit(false);
-  if (bool_(s.SHARE_FILES_WITH_BINOME)) {
+  if (bool_(s.SHARE_FILES_WITH_BINOME) && !bool_(s.TEST_MODE)) {
     members.forEach(m => { if (m.email) { try { file.addEditor(m.email); } catch (e) { console.warn('Share failed ' + m.email + ': ' + e); } } });
   }
   return file;
@@ -1471,7 +1476,7 @@ function lockCheck_() {
     if (String(r[B.Status]).toUpperCase() === 'DRAFT' && !String(r[B['Email 1']]).trim() && !String(r[B['Email 2']]).trim()) problems.push(r[B.Binome] + ' has no email');
     if (String(r[B.Status]).toUpperCase() === 'DRAFT' && !tagDepts(r[B.Tag]).length) problems.push(r[B.Binome] + ' has an unreadable tag "' + r[B.Tag] + '"');
   });
-  return { drafts: drafts.length, share: bool_(S_().SHARE_FILES_WITH_BINOME), problems: problems };
+  return { drafts: drafts.length, share: bool_(S_().SHARE_FILES_WITH_BINOME) && !bool_(S_().TEST_MODE), problems: problems };
 }
 
 function lockBinomesCore_() {
@@ -1501,6 +1506,7 @@ function lockBinomesCore_() {
 }
 
 function reshareBinomeFiles() {
+  if (bool_(S_().TEST_MODE)) { say_('TEST_MODE is TRUE in Settings: files are not shared. Set it to FALSE for the real launch.'); return; }
   const ctx = loadCtx_();
   let n = 0;
   ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {

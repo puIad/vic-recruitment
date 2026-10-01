@@ -639,7 +639,7 @@ dialog[open] { animation: pop .18s cubic-bezier(.2,.9,.3,1.2); }
     $('#s2-state').innerHTML = drafts ? '<span class="chip warn">' + drafts + ' drafts to review</span>' : (active ? '<span class="chip ok">Drafts locked</span>' : '<span class="chip">No drafts yet</span>');
     $('#s3-state').innerHTML = (active ? '<span class="chip ok">' + active + ' active</span>' : '<span class="chip">None locked</span>') +
       (paused ? '<span class="chip">' + paused + ' paused</span>' : '') +
-      (s.settings.shareFiles ? '' : '<span class="chip warn">sharing off</span>');
+      (s.settings.testMode ? '<span class="chip warn">test mode</span>' : s.settings.shareFiles ? '' : '<span class="chip warn">sharing off</span>');
   }
 
   function shownAlerts() {
@@ -710,6 +710,7 @@ dialog[open] { animation: pop .18s cubic-bezier(.2,.9,.3,1.2); }
     const c = state.settings;
     const onoff = v => '<b class="' + (v ? 'on' : 'off') + '">' + (v ? 'On' : 'Off') + '</b>';
     $('#settings').innerHTML =
+      '<div style="grid-column:1/-1">Test mode ' + onoff(c.testMode) + '</div>' +
       '<div>Assignments ' + onoff(c.assignmentsOpen) + '</div><div>Share sheets ' + onoff(c.shareFiles) + '</div>' +
       '<div>Alert emails to binomes ' + onoff(c.notifyBinome) + '</div><div>New-interviewee emails ' + onoff(c.notifyNew) + '</div>' +
       '<div>Auto-sync <b>every ' + c.syncEvery + ' min</b></div><div>Digest <b>' + String(c.digestHour).padStart(2, '0') + ':00</b></div>' +

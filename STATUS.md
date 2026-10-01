@@ -8,28 +8,31 @@ per-binome sheets, interview-form validation/autocorrect, alerts + daily digest.
 Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD83B1_-X9D-vXfNEJBYcmu5P6MKQAT`).
 
 ## Where it stands
-- v1 installed in the Master, `setup` run OK. **v2 (this `Code.gs`) + web dashboard not installed yet.**
-- Web dashboard (2026-10-01): `WebApp.gs` + `Index.html` run every menu action from a browser page
-  (launch steps, sync, alerts triage, move interviewee, digest, re-share, setup). Admin-only.
-- Tests pass locally: `node test/unit.test.js` (24), `node test/e2e.test.js`, `node test/web.test.js`.
+- **v2 + web dashboard pushed to the Master with clasp (2026-10-01)**, web app deployed. `setup` has **not** been re-run
+  under v2 yet (needs your OAuth consent once).
+- **TEST_MODE** (Settings, default TRUE): emails to anyone but ADMIN_EMAIL are dropped (logged), binome files are not
+  shared, Re-share refuses. Set it to FALSE only for the real launch, once the system is proven.
+- OT Database fixed: Rami Ahmane → `rami.ahmane@g.enp.edu.dz`, Meriem Hayet Belkacem → `meriem_hayet.belkacem@g.enp.edu.dz`
+  (both guessed from the ENP pattern; verify before launch).
+- Decided: board interviews as in 2025 (Committee → ALL binomes, Council → HR side); a leftover no-HR binome is fine.
+- Tests: `npm test` (unit, e2e, web; web asserts TEST_MODE blocks member mail and sharing).
   `test/realdata.js` needs `test/data/` 2025 exports (personal data, git-ignored, not on disk).
 - Preview the dashboard on mock data: `node test/devserver.js` → http://localhost:8787 (`--empty` = before team import).
 
-## Install / deploy (in the Master's Apps Script editor)
-1. `Code.gs`: replace all with this repo's `Code.gs`.
-2. `+` → Script → name it `WebApp` → paste `WebApp.gs`.
-3. `+` → HTML → name it exactly `Index` → paste `Index.html`.
-4. Save → select `setup` → ▶ Run → accept permissions.
-5. Deploy → New deployment → ⚙ Web app · Execute as **Me** · Who has access **Only myself** → Deploy → bookmark the `/exec` URL.
-   Code updates later: Deploy → Manage deployments → ✏ → Version: New version (keeps the same URL).
+## Deploy (clasp, linked via `.clasp.json`)
+- Web app: https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec
+  (execute as you, only you; set in `appsscript.json`).
+- Code change: `npm test && npx clasp push && npx clasp update-deployment AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT`
+  (same URL, new version).
 
 ## Next
-1. Install v2 + dashboard (above).
-2. Fix OT Database: Rami Ahmane has Sara Zerrouak's email; Meriem Hayet Belkacem has no email.
-3. Import team → set Exclude / Pair As → Draft binomes → review.
-4. Optional dry run with notify/share flags off (HANDOFF §8.6).
-5. Lock binomes → share registration form → watch Alerts.
-6. Reword 2026 forms (still say 2025 in places).
+1. Open the web app (or Master → VIC Recruitment menu) → authorize → run **Setup** (adds TEST_MODE + TRUSTED_BACKUPS
+   rows, renames Team col E to "Exclude").
+2. Import team (link empty → OT Database tab) → Draft binomes → review.
+3. Test run in TEST_MODE: lock, submit test registrations + interview forms, check Tracker/Alerts, then delete the
+   test rows/files (HANDOFF §8.6).
+4. Reword 2026 forms (still say 2025 in places).
+5. Launch only when proven: TEST_MODE = FALSE → Lock for real → share the registration form → watch Alerts.
 
 ## Open questions
 See HANDOFF §7 (board interviewing, leftover non-HR members, ALL weight, confirmation email, 1st-choice check).

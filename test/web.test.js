@@ -16,7 +16,7 @@ assert(/Imported 13/.test(out.messages[0]));
 out = call('webRun', 'draft');
 assert(/Drafted \d+ binomes/.test(out.messages[0]), out.messages[0]);
 out = call('webRun', 'lockCheck');
-assert(out.result.drafts > 0 && out.result.share === true);
+assert(out.result.drafts > 0 && out.result.share === false, 'TEST_MODE (default) means no sharing');
 const drafts = out.result.drafts;
 out = call('webRun', 'lock');
 assert(/Locked \d+ binomes/.test(out.messages[0]), out.messages[0]);
@@ -56,8 +56,14 @@ out = call('webRun', 'digest');
 assert(/Digest sent to admin@g.enp.edu.dz/.test(out.messages[0]));
 assert(run('__outbox.some(m => /digest/.test(m.subject))'));
 
+assert(run("__outbox.every(m => m.to === 'admin@g.enp.edu.dz')"), 'TEST_MODE: only admins get email');
+assert(run("Object.keys(__files).every(id => (__files[id].editors || []).every(e => e === 'admin@g.enp.edu.dz'))"), 'TEST_MODE: binome files not shared');
 out = call('webRun', 'reshare');
-assert(/new share/.test(out.messages[0]));
+assert(/TEST_MODE is TRUE/.test(out.messages[0]), out.messages[0]);
+assert(call('webState').settings.testMode === true);
+run("(function(){var sh=ss_().getSheetByName('Settings'),v=sh.getRange(2,1,sh.getLastRow()-1,1).getValues();v.forEach(function(r,i){if(r[0]==='TEST_MODE')sh.getRange(i+2,2).setValue(false);});_settings=null;})()");
+out = call('webRun', 'reshare');
+assert(/new share/.test(out.messages[0]), out.messages[0]);
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');
 
