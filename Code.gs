@@ -3,7 +3,8 @@
  * -----------------------------------------------------------------------------
  * Paste this whole file into  Extensions → Apps Script  (replace Code.gs),
  * save, then run the function `setup` once (▶ Run) and accept the permissions.
- * After that, everything is driven from the "VIC Recruitment" menu + triggers.
+ * After that, everything is driven from the "VIC Recruitment" menu + triggers,
+ * or from the web dashboard (WebApp.gs + Index.html, see STATUS.md).
  ******************************************************************************/
 
 // IDs of the files created in Drive › Recruitment › VIC Recruitment 2026
@@ -515,9 +516,10 @@ function withLock_(fn, waitMs) {
   try { return fn(); } finally { lock.releaseLock(); }
 }
 
+let _webOut = null; // set by the web dashboard: messages are collected and returned to the page instead of shown in a dialog
 function ui_() { try { return SpreadsheetApp.getUi(); } catch (e) { return null; } }
-function say_(msg) { const u = ui_(); if (u) u.alert(msg); else console.log(msg); }
-function toast_(msg) { try { ss_().toast(msg, 'VIC Recruitment', 6); } catch (e) { console.log(msg); } }
+function say_(msg) { if (_webOut) { _webOut.push(msg); return; } const u = ui_(); if (u) u.alert(msg); else console.log(msg); }
+function toast_(msg) { if (_webOut) { _webOut.push(msg); return; } try { ss_().toast(msg, 'VIC Recruitment', 6); } catch (e) { console.log(msg); } }
 
 /* ---------- context: everything a run needs, loaded once ---------- */
 
@@ -1168,7 +1170,7 @@ function onOpen() {
 }
 
 function setup() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = ss_();
   PropertiesService.getScriptProperties().setProperty('MASTER_ID', ss.getId());
   ensureTabs_(ss);
   _settings = null;
@@ -1324,7 +1326,7 @@ function sectionToPair_(section) {
 
 /** Pick the sheet that looks like a team database (has "First Name" + an email column in row 1). */
 function findTeamSource_(ss) {
-  const sheets = ss.getSheets().filter(sh => [TAB.TEAM, TAB.BINOMES, TAB.IV].indexOf(sh.getName()) < 0);
+  const sheets = ss.getSheets().filter(sh => [TAB.TEAM, TAB.BINOMES, TAB.IV, TAB.REG_RESP, TAB.INT_RESP].indexOf(sh.getName()) < 0);
   const looks = sh => {
     if (sh.getLastRow() < 2 || sh.getLastColumn() < 3) return false;
     const h = sh.getRange(1, 1, 1, Math.min(sh.getLastColumn(), 12)).getValues()[0].map(normText);
@@ -1348,6 +1350,16 @@ function importTeam() {
     'Leave empty to use ' + (local ? 'the "' + local.getName() + '" tab of this sheet.' : 'the 2025 database.'), ui.ButtonSet.OK_CANCEL);
   if (resp.getSelectedButton() !== ui.Button.OK) return;
   const text = resp.getResponseText().trim();
+  const res = importTeamCore_(text, false);
+  if (!res.confirm) return;
+  const ok = ui.alert('Replace the Team tab?', 'The Team tab already has ' + res.existing + ' members. Replace them with ' + res.incoming + ' imported members?', ui.ButtonSet.YES_NO);
+  if (ok === ui.Button.YES) importTeamCore_(text, true);
+}
+
+/** Import without dialogs. If the Team tab has members and replace is false, writes nothing and returns {confirm:true,…}. */
+function importTeamCore_(text, replace) {
+  text = String(text || '').trim();
+  const local = findTeamSource_(ss_());
   let src;
   if (!text && local) src = local;
   else {
@@ -1359,10 +1371,7 @@ function importTeam() {
   const rows = teamRowsFrom_(src.getDataRange().getValues());
   const sh = ss_().getSheetByName(TAB.TEAM);
   const used = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().filter(r => String(r[0]).trim() || String(r[1]).trim()).length : 0;
-  if (used) {
-    const ok = ui.alert('Replace the Team tab?', 'The Team tab already has ' + used + ' members. Replace them with ' + rows.length + ' imported members?', ui.ButtonSet.YES_NO);
-    if (ok !== ui.Button.YES) return;
-  }
+  if (used && !replace) return { confirm: true, existing: used, incoming: rows.length, source: src.getName() };
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, TEAM_H.length).clearContent();
   if (rows.length) sh.getRange(2, 1, rows.length, TEAM_H.length).setValues(rows);
   const count = {}; rows.forEach(r => { count[r[3]] = (count[r[3]] || 0) + 1; });
@@ -1370,6 +1379,7 @@ function importTeam() {
   say_('Imported ' + rows.length + ' members from "' + src.getName() + '".\nPair As: ' + Object.keys(count).map(k => k + ' ' + count[k]).join(' · ') +
     (issues.length ? '\n\n⚠️ Check these rows (see Notes column):\n' + issues.join('\n') : '') +
     '\n\nReview "Pair As" (HR side / IT, COMM, FLER side / ALL = board lead / SKIP), tick "Exclude" for anyone not interviewing, then run "2 · Draft binomes".');
+  return { done: true };
 }
 
 /** Team rows [name, email, dept, pairAs, exclude, notes] from a 2025-style database. */
@@ -1438,11 +1448,20 @@ function draftBinomes() {
 
 function lockBinomes() {
   const ui = SpreadsheetApp.getUi();
-  const t0 = Date.now();
+  const chk = lockCheck_();
+  if (!chk.drafts) return say_('No DRAFT binomes to lock. Run "2 · Draft binomes" first (or add rows with Status DRAFT).');
+  const ok = ui.alert('Lock ' + chk.drafts + ' binomes?',
+    'This creates one sheet per binome in "Binome Sheets"' + (chk.share ? ', shares it with both members (they get a Google share email)' : '') +
+    ' and starts routing registrants to them.' + (chk.problems.length ? '\n\n⚠️ Problems found:\n' + chk.problems.join('\n') + '\n\nContinue anyway?' : ''), ui.ButtonSet.YES_NO);
+  if (ok !== ui.Button.YES) return;
+  lockBinomesCore_();
+}
+
+/** What locking would do: {drafts, share, problems[]}. Writes nothing. */
+function lockCheck_() {
   const pre = loadCtx_();
   const B = pre.bin.I;
   const drafts = pre.bin.data.filter(r => String(r[B.Status]).toUpperCase() === 'DRAFT' && String(r[B.Binome]).trim());
-  if (!drafts.length) return say_('No DRAFT binomes to lock. Run "2 · Draft binomes" first (or add rows with Status DRAFT).');
   const seen = {}, problems = [];
   pre.bin.data.forEach(r => {
     [r[B['Email 1']], r[B['Email 2']]].forEach(e => {
@@ -1452,10 +1471,11 @@ function lockBinomes() {
     if (String(r[B.Status]).toUpperCase() === 'DRAFT' && !String(r[B['Email 1']]).trim() && !String(r[B['Email 2']]).trim()) problems.push(r[B.Binome] + ' has no email');
     if (String(r[B.Status]).toUpperCase() === 'DRAFT' && !tagDepts(r[B.Tag]).length) problems.push(r[B.Binome] + ' has an unreadable tag "' + r[B.Tag] + '"');
   });
-  const ok = ui.alert('Lock ' + drafts.length + ' binomes?',
-    'This creates one sheet per binome in "Binome Sheets"' + (bool_(S_().SHARE_FILES_WITH_BINOME) ? ', shares it with both members (they get a Google share email)' : '') +
-    ' and starts routing registrants to them.' + (problems.length ? '\n\n⚠️ Problems found:\n' + problems.join('\n') + '\n\nContinue anyway?' : ''), ui.ButtonSet.YES_NO);
-  if (ok !== ui.Button.YES) return;
+  return { drafts: drafts.length, share: bool_(S_().SHARE_FILES_WITH_BINOME), problems: problems };
+}
+
+function lockBinomesCore_() {
+  const t0 = Date.now();
   let created = 0, stopped = false;
   withLock_(() => {
     const ctx = loadCtx_();
@@ -1502,14 +1522,19 @@ function reassignSelected() {
   if (rowNum < 2 || !code) return say_('This row has no interviewee code.');
   const resp = ui.prompt('Reassign ' + code, 'Move ' + code + ' to which binome? (e.g. B.07)\nTheir Contacted/Date/Notes are carried over.', ui.ButtonSet.OK_CANCEL);
   if (resp.getSelectedButton() !== ui.Button.OK) return;
-  const pb = parseBinomeCode(resp.getResponseText());
+  reassignCore_(code, resp.getResponseText());
+}
+
+function reassignCore_(code, binomeText) {
+  code = String(code || '').trim();
+  const pb = parseBinomeCode(binomeText);
   const msg = withLock_(() => {
     const ctx = loadCtx_();
     const I = ctx.iv.I;
     const r = ctx.ivByCode[code];
     const target = pb && ctx.binByCode[pb.code];
     if (!r) return 'Unknown code ' + code;
-    if (!target || target.status === 'DRAFT') return 'Binome "' + resp.getResponseText() + '" not found or not locked yet.';
+    if (!target || target.status === 'DRAFT') return 'Binome "' + binomeText + '" not found or not locked yet.';
     if (r[I.Binome] === target.code) return code + ' is already in ' + target.code;
     const old = ctx.binByCode[r[I.Binome]];
     const carry = old ? removeFromBinomeFile_(ctx, old, code) : {};
@@ -1532,15 +1557,28 @@ function reassignSelected() {
 function resolveSelectedAlerts() {
   const sh = ss_().getActiveSheet();
   if (sh.getName() !== TAB.ALERTS) return say_('Select one or more rows in the "Alerts" tab first.');
+  const rows = [];
+  sh.getActiveRangeList().getRanges().forEach(rg => { for (let r = Math.max(2, rg.getRow()); r <= rg.getLastRow(); r++) rows.push(r); });
+  toast_(resolveAlertRows_(sh, rows) + ' alert(s) marked resolved');
+}
+
+/** Web: resolve alerts by ID (e.g. "A-0012"). */
+function resolveAlertsById_(ids) {
+  const sh = ss_().getSheetByName(TAB.ALERTS);
+  const want = {}; (ids || []).forEach(id => { want[String(id).trim()] = true; });
+  const rows = [];
+  if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues().forEach((r, i) => { if (want[String(r[0]).trim()]) rows.push(i + 2); });
+  return resolveAlertRows_(sh, rows);
+}
+
+function resolveAlertRows_(sh, rows) {
   const I = idx_(ALERT_H);
   let n = 0;
-  sh.getActiveRangeList().getRanges().forEach(rg => {
-    for (let r = Math.max(2, rg.getRow()); r <= rg.getLastRow(); r++) {
-      const cell = sh.getRange(r, I.Status + 1);
-      if (cell.getValue() === 'OPEN') { cell.setValue('RESOLVED'); sh.getRange(r, I['Resolved At'] + 1).setValue(new Date()); n++; }
-    }
+  rows.forEach(r => {
+    const cell = sh.getRange(r, I.Status + 1);
+    if (cell.getValue() === 'OPEN') { cell.setValue('RESOLVED'); sh.getRange(r, I['Resolved At'] + 1).setValue(new Date()); n++; }
   });
-  toast_(n + ' alert(s) marked resolved');
+  return n;
 }
 
 /* ---------- daily digest ---------- */
