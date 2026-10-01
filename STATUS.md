@@ -33,7 +33,7 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
   calls the script through the Apps Script API **as the visitor** (`scripts.run`), so Drive still decides access.
 - API executable deployment: `AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU` (Vercel env
   `SCRIPT_API_DEPLOYMENT_ID`). A script change now updates **both** deployments:
-  `npx clasp push && npx clasp update-deployment <WEBAPP_ID> && npx clasp update-deployment <API_ID>`.
+  `npm run deploy` (tests → clasp push → update-deployment on both IDs; never `clasp create-deployment`, it makes a new URL).
   Bump `API_VERSION` in WebApp.gs **and** web/index.html together when webAccess/webState/webRun change shape.
 - Vercel env (Production): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY` (32 random bytes, base64; rotating it
   signs everyone out), `SCRIPT_API_DEPLOYMENT_ID`, `APP_ORIGIN=https://vic-recruitment.vercel.app`.
