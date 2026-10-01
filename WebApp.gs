@@ -109,6 +109,7 @@ function webState() {
       notifyBinome: bool_(s.NOTIFY_BINOME_ON_ALERT), notifyNew: bool_(s.NOTIFY_BINOME_ON_NEW_INTERVIEWEE),
       syncEvery: num_(s.SYNC_EVERY_MINUTES, 15), digestHour: num_(s.DIGEST_HOUR, 8), admins: adminEmails_(),
     },
+    settingsAll: SETTINGS_DEFAULTS.map(r => ({ key: r[0], value: s[r[0]], help: r[2], kind: settingKind_(r) })),
     team: {
       total: ctx.team.data.filter(r => String(r[T['Full Name']]).trim() || String(r[T.Email]).trim()).length,
       excluded: ctx.team.data.filter(r => bool_(r[T.Exclude])).length,
@@ -128,6 +129,39 @@ function webState() {
     interviewees: ctx.iv.data.filter(r => r[I.Code]).map(r => ({ code: String(r[I.Code]), binome: String(r[I.Binome]), status: r[I.Status],
       name: (String(r[I['First Name']]) + ' ' + String(r[I['Family Name']])).trim() })),
   };
+}
+
+const SETTING_ENUMS = { INSTANT_EMAIL_MIN_SEVERITY: ['HIGH', 'MEDIUM', 'INFO'], BALANCE_BY: ['ACTIVE', 'TOTAL'], SYNC_EVERY_MINUTES: [1, 5, 10, 15, 30] };
+/** How the dashboard edits a setting: bool (switch), enum (dropdown), number or text. Types come from the defaults. */
+function settingKind_(r) {
+  if (SETTING_ENUMS[r[0]]) return { type: 'enum', options: SETTING_ENUMS[r[0]] };
+  return { type: typeof r[1] === 'boolean' ? 'bool' : typeof r[1] === 'number' ? 'number' : 'text' };
+}
+
+/** Writes changed values into the Settings tab (the single source of truth, still editable in the sheet). */
+function saveSettings_(values) {
+  const sh = ss_().getSheetByName(TAB.SETTINGS);
+  const rows = sh.getRange(2, 1, Math.max(sh.getLastRow() - 1, 1), 1).getValues().map(r => String(r[0]).trim());
+  const cur = S_(), changed = [];
+  SETTINGS_DEFAULTS.forEach(r => {
+    const k = r[0];
+    if (!values || !(k in values)) return;
+    let v = values[k];
+    const kind = settingKind_(r);
+    if (kind.type === 'bool') v = bool_(v);
+    else if (kind.type === 'number') { v = Number(v); if (String(values[k]).trim() === '' || isNaN(v)) throw new Error(k + ' must be a number'); }
+    else { v = String(v).trim(); if (kind.type === 'enum' && kind.options.map(String).indexOf(v) < 0) throw new Error(k + ' must be one of ' + kind.options.join(', ')); if (typeof r[1] === 'number') v = Number(v); }
+    if (k === 'ADMIN_EMAIL' && v && !String(v).split(/[,;\s]+/).filter(Boolean).every(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) throw new Error('ADMIN_EMAIL: invalid email address');
+    if (k === 'DIGEST_HOUR' && (v < 0 || v > 23 || v % 1)) throw new Error('DIGEST_HOUR must be a whole number from 0 to 23');
+    if (v === cur[k] || (v === '' && cur[k] === r[1])) return;
+    let i = rows.indexOf(k);
+    if (i < 0) { sh.appendRow([k, '', r[2]]); rows.push(k); i = rows.length - 1; }
+    sh.getRange(i + 2, 2).setValue(v);
+    changed.push(k);
+  });
+  _settings = null;
+  if (!changed.length) return 'No changes';
+  return 'Saved: ' + changed.join(', ') + (changed.some(k => k === 'SYNC_EVERY_MINUTES' || k === 'DIGEST_HOUR') ? '\nRun Setup (owner) to apply the new sync interval / digest hour.' : '');
 }
 
 /** One entry point for every dashboard button. Returns {messages[], result}. args.budgetMs (lock): the Vercel front sends
@@ -150,6 +184,7 @@ function webRun(action, args) {
       case 'digest': sendDailyDigest(); _webOut.push('Digest sent to ' + (adminEmails_().join(', ') || 'nobody (ADMIN_EMAIL is empty)')); break;
       case 'reassign': reassignCore_(args.code, args.binome); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked resolved'); break;
+      case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;
       default: throw new Error('Unknown action: ' + action);
     }

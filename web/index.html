@@ -310,10 +310,13 @@ a.kpi:hover .go { opacity: 1; transform: none; }
 .tool > .ti { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--line-2); color: var(--ink-2); }
 .tool b { display: block; font-size: 14px; font-weight: 600; }
 .tool small { font-size: 12.5px; color: var(--ink-3); }
-.settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; font-size: 13px; }
-.settings div { display: flex; justify-content: space-between; gap: 8px; color: var(--ink-2); }
-.settings b { font-weight: 600; color: var(--ink); }
-.settings .on { color: var(--ok); } .settings .off { color: var(--high); }
+.sform { display: grid; gap: 14px; font-size: 13px; }
+.sform label { display: grid; gap: 4px; }
+.sform label > b { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.sform label > small { color: var(--ink-3); line-height: 1.35; }
+.sform input:not([type=checkbox]), .sform select { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card, transparent); color: var(--ink); }
+.sform .sw { display: flex; align-items: center; gap: 8px; }
+.sform .sw input { width: 18px; height: 18px; accent-color: var(--accent); }
 
 /* ---------- modal ---------- */
 dialog { border: 0; padding: 0; border-radius: 18px; background: var(--card); color: var(--ink); width: min(520px, calc(100vw - 32px)); box-shadow: 0 30px 80px rgba(10,15,30,.35); }
@@ -685,8 +688,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
             </div>
           </section>
           <section class="card" aria-labelledby="h-settings">
-            <div class="card-head"><h2 id="h-settings">Settings</h2><span class="muted" style="font-size:12.5px">read only</span></div>
-            <div class="card-body"><div class="settings" id="settings"></div></div>
+            <div class="card-head"><h2 id="h-settings">Settings</h2><button class="btn sm primary" id="saveSettings" data-action="saveSettings" disabled><span class="spin"></span>Save changes</button></div>
+            <div class="card-body"><form class="sform" id="settings" onsubmit="return false"></form></div>
           </section>
         </div>
       </section>
@@ -905,6 +908,11 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       const ok = await confirmBox('Re-share binome sheets?', '<p>Every current member who is not yet an editor of their binome sheet is added (Google emails them).</p>', 'Re-share');
       if (ok) await run(btn, 'reshare', {}, 'Re-share');
     },
+    async saveSettings(btn) {
+      const form = $('#settings');
+      const out = await run(btn, 'saveSettings', { values: settingsValues() }, 'Save settings');
+      if (out) { delete form.dataset.dirty; }
+    },
     async setup(btn) {
       const ok = await confirmBox('Run setup again?', '<p>Safe to repeat: re-creates missing tabs and settings, re-checks the form links and reinstalls the triggers.</p>', 'Run setup');
       if (ok) await run(btn, 'setup', {}, 'Setup');
@@ -1033,15 +1041,20 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   }
 
   function renderSettings() {
-    const c = state.settings;
-    const onoff = v => '<b class="' + (v ? 'on' : 'off') + '">' + (v ? 'On' : 'Off') + '</b>';
-    $('#settings').innerHTML =
-      '<div style="grid-column:1/-1">Test mode ' + onoff(c.testMode) + '</div>' +
-      '<div>Assignments ' + onoff(c.assignmentsOpen) + '</div><div>Share sheets ' + onoff(c.shareFiles) + '</div>' +
-      '<div>Alert emails to binomes ' + onoff(c.notifyBinome) + '</div><div>New-interviewee emails ' + onoff(c.notifyNew) + '</div>' +
-      '<div>Auto-sync <b>every ' + c.syncEvery + ' min</b></div><div>Digest <b>' + String(c.digestHour).padStart(2, '0') + ':00</b></div>' +
-      '<div style="grid-column:1/-1">Admins <b class="mono" style="overflow-wrap:anywhere;text-align:right">' + esc(c.admins.join(', ') || 'none set') + '</b></div>' +
-      '<div style="grid-column:1/-1"><span class="muted">Change these in the Settings tab of the</span>' + (state.links.master ? '<a href="' + esc(state.links.master) + '" target="_blank" rel="noopener"><b>master sheet ↗</b></a>' : '') + '</div>';
+    const form = $('#settings');
+    if (form.dataset.dirty) return; // don't wipe unsaved edits on an auto-refresh
+    form.innerHTML = state.settingsAll.map(s => {
+      const k = s.kind, id = 'set-' + s.key, v = s.value;
+      const ctl = k.type === 'bool' ? '<span class="sw"><input type="checkbox" id="' + id + '" data-key="' + s.key + '"' + (v === true || /^(true|yes|oui|1|vrai)$/i.test(String(v)) ? ' checked' : '') + '>On</span>'
+        : k.type === 'enum' ? '<select id="' + id + '" data-key="' + s.key + '">' + k.options.map(o => '<option' + (String(o) === String(v) ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>'
+        : '<input id="' + id + '" data-key="' + s.key + '" type="' + (k.type === 'number' ? 'number' : 'text') + '" value="' + esc(v) + '">';
+      return '<label><b class="mono">' + esc(s.key) + '</b>' + ctl + '<small>' + esc(s.help) + '</small></label>';
+    }).join('');
+  }
+  function settingsValues() {
+    const o = {};
+    $$('#settings [data-key]').forEach(el => { o[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value; });
+    return o;
   }
 
   /* ---------- wiring ---------- */
@@ -1051,6 +1064,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     refresh(true);
   }));
   $('#refreshBtn').addEventListener('click', () => { if (!busy) refresh(); });
+  $('#settings').addEventListener('input', () => { $('#settings').dataset.dirty = '1'; $('#saveSettings').disabled = false; });
+  $('#settings').addEventListener('change', () => { $('#settings').dataset.dirty = '1'; $('#saveSettings').disabled = false; });
   $('#sevFilter').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     sevFilter = b.dataset.sev;

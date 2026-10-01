@@ -61,6 +61,12 @@ assert(run("Object.keys(__files).every(id => (__files[id].editors || []).every(e
 out = call('webRun', 'reshare');
 assert(/TEST_MODE is TRUE/.test(out.messages[0]), out.messages[0]);
 assert(call('webState').settings.testMode === true);
+assert(call('webState').settingsAll.length > 10, 'settingsAll listed');
+out = call('webRun', 'saveSettings', { values: { HOURS_NOT_CONTACTED: '30', ASSIGNMENTS_OPEN: false, DIGEST_HOUR: 9 } });
+assert(/HOURS_NOT_CONTACTED/.test(out.messages[0]) && /Run Setup/.test(out.messages[0]), out.messages[0]);
+assert(call('webState').settings.assignmentsOpen === false && call('webState').settingsAll.find(s => s.key === 'HOURS_NOT_CONTACTED').value === 30);
+assert.throws(() => call('webRun', 'saveSettings', { values: { BALANCE_BY: 'NOPE' } }));
+call('webRun', 'saveSettings', { values: { ASSIGNMENTS_OPEN: true } });
 run("(function(){var sh=ss_().getSheetByName('Settings'),v=sh.getRange(2,1,sh.getLastRow()-1,1).getValues();v.forEach(function(r,i){if(r[0]==='TEST_MODE')sh.getRange(i+2,2).setValue(false);});_settings=null;})()");
 out = call('webRun', 'reshare');
 assert(/new share/.test(out.messages[0]), out.messages[0]);
