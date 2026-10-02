@@ -416,6 +416,21 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   run('appendToBinomeFile_ = __ap');
   assert(/Nothing moved/.test(out.messages[0]), out.messages[0]);
   assert.deepStrictEqual([ivRow(mv.code)[IVI.Binome], fileCodes(mv.binome).includes(mv.code), fileCodes(to.code).includes(mv.code)], [mv.binome, true, false]);
+
+  // the rollback fails too: the row is in neither sheet, so what the binome wrote is kept in the Master and the row can be rebuilt
+  const mvFile = `__files[${J(fileOf(mv.binome))}].obj.sheets[0].cells`;
+  run(`(function(){var c=${mvFile},F=idx_(BF_H);for(var i=1;i<c.length;i++) if(c[i][0]===${J(mv.code)}) { c[i][F.Contacted]='Yes'; c[i][F.Notes]='call after 18h'; }})()`);
+  run('appendToBinomeFile_ = function () { throw new Error("quota"); }');
+  out = call('webRun', 'reassign', { code: mv.code, binome: to.code });
+  run('appendToBinomeFile_ = __ap');
+  assert(/missing from both binome sheets/.test(out.messages[0]) && (out.messages[0].match(/quota/g) || []).length === 2, out.messages[0]);
+  assert.deepStrictEqual([ivRow(mv.code)[IVI.Binome], ivRow(mv.code)[IVI.Contacted], ivRow(mv.code)[IVI['Binome Notes']], fileCodes(mv.binome).includes(mv.code)],
+    [mv.binome, 'Yes', 'call after 18h', false], 'data kept in the Master');
+  assert(open('FILE_ERROR').some(e => e.severity === 'HIGH' && e.code === mv.code), 'HIGH alert saved');
+  out = call('webRun', 'reassign', { code: mv.code, binome: mv.binome });
+  assert(/put back in the sheet/.test(out.messages[0]), out.messages[0]);
+  assert.strictEqual(run(`(function(){var c=${mvFile},F=idx_(BF_H);for(var i=1;i<c.length;i++) if(c[i][0]===${J(mv.code)}) return c[i][F.Contacted] + '|' + c[i][F.Notes];})()`), 'Yes|call after 18h', 'row rebuilt with its data');
+  call('webRun', 'resolve', { ids: open('FILE_ERROR').map(e => e.id) });
   assert.deepStrictEqual(open(), [], 'no hand edits left');
 
   // the baseline spans several script properties (9 KB each, accents count double) and shrinks cleanly

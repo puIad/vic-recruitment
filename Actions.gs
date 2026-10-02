@@ -18,7 +18,10 @@ function reassignCore_(code, binomeText) {
     const ctx = loadCtx_();
     detectEdits_(ctx);
     let done;
-    try { done = moveInterviewee_(ctx, code, binomeText) + ' ✅'; } catch (e) { return e.message; }
+    try { done = moveInterviewee_(ctx, code, binomeText) + ' ✅'; } catch (e) {
+      if (ctx.ivDirty) { saveTable_(ctx.iv); commitBase_(ctx); ctx.alerts.flush(); } // the row was lost from both sheets: keep its data and the alert
+      return e.message;
+    }
     saveTable_(ctx.iv);
     commitBase_(ctx);
     ctx.alerts.flush();
@@ -49,7 +52,17 @@ function moveInterviewee_(ctx, code, binomeText) {
   try { appendToBinomeFile_(ctx, target, r, carry); } catch (e) {
     // the target sheet refused the row: put everything back where it was, then report
     r[I.Binome] = before.binome; r[I['Assigned At']] = before.at;
-    if (old) { try { appendToBinomeFile_(ctx, old, r, carry); } catch (e2) { console.error('Could not put ' + code + ' back in ' + old.code + ': ' + e2); } }
+    let lost = '';
+    if (old) { try { appendToBinomeFile_(ctx, old, r, carry); } catch (e2) { lost = e2.message; } }
+    if (lost) {
+      // in neither sheet now: keep what the binome had written in the Master, so the row can be rebuilt from it
+      r[I.Contacted] = carry.contacted || ''; r[I['Interview Date']] = carry.date || ''; r[I['Interview Time']] = carry.time || ''; r[I['Binome Notes']] = carry.notes || '';
+      ctx.ivDirty = true;
+      const msg = code + ' is missing from both binome sheets: the sheet of ' + target.code + ' refused it (' + e.message + ') and putting it back in ' + old.code +
+        ' failed (' + lost + '). Their Contacted / Date / Notes are kept in the Interviewees tab: Move interviewee ' + code + ' to ' + old.code + ' to rebuild the row.';
+      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: code, binome: old.code, key: '', msg: msg });
+      throw new Error('Nothing moved, but ' + msg);
+    }
     throw new Error('Nothing moved: could not write the sheet of ' + target.code + ' (' + e.message + ').');
   }
   r[I.Status] = statusOf_(ctx, r);
