@@ -79,6 +79,7 @@ function loadCtx_() {
     alerts: null,
   };
   ctx.alerts = alertBuffer_(ctx);
+  ctx.covers = loadCovers_();
   indexCtx_(ctx);
   return ctx;
 }
@@ -104,6 +105,7 @@ function indexCtx_(ctx) {
   ctx.nameByEmail = {};
   ctx.team.data.forEach(r => { const e = String(r[ctx.team.I.Email]).trim().toLowerCase(); if (e) ctx.nameByEmail[e] = String(r[ctx.team.I['Full Name']]).trim(); });
   ctx.binomes.forEach(b => b.members.forEach(m => { if (m.email && !ctx.nameByEmail[m.email]) ctx.nameByEmail[m.email] = m.name; }));
+  ctx.coverMap = coverMap_(ctx);
 }
 
 function activeBinomes_(ctx) { return ctx.binomes.filter(b => b.status === 'ACTIVE'); }
@@ -148,6 +150,7 @@ function alertBuffer_(ctx) {
         if (instant) admins.forEach(e => { push(e, a); to.push(e); });
         if (instant && a.notifyBinome && bool_(s.NOTIFY_BINOME_ON_ALERT) && ctx.binByCode[a.binome]) {
           ctx.binByCode[a.binome].members.forEach(m => { if (m.email) { push(m.email, a); if (to.indexOf(m.email) < 0) to.push(m.email); } });
+          (ctx.coverMap[a.code] || []).forEach(e => { push(e, a); if (to.indexOf(e) < 0) to.push(e); }); // whoever covers that interviewee
         }
         return ['A-' + ('0000' + n).slice(-4), ctx.now, a.severity, a.type, a.code || '', a.binome || '', a.msg,
           to.join(', '), a.status || 'OPEN', a.status && a.status !== 'OPEN' ? ctx.now : '', a.key || ''];

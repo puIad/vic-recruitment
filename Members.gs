@@ -1,4 +1,4 @@
-/* ---------- binome members after lock: permanent change, swap ---------- */
+/* ---------- binome members after lock: permanent change, swap, temporary cover ---------- */
 // The Binomes row stays the single source of truth; these tools also fix what a hand edit would leave
 // behind: the file title/note, who can edit the file, the history (Member Changes tab) and the emails.
 
@@ -31,6 +31,13 @@ function formerMembers_() {
 }
 
 const lc_ = s => String(s || '').trim().toLowerCase();
+
+/** '' if this account can edit the binome's sheet, else the reason. A no-op edit (same title) proves it. */
+function editCheck_(b) {
+  if (!b.fileId) return '';
+  try { const f = SpreadsheetApp.openById(b.fileId); f.rename(f.getName()); return ''; }
+  catch (e) { return 'Cannot edit the sheet of ' + b.code + ' (' + e.message + '): fix its File ID, or ask the owner of the Binome Sheets folder to give you edit access.'; }
+}
 
 /** Warnings when a binome's members no longer fit its tag (only judged when every member is in the Team tab). */
 function tagWarnings_(ctx, b, members) {
@@ -74,11 +81,7 @@ function memberPlan_(ctx, binomeText, outEmail, inName, inEmail, swapWith) {
     if (!errors.length && !teamMembers_(ctx).some(m => m.email === inEmail)) warnings.push(name + ' (' + inEmail + ') is not in the Team tab (outside the OT).');
   } else if (!outEmail) errors.push('Nothing to change: give who leaves, who joins, or both.');
   else if (b.members.length < 2) errors.push(b.code + ' would have no member left: give a replacement.');
-  if (!errors.length && b.fileId) {
-    // a no-op edit (same title) proves this account can edit the sheet, not just see it
-    try { const f = SpreadsheetApp.openById(b.fileId); f.rename(f.getName()); }
-    catch (e) { errors.push('Cannot edit the sheet of ' + b.code + ' (' + e.message + '): fix its File ID, or ask the owner of the Binome Sheets folder to give you edit access.'); }
-  }
+  if (!errors.length) { const e = editCheck_(b); if (e) errors.push(e); }
   if (!errors.length) {
     const after = [1, 2].map(k => (k === slot ? inn : used(k) ? seat(k) : null)).filter(Boolean);
     tagWarnings_(ctx, b, after).forEach(w => warnings.push(w));
@@ -186,4 +189,146 @@ function report_(res) {
   if (res.done) say_(res.done.join('\n') + ' ✅');
   else if (res.errors.length) say_(res.errors.join('\n'));
   return res;
+}
+
+/* ---------- temporary cover: someone stands in for a few interviews, linked by interviewee code ---------- */
+// A TEMPORARY row in Member Changes: In = the cover person, Out = who is unavailable (optional), Interviewees = the codes.
+// The Binomes row is not touched. The cover person gets view-only access to the sheet (the binome stays responsible for it),
+// counts as a member for those codes in the interview check, and the row ends itself once those interviews are done.
+
+/** Code-like tokens of a free text: "IT.01 it 2, HR-03;comm4" -> ['IT.01', 'it 2', 'HR-03', 'comm4'] (each then read by parseIntervieweeCode). */
+const splitCodes_ = s => String(s || '').match(/[A-Za-z]{2,13}[\s.\-_#:°]*\d{1,4}/g) || [];
+
+/** ACTIVE covers: [{row (sheet row), binome, name, email, outName, outEmail, codes[], reason}] */
+function loadCovers_() {
+  const C = idx_(MC_H), out = [];
+  loadChanges_().forEach((r, i) => {
+    if (r[C.Type] !== 'TEMPORARY' || r[C.Status] !== 'ACTIVE') return;
+    out.push({ row: i + 2, binome: String(r[C.Binome]).trim(), name: String(r[C['In Name']]).trim(), email: lc_(r[C['In Email']]),
+      outName: String(r[C['Out Name']]).trim(), outEmail: lc_(r[C['Out Email']]), codes: splitCodes_(r[C.Interviewees]), reason: String(r[C.Reason]) });
+  });
+  return out;
+}
+
+/** The codes a cover still applies to: interviewee still in the covered binome and not done yet. */
+function coverLive_(ctx, c) {
+  const I = ctx.iv.I;
+  return c.codes.filter(code => { const r = ctx.ivByCode[code]; return r && r[I.Binome] === c.binome && PENDING_STATUSES.indexOf(r[I.Status]) >= 0; });
+}
+
+/** interviewee code -> emails of the people covering it (only while it is still in the covered binome). */
+function coverMap_(ctx) {
+  const I = ctx.iv.I, out = {};
+  (ctx.covers || []).forEach(c => c.codes.forEach(code => {
+    const r = ctx.ivByCode[code];
+    if (r && r[I.Binome] === c.binome) (out[code] = out[code] || []).push(c.email);
+  }));
+  return out;
+}
+
+/** Check a cover. a: {codes, inEmail, inName, outEmail}. Writes nothing. returns {errors, warnings, inn, groups:[{b, codes, out}]} */
+function coverPlan_(ctx, a) {
+  const errors = [], warnings = [], I = ctx.iv.I, codes = [];
+  splitCodes_(a.codes).forEach(t => {
+    const p = parseIntervieweeCode(t), code = p && p.code;
+    if (!code || !ctx.ivByCode[code]) errors.push('Unknown interviewee code "' + t + '".');
+    else if (codes.indexOf(code) < 0) codes.push(code);
+  });
+  if (!codes.length && !errors.length) errors.push('Give at least one interviewee code.');
+  const email = lc_(a.inEmail), name = String(a.inName || '').trim() || ctx.nameByEmail[email] || '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Give the email of the person who covers.');
+  else if (!name) errors.push('Give the name of ' + email + ' (not in the Team tab).');
+  const groups = {};
+  codes.forEach(code => {
+    const r = ctx.ivByCode[code], b = ctx.binByCode[r[I.Binome]];
+    if (!b || (b.status !== 'ACTIVE' && b.status !== 'PAUSED')) return errors.push(code + ' is not in a locked binome.');
+    if (PENDING_STATUSES.indexOf(r[I.Status]) < 0) return errors.push(code + ' is ' + String(r[I.Status]).toLowerCase() + ': nothing to cover.');
+    if (b.members.some(m => m.email === email)) return errors.push((name || email) + ' is already in ' + b.code + ' (' + code + ').');
+    if ((ctx.covers || []).some(c => c.email === email && c.binome === b.code && c.codes.indexOf(code) >= 0)) warnings.push((name || email) + ' already covers ' + code + '.');
+    (groups[b.code] = groups[b.code] || { b: b, codes: [] }).codes.push(code);
+  });
+  const outEmail = lc_(a.outEmail);
+  const list = Object.keys(groups).sort().map(k => groups[k]);
+  list.forEach(g => {
+    g.out = outEmail ? g.b.members.filter(m => m.email === outEmail)[0] || null : null;
+    if (outEmail && !g.out) errors.push(outEmail + ' is not in ' + g.b.code + '.');
+  });
+  if (!errors.length) list.forEach(g => { const e = editCheck_(g.b); if (e) errors.push(e); });
+  if (!errors.length && !teamMembers_(ctx).some(m => m.email === email)) warnings.push(name + ' (' + email + ') is not in the Team tab (outside the OT).');
+  if (list.length > 1) warnings.push('These interviewees belong to ' + list.length + ' binomes: one cover per binome is created.');
+  return { errors: errors, warnings: warnings, inn: { name: name, email: email }, groups: list };
+}
+
+const coverView_ = p => ({ errors: p.errors, warnings: p.warnings, inn: p.inn,
+  groups: (p.groups || []).map(g => ({ binome: g.b.code, codes: g.codes, out: g.out })) });
+
+/** Start a temporary cover. a: {codes, inEmail, inName, outEmail, reason, dryRun} */
+function addCoverCore_(a) {
+  a = a || {};
+  const res = withLock_(() => {
+    const ctx = loadCtx_();
+    const p = coverPlan_(ctx, a);
+    if (p.errors.length || a.dryRun) return coverView_(p);
+    const s = S_(), by = Session.getActiveUser().getEmail(), I = ctx.iv.I, lines = [];
+    const share = bool_(s.SHARE_FILES_WITH_BINOME) && !bool_(s.TEST_MODE);
+    p.groups.forEach(g => {
+      const b = g.b, issues = [];
+      if (share && b.fileId) { try { DriveApp.getFileById(b.fileId).addViewer(p.inn.email); } catch (e) { issues.push('could not share with ' + p.inn.email + ' (' + e.message + ')'); } }
+      changesSheet_().appendRow([ctx.now, by, 'TEMPORARY', b.code, g.out ? g.out.name : '', g.out ? g.out.email : '',
+        p.inn.name, p.inn.email, g.codes.join(', '), a.reason || '', 'ACTIVE']);
+      const what = p.inn.name + ' covers ' + g.codes.join(', ') + ' for ' + b.code + (g.out ? ' (instead of ' + g.out.name + ')' : '');
+      lines.push(what + (issues.length ? ' ⚠️ ' + issues.join('; ') : ''));
+      ctx.alerts.add({ severity: 'INFO', type: 'COVER_ADDED', status: 'AUTO-FIXED', code: g.codes.join(', '), binome: b.code,
+        msg: what + ' · by ' + by + (a.reason ? ' (' + a.reason + ')' : ''), key: '' });
+      if (issues.length) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: b.code, key: '',
+        msg: 'Cover in ' + b.code + ' saved, but ' + issues.join('; ') + '. Fix access to the binome sheet.' });
+      const rows = g.codes.map(c => ctx.ivByCode[c]);
+      mail_(p.inn.email, '[VIC Recruitment] You cover ' + g.codes.join(', ') + ' for binome ' + b.code,
+        '<p>Hi ' + esc_(p.inn.name.split(' ')[0]) + ',</p><p>Thanks for stepping in! You interview these candidates for binome <b>' + b.code +
+        '</b> (' + esc_(b.members.map(m => m.name).join(' & ')) + ')' + (g.out ? ' instead of ' + esc_(g.out.name) : '') + ':</p><ul>' +
+        rows.map(r => '<li><b>' + esc_(r[I.Code]) + '</b>: ' + esc_(r[I['First Name']] + ' ' + r[I['Family Name']]) + ' · ' +
+          esc_(String(r[I.Phone]).replace(/^'/, '')) + ' · available: ' + esc_(r[I.Availability]) +
+          (r[I['Interview Date']] ? ' · <b>interview ' + esc_(r[I['Interview Date']] + ' ' + r[I['Interview Time']]) + '</b>' : '') + '</li>').join('') +
+        '</ul><p>' + (b.fileUrl ? 'You can <a href="' + b.fileUrl + '">view the binome sheet</a>; ' : '') + 'the binome keeps filling it in. ' +
+        'In the interview form, use the binome code <b>' + b.code + '</b> and the interviewee code.</p>');
+      b.members.forEach(m => {
+        if (m.email) mail_(m.email, '[VIC Recruitment] ' + p.inn.name + ' covers ' + g.codes.join(', ') + ' for ' + b.code,
+          '<p>Hi ' + esc_(m.name.split(' ')[0]) + ',</p><p><b>' + esc_(p.inn.name) + '</b> (' + esc_(p.inn.email) + ') covers <b>' + esc_(g.codes.join(', ')) +
+          '</b> for your binome' + (g.out ? ' instead of ' + esc_(g.out.name) : '') + (a.reason ? ' (' + esc_(a.reason) + ')' : '') +
+          '. You stay responsible for the binome sheet: keep Contacted / Date / Time up to date for them.</p>');
+      });
+    });
+    ctx.alerts.flush();
+    return { done: lines };
+  }, 60000);
+  return report_(res);
+}
+
+/** Mark a cover ENDED and take back the view access, unless that person still covers something else in the same binome. */
+function endCover_(ctx, c, why) {
+  const C = idx_(MC_H);
+  changesSheet_().getRange(c.row, C.Status + 1).setValue('ENDED ' + fmt_(ctx.now, 'dd/MM HH:mm') + ': ' + why);
+  ctx.covers = (ctx.covers || []).filter(x => x.row !== c.row);
+  ctx.coverMap = coverMap_(ctx);
+  const b = ctx.binByCode[c.binome];
+  if (b && b.fileId && !ctx.covers.some(x => x.email === c.email && x.binome === c.binome)) {
+    try { DriveApp.getFileById(b.fileId).removeViewer(c.email); } catch (e) { console.warn('removeViewer ' + c.email + ': ' + e); }
+  }
+}
+
+/** Run in every cycle: covers whose interviews are all done (or moved to another binome) end by themselves. */
+function endFinishedCovers_(ctx) {
+  (ctx.covers || []).slice().forEach(c => { if (!coverLive_(ctx, c).length) endCover_(ctx, c, 'interviews done'); });
+}
+
+/** Web: end a cover by hand. a: {row} */
+function endCoverCore_(a) {
+  const res = withLock_(() => {
+    const ctx = loadCtx_();
+    const c = (ctx.covers || []).filter(x => x.row === Number(a && a.row))[0];
+    if (!c) return { errors: ['This cover is not active any more (refresh the page).'], warnings: [] };
+    endCover_(ctx, c, 'ended by ' + Session.getActiveUser().getEmail());
+    return { done: [c.name + ' no longer covers ' + c.codes.join(', ') + ' (' + c.binome + ')'] };
+  }, 60000);
+  return report_(res);
 }

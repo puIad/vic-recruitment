@@ -49,6 +49,16 @@ t('interview: former member of the binome = INFO, wrong code corrected', () => {
   r = RF({ submitter: 'old@x', typedBinome: 'B.05', typedInterviewee: 'IT.52' }, {});
   assert.strictEqual(r.alerts[0].severity, 'MEDIUM', 'a stranger is still MEDIUM');
 });
+t('interview: a cover person counts as a member for the covered codes only', () => {
+  const RC = inp => X.resolveInterview(inp, { binomes, interviewees: ivs, interviewed: {}, nameByEmail: {}, covers: { 'IT.52': ['cov@x'] } });
+  let r = RC({ submitter: 'cov@x', typedBinome: 'B.05', typedInterviewee: 'IT.52' });
+  assert.deepStrictEqual([r.result, r.binome, r.alerts.length], ['OK', 'B.05', 0]);
+  assert(/covers IT.52/.test(r.notes[0]), r.notes);
+  r = RC({ submitter: 'cov@x', typedBinome: 'B.47', typedInterviewee: 'IT.52' }); // typed their own binome
+  assert.deepStrictEqual([r.result, r.binome, r.alerts.length], ['AUTOCORRECTED', 'B.05', 0]);
+  r = RC({ submitter: 'cov@x', typedBinome: 'B.05', typedInterviewee: 'IT.147' }); // not covered
+  assert.deepStrictEqual([r.alerts[0].type, r.alerts[0].severity], ['BACKUP_INTERVIEWER', 'MEDIUM']);
+});
 t('interview: exact OK', () => {
   const r = R({ submitter: 'dj@x', typedBinome: 'B.05', typedInterviewee: 'IT.52', typedFirstChoice: 'IT' });
   assert.strictEqual(r.result, 'OK'); assert.strictEqual(r.binome, 'B.05'); assert.strictEqual(r.interviewee, 'IT.52');

@@ -102,6 +102,7 @@ assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPA
   assert.deepStrictEqual(call('webState').unpaired, [], 'placed again: nobody unpaired');
   assert(run('formerMembers_()["' + b1.code + '"].includes("' + leaving + '")'), 'the interview check knows who left');
 }
+
 st = call('webState');
 st = call('webState');
 
@@ -118,6 +119,51 @@ assert.strictEqual(st.interviewees.length, 12);
 assert(st.alerts.length > 0 && st.alerts.every(a => a.id && a.severity), 'open alerts listed');
 assert(st.binomes.some(b => b.assigned > 0));
 assert.strictEqual(st.team.source, '', 'registration responses are never mistaken for a team list');
+
+// ---- temporary cover, linked by interviewee code ----
+{
+  const ivs = call('webState').interviewees.filter(i => ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status) && i.binome);
+  const bin = ivs.find(i => ivs.filter(j => j.binome === i.binome).length >= 2).binome, mine = ivs.filter(i => i.binome === bin).slice(0, 2);
+  const b = call('webState').binomes.find(x => x.code === bin), member = b.people[0].email;
+  const cb = call('webState').binomes.find(x => x.code !== bin && x.people.length), coverer = cb.people[0];
+  const other = ivs.find(i => i.binome !== bin && i.binome !== cb.code);
+  out = call('webRun', 'addCover', { codes: 'XX.99', inEmail: coverer.email, dryRun: true });
+  assert(/Unknown interviewee code/.test(out.result.errors[0]));
+  out = call('webRun', 'addCover', { codes: mine[0].code, inEmail: member, dryRun: true });
+  assert(/already in/.test(out.result.errors[0]), 'a member cannot cover their own binome');
+  out = call('webRun', 'addCover', { codes: mine.map(i => i.code.toLowerCase().replace('.', ' ')).join(', ') + ' ' + other.code, inEmail: coverer.email, outEmail: member, dryRun: true });
+  assert(out.result.errors.some(e => /is not in/.test(e)), 'the unavailable member must be in every covered binome: ' + JSON.stringify(out.result.errors));
+  out = call('webRun', 'addCover', { codes: mine.map(i => i.code).join(', ') + ', ' + other.code, inEmail: coverer.email, dryRun: true });
+  assert.deepStrictEqual([out.result.errors.length, out.result.groups.length], [0, 2], 'grouped per binome');
+  assert(out.result.warnings.some(w => /2 binomes/.test(w)));
+  out = call('webRun', 'addCover', { codes: mine.map(i => i.code).join(' '), inEmail: coverer.email, outEmail: member, reason: 'exams' });
+  assert(/covers .* for /.test(out.messages[0]), out.messages[0]);
+  let st2 = call('webState');
+  assert.deepStrictEqual(st2.covers.map(c => [c.binome, c.email, c.codes.join(',')]), [[bin, coverer.email, mine.map(i => i.code).join(',')]]);
+  assert.deepStrictEqual(call('webState').binomes.find(x => x.code === bin).people, b.people, 'the Binomes row is untouched');
+  assert(run('coverMap_(loadCtx_())["' + mine[0].code + '"][0]') === coverer.email);
+  // the cover person sends the interview form for a covered code: accepted as a member, no MEDIUM alert
+  run("ss_().getSheetByName('Interview Responses') || null");
+  const ir = run("(function(){ var s = ss_().getSheets().filter(function(x){ return x.formUrl && x.formUrl.indexOf(CONFIG.INTERVIEW_FORM_ID) >= 0; })[0]; return s.name; })()");
+  run("ss_().getSheetByName('" + ir + "').cells.push([new Date(), '" + coverer.email + "', '" + bin + "', '" + mine[0].code + "', 'intro', 'IT', 'IT', ''])");
+  call('webRun', 'sync');
+  const logRow = run("ss_().getSheetByName('Interview Log').getDataRange().getValues().slice(-1)[0]");
+  assert.deepStrictEqual([logRow[5], logRow[6]], [mine[0].code, 'OK'], 'cover interview logged OK: ' + logRow[7]);
+  st2 = call('webState');
+  assert.deepStrictEqual(st2.covers[0].live, [mine[1].code], 'one covered interview left');
+  out = call('webRun', 'endCover', { row: st2.covers[0].row });
+  assert(/no longer covers/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual(call('webState').covers, []);
+  out = call('webRun', 'endCover', { row: st2.covers[0].row });
+  assert(/not active any more/.test(out.messages[0]));
+  // auto-end: a cover whose interviewee is moved to another binome ends at the next sync
+  call('webRun', 'addCover', { codes: mine[1].code, inEmail: coverer.email });
+  call('webRun', 'reassign', { code: mine[1].code, binome: other.binome });
+  call('webRun', 'sync');
+  assert.deepStrictEqual(call('webState').covers, [], 'cover ended by itself');
+  assert(/ENDED .*interviews done/.test(run("ss_().getSheetByName('Member Changes').getDataRange().getValues().slice(-1)[0][10]")));
+}
+st = call('webState');
 
 const iv = st.interviewees[0];
 const target = st.binomes.find(b => b.code !== iv.binome && b.status === 'ACTIVE' && (b.tag === 'ALL' || b.tag.includes(iv.code.split('.')[0])));
@@ -156,6 +202,14 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(run('__files["' + id + '"].editors.includes("' + gone + '")'));
   call('webRun', 'changeMember', { binome: b.code, outEmail: gone, inName: 'New Person', inEmail: 'newp@g.enp.edu.dz' });
   assert(run('__files["' + id + '"].editors.includes("newp@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("' + gone + '")'), 'editors follow the change');
+}
+{ // sharing on: a cover person gets view-only access for the cover, taken back when it ends
+  const iv = call('webState').interviewees.find(i => ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status) && i.binome);
+  const id = call('webState').binomes.find(x => x.code === iv.binome).fileUrl.split('/d/')[1];
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  assert(run('(__files["' + id + '"].viewers || []).includes("standin@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("standin@g.enp.edu.dz")'), 'view-only');
+  call('webRun', 'endCover', { row: call('webState').covers[0].row });
+  assert(!run('(__files["' + id + '"].viewers || []).includes("standin@g.enp.edu.dz")'), 'access taken back');
 }
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');

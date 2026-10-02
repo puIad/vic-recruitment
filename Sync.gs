@@ -189,6 +189,7 @@ function runCycle_(opts) {
     processInterviews_(ctx);
     if (opts.pull) pullBinomeFiles_(ctx, opts.force);
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });
+    endFinishedCovers_(ctx);
     if (opts.timing) timingAlerts_(ctx);
     saveTable_(ctx.iv);
     ctx.alerts.flush();

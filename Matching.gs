@@ -106,7 +106,7 @@ function bestNameMatch(typed, items, getName, minHits) {
  * input: {submitter, typedBinome, typedInterviewee, typedFirstChoice}
  * ctx:   {binomes:[{code,tag,members:[{name,email}]}],
  *         interviewees:[{code,binome,name,firstChoice}], interviewed:{code:true}, nameByEmail:{},
- *         former:{binomeCode:[emails of members who left it]}}
+ *         former:{binomeCode:[emails of members who left it]}, covers:{intervieweeCode:[emails of people covering it]}}
  * returns {binome, interviewee, result: OK|AUTOCORRECTED|FLAGGED, notes[], alerts[{severity,type,msg,binome,notifyBinome}]}
  */
 function resolveInterview(input, ctx) {
@@ -175,11 +175,16 @@ function resolveInterview(input, ctx) {
 
   out.interviewee = iv.code;
   const assigned = iv.binome ? byCode[iv.binome] : null;
+  const covering = ((ctx.covers || {})[iv.code] || []).indexOf(sub) >= 0;
 
   // 3) reconcile binome with the interviewee's assigned binome and the submitter
   if (!assigned) {
     out.binome = typedB ? typedB.code : (subBinomes[0] ? subBinomes[0].code : '');
     flag('MEDIUM', 'NOT_ASSIGNED', iv.code + ' was interviewed (by ' + subName + ') but has no assigned binome.', '', false);
+  } else if (covering) {
+    out.binome = assigned.code;
+    out.notes.push('Sent by ' + subName + ', who covers ' + iv.code + ' for ' + assigned.code);
+    if (!typedB || typedB.code !== assigned.code) { corrected = true; out.notes.push('Binome corrected from "' + (tB || 'empty') + '" to ' + assigned.code); }
   } else if (typedB && typedB.code === assigned.code) {
     out.binome = assigned.code;
     if (!isMember(assigned, sub)) {

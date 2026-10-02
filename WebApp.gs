@@ -119,6 +119,8 @@ function webState() {
     counts: { byStatus: byStatus, byDep: byDep },
     locked: activeOrPaused_(ctx).length > 0,
     unpaired: activeOrPaused_(ctx).length ? unpairedMembers(teamMembers_(ctx), ctx.binomes) : [],
+    covers: (ctx.covers || []).map(c => ({ row: c.row, binome: c.binome, name: c.name, email: c.email, outName: c.outName,
+      codes: c.codes, live: coverLive_(ctx, c), reason: c.reason })),
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
@@ -189,6 +191,8 @@ function webRun(action, args) {
       case 'reassign': reassignCore_(args.code, args.binome); break;
       case 'changeMember': result = changeMemberCore_(args); break;
       case 'swapMembers': result = swapMembersCore_(args); break;
+      case 'addCover': result = addCoverCore_(args); break;
+      case 'endCover': result = endCoverCore_(args); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;
