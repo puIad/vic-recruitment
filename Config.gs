@@ -18,7 +18,8 @@
  *   Sync.gs           pull binome files, timing alerts, Tracker, main cycle, triggers
  *   Setup.gs          menu, setup, tabs, form links, triggers install
  *   Team.gs           team import, draft / lock / re-share binomes
- *   Members.gs        after lock: change / swap binome members (Member Changes tab)
+ *   Members.gs        after lock: change / swap binome members, temporary covers (Member Changes tab)
+ *   Integrity.gs      hand-edit detection (baseline in script properties), odd values, full binome-sheet check
  *   Actions.gs        reassign interviewee, resolve alerts, daily digest
  ******************************************************************************/
 

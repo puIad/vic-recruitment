@@ -14,31 +14,45 @@ function reassignSelected() {
 
 function reassignCore_(code, binomeText) {
   code = String(code || '').trim();
-  const pb = parseBinomeCode(binomeText);
   const msg = withLock_(() => {
     const ctx = loadCtx_();
-    const I = ctx.iv.I;
-    const r = ctx.ivByCode[code];
-    const target = pb && ctx.binByCode[pb.code];
-    if (!r) return 'Unknown code ' + code;
-    if (!target || target.status === 'DRAFT') return 'Binome "' + binomeText + '" not found or not locked yet.';
-    if (r[I.Binome] === target.code) return code + ' is already in ' + target.code;
-    const old = ctx.binByCode[r[I.Binome]];
-    const carry = old ? removeFromBinomeFile_(ctx, old, code) : {};
-    r[I.Binome] = target.code;
-    r[I['Assigned At']] = ctx.now;
-    appendToBinomeFile_(ctx, target, r, carry);
-    r[I.Status] = statusOf_(ctx, r);
-    ctx.mailNew[target.code] = [r];
-    ctx.alerts.add({ severity: 'INFO', type: 'REASSIGNED', status: 'AUTO-FIXED', code: code, binome: target.code,
-      msg: code + ' moved from ' + (old ? old.code : 'nobody') + ' to ' + target.code + ' by ' + Session.getActiveUser().getEmail(), key: '' });
+    detectEdits_(ctx);
+    let done;
+    try { done = moveInterviewee_(ctx, code, binomeText) + ' ✅'; } catch (e) { return e.message; }
     saveTable_(ctx.iv);
+    commitBase_(ctx);
     ctx.alerts.flush();
     sendNewIntervieweeMails_(ctx);
     buildTracker_(ctx);
-    return code + ' moved to ' + target.code + ' ✅';
+    return done;
   }, 60000);
   say_(msg || 'Busy, try again in a minute.');
+}
+
+/** Move an interviewee to another binome's sheet, carrying Contacted/Date/Notes. The caller saves. Throws the reason it can't. */
+function moveInterviewee_(ctx, code, binomeText) {
+  const I = ctx.iv.I, r = ctx.ivByCode[code], pb = parseBinomeCode(binomeText), target = pb && ctx.binByCode[pb.code];
+  if (!r) throw new Error('Unknown code ' + code);
+  if (!target || target.status === 'DRAFT') throw new Error('Binome "' + binomeText + '" not found or not locked yet.');
+  if (r[I.Binome] === target.code) {
+    // already there: only puts back a row missing from its sheet (the integrity check reports those)
+    const sh = binomeSheet_(ctx, target);
+    if (!sh || findFileRow_(sh, code) > 0) throw new Error(code + ' is already in ' + target.code);
+    appendToBinomeFile_(ctx, target, r, { contacted: r[I.Contacted], date: r[I['Interview Date']], time: r[I['Interview Time']], notes: r[I['Binome Notes']],
+      form: r[I['Interview Submitted At']] ? '✅ ' + fmt_(r[I['Interview Submitted At']], 'dd/MM HH:mm') : '' });
+    return code + ' put back in the sheet of ' + target.code;
+  }
+  const old = ctx.binByCode[r[I.Binome]];
+  const carry = old ? removeFromBinomeFile_(ctx, old, code) : {};
+  r[I.Binome] = target.code;
+  r[I['Assigned At']] = ctx.now;
+  appendToBinomeFile_(ctx, target, r, carry);
+  r[I.Status] = statusOf_(ctx, r);
+  (ctx.mailNew[target.code] = ctx.mailNew[target.code] || []).push(r);
+  indexCtx_(ctx);
+  ctx.alerts.add({ severity: 'INFO', type: 'REASSIGNED', status: 'AUTO-FIXED', code: code, binome: target.code,
+    msg: code + ' moved from ' + (old ? old.code : 'nobody') + ' to ' + target.code + ' by ' + Session.getActiveUser().getEmail(), key: '' });
+  return code + ' moved to ' + target.code;
 }
 
 function resolveSelectedAlerts() {
@@ -71,7 +85,7 @@ function resolveAlertRows_(sh, rows) {
 /* ---------- daily digest ---------- */
 
 function sendDailyDigest() {
-  const ctx = runCycle_({ pull: true, timing: true, tracker: true, wait: 120000 }) || loadCtx_();
+  const ctx = runCycle_({ pull: true, timing: true, tracker: true, wait: 120000, integrity: 200000 }) || loadCtx_();
   const I = ctx.iv.I, A = ctx.alerts.table.I;
   const count = {}; ctx.iv.data.forEach(r => { count[r[I.Status]] = (count[r[I.Status]] || 0) + 1; });
   const open = ctx.alerts.table.data.filter(r => r[A.Status] === 'OPEN')

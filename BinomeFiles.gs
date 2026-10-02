@@ -2,7 +2,7 @@
 
 function binomeSheet_(ctx, b) {
   if (!b || !b.fileId) return null;
-  if (!ctx.files[b.fileId]) ctx.files[b.fileId] = SpreadsheetApp.openById(b.fileId).getSheets()[0];
+  if (!ctx.files[b.fileId]) ctx.files[b.fileId] = (ctx.books[b.fileId] = ctx.books[b.fileId] || SpreadsheetApp.openById(b.fileId)).getSheets()[0];
   return ctx.files[b.fileId];
 }
 

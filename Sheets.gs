@@ -74,7 +74,8 @@ function loadCtx_() {
     log: loadTable_(TAB.LOG, LOG_H),
     bin: loadTable_(TAB.BINOMES, BIN_H),
     team: loadTable_(TAB.TEAM, TEAM_H),
-    files: {},          // fileId -> Sheet (cache)
+    files: {},          // fileId -> first Sheet (cache)
+    books: {},          // fileId -> Spreadsheet (cache)
     mailNew: {},        // binomeCode -> [iv rows] newly assigned this run
     alerts: null,
   };

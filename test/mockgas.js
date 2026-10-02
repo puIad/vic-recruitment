@@ -31,7 +31,7 @@ function fmtDate(d, pattern) {
 
 function MockSheet(ss, name) {
   this.ss = ss; this.name = name; this.id = Math.floor(Math.random() * 1e9); this.cells = []; this.maxRows = 1000; this.fmt = {}; this.formUrl = null;
-  this.notes = {}; this.activeRow = 2;
+  this.notes = {}; this.activeRow = 2; this.protections = [];
 }
 MockSheet.prototype = {
   getName() { return this.name; }, setName(n) { this.name = n; return this; }, getSheetId() { return this.id; },
@@ -52,8 +52,8 @@ MockSheet.prototype = {
   deleteRow(r) { this.cells.splice(r - 1, 1); __touch(this.ss.id); return this; },
   clear() { this.cells = []; return this; },
   appendRow(v) { this.getRange(this.getLastRow() + 1, 1, 1, v.length).setValues([v]); return this; },
-  getProtections() { return []; },
-  protect() { return chain({ getEditors: () => [], canDomainEdit: () => false }); },
+  getProtections() { return this.protections.slice(); },
+  protect() { const p = chain({ getEditors: () => [], canDomainEdit: () => false, remove: () => { this.protections = this.protections.filter(x => x !== p); } }); this.protections.push(p); return p; },
   getActiveRange() { return new MockRange(this, this.activeRow, 1, 1, 1); },
   getActiveRangeList() { const s = this; return { getRanges: () => [new MockRange(s, s.activeRow, 1, 1, 1)] }; },
   toString() { return 'Sheet(' + this.name + ')'; },
@@ -130,13 +130,13 @@ var DriveApp = {
   getFileById(id) {
     const f = __files[id]; if (!f) throw new Error('no drive file ' + id);
     return { moveTo(folder) { f.parent = folder.id; }, getLastUpdated() { return f.lastUpdated; }, getId() { return id; },
-      getEditors() { return f.editors.map(e => ({ getEmail: () => e })); }, addEditor(e) { f.editors.push(e); },
+      getEditors() { return f.editors.map(e => ({ getEmail: () => e })); }, addEditor(e) { f.editors.push(e); }, getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; },
       getViewers() { return (f.viewers || []).map(e => ({ getEmail: () => e })); },
       addViewer(e) { (f.viewers = f.viewers || []).push(e); }, removeViewer(e) { f.viewers = (f.viewers || []).filter(x => x !== e); },
       removeEditor(e) { if (e === 'admin@g.enp.edu.dz') throw new Error('Cannot remove the owner'); f.editors = f.editors.filter(x => x !== e); } };
   },
   getFolderById(fid) {
-    return { id: fid, getFiles() { const ids = Object.keys(__files).filter(k => __files[k].parent === fid); let i = 0;
+    return { id: fid, getEditors() { return []; }, getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getFiles() { const ids = Object.keys(__files).filter(k => __files[k].parent === fid); let i = 0;
       return { hasNext: () => i < ids.length, next: () => { const id = ids[i++]; return { getId: () => id, getLastUpdated: () => __files[id].lastUpdated }; } }; } };
   },
 };
@@ -153,7 +153,8 @@ MockForm.prototype = {
 };
 var FormApp = { DestinationType: { SPREADSHEET: 'SS' }, openById(id) { return __forms[id]; } };
 
-var PropertiesService = { getScriptProperties() { return { getProperty: k => (k in __props ? __props[k] : null), setProperty: (k, v) => { __props[k] = String(v); } }; } };
+var PropertiesService = { getScriptProperties() { return { getProperty: k => (k in __props ? __props[k] : null), setProperty: (k, v) => { __props[k] = String(v); },
+  getProperties: () => Object.assign({}, __props), setProperties: o => { Object.keys(o).forEach(k => { __props[k] = String(o[k]); }); }, deleteProperty: k => { delete __props[k]; } }; } };
 var LockService = { getScriptLock() { return { tryLock: () => true, waitLock: () => true, releaseLock: () => { } }; } };
 var MailApp = { sendEmail(o) { __outbox.push(o); } };
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };

@@ -160,9 +160,12 @@ function changeMemberCore_(a) {
   a = a || {};
   const res = withLock_(() => {
     const ctx = loadCtx_();
+    detectEdits_(ctx);
     const p = memberPlan_(ctx, a.binome, a.outEmail, a.inName, a.inEmail, '');
     if (p.errors.length || a.dryRun) return planView_(p);
-    return { done: applyMemberPlans_(ctx, [p], a.reason) };
+    const done = applyMemberPlans_(ctx, [p], a.reason);
+    commitBase_(ctx);
+    return { done: done };
   }, 60000);
   return report_(res);
 }
@@ -172,6 +175,7 @@ function swapMembersCore_(a) {
   a = a || {};
   const res = withLock_(() => {
     const ctx = loadCtx_();
+    detectEdits_(ctx);
     const ca = parseBinomeCode(a.binomeA), cb = parseBinomeCode(a.binomeB);
     if (ca && cb && ca.code === cb.code) return { errors: ['Choose two different binomes.'], warnings: [] };
     const pa = memberPlan_(ctx, a.binomeA, a.emailA, '', a.emailB, cb ? cb.code : '');
@@ -179,7 +183,9 @@ function swapMembersCore_(a) {
     if (!lc_(a.emailA) || !lc_(a.emailB)) pa.errors.unshift('Choose one member in each binome.');
     const view = { errors: pa.errors.concat(pb.errors), warnings: pa.warnings.concat(pb.warnings), plans: [planView_(pa), planView_(pb)] };
     if (view.errors.length || a.dryRun) return view;
-    return { done: applyMemberPlans_(ctx, [pa, pb], a.reason || ('swap ' + pa.b.code + ' ↔ ' + pb.b.code)) };
+    const done = applyMemberPlans_(ctx, [pa, pb], a.reason || ('swap ' + pa.b.code + ' ↔ ' + pb.b.code));
+    commitBase_(ctx);
+    return { done: done };
   }, 60000);
   return report_(res);
 }
