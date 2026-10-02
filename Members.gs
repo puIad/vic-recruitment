@@ -202,6 +202,8 @@ const splitCodes_ = s => String(s || '').match(/\b[A-Za-z]{2,13}[\s.\-_#:°]*\d{
 
 // Status of an active cover that gave the view access itself (only that access is taken back when covers end)
 const COVER_SHARED = 'ACTIVE · view access added by this cover';
+// Status of an ended cover whose view access could not be removed yet: no longer applies, retried every cycle
+const COVER_REVOKING = 'ENDING · view access still to remove';
 
 /** ACTIVE covers: [{row (sheet row), binome, name, email, outName, outEmail, codes[], reason, shared}] */
 function loadCovers_() {
@@ -318,24 +320,47 @@ function addCoverCore_(a) {
 }
 
 /**
- * Mark a cover ENDED. The view access it gave is taken back, unless that person still covers something else in the
- * same binome: then that cover inherits it (and takes it back when it ends). Access the cover did not give is left alone.
+ * End a cover: it stops applying at once. The view access it gave is taken back, unless that person still covers
+ * something else in the same binome (that cover then inherits it). Access the cover did not give is left alone.
+ * If Drive refuses the removal, the row stays ENDING and every cycle retries it (MEDIUM alert until it works).
+ * Returns '' or the reason the access is still there.
  */
 function endCover_(ctx, c, why) {
   const C = idx_(MC_H), sh = changesSheet_();
-  sh.getRange(c.row, C.Status + 1).setValue('ENDED ' + fmt_(ctx.now, 'dd/MM HH:mm') + ': ' + why);
   ctx.covers = (ctx.covers || []).filter(x => x.row !== c.row);
   ctx.coverMap = coverMap_(ctx);
-  if (!c.shared) return;
-  const heir = ctx.covers.filter(x => x.email === c.email && x.binome === c.binome)[0];
-  if (heir) { if (!heir.shared) { heir.shared = true; sh.getRange(heir.row, C.Status + 1).setValue(COVER_SHARED); } return; }
-  const b = ctx.binByCode[c.binome];
-  if (b && b.fileId) { try { DriveApp.getFileById(b.fileId).removeViewer(c.email); } catch (e) { console.warn('removeViewer ' + c.email + ': ' + e); } }
+  const ended = 'ENDED ' + fmt_(ctx.now, 'dd/MM HH:mm') + ': ' + why;
+  const problem = c.shared ? revokeCoverAccess_(ctx, c) : '';
+  sh.getRange(c.row, C.Status + 1).setValue(problem ? COVER_REVOKING : ended);
+  if (problem) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: c.binome, key: 'REVOKE|' + c.row,
+    msg: 'The cover of ' + c.name + ' in ' + c.binome + ' ended, but their view access could not be removed yet (' + problem + '). Retried at every sync.' });
+  return problem;
 }
 
-/** Run in every cycle: covers whose interviews are all done (or moved to another binome) end by themselves. */
+/** Take back a cover's view access, or hand it to another active cover of the same person in that binome. '' or the error. */
+function revokeCoverAccess_(ctx, c) {
+  const C = idx_(MC_H);
+  const heir = (ctx.covers || []).filter(x => x.email === c.email && x.binome === c.binome)[0];
+  if (heir) {
+    if (!heir.shared) { heir.shared = true; changesSheet_().getRange(heir.row, C.Status + 1).setValue(COVER_SHARED); }
+    return '';
+  }
+  const b = ctx.binByCode[c.binome];
+  if (!b || !b.fileId) return ''; // no sheet any more: nothing to take back
+  try { DriveApp.getFileById(b.fileId).removeViewer(c.email); return ''; } catch (e) { return e.message; }
+}
+
+/** Run in every cycle: covers whose interviews are all done (or moved) end by themselves; failed removals are retried. */
 function endFinishedCovers_(ctx) {
   (ctx.covers || []).slice().forEach(c => { if (!coverLive_(ctx, c).length) endCover_(ctx, c, 'interviews done'); });
+  const C = idx_(MC_H), KI = ctx.alerts.table.I;
+  loadChanges_().forEach((r, i) => {
+    if (r[C.Type] !== 'TEMPORARY' || String(r[C.Status]) !== COVER_REVOKING) return;
+    const c = { row: i + 2, binome: String(r[C.Binome]).trim(), email: lc_(r[C['In Email']]) };
+    if (revokeCoverAccess_(ctx, c)) return; // still refused: the open alert stays, next cycle tries again
+    changesSheet_().getRange(c.row, C.Status + 1).setValue('ENDED ' + fmt_(ctx.now, 'dd/MM HH:mm') + ': view access removed');
+    ctx.alerts.resolveWhere(a => a[KI.Key] === 'REVOKE|' + c.row);
+  });
 }
 
 /** Web: end a cover by hand. a: {row} */
@@ -344,8 +369,10 @@ function endCoverCore_(a) {
     const ctx = loadCtx_();
     const c = (ctx.covers || []).filter(x => x.row === Number(a && a.row))[0];
     if (!c) return { errors: ['This cover is not active any more (refresh the page).'], warnings: [] };
-    endCover_(ctx, c, 'ended by ' + Session.getActiveUser().getEmail());
-    return { done: [c.name + ' no longer covers ' + c.codes.join(', ') + ' (' + c.binome + ')'] };
+    const problem = endCover_(ctx, c, 'ended by ' + Session.getActiveUser().getEmail());
+    ctx.alerts.flush();
+    return { done: [c.name + ' no longer covers ' + c.codes.join(', ') + ' (' + c.binome + ')' +
+      (problem ? ' ⚠️ their view access could not be removed yet (' + problem + '): retried at every sync' : '')] };
   }, 60000);
   return report_(res);
 }

@@ -230,6 +230,22 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
     call('webRun', 'endCover', { row: call('webState').covers[0].row });
     assert.strictEqual(viewers(), 0, 'taken back with the last cover (the mark was handed over)');
   }
+  // Drive refuses the removal: the cover stops applying at once, the removal is retried each sync until it works
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  const row = call('webState').covers[0].row;
+  run('var __rv = DriveApp.getFileById; DriveApp.getFileById = function (x) { var f = __rv(x); f.removeViewer = function () { throw new Error("Service error: Drive"); }; return f; }');
+  out = call('webRun', 'endCover', { row: row });
+  assert(/could not be removed yet/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual([call('webState').covers.length, viewers()], [0, 1], 'cover over, access still there');
+  const status = () => run("ss_().getSheetByName('Member Changes').getRange(" + row + ", 11).getValue()");
+  assert.strictEqual(status(), 'ENDING · view access still to remove');
+  const revokeAlert = () => call('webState').alerts.some(a => a.type === 'FILE_ERROR' && /could not be removed yet/.test(a.msg));
+  call('webRun', 'sync');
+  assert(revokeAlert() && viewers() === 1, 'still refused: alert open, access still there');
+  run('DriveApp.getFileById = __rv');
+  call('webRun', 'sync');
+  assert.deepStrictEqual([viewers(), revokeAlert()], [0, false], 'retried: access removed, alert closed');
+  assert(/^ENDED .*view access removed/.test(status()), status());
 }
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');
