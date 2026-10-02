@@ -384,14 +384,16 @@ function oddValues_(ctx) {
 
 /* ---------- full check of every binome sheet (Sync now, daily digest, Check integrity) ---------- */
 // Opens each sheet, so it never runs on the frequent trigger. It stops at the deadline and the next run carries on where
-// it stopped (script property INTEG_NEXT). Its alerts close themselves when a later check of that binome is clean.
+// it stopped (script property INTEG_NEXT = the next binome code). Its alerts close themselves when a later check of that binome is clean.
 
 function integrityCheck_(ctx, deadline) {
   const list = activeOrPaused_(ctx).filter(b => b.fileId).sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
   if (!list.length) return 'Integrity check: no binome sheets yet.';
   const props = PropertiesService.getScriptProperties(), s = S_(), I = ctx.iv.I;
-  let start = Number(props.getProperty('INTEG_NEXT') || 0);
-  if (!(start >= 0 && start < list.length)) start = 0;
+  // the cursor is the code of the next binome to check, so rows added or removed in between never make it skip one
+  const next = String(props.getProperty('INTEG_NEXT') || '');
+  let start = list.findIndex(b => b.code >= next);
+  if (start < 0) start = 0;
   const owed = {}; // binome -> codes the Master puts in its sheet
   ctx.iv.data.forEach(r => {
     if (r[I.Code] && r[I.Binome] && r[I.Status] !== ST.DUPLICATE) (owed[r[I.Binome]] = owed[r[I.Binome]] || []).push(String(r[I.Code]).trim());
@@ -408,7 +410,7 @@ function integrityCheck_(ctx, deadline) {
       ctx.alerts.add({ severity: x.sev, type: 'INTEGRITY', code: x.code || '', binome: b.code, msg: b.code + ': ' + x.msg, key: key });
     });
   }
-  props.setProperty('INTEG_NEXT', String((start + n) % list.length));
+  props.setProperty('INTEG_NEXT', list[(start + n) % list.length].code);
   const KI = ctx.alerts.table.I;
   const listed = {}; list.forEach(b => { listed[b.code] = true; });
   ctx.alerts.resolveWhere(a => a[KI.Type] === 'INTEGRITY' && (checked[a[KI.Binome]] ? !seen[a[KI.Key]] : !listed[a[KI.Binome]]));

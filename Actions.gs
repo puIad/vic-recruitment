@@ -42,11 +42,16 @@ function moveInterviewee_(ctx, code, binomeText) {
       form: r[I['Interview Submitted At']] ? '✅ ' + fmt_(r[I['Interview Submitted At']], 'dd/MM HH:mm') : '' });
     return code + ' put back in the sheet of ' + target.code;
   }
-  const old = ctx.binByCode[r[I.Binome]];
+  const old = ctx.binByCode[r[I.Binome]], before = { binome: r[I.Binome], at: r[I['Assigned At']] };
   const carry = old ? removeFromBinomeFile_(ctx, old, code) : {};
   r[I.Binome] = target.code;
   r[I['Assigned At']] = ctx.now;
-  appendToBinomeFile_(ctx, target, r, carry);
+  try { appendToBinomeFile_(ctx, target, r, carry); } catch (e) {
+    // the target sheet refused the row: put everything back where it was, then report
+    r[I.Binome] = before.binome; r[I['Assigned At']] = before.at;
+    if (old) { try { appendToBinomeFile_(ctx, old, r, carry); } catch (e2) { console.error('Could not put ' + code + ' back in ' + old.code + ': ' + e2); } }
+    throw new Error('Nothing moved: could not write the sheet of ' + target.code + ' (' + e.message + ').');
+  }
   r[I.Status] = statusOf_(ctx, r);
   (ctx.mailNew[target.code] = ctx.mailNew[target.code] || []).push(r);
   indexCtx_(ctx);

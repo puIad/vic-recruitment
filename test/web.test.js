@@ -404,6 +404,18 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   run(`${book}.sheets.shift()`);
   call('webRun', 'integrity', {});
   assert.deepStrictEqual(open('INTEGRITY'), [], 'all fixed: the check closes its alerts');
+  // the cursor is a binome code: if the binome it points to is gone, the check resumes at the next one, never skips it
+  run('__props.INTEG_NEXT = "B.035"');
+  assert(/0 of 7/.test(run('integrityCheck_(loadCtx_(), 0)')));
+  assert.strictEqual(run('__props.INTEG_NEXT'), 'B.04');
+
+  // a move whose target sheet refuses the row: nothing moves, the row stays in the old sheet
+  const mv = call('webState').interviewees.find(v => v.status === 'ASSIGNED' && v.binome !== to.code);
+  run(`var __ap = appendToBinomeFile_; appendToBinomeFile_ = function (c, b, r, carry) { if (b.code === ${J(to.code)}) throw new Error('quota'); return __ap(c, b, r, carry); }`);
+  out = call('webRun', 'reassign', { code: mv.code, binome: to.code });
+  run('appendToBinomeFile_ = __ap');
+  assert(/Nothing moved/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual([ivRow(mv.code)[IVI.Binome], fileCodes(mv.binome).includes(mv.code), fileCodes(to.code).includes(mv.code)], [mv.binome, true, false]);
   assert.deepStrictEqual(open(), [], 'no hand edits left');
 
   // the baseline spans several script properties (9 KB each, accents count double) and shrinks cleanly
