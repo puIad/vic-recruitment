@@ -199,9 +199,9 @@ function reshareBinomeFiles() {
   let n = 0;
   const failed = [];
   ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {
-    let f;
-    try { f = DriveApp.getFileById(b.fileId); } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); return; }
-    const current = f.getEditors().map(u => u.getEmail().toLowerCase());
+    let f, current;
+    try { f = DriveApp.getFileById(b.fileId); current = f.getEditors().map(u => u.getEmail().toLowerCase()); }
+    catch (e) { failed.push(b.code + ': ' + driveErr_(e)); return; }
     b.members.forEach(m => { if (m.email && current.indexOf(m.email) < 0) { try { f.addEditor(m.email); n++; } catch (e) { console.warn(e); } } });
   });
   say_('Done: ' + n + ' new share(s). (People removed from a binome keep access until you remove them in Drive.)' +
