@@ -117,6 +117,8 @@ function webState() {
       source: teamSrc ? teamSrc.getName() : '',
     },
     counts: { byStatus: byStatus, byDep: byDep },
+    locked: activeOrPaused_(ctx).length > 0,
+    unpaired: activeOrPaused_(ctx).length ? unpairedMembers(teamMembers_(ctx), ctx.binomes) : [],
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
       return { code: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),

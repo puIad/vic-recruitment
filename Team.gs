@@ -94,20 +94,23 @@ function teamRowsFrom_(vals) {
   return rows;
 }
 
+/** Team tab as [{name, email, pairAs, exclude}]; an empty Pair As falls back to the department. */
+function teamMembers_(ctx) {
+  const T = ctx.team.I;
+  return ctx.team.data.filter(r => String(r[T.Email]).trim()).map(r => {
+    let pairAs = String(r[T['Pair As']]).trim().toUpperCase();
+    if (!pairAs) pairAs = sectionToPair_(r[T.Department]).pairAs;
+    return { name: String(r[T['Full Name']]).trim(), email: String(r[T.Email]).trim().toLowerCase(), pairAs: pairAs, exclude: bool_(r[T.Exclude]) };
+  });
+}
+
 function draftBinomes() {
   const res = withLock_(() => {
     const ctx = loadCtx_();
-    const T = ctx.team.I, B = ctx.bin.I;
-    const taken = {};
-    ctx.binomes.filter(b => b.status !== 'DRAFT').forEach(b => b.members.forEach(m => { taken[m.email] = true; }));
-    const members = ctx.team.data.filter(r => {
-      const e = String(r[T.Email]).trim().toLowerCase();
-      return e && !bool_(r[T.Exclude]) && !taken[e];
-    }).map(r => {
-      let pairAs = String(r[T['Pair As']]).trim().toUpperCase();
-      if (!pairAs) pairAs = sectionToPair_(r[T.Department]).pairAs;
-      return { name: String(r[T['Full Name']]).trim(), email: String(r[T.Email]).trim().toLowerCase(), pairAs: pairAs };
-    }).filter(m => m.pairAs !== 'SKIP');
+    // Once binomes are locked nobody is auto-paired again: free members show up as UNPAIRED_MEMBER alerts for the admins.
+    if (activeOrPaused_(ctx).length) return { refused: true };
+    const B = ctx.bin.I;
+    const members = teamMembers_(ctx).filter(m => !m.exclude && m.pairAs !== 'SKIP');
     const pairs = draftPairs(members, Math.random);
     const kept = ctx.bin.data.filter(r => String(r[B.Status]).toUpperCase() !== 'DRAFT' && String(r[B.Binome]).trim());
     let max = 0; kept.forEach(r => { const n = codeNum(r[B.Binome]); if (n > max) max = n; });
@@ -128,6 +131,8 @@ function draftBinomes() {
     return { n: fresh.length, members: members.length, tags: tags, warnings: fresh.filter(f => f.warning).map(f => f.row[B.Binome] + ': ' + f.warning) };
   });
   if (!res) return say_('Busy, try again in a minute.');
+  if (res.refused) return say_('Binomes are already locked, so drafting is closed: nobody is paired automatically any more.\n' +
+    'Members left without a binome show up as UNPAIRED_MEMBER alerts. Place them by editing the Binomes tab (or a new DRAFT row + Lock), or tick Exclude in the Team tab.');
   say_('Drafted ' + res.n + ' binomes from ' + res.members + ' available members.\n' +
     Object.keys(res.tags).map(k => k + ': ' + res.tags[k]).join(' · ') +
     (res.warnings.length ? '\n\n⚠️ To check:\n' + res.warnings.join('\n') : '') +

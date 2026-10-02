@@ -24,6 +24,25 @@ st = call('webState');
 assert.strictEqual(st.binomes.filter(b => b.status === 'ACTIVE').length, drafts);
 assert.strictEqual(call('webRun', 'lockCheck').result.drafts, 0);
 
+// after lock: no more automatic pairing, free members are flagged for the admins instead
+assert.strictEqual(st.locked, true);
+assert.deepStrictEqual(st.unpaired, [], 'everyone drafted is in a locked binome');
+out = call('webRun', 'draft');
+assert(/already locked/.test(out.messages[0]), out.messages[0]);
+assert.strictEqual(call('webState').binomes.length, st.binomes.length, 'draft refused: no new binomes');
+run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,1,6).setValues([['Late Member','late@g.enp.edu.dz','IT','IT',false,'']]);})()");
+call('webRun', 'sync');
+st = call('webState');
+assert.deepStrictEqual(st.unpaired.map(m => m.email), ['late@g.enp.edu.dz']);
+assert(st.alerts.some(a => a.type === 'UNPAIRED_MEMBER' && /late@g.enp.edu.dz/.test(a.msg)), 'UNPAIRED_MEMBER alert');
+call('webRun', 'sync');
+assert.strictEqual(call('webState').alerts.filter(a => a.type === 'UNPAIRED_MEMBER').length, 1, 'no duplicate alert');
+run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow(),5).setValue(true);})()");
+call('webRun', 'sync');
+st = call('webState');
+assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPAIRED_MEMBER')], [0, false], 'Exclude closes it');
+st = call('webState');
+
 addRegistrations(12, 3);
 out = call('webRun', 'sync');
 assert.deepStrictEqual(out.messages, ['Full sync done ✅']);
