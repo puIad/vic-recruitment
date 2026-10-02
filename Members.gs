@@ -200,13 +200,18 @@ function report_(res) {
  *  Whole tokens only: "HR-03x" stays "HR-03x" (then reported as unknown), never cut down to a valid-looking "HR-03". */
 const splitCodes_ = s => String(s || '').match(/\b[A-Za-z]{2,13}[\s.\-_#:°]*\d{1,4}[A-Za-z0-9]*/g) || [];
 
-/** ACTIVE covers: [{row (sheet row), binome, name, email, outName, outEmail, codes[], reason}] */
+// Status of an active cover that gave the view access itself (only that access is taken back when covers end)
+const COVER_SHARED = 'ACTIVE · view access added by this cover';
+
+/** ACTIVE covers: [{row (sheet row), binome, name, email, outName, outEmail, codes[], reason, shared}] */
 function loadCovers_() {
   const C = idx_(MC_H), out = [];
   loadChanges_().forEach((r, i) => {
-    if (r[C.Type] !== 'TEMPORARY' || r[C.Status] !== 'ACTIVE') return;
+    const st = String(r[C.Status]);
+    if (r[C.Type] !== 'TEMPORARY' || (st !== 'ACTIVE' && st !== COVER_SHARED)) return;
     out.push({ row: i + 2, binome: String(r[C.Binome]).trim(), name: String(r[C['In Name']]).trim(), email: lc_(r[C['In Email']]),
-      outName: String(r[C['Out Name']]).trim(), outEmail: lc_(r[C['Out Email']]), codes: splitCodes_(r[C.Interviewees]), reason: String(r[C.Reason]) });
+      outName: String(r[C['Out Name']]).trim(), outEmail: lc_(r[C['Out Email']]), codes: splitCodes_(r[C.Interviewees]), reason: String(r[C.Reason]),
+      shared: st === COVER_SHARED });
   });
   return out;
 }
@@ -274,9 +279,16 @@ function addCoverCore_(a) {
     const share = bool_(s.SHARE_FILES_WITH_BINOME) && !bool_(s.TEST_MODE);
     p.groups.forEach(g => {
       const b = g.b, issues = [];
-      if (share && b.fileId) { try { DriveApp.getFileById(b.fileId).addViewer(p.inn.email); } catch (e) { issues.push('could not share with ' + p.inn.email + ' (' + e.message + ')'); } }
+      let shared = false; // true only if this cover gives the access: access someone already had is never taken back later
+      if (share && b.fileId) {
+        try {
+          const f = DriveApp.getFileById(b.fileId);
+          const has = f.getEditors().concat(f.getViewers()).some(u => lc_(u.getEmail()) === p.inn.email);
+          if (!has) { f.addViewer(p.inn.email); shared = true; }
+        } catch (e) { issues.push('could not share with ' + p.inn.email + ' (' + e.message + ')'); }
+      }
       changesSheet_().appendRow([ctx.now, by, 'TEMPORARY', b.code, g.out ? g.out.name : '', g.out ? g.out.email : '',
-        p.inn.name, p.inn.email, g.codes.join(', '), a.reason || '', 'ACTIVE']);
+        p.inn.name, p.inn.email, g.codes.join(', '), a.reason || '', shared ? COVER_SHARED : 'ACTIVE']);
       const what = p.inn.name + ' covers ' + g.codes.join(', ') + ' for ' + b.code + (g.out ? ' (instead of ' + g.out.name + ')' : '');
       lines.push(what + (issues.length ? ' ⚠️ ' + issues.join('; ') : ''));
       ctx.alerts.add({ severity: 'INFO', type: 'COVER_ADDED', status: 'AUTO-FIXED', code: g.codes.join(', '), binome: b.code,
@@ -305,16 +317,20 @@ function addCoverCore_(a) {
   return report_(res);
 }
 
-/** Mark a cover ENDED and take back the view access, unless that person still covers something else in the same binome. */
+/**
+ * Mark a cover ENDED. The view access it gave is taken back, unless that person still covers something else in the
+ * same binome: then that cover inherits it (and takes it back when it ends). Access the cover did not give is left alone.
+ */
 function endCover_(ctx, c, why) {
-  const C = idx_(MC_H);
-  changesSheet_().getRange(c.row, C.Status + 1).setValue('ENDED ' + fmt_(ctx.now, 'dd/MM HH:mm') + ': ' + why);
+  const C = idx_(MC_H), sh = changesSheet_();
+  sh.getRange(c.row, C.Status + 1).setValue('ENDED ' + fmt_(ctx.now, 'dd/MM HH:mm') + ': ' + why);
   ctx.covers = (ctx.covers || []).filter(x => x.row !== c.row);
   ctx.coverMap = coverMap_(ctx);
+  if (!c.shared) return;
+  const heir = ctx.covers.filter(x => x.email === c.email && x.binome === c.binome)[0];
+  if (heir) { if (!heir.shared) { heir.shared = true; sh.getRange(heir.row, C.Status + 1).setValue(COVER_SHARED); } return; }
   const b = ctx.binByCode[c.binome];
-  if (b && b.fileId && !ctx.covers.some(x => x.email === c.email && x.binome === c.binome)) {
-    try { DriveApp.getFileById(b.fileId).removeViewer(c.email); } catch (e) { console.warn('removeViewer ' + c.email + ': ' + e); }
-  }
+  if (b && b.fileId) { try { DriveApp.getFileById(b.fileId).removeViewer(c.email); } catch (e) { console.warn('removeViewer ' + c.email + ': ' + e); } }
 }
 
 /** Run in every cycle: covers whose interviews are all done (or moved to another binome) end by themselves. */

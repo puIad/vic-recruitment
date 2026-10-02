@@ -212,6 +212,24 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(run('(__files["' + id + '"].viewers || []).includes("standin@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("standin@g.enp.edu.dz")'), 'view-only');
   call('webRun', 'endCover', { row: call('webState').covers[0].row });
   assert(!run('(__files["' + id + '"].viewers || []).includes("standin@g.enp.edu.dz")'), 'access taken back');
+  const viewers = () => run('(__files["' + id + '"].viewers || []).filter(e => e === "standin@g.enp.edu.dz").length');
+  // access that predates the cover is kept
+  run('__files["' + id + '"].viewers.push("standin@g.enp.edu.dz")');
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  call('webRun', 'endCover', { row: call('webState').covers[0].row });
+  assert.strictEqual(viewers(), 1, 'pre-existing view access left alone');
+  run('__files["' + id + '"].viewers = []');
+  // two covers by the same person in one binome: the access lives until the last one ends
+  const two = call('webState').interviewees.filter(i => i.binome === iv.binome && ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status));
+  assert(two.length >= 2, 'test data: two pending interviewees in one binome'); {
+    call('webRun', 'addCover', { codes: two[0].code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+    call('webRun', 'addCover', { codes: two[1].code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+    let cs = call('webState').covers;
+    call('webRun', 'endCover', { row: cs[0].row });
+    assert.strictEqual(viewers(), 1, 'kept while another cover still needs it');
+    call('webRun', 'endCover', { row: call('webState').covers[0].row });
+    assert.strictEqual(viewers(), 0, 'taken back with the last cover (the mark was handed over)');
+  }
 }
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');
