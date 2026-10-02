@@ -74,6 +74,10 @@ function memberPlan_(ctx, binomeText, outEmail, inName, inEmail, swapWith) {
     if (!errors.length && !teamMembers_(ctx).some(m => m.email === inEmail)) warnings.push(name + ' (' + inEmail + ') is not in the Team tab (outside the OT).');
   } else if (!outEmail) errors.push('Nothing to change: give who leaves, who joins, or both.');
   else if (b.members.length < 2) errors.push(b.code + ' would have no member left: give a replacement.');
+  if (!errors.length && b.fileId) {
+    try { DriveApp.getFileById(b.fileId).getEditors(); }
+    catch (e) { errors.push('Cannot open the sheet of ' + b.code + ' (' + e.message + '): fix its File ID / access first.'); }
+  }
   if (!errors.length) {
     const after = [1, 2].map(k => (k === slot ? inn : used(k) ? seat(k) : null)).filter(Boolean);
     tagWarnings_(ctx, b, after).forEach(w => warnings.push(w));
@@ -84,32 +88,47 @@ function memberPlan_(ctx, binomeText, outEmail, inName, inEmail, swapWith) {
 /** Write the planned seats, then fix files, sharing, history, alerts and emails. plans: [{b, slot, out, inn}] */
 function applyMemberPlans_(ctx, plans, reason) {
   const B = ctx.bin.I, s = S_(), by = Session.getActiveUser().getEmail();
-  plans.forEach(p => {
-    p.b.row[B['Member ' + p.slot]] = p.inn ? p.inn.name : '';
-    p.b.row[B['Email ' + p.slot]] = p.inn ? p.inn.email : '';
-    ctx.bin.sh.getRange(ctx.bin.data.indexOf(p.b.row) + 2, 1, 1, BIN_H.length).setValues([p.b.row]);
-  });
+  // All seats or none: if a write fails (e.g. the second row of a swap), put back the rows already written.
+  const touched = [];
+  try {
+    plans.forEach(p => {
+      touched.push({ row: p.b.row, before: p.b.row.slice(), at: ctx.bin.data.indexOf(p.b.row) + 2 });
+      p.b.row[B['Member ' + p.slot]] = p.inn ? p.inn.name : '';
+      p.b.row[B['Email ' + p.slot]] = p.inn ? p.inn.email : '';
+      ctx.bin.sh.getRange(touched[touched.length - 1].at, 1, 1, BIN_H.length).setValues([p.b.row]);
+    });
+  } catch (e) {
+    touched.forEach(t => {
+      t.before.forEach((v, i) => { t.row[i] = v; });
+      try { ctx.bin.sh.getRange(t.at, 1, 1, BIN_H.length).setValues([t.before]); } catch (e2) { console.error('Rollback of row ' + t.at + ' failed: ' + e2); }
+    });
+    throw new Error('Nothing changed: could not write the Binomes tab (' + e.message + ').');
+  }
   indexCtx_(ctx);
   const share = bool_(s.SHARE_FILES_WITH_BINOME) && !bool_(s.TEST_MODE);
   const I = ctx.iv.I, lines = [];
   plans.forEach(p => {
     const b = ctx.binByCode[p.b.code];
     const same = p.out && p.inn && p.out.email === p.inn.email;
+    const fileIssues = [];
     if (b.fileId) {
       try {
         const file = SpreadsheetApp.openById(b.fileId);
         file.rename(binomeFileTitle_(b, b.members));
         file.getSheets()[0].getRange(1, 1).setNote(binomeFileNote_(b, b.members));
-      } catch (e) { console.warn('Could not update the file of ' + b.code + ': ' + e); }
-      const f = DriveApp.getFileById(b.fileId);
+      } catch (e) { fileIssues.push('title/note not updated (' + e.message + ')'); }
+      let f = null;
+      try { f = DriveApp.getFileById(b.fileId); } catch (e) { fileIssues.push('sharing not updated (' + e.message + ')'); }
       // the owner (who ran Lock) can't be removed: that just fails quietly
-      if (p.out && p.out.email && !same) { try { f.removeEditor(p.out.email); } catch (e) { console.warn('removeEditor ' + p.out.email + ': ' + e); } }
-      if (p.inn && share && !same) { try { f.addEditor(p.inn.email); } catch (e) { console.warn('Share failed ' + p.inn.email + ': ' + e); } }
+      if (f && p.out && p.out.email && !same) { try { f.removeEditor(p.out.email); } catch (e) { console.warn('removeEditor ' + p.out.email + ': ' + e); } }
+      if (f && p.inn && share && !same) { try { f.addEditor(p.inn.email); } catch (e) { fileIssues.push('could not share with ' + p.inn.email + ' (' + e.message + ')'); } }
     }
     changesSheet_().appendRow([ctx.now, by, 'PERMANENT', b.code, p.out ? p.out.name : '', p.out ? p.out.email : '',
-      p.inn ? p.inn.name : '', p.inn ? p.inn.email : '', '', reason || '', 'DONE']);
+      p.inn ? p.inn.name : '', p.inn ? p.inn.email : '', '', reason || '', fileIssues.length ? 'FILE NOT UPDATED: ' + fileIssues.join('; ') : 'DONE']);
     const what = b.code + ': ' + (p.out ? p.out.name || p.out.email : '(empty seat)') + ' → ' + (p.inn ? p.inn.name : '(nobody)');
-    lines.push(what);
+    lines.push(what + (fileIssues.length ? ' ⚠️ binome sheet: ' + fileIssues.join('; ') : ''));
+    if (fileIssues.length) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: b.code,
+      msg: 'Member change in ' + b.code + ' saved, but the binome sheet was not fully updated: ' + fileIssues.join('; ') + '. Fix access, then Re-share.', key: '' });
     ctx.alerts.add({ severity: 'INFO', type: 'MEMBER_CHANGED', status: 'AUTO-FIXED', code: '', binome: b.code,
       msg: what + ' by ' + by + (reason ? ' (' + reason + ')' : ''), key: '' });
     if (same) return;

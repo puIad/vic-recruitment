@@ -1145,10 +1145,11 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     showChHint();
   }
   function showChHint() {
-    const share = state && state.settings.shareFiles;
+    const set = state ? state.settings : {};
     $('#chHint').innerHTML = (chMode === 'swap' ? 'Each member moves to the other binome. ' : 'Interviewees stay with the binome. ') +
-      (share ? 'Newcomers get edit access to the binome sheet, leavers lose it; both are emailed.'
-        : 'Leavers lose edit access. <b>Test mode / sharing off</b>: nobody new is shared, emails only reach admins.');
+      'Leavers lose edit access to the binome sheet; ' +
+      (set.shareFiles ? 'newcomers get it. ' : '<b>' + (set.testMode ? 'test mode' : 'sharing is off') + '</b>: newcomers are not given access. ') +
+      (set.testMode ? '<b>Test mode</b>: the join/leave emails only reach admins.' : 'Both are emailed.');
   }
   $('#chMode').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (b) setChMode(b.dataset.mode); });
   $('#chBin').addEventListener('change', () => fillPeople($('#chOut'), $('#chBin').value, true));
@@ -1157,8 +1158,9 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   $('#chInEmail').addEventListener('input', () => {
     const m = state && (state.teamList || []).find(x => x.email === $('#chInEmail').value.trim().toLowerCase());
     const name = $('#chInName');
-    if (m && (!name.value || name.value === autoName)) name.value = autoName = m.name;
-    else if (!m && name.value === autoName) name.value = autoName = '';
+    // a Team email always brings its own name (never keep the previous person's); an outside email starts empty
+    if (m) name.value = autoName = m.name;
+    else if (name.value === autoName) name.value = autoName = '';
   });
   $('#unpList').addEventListener('click', e => {
     const b = e.target.closest('[data-place]'); if (!b) return;

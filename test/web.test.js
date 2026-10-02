@@ -77,6 +77,20 @@ assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPA
   out = call('webRun', 'swapMembers', { binomeA: b1.code, emailA: b2.people[0].email, binomeB: b1.code, emailB: b1.people[1].email });
   assert(/two different binomes/.test(out.messages[0]));
 
+  // a binome sheet that can't be opened: refused before anything is written
+  const binSh = "ss_().getSheetByName('Binomes')", rowOf = code => run(binSh + ".getDataRange().getValues().findIndex(r => r[0] === '" + code + "') + 1");
+  const realId = run(binSh + '.getRange(' + rowOf(solo.code) + ', 9).getValue()');
+  run(binSh + '.getRange(' + rowOf(solo.code) + ', 9).setValue("gone")');
+  out = call('webRun', 'changeMember', { binome: solo.code, inEmail: leaving, dryRun: true });
+  assert(/Cannot open the sheet/.test(out.result.errors[0]), out.result.errors);
+  run(binSh + '.getRange(' + rowOf(solo.code) + ', 9).setValue("' + realId + '")');
+  // a swap whose second row write fails leaves both rows as they were
+  const before = JSON.stringify([ppl(b1.code), ppl(b2.code)]), nChanges = changes();
+  run("var __sv = MockRange.prototype.setValues, __n = 0; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Binomes' && ++__n === 2) throw new Error('Service unavailable'); return __sv.call(this, v); }");
+  assert.throws(() => call('webRun', 'swapMembers', { binomeA: b1.code, emailA: ppl(b1.code)[0], binomeB: b2.code, emailB: ppl(b2.code)[0] }), /Nothing changed/);
+  run('MockRange.prototype.setValues = __sv');
+  assert.deepStrictEqual([JSON.stringify([ppl(b1.code), ppl(b2.code)]), changes()], [before, nChanges], 'swap rolled back, no history row');
+
   out = call('webRun', 'changeMember', { binome: solo.code, inEmail: leaving });
   assert(/\(empty seat\) →/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
