@@ -58,6 +58,16 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
 - Local preview of the Vercel app on mock Google: `node test/webdev.js` → http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
   (`?as=stranger@g.enp.edu.dz` = no-access view). Tests: `test/vercel.test.js` (in `npm test`).
 
+## Live test in progress (paused 2026-10-01 22:30)
+- Master state: 49 binomes already **locked/ACTIVE** (under v1), files created, not shared. v2 Setup still not run
+  (no TEST_MODE row → code default TRUE). The 1-min sync trigger **does fire** after the GCP switch (verified).
+- Test data in the live Master (all `TEST-xx` / `sim.*@g.enp.edu.dz`): Registration Responses rows 3–14, Interviewees
+  rows 3–14 (IT.01–04, COMM.01–02, HR.01–03, FLER.02–03 + 1 duplicate), Alerts A-0003+, row 2 of binome files
+  B.03 B.04 B.05 B.06 B.07 B.10 B.17 B.25 (Contacted/Date/Time). Routing, flags, duplicate and sheet pull all verified.
+- Still to run: lower the 3 HOURS_* limits (0.1 / 0.15 / 0.05) to see NOT_CONTACTED / NO_DATE / OVERDUE; fill B.02
+  (Yes, 01/10/2026, 21:00) and B.09 (time `14h3` → BAD_DATE); interview-form cases (clean, `b3`/`comm 1`, name for
+  code, backup interviewer, wrong binome, unknown `IT.99`, duplicate). Then clean up all test rows and set limits back to 1000.
+
 ## Next
 1. Finish the Vercel manual checks with other accounts: an editor, a removed/non-editor ENP account (should see
    "No access", with no dashboard flash), a viewer ("View only"), a multi-account browser, sign-out → sign back in
