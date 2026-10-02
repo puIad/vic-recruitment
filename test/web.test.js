@@ -225,8 +225,9 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   out = call('webRun', 'changeMember', { binome: b.code, outEmail: 'newp@g.enp.edu.dz', inName: 'Other Person', inEmail: 'other@g.enp.edu.dz' });
   assert(/⚠️ .*Google Drive API is off/.test(out.messages[0]) && !/✅/.test(out.messages[0]), out.messages[0]);
   assert(call('webState').alerts.some(a => a.type === 'FILE_ERROR' && /Drive API is off/.test(a.msg)), 'alert names the Drive API');
+  const sheets = call('webState').binomes.filter(x => x.fileUrl && x.status !== 'DRAFT').length;
   out = call('webRun', 'reshare');
-  assert(/not reached/.test(out.messages[0]) && /Drive API is off/.test(out.messages[0]), out.messages[0]);
+  assert(new RegExp(sheets + ' sheet\\(s\\) not reached').test(out.messages[0]) && /Drive API is off/.test(out.messages[0]), 'every sheet tried: ' + out.messages[0]);
   run('DriveApp.getFileById = __gf');
   run('__files["' + id + '"].editors = __files["' + id + '"].editors.filter(e => e !== "newp@g.enp.edu.dz")'); // what the admin would do in Drive
   call('webRun', 'reshare');
