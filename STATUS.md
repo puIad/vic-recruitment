@@ -20,8 +20,8 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 ## Next
 
-1. **Test A–D on the live Master** ([docs/testing.md](docs/testing.md#manual-test-on-the-live-master-test_mode--true)),
-   starting with Maintenance › Check integrity. Check in Apps Script › Executions that the 1-minute sync runs.
+1. **Test A–D on the live Master** ([docs/testing.md](docs/testing.md#manual-test-on-the-live-master-test_mode--true)).
+   Check integrity and the 1-minute sync verified on 2026-10-02 (@25/@26, Drive API on, no failed executions).
 2. Finish the live test's timing and interview-form cases (same file), then delete all test data and Accept the edits.
 3. Run **Setup** once from the dashboard (owner) if it hasn't been run since v2: adds missing Settings rows and the
    Member Changes tab, renames Team column E to "Exclude" — then untick E and tick only people who really won't interview.
