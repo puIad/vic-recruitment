@@ -35,7 +35,7 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | Script ID (`.clasp.json`) | `1S7GFkJplZLM9Nc9A4beZx3M5XGa0LniNiB3xeDJEr48piY6U7Aoq7Vv8` |
 | Web app deployment (old dashboard) | `AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT` → https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec |
 | API executable deployment (used by Vercel) | `AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU` |
-| Google Cloud project | `vic-recruitment` (ENP org, consent screen Internal, Apps Script API on) |
+| Google Cloud project | `vic-recruitment` (ENP org, number `444885197277`, consent screen Internal, Apps Script API on; Google Drive API required, not enabled yet: see [STATUS.md](../STATUS.md)) |
 
 `npm run deploy` updates **both** deployments in place (same URLs, new version). Never `clasp create-deployment`.
 

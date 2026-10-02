@@ -57,7 +57,9 @@ web/
 
 ## Rebuilding the Google Cloud side (if ever needed)
 
-1. Cloud project in the ENP org; enable **Apps Script API**.
+1. Cloud project in the ENP org; enable **Apps Script API** and **Google Drive API**. A script on a standard Cloud
+   project gets no auto-enabled APIs: without the Drive API every `DriveApp` call fails with "Permission denied while
+   enabling APIs: drive" (sharing, Re-share, Lock's move into the Binome Sheets folder, the sync's change check).
 2. OAuth consent screen **Internal**; scopes = `oauthScopes` in appsscript.json + `openid email`.
 3. OAuth client (Web): redirect URIs `https://vic-recruitment.vercel.app/api/callback` and `http://localhost:3000/api/callback`.
 4. Apps Script › Project Settings › Change GCP project → this project's number. Then check the triggers still fire

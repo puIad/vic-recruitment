@@ -197,10 +197,13 @@ function reshareBinomeFiles() {
   if (bool_(S_().TEST_MODE)) { say_('TEST_MODE is TRUE in Settings: files are not shared. Set it to FALSE for the real launch.'); return; }
   const ctx = loadCtx_();
   let n = 0;
+  const failed = [];
   ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {
-    const f = DriveApp.getFileById(b.fileId);
-    const current = f.getEditors().map(u => u.getEmail().toLowerCase());
+    let f, current;
+    try { f = DriveApp.getFileById(b.fileId); current = f.getEditors().map(u => u.getEmail().toLowerCase()); }
+    catch (e) { failed.push(b.code + ': ' + driveErr_(e)); return; }
     b.members.forEach(m => { if (m.email && current.indexOf(m.email) < 0) { try { f.addEditor(m.email); n++; } catch (e) { console.warn(e); } } });
   });
-  say_('Done: ' + n + ' new share(s). (People removed from a binome keep access until you remove them in Drive.)');
+  say_('Done: ' + n + ' new share(s). (People removed from a binome keep access until you remove them in Drive.)' +
+    (failed.length ? '\n⚠️ ' + failed.length + ' sheet(s) not reached:\n' + failed.slice(0, 5).join('\n') : ''));
 }

@@ -60,7 +60,10 @@ assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPA
   assert.deepStrictEqual([out.result.errors.length, out.messages.length], [0, 0]);
   assert(out.result.warnings.some(w => /outside the OT/.test(w)), out.result.warnings);
   assert.strictEqual(changes(), 0, 'dry run writes nothing');
+  // TEST_MODE shares nothing, so the change never touches Drive (a Drive API that is off can't break it)
+  run('var __gf = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("Permission denied while enabling APIs: drive for GCP project 1.") }');
   out = call('webRun', 'changeMember', { binome: b1.code, outEmail: leaving, inName: 'Outside Person', inEmail: 'EXT@g.enp.edu.dz', reason: 'left the club' });
+  run('DriveApp.getFileById = __gf');
   assert(/→ Outside Person ✅/.test(out.messages[0]), out.messages[0]);
   assert(ppl(b1.code).includes('ext@g.enp.edu.dz') && !ppl(b1.code).includes(leaving));
   assert(/Outside/.test(run('__files["' + fileOf(b1) + '"].obj.title')), 'file renamed');
@@ -217,6 +220,17 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(run('__files["' + id + '"].editors.includes("' + gone + '")'));
   call('webRun', 'changeMember', { binome: b.code, outEmail: gone, inName: 'New Person', inEmail: 'newp@g.enp.edu.dz' });
   assert(run('__files["' + id + '"].editors.includes("newp@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("' + gone + '")'), 'editors follow the change');
+  // Drive API off in the Cloud project: the change is saved, the message names the real fix, no ✅
+  run('var __gf = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("Permission denied while enabling APIs: drive for GCP project 1.") }');
+  out = call('webRun', 'changeMember', { binome: b.code, outEmail: 'newp@g.enp.edu.dz', inName: 'Other Person', inEmail: 'other@g.enp.edu.dz' });
+  assert(/⚠️ .*Google Drive API is off/.test(out.messages[0]) && !/✅/.test(out.messages[0]), out.messages[0]);
+  assert(call('webState').alerts.some(a => a.type === 'FILE_ERROR' && /Drive API is off/.test(a.msg)), 'alert names the Drive API');
+  const sheets = run("loadCtx_().binomes.filter(x => x.fileId && x.status !== 'DRAFT').length"); // the set reshareBinomeFiles tries
+  out = call('webRun', 'reshare');
+  assert(new RegExp(sheets + ' sheet\\(s\\) not reached').test(out.messages[0]) && /Drive API is off/.test(out.messages[0]), 'every sheet tried: ' + out.messages[0]);
+  run('DriveApp.getFileById = __gf');
+  run('__files["' + id + '"].editors = __files["' + id + '"].editors.filter(e => e !== "newp@g.enp.edu.dz")'); // what the admin would do in Drive
+  call('webRun', 'reshare');
 }
 { // sharing on: a cover person gets view-only access for the cover, taken back when it ends
   const iv = call('webState').interviewees.find(i => ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status) && i.binome);

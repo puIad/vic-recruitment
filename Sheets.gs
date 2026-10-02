@@ -38,6 +38,12 @@ function fmt_(d, pattern) {
   return Utilities.formatDate(d, S_().TIMEZONE, pattern || 'dd/MM/yyyy HH:mm');
 }
 function txt_(v) { const s = String(v == null ? '' : v); return s === '' ? '' : "'" + s; } // force plain text
+/** A Drive error, readable. "enabling APIs" = the Drive API is off in the script's Cloud project: no sharing fix helps. */
+function driveErr_(e) {
+  const m = String(e && e.message || e);
+  return /enabling APIs/i.test(m) ? 'the Google Drive API is off in the Cloud project of the script: its owner must enable it' +
+    ' (Cloud Console › APIs & Services › Library › Google Drive API) — ' + m : m;
+}
 function esc_(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function idx_(headers) { const o = {}; headers.forEach((h, i) => { o[h] = i; }); return o; }

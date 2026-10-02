@@ -121,11 +121,14 @@ function applyMemberPlans_(ctx, plans, reason) {
         file.rename(binomeFileTitle_(b, b.members));
         file.getSheets()[0].getRange(1, 1).setNote(binomeFileNote_(b, b.members));
       } catch (e) { fileIssues.push('title/note not updated (' + e.message + ')'); }
+    }
+    // Sharing off (TEST_MODE): the script gave nobody access, so there is nothing to add or take back
+    if (b.fileId && share && !same) {
       let f = null;
-      try { f = DriveApp.getFileById(b.fileId); } catch (e) { fileIssues.push('sharing not updated (' + e.message + ')'); }
+      try { f = DriveApp.getFileById(b.fileId); } catch (e) { fileIssues.push('sharing not updated (' + driveErr_(e) + ')'); }
       // the owner (who ran Lock) can't be removed: that just fails quietly
-      if (f && p.out && p.out.email && !same) { try { f.removeEditor(p.out.email); } catch (e) { console.warn('removeEditor ' + p.out.email + ': ' + e); } }
-      if (f && p.inn && share && !same) { try { f.addEditor(p.inn.email); } catch (e) { fileIssues.push('could not share with ' + p.inn.email + ' (' + e.message + ')'); } }
+      if (f && p.out && p.out.email) { try { f.removeEditor(p.out.email); } catch (e) { console.warn('removeEditor ' + p.out.email + ': ' + e); } }
+      if (f && p.inn) { try { f.addEditor(p.inn.email); } catch (e) { fileIssues.push('could not share with ' + p.inn.email + ' (' + driveErr_(e) + ')'); } }
     }
     changesSheet_().appendRow([ctx.now, by, 'PERMANENT', b.code, p.out ? p.out.name : '', p.out ? p.out.email : '',
       p.inn ? p.inn.name : '', p.inn ? p.inn.email : '', '', reason || '', fileIssues.length ? 'FILE NOT UPDATED: ' + fileIssues.join('; ') : 'DONE']);
@@ -192,7 +195,7 @@ function swapMembersCore_(a) {
 
 function report_(res) {
   if (!res) { say_('Busy, try again in a minute.'); return null; }
-  if (res.done) say_(res.done.join('\n') + ' ✅');
+  if (res.done) say_(res.done.join('\n') + (res.done.some(l => /⚠️/.test(l)) ? '' : ' ✅'));
   else if (res.errors.length) say_(res.errors.join('\n'));
   return res;
 }
@@ -294,7 +297,7 @@ function addCoverCore_(a) {
           const f = DriveApp.getFileById(b.fileId);
           const has = f.getEditors().concat(f.getViewers()).some(u => lc_(u.getEmail()) === p.inn.email);
           if (!has) { f.addViewer(p.inn.email); shared = true; }
-        } catch (e) { issues.push('could not share with ' + p.inn.email + ' (' + e.message + ')'); }
+        } catch (e) { issues.push('could not share with ' + p.inn.email + ' (' + driveErr_(e) + ')'); }
       }
       changesSheet_().appendRow([ctx.now, by, 'TEMPORARY', b.code, g.out ? g.out.name : '', g.out ? g.out.email : '',
         p.inn.name, p.inn.email, g.codes.join(', '), a.reason || '', shared ? COVER_SHARED : 'ACTIVE']);
@@ -354,7 +357,7 @@ function revokeCoverAccess_(ctx, c) {
   }
   const b = ctx.binByCode[c.binome];
   if (!b || !b.fileId) return ''; // no sheet any more: nothing to take back
-  try { DriveApp.getFileById(b.fileId).removeViewer(c.email); return ''; } catch (e) { return e.message; }
+  try { DriveApp.getFileById(b.fileId).removeViewer(c.email); return ''; } catch (e) { return driveErr_(e); }
 }
 
 /** Run in every cycle: covers whose interviews are all done (or moved) end by themselves; failed removals are retried. */

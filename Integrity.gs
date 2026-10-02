@@ -463,7 +463,7 @@ function checkBinomeFile_(ctx, b, owed, env) {
   if (missing.length) add('HIGH', 'missing', missing.join(', ') + (missing.length > 1 ? ' are' : ' is') + ' assigned to ' + b.code + ' in the Master but missing from its sheet, so the binome cannot see them. Move interviewee to ' + b.code + ' puts the row back.', missing.join(', '));
   if (env.share) {
     let f;
-    try { f = DriveApp.getFileById(b.fileId); } catch (e) { add('MEDIUM', 'drive', 'cannot read who has access to its sheet (' + e.message + ').'); return out; }
+    try { f = DriveApp.getFileById(b.fileId); } catch (e) { add('MEDIUM', 'drive', 'cannot read who has access to its sheet (' + driveErr_(e) + ').'); return out; }
     const editors = f.getEditors().map(u => lc_(u.getEmail())), viewers = f.getViewers().map(u => lc_(u.getEmail()));
     const members = b.members.map(x => x.email).filter(Boolean), covers = (ctx.covers || []).filter(c => c.binome === b.code);
     const staff = env.staff || (env.staff = staffEmails_());
