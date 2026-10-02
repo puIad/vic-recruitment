@@ -18,6 +18,7 @@
  *   Sync.gs           pull binome files, timing alerts, Tracker, main cycle, triggers
  *   Setup.gs          menu, setup, tabs, form links, triggers install
  *   Team.gs           team import, draft / lock / re-share binomes
+ *   Members.gs        after lock: change / swap binome members (Member Changes tab)
  *   Actions.gs        reassign interviewee, resolve alerts, daily digest
  ******************************************************************************/
 
@@ -53,7 +54,7 @@ const SETTINGS_DEFAULTS = [
 const TAB = {
   SETTINGS: 'Settings', TEAM: 'Team', BINOMES: 'Binomes', IV: 'Interviewees',
   LOG: 'Interview Log', TRACKER: 'Tracker', ALERTS: 'Alerts',
-  REG_RESP: 'Registration Responses', INT_RESP: 'Interview Responses',
+  REG_RESP: 'Registration Responses', INT_RESP: 'Interview Responses', CHANGES: 'Member Changes',
 };
 
 const TEAM_H = ['Full Name', 'Email', 'Department', 'Pair As', 'Exclude', 'Notes'];
@@ -64,6 +65,8 @@ const IV_H = ['Code', 'Binome', 'Status', 'Registered At', 'Assigned At', 'First
   'Interview Submitted At', 'Interview Log Row', 'Binome Notes', 'Flags', 'Response Key'];
 const LOG_H = ['Submitted At', 'Submitter', 'Typed Binome', 'Typed Interviewee', 'Binome', 'Interviewee',
   'Result', 'Notes', 'Final Dep', 'Response Key'];
+// One row per member change after lock (history; also tells the interview check who used to be in a binome)
+const MC_H = ['At', 'By', 'Type', 'Binome', 'Out Name', 'Out Email', 'In Name', 'In Email', 'Interviewees', 'Reason', 'Status'];
 const ALERT_H = ['ID', 'Created', 'Severity', 'Type', 'Interviewee', 'Binome', 'Message', 'Emailed To',
   'Status', 'Resolved At', 'Key'];
 // Columns of every binome file

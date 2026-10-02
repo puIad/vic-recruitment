@@ -220,6 +220,15 @@ a.kpi:hover .go { opacity: 1; transform: none; }
 
 /* ---------- layout ---------- */
 .col { display: grid; gap: 22px; align-content: start; min-width: 0; }
+.seg.plain button::before { display: none; }
+.gap-top { margin-top: 12px; }
+.swap-arrow { display: flex; justify-content: center; color: var(--ink-3); margin: 6px 0; }
+.chg-list { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 6px; }
+.chg-list li { font-size: 14px; }
+.chg-list .from { color: var(--ink-3); text-decoration: line-through; }
+.warn-box { background: var(--med-bg); color: var(--med); border-radius: 10px; padding: 10px 12px; margin: 10px 0; font-size: 13px; }
+.warn-box ul { margin: 4px 0 0; padding-left: 18px; }
+.unp-row .btn { margin-left: 8px; }
 .unp-help { font-size: 12.5px; color: var(--ink-3); margin: 0; padding: 12px 20px; }
 .unp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 20px; border-top: 1px solid var(--line-2); }
 .unp-row div { font-size: 13.5px; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -679,6 +688,40 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
               <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn navy" data-action="reassign"><span class="spin"></span><svg class="i"><use href="#i-move"/></svg>Move</button></div>
             </div>
           </section>
+          <section class="card" aria-labelledby="h-chg" id="chCard">
+            <div class="card-head"><h2 id="h-chg">Change members</h2>
+              <div class="right"><div class="seg plain" id="chMode" role="group" aria-label="Kind of change">
+                <button type="button" aria-pressed="true" data-mode="replace">Replace</button><button type="button" aria-pressed="false" data-mode="swap">Swap</button>
+              </div></div>
+            </div>
+            <div class="card-body">
+              <div id="chReplace">
+                <div class="grid2">
+                  <label class="field"><span>Binome</span><select class="input" id="chBin"><option value="">Choose…</option></select></label>
+                  <label class="field"><span>Who leaves</span><select class="input" id="chOut"><option value="">Choose a binome first</option></select></label>
+                </div>
+                <div class="grid2 gap-top">
+                  <label class="field"><span>Who joins · email</span><input class="input" id="chInEmail" list="teamEmails" placeholder="Empty = only remove" autocomplete="off" spellcheck="false"></label>
+                  <label class="field"><span>Their name</span><input class="input" id="chInName" placeholder="From the Team tab, or type it" autocomplete="off"></label>
+                </div>
+              </div>
+              <div id="chSwap" hidden>
+                <div class="grid2">
+                  <label class="field"><span>Binome A</span><select class="input" id="swA"><option value="">Choose…</option></select></label>
+                  <label class="field"><span>Member of A</span><select class="input" id="swAm"><option value="">Choose a binome first</option></select></label>
+                </div>
+                <div class="swap-arrow" aria-hidden="true"><svg class="i"><use href="#i-updown"/></svg></div>
+                <div class="grid2">
+                  <label class="field"><span>Binome B</span><select class="input" id="swB"><option value="">Choose…</option></select></label>
+                  <label class="field"><span>Member of B</span><select class="input" id="swBm"><option value="">Choose a binome first</option></select></label>
+                </div>
+              </div>
+              <label class="field gap-top"><span>Reason <i class="muted">(optional, kept in the Member Changes tab)</i></span><input class="input" id="chReason" placeholder="e.g. no longer available for interviews" autocomplete="off"></label>
+              <datalist id="teamEmails"></datalist>
+              <p class="hint" id="chHint"></p>
+              <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn navy" data-action="changeMember"><span class="spin"></span><svg class="i"><use href="#i-repeat"/></svg>Review…</button></div>
+            </div>
+          </section>
           <section class="card" aria-labelledby="h-unp" id="unpCard" hidden>
             <div class="card-head"><h2 id="h-unp">Unpaired members</h2><span class="count" id="unp-count">0</span></div>
             <p class="unp-help">In the Team tab but in no locked binome. Nobody is paired automatically after lock: place them in a binome, or tick <b>Exclude</b> in the Team tab.</p>
@@ -731,7 +774,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   ];
   let state = null, sevFilter = 'ALL', selected = new Set(), busy = false;
 
-  const API_VERSION = 1; // must match API_VERSION in WebApp.gs
+  const API_VERSION = 2; // must match API_VERSION in WebApp.gs
   let sessionEnds = 0, owner = false;
   // Every call goes through /api/run (Vercel), which runs the script as the signed-in visitor.
   async function call(fn) {
@@ -916,6 +959,24 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       await run(btn, 'reassign', { code: iv.code, binome: bin }, 'Move ' + iv.code);
       $('#mvCode').value = ''; $('#mvBin').value = ''; showMvHint();
     },
+    async changeMember(btn) {
+      const swap = chMode === 'swap';
+      const args = swap
+        ? { binomeA: $('#swA').value, emailA: $('#swAm').value, binomeB: $('#swB').value, emailB: $('#swBm').value, reason: $('#chReason').value.trim() }
+        : { binome: $('#chBin').value, outEmail: $('#chOut').value, inEmail: $('#chInEmail').value.trim(), inName: $('#chInName').value.trim(), reason: $('#chReason').value.trim() };
+      if (swap ? !(args.binomeA && args.binomeB) : !args.binome) { toast('Choose the binome' + (swap ? 's' : '') + ' first.', true); return; }
+      const action = swap ? 'swapMembers' : 'changeMember';
+      const check = await run(btn, action, Object.assign({ dryRun: true }, args), 'Check change');
+      if (!check || !check.result || check.result.errors.length) return; // the errors were shown as a toast
+      const r = check.result, plans = swap ? r.plans : [r];
+      const ok = await confirmBox(swap ? 'Swap these members?' : 'Change ' + r.binome + '?',
+        '<ul class="chg-list">' + plans.map(changeSummary).join('') + '</ul>' +
+        (r.warnings.length ? '<div class="warn-box"><b>Check before applying</b><ul>' + r.warnings.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul></div>' : '') +
+        '<p class="muted">' + esc($('#chHint').textContent) + ' Logged in the Member Changes tab.</p>', swap ? 'Swap' : 'Apply');
+      if (!ok) return;
+      const out = await run(btn, action, args, swap ? 'Swap members' : 'Change ' + r.binome);
+      if (out && out.result && out.result.done) { ['#chInEmail', '#chInName', '#chReason'].forEach(id => { $(id).value = ''; }); autoName = ''; }
+    },
     async digest(btn) { await run(btn, 'digest', {}, 'Digest'); },
     async reshare(btn) {
       const ok = await confirmBox('Re-share binome sheets?', '<p>Every current member who is not yet an editor of their binome sheet is added (Google emails them).</p>', 'Re-share');
@@ -963,7 +1024,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     $('#statusbar').innerHTML = total ? STATUS.map(x => '<i style="width:' + (100 * (st[x[0]] || 0) / total) + '%;background:var(' + x[2] + ')" title="' + x[1] + ': ' + (st[x[0]] || 0) + '"></i>').join('') : '';
     $('#legend').innerHTML = STATUS.map(x => '<span style="--c:var(' + x[2] + ')">' + x[1] + ' <b class="mono">' + (st[x[0]] || 0) + '</b></span>').join('');
 
-    renderSteps(); renderAlerts(); renderBinomes(); renderUnpaired(); renderMove(); renderSettings();
+    renderSteps(); renderAlerts(); renderBinomes(); renderUnpaired(); renderChange(); renderMove(); renderSettings();
   }
 
   function renderSteps() {
@@ -1049,7 +1110,70 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     $('#unpCard').hidden = !list.length;
     $('#unp-count').textContent = list.length;
     $('#unpList').innerHTML = list.map(m => '<div class="unp-row"><div title="' + esc(m.name) + '">' + esc(m.name || m.email) + '<small>' + esc(m.email) + '</small></div>' +
-      '<span>' + (m.draft ? '<span class="chip warn">in draft ' + esc(m.draft) + '</span> ' : '') + '<span class="chip">' + esc(m.pairAs) + '</span></span></div>').join('');
+      '<span>' + (m.draft ? '<span class="chip warn">in draft ' + esc(m.draft) + '</span> ' : '') + '<span class="chip">' + esc(m.pairAs) + '</span>' +
+      '<button type="button" class="btn sm" data-place="' + esc(m.email) + '">Place…</button></span></div>').join('');
+  }
+
+  /* ---------- change members ---------- */
+  let chMode = 'replace', autoName = '';
+  const lockedBins = () => state.binomes.filter(b => b.status !== 'DRAFT');
+  function fillBinSelect(sel) {
+    const keep = sel.value;
+    sel.innerHTML = '<option value="">Choose…</option>' + lockedBins().map(b => '<option value="' + esc(b.code) + '">' +
+      esc(b.code + ' · ' + (b.members.join(' & ') || 'empty') + (b.status === 'PAUSED' ? ' (paused)' : '')) + '</option>').join('');
+    sel.value = keep;
+  }
+  function fillPeople(sel, code, emptySeat) {
+    const b = state && state.binomes.find(x => x.code === code), keep = sel.value;
+    if (!b) { sel.innerHTML = '<option value="">Choose a binome first</option>'; return; }
+    const seat = emptySeat && b.people.length < 2;
+    sel.innerHTML = (seat ? '<option value="">Nobody (fill the empty seat)</option>' : '') +
+      b.people.map(p => '<option value="' + esc(p.email) + '">' + esc((p.name || p.email) + ' · ' + p.email) + '</option>').join('');
+    if (b.people.some(p => p.email === keep)) sel.value = keep;
+  }
+  function renderChange() {
+    ['#chBin', '#swA', '#swB'].forEach(id => fillBinSelect($(id)));
+    fillPeople($('#chOut'), $('#chBin').value, true);
+    fillPeople($('#swAm'), $('#swA').value); fillPeople($('#swBm'), $('#swB').value);
+    $('#teamEmails').innerHTML = (state.teamList || []).map(m => '<option value="' + esc(m.email) + '">' + esc(m.name + ' · ' + m.pairAs) + '</option>').join('');
+    showChHint();
+  }
+  function setChMode(mode) {
+    chMode = mode;
+    $$('#chMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+    $('#chReplace').hidden = mode !== 'replace'; $('#chSwap').hidden = mode !== 'swap';
+    showChHint();
+  }
+  function showChHint() {
+    const set = state ? state.settings : {};
+    $('#chHint').innerHTML = (chMode === 'swap' ? 'Each member moves to the other binome. ' : 'Interviewees stay with the binome. ') +
+      'Leavers lose edit access to the binome sheet; ' +
+      (set.shareFiles ? 'newcomers get it. ' : '<b>' + (set.testMode ? 'test mode' : 'sharing is off') + '</b>: newcomers are not given access. ') +
+      (set.testMode ? '<b>Test mode</b>: the join/leave emails only reach admins.' : 'Both are emailed.');
+  }
+  $('#chMode').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (b) setChMode(b.dataset.mode); });
+  $('#chBin').addEventListener('change', () => fillPeople($('#chOut'), $('#chBin').value, true));
+  $('#swA').addEventListener('change', () => fillPeople($('#swAm'), $('#swA').value));
+  $('#swB').addEventListener('change', () => fillPeople($('#swBm'), $('#swB').value));
+  $('#chInEmail').addEventListener('input', () => {
+    const m = state && (state.teamList || []).find(x => x.email === $('#chInEmail').value.trim().toLowerCase());
+    const name = $('#chInName');
+    // a Team email always brings its own name (never keep the previous person's); an outside email starts empty
+    if (m) name.value = autoName = m.name;
+    else if (name.value === autoName) name.value = autoName = '';
+  });
+  $('#unpList').addEventListener('click', e => {
+    const b = e.target.closest('[data-place]'); if (!b) return;
+    const m = state.unpaired.find(x => x.email === b.dataset.place);
+    setChMode('replace');
+    $('#chInEmail').value = m.email; $('#chInName').value = autoName = m.name;
+    $('#chCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('#chBin').focus();
+  });
+  function changeSummary(p) {
+    return '<li><span class="mono">' + esc(p.binome) + '</span> · ' +
+      (p.out ? '<span class="from">' + esc(p.out.name || p.out.email) + '</span>' : '<i class="muted">empty seat</i>') + ' → ' +
+      (p.inn ? '<b>' + esc(p.inn.name) + '</b>' : '<i class="muted">nobody</i>') + '</li>';
   }
 
   function renderMove() {

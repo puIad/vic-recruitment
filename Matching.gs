@@ -105,7 +105,8 @@ function bestNameMatch(typed, items, getName, minHits) {
  * Validate / auto-correct one interview-form answer.
  * input: {submitter, typedBinome, typedInterviewee, typedFirstChoice}
  * ctx:   {binomes:[{code,tag,members:[{name,email}]}],
- *         interviewees:[{code,binome,name,firstChoice}], interviewed:{code:true}, nameByEmail:{}}
+ *         interviewees:[{code,binome,name,firstChoice}], interviewed:{code:true}, nameByEmail:{},
+ *         former:{binomeCode:[emails of members who left it]}}
  * returns {binome, interviewee, result: OK|AUTOCORRECTED|FLAGGED, notes[], alerts[{severity,type,msg,binome,notifyBinome}]}
  */
 function resolveInterview(input, ctx) {
@@ -128,6 +129,7 @@ function resolveInterview(input, ctx) {
     return !!v;
   };
   const subBinomes = ctx.binomes.filter(b => memberVia(b, sub));
+  const wasMember = b => ((ctx.former || {})[b.code] || []).indexOf(sub) >= 0;
   let substantive = false;
   const tB = String(input.typedBinome || '').trim(), tI = String(input.typedInterviewee || '').trim();
   let corrected = false;
@@ -181,13 +183,16 @@ function resolveInterview(input, ctx) {
   } else if (typedB && typedB.code === assigned.code) {
     out.binome = assigned.code;
     if (!isMember(assigned, sub)) {
-      const trusted = (ctx.trustedBackups || []).indexOf(sub) >= 0;
-      flag(trusted ? 'INFO' : 'MEDIUM', 'BACKUP_INTERVIEWER', iv.code + ' interviewed under ' + assigned.code + ' but the form was sent by ' +
-        subName + ', who is not in that binome (backup interviewer?).', assigned.code, false);
+      const trusted = (ctx.trustedBackups || []).indexOf(sub) >= 0, former = wasMember(assigned);
+      flag(trusted || former ? 'INFO' : 'MEDIUM', 'BACKUP_INTERVIEWER', iv.code + ' interviewed under ' + assigned.code + ' but the form was sent by ' +
+        subName + (former ? ', a former member of that binome.' : ', who is not in that binome (backup interviewer?).'), assigned.code, false);
     }
   } else if (isMember(assigned, sub)) {
     out.binome = assigned.code; corrected = true; substantive = true;
     out.notes.push('Binome corrected from "' + (tB || 'empty') + '" to ' + assigned.code + ' (submitter is a member)');
+  } else if (wasMember(assigned)) {
+    out.binome = assigned.code; corrected = true; substantive = true;
+    out.notes.push('Binome corrected from "' + (tB || 'empty') + '" to ' + assigned.code + ' (submitter is a former member of it)');
   } else {
     out.binome = assigned.code;
     flag('MEDIUM', 'BINOME_MISMATCH', iv.code + ' belongs to ' + assigned.code + ' but the form says "' + (tB || 'empty') +

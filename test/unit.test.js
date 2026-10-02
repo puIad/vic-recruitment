@@ -40,6 +40,15 @@ const ivs = [
 ];
 const R = (inp, interviewed) => X.resolveInterview(inp, { binomes, interviewees: ivs, interviewed: interviewed || {}, nameByEmail: { 'dj@x': 'Djamila Cherifi', 'dhia@x': 'Dhiaa Djouallah' } });
 
+t('interview: former member of the binome = INFO, wrong code corrected', () => {
+  const RF = (inp, former) => X.resolveInterview(inp, { binomes, interviewees: ivs, interviewed: {}, nameByEmail: {}, former: former });
+  let r = RF({ submitter: 'old@x', typedBinome: 'B.05', typedInterviewee: 'IT.52' }, { 'B.05': ['old@x'] });
+  assert.deepStrictEqual([r.result, r.alerts.length, r.alerts[0].severity, r.alerts[0].type], ['OK', 1, 'INFO', 'BACKUP_INTERVIEWER']);
+  r = RF({ submitter: 'old@x', typedBinome: 'B.44', typedInterviewee: 'IT.52' }, { 'B.05': ['old@x'] });
+  assert.deepStrictEqual([r.result, r.binome, r.alerts.length], ['AUTOCORRECTED', 'B.05', 0]);
+  r = RF({ submitter: 'old@x', typedBinome: 'B.05', typedInterviewee: 'IT.52' }, {});
+  assert.strictEqual(r.alerts[0].severity, 'MEDIUM', 'a stranger is still MEDIUM');
+});
 t('interview: exact OK', () => {
   const r = R({ submitter: 'dj@x', typedBinome: 'B.05', typedInterviewee: 'IT.52', typedFirstChoice: 'IT' });
   assert.strictEqual(r.result, 'OK'); assert.strictEqual(r.binome, 'B.05'); assert.strictEqual(r.interviewee, 'IT.52');

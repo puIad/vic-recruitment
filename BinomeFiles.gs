@@ -49,11 +49,19 @@ function markInterviewInFile_(ctx, b, code, text) {
   if (row > 0) sh.getRange(row, idx_(BF_H)['Interview Form'] + 1).setValue(text);
 }
 
+function binomeFileTitle_(b, members) {
+  const first = n => String(n || '').trim().split(/\s+/)[0] || '?';
+  return '[' + b.code + '] ' + members.map(m => first(m.name)).join(' & ');
+}
+function binomeFileNote_(b, members) {
+  return 'Binome ' + b.code + ' (' + b.tag + ')\n' + members.map(m => m.name).join(' & ') +
+    '\n\nGreen columns are yours: Contacted, Interview Date (date picker), Interview Time (HH:mm), Notes.\n' +
+    'Everything else is filled automatically.';
+}
+
 function createBinomeFile_(b, members) {
   const s = S_();
-  const first = n => String(n || '').trim().split(/\s+/)[0] || '?';
-  const title = '[' + b.code + '] ' + members.map(m => first(m.name)).join(' & ');
-  const file = SpreadsheetApp.create(title);
+  const file = SpreadsheetApp.create(binomeFileTitle_(b, members));
   try { file.setSpreadsheetLocale('fr_FR'); } catch (e) { /* ignore */ }
   file.setSpreadsheetTimeZone(s.TIMEZONE);
   DriveApp.getFileById(file.getId()).moveTo(DriveApp.getFolderById(CONFIG.BINOME_FOLDER_ID));
@@ -63,9 +71,7 @@ function createBinomeFile_(b, members) {
   sh.getRange(1, 1, 1, BF_H.length).setValues([BF_H]).setFontWeight('bold').setBackground('#1f3864').setFontColor('#ffffff').setWrap(true);
   BF_EDITABLE.forEach(h => sh.getRange(1, F[h] + 1).setBackground('#38761d'));
   sh.setFrozenRows(1); sh.setFrozenColumns(3);
-  sh.getRange(1, 1).setNote('Binome ' + b.code + ' (' + b.tag + ')\n' + members.map(m => m.name).join(' & ') +
-    '\n\nGreen columns are yours: Contacted, Interview Date (date picker), Interview Time (HH:mm), Notes.\n' +
-    'Everything else is filled automatically.');
+  sh.getRange(1, 1).setNote(binomeFileNote_(b, members));
   const maxRows = 400;
   if (sh.getMaxRows() < maxRows) sh.insertRowsAfter(sh.getMaxRows(), maxRows - sh.getMaxRows());
   sh.getRange(2, F.Contacted + 1, maxRows - 1, 1).setDataValidation(
