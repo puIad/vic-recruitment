@@ -262,6 +262,7 @@ function coverPlan_(ctx, a) {
     if (outEmail && !g.out) errors.push(outEmail + ' is not in ' + g.b.code + '.');
   });
   if (!errors.length) list.forEach(g => { const e = editCheck_(g.b); if (e) errors.push(e); });
+  if (!errors.length) list.forEach(g => { if (!g.b.fileId) warnings.push(g.b.code + ' has no binome sheet (empty File ID): the cover still counts in the interview check, but ' + (name || email) + ' gets no view access.'); });
   if (!errors.length && !teamMembers_(ctx).some(m => m.email === email)) warnings.push(name + ' (' + email + ') is not in the Team tab (outside the OT).');
   if (list.length > 1) warnings.push('These interviewees belong to ' + list.length + ' binomes: one cover per binome is created.');
   return { errors: errors, warnings: warnings, inn: { name: name, email: email }, groups: list };

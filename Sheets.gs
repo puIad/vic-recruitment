@@ -141,7 +141,8 @@ function alertBuffer_(ctx) {
       const minRank = SEV_RANK[String(s.INSTANT_EMAIL_MIN_SEVERITY).toUpperCase()] || SEV_RANK.MEDIUM;
       const admins = adminEmails_();
       const perRecipient = {};
-      const push = (email, a) => { (perRecipient[email] = perRecipient[email] || []).push(a); };
+      // one copy of each alert per person, even if they are admin + member + cover, or cover the same interviewee twice
+      const push = (email, a) => { const list = perRecipient[email] = perRecipient[email] || []; if (list.indexOf(a) < 0) list.push(a); };
       let n = t.data.length;
       const rows = fresh.map(a => {
         n++;

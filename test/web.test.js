@@ -127,6 +127,18 @@ assert.strictEqual(st.team.source, '', 'registration responses are never mistake
   const b = call('webState').binomes.find(x => x.code === bin), member = b.people[0].email;
   const cb = call('webState').binomes.find(x => x.code !== bin && x.people.length), coverer = cb.people[0];
   const other = ivs.find(i => i.binome !== bin && i.binome !== cb.code);
+  // an alert reaches each person once, even if they are admin and cover the same interviewee twice
+  run("(function(){ var c = loadCtx_(); c.coverMap = {}; c.coverMap['" + mine[0].code + "'] = ['admin@g.enp.edu.dz', 'admin@g.enp.edu.dz']; __outbox.length = 0;" +
+    " c.alerts.add({ severity: 'HIGH', type: 'DEDUP_TEST', code: '" + mine[0].code + "', binome: '" + bin + "', msg: 'dedup-probe', key: 'DEDUP', notifyBinome: true }); c.alerts.flush(); })()");
+  assert.strictEqual(run("__outbox.filter(m => m.to === 'admin@g.enp.edu.dz').map(m => m.htmlBody.split('dedup-probe').length - 1).join()"), '1', 'one copy per recipient');
+  run("(function(){ var c = loadCtx_(); c.alerts.resolveWhere(function (r) { return r[c.alerts.table.I.Key] === 'DEDUP'; }, 'RESOLVED'); c.alerts.flush(); })()");
+  // a binome without a sheet: cover allowed, with a warning that no view access is given
+  const binSh2 = "ss_().getSheetByName('Binomes')", brow = run(binSh2 + ".getDataRange().getValues().findIndex(r => r[0] === '" + bin + "') + 1");
+  const fid = run(binSh2 + '.getRange(' + brow + ', 9).getValue()');
+  run(binSh2 + '.getRange(' + brow + ', 9).setValue("")');
+  out = call('webRun', 'addCover', { codes: mine[0].code, inEmail: coverer.email, dryRun: true });
+  assert(out.result.errors.length === 0 && out.result.warnings.some(w => /no binome sheet/.test(w)), JSON.stringify(out.result));
+  run(binSh2 + '.getRange(' + brow + ', 9).setValue("' + fid + '")');
   out = call('webRun', 'addCover', { codes: 'XX.99', inEmail: coverer.email, dryRun: true });
   assert(/Unknown interviewee code/.test(out.result.errors[0]));
   out = call('webRun', 'addCover', { codes: mine[0].code + 'x, 5' + mine[0].code, inEmail: coverer.email, dryRun: true });
