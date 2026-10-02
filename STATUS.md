@@ -24,8 +24,7 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
   (set in `appsscript.json`: runs as the visitor, open to g.enp.edu.dz accounts). Google asks each visitor for
   permission once; anyone who can **edit the Master** gets the dashboard, other accounts get `NoAccess.html` with a
   switch-account button. Add an admin = share the Master with them as editor (same URL, no extra deployment).
-- Code change: `npm test && npx clasp push && npx clasp update-deployment AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT`
-  (same URL, new version).
+- Code change: `npm run deploy` (updates this web app **and** the API deployment below; same URLs, new version).
 
 ## Vercel front (PLAN-VERCEL.md) — built 2026-10-01
 - `web/` = static `index.html` (port of Index.html) + Node functions `api/{login,callback,run,logout}.js`, deployed by Vercel
