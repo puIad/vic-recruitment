@@ -349,6 +349,18 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   const back = call('webState').binomes.find(b => b.code === c.code);
   assert.deepStrictEqual([!!back, back && back.tag, open().length], [true, c.tag, 0], 'code and tag back, nothing open');
+  // a Binomes row deleted by hand: Revert rebuilds it, Created date included
+  const binRow = () => run(`(function(){var d=ss_().getSheetByName('Binomes').getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) return d[i];})()`);
+  const created = run(`(function(){var d=ss_().getSheetByName('Binomes').getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) return d[i][${BI.Created}].toISOString();})()`);
+  run(`(function(){var sh=ss_().getSheetByName('Binomes'),d=sh.getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) { sh.deleteRow(i+1); return; }})()`);
+  call('webRun', 'sync');
+  a = open().find(e => e.binome === c.code && /deleted from the Binomes tab/.test(e.msg));
+  assert(a && a.severity === 'HIGH', J(open()));
+  fix('Revert', [a.id]);
+  assert.strictEqual(run(`(function(){var d=ss_().getSheetByName('Binomes').getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) return d[i][${BI.Created}].toISOString();})()`), created, 'Created kept');
+  assert(binRow(), 'row back');
+  call('webRun', 'sync');
+  assert.deepStrictEqual(open(), [], 'restored: nothing open');
   binSet(c.code, 'Status', 'PAUSED');
   call('webRun', 'sync');
   assert.strictEqual(open().length, 0, 'ACTIVE ↔ PAUSED is taken as intended');

@@ -181,8 +181,8 @@ function sendNewIntervieweeMails_(ctx) {
 /* ---------- the main cycle ---------- */
 
 function runCycle_(opts) {
+  const t0 = Date.now(); // the integrity budget counts from here, so the wait for the lock is included
   return withLock_(() => {
-    const t0 = Date.now();
     _settings = null;
     const ctx = loadCtx_();
     detectEdits_(ctx);
@@ -208,6 +208,6 @@ function onFormSubmitHandler(e) { runCycle_({ pull: false, timing: false, tracke
 
 /** Trigger: every N minutes. Also available from the menu. */
 function syncAll() { runCycle_({ pull: true, timing: true, tracker: true }); }
-function syncAllForce() { const c = runCycle_({ pull: true, force: true, timing: true, tracker: true, integrity: 240000 }); toast_(c ? 'Full sync done. ' + c.integrityMsg : 'Busy, try again in a minute.'); }
-/** Menu: a sync plus the full check of every binome sheet. */
-function integrityCheck() { const c = runCycle_({ pull: true, timing: true, tracker: true, integrity: 270000 }); say_(c ? c.integrityMsg : 'Busy, try again in a minute.'); }
+function syncAllForce() { const c = runCycle_({ pull: true, force: true, timing: true, tracker: true, integrity: 180000 }); toast_(c ? 'Full sync done. ' + c.integrityMsg : 'Busy, try again in a minute.'); }
+/** Menu: a sync plus the full check of every binome sheet. Budgets leave ~2 min of the 6-min limit for the writes after the check. */
+function integrityCheck() { const c = runCycle_({ pull: true, timing: true, tracker: true, integrity: 200000 }); say_(c ? c.integrityMsg : 'Busy, try again in a minute.'); }

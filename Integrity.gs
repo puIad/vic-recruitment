@@ -11,8 +11,10 @@ const EDIT_GROUPS = {
   bin: { Binome: ['Binome'], seat1: ['Member 1', 'Email 1'], seat2: ['Member 2', 'Email 2'], Tag: ['Tag'], Status: ['Status'], File: ['File', 'File ID'] },
   iv: { Code: ['Code'], Binome: ['Binome'], Status: ['Status'], Person: ['First Name', 'Family Name', 'Email'] },
 };
-const BASE_F = { bin: [].concat.apply([], Object.keys(EDIT_GROUPS.bin).map(g => EDIT_GROUPS.bin[g])),
-  iv: [].concat.apply([], Object.keys(EDIT_GROUPS.iv).map(g => EDIT_GROUPS.iv[g])) };
+// Stored but never compared: only needed to rebuild a deleted row on Revert (dates kept as ISO text)
+const BASE_KEEP = { bin: ['Created'], iv: [] };
+const BASE_F = { bin: [].concat.apply([], Object.keys(EDIT_GROUPS.bin).map(g => EDIT_GROUPS.bin[g])).concat(BASE_KEEP.bin),
+  iv: [].concat.apply([], Object.keys(EDIT_GROUPS.iv).map(g => EDIT_GROUPS.iv[g])).concat(BASE_KEEP.iv) };
 
 /** {bin: {code: entry}, iv: {responseKey: entry | 0}} (0 = a row deleted on purpose: its registration is not re-imported), or null. */
 function loadBaseline_() {
@@ -51,7 +53,8 @@ function saveBaseline_(base) {
 function editEntry_(kind, row, H) {
   const e = {};
   BASE_F[kind].forEach(f => {
-    let v = String(row[H[f]] == null ? '' : row[H[f]]).trim();
+    const raw = row[H[f]];
+    let v = raw instanceof Date ? (isNaN(raw) ? '' : raw.toISOString()) : String(raw == null ? '' : raw).trim();
     if (/^Email/.test(f)) v = v.toLowerCase();
     if (kind === 'bin' && f === 'Status') v = v.toUpperCase();
     e[f] = v;
@@ -287,7 +290,7 @@ function revertEdit_(ctx, p, group) {
   if (p.kind === 'bin') {
     const B = ctx.bin.I;
     if (group === '*') {
-      const row = BIN_H.map(h => (h in p.prev ? p.prev[h] : ''));
+      const row = BIN_H.map(h => (h === 'Created' ? (p.prev.Created ? new Date(p.prev.Created) : '') : h in p.prev ? p.prev[h] : ''));
       ctx.bin.sh.getRange(ctx.bin.sh.getLastRow() + 1, 1, 1, BIN_H.length).setValues([row]);
       ctx.bin.data.push(row);
     } else {
