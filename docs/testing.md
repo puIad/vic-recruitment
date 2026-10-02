@@ -81,8 +81,10 @@ HIGH "put in front of"; remove the sheet protection → MEDIUM.
 4. Put the limits back to 1000 while testing goes on (they were raised so the test rows stay quiet); 24 / 48 / 12 before launch.
 
 **Clean up at the end:** delete every TEST row (Registration Responses, Interviewees, Alerts) and the test rows in the
-binome sheets, Sync now, then **Accept edits** on the resulting manual edits. Other admins using Change members / Cover
-/ Apply need edit access to the Binome Sheets folder.
+binome sheets, Sync now, then **Accept edits** on the resulting manual edits. Also delete the Team row added in A (or,
+if A reused an existing member, put back their Team row and Exclude as they were), undo the B member changes with
+Change members, and end any active cover. Other admins using Change members / Cover / Apply need edit access to the
+Binome Sheets folder.
 
 ### Test data currently in the live Master (from 2026-10-01)
 
