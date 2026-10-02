@@ -108,7 +108,8 @@ st = call('webState');
 
 addRegistrations(12, 3);
 out = call('webRun', 'sync');
-assert.deepStrictEqual(out.messages, ['Full sync done ✅']);
+assert.deepStrictEqual(out.messages, ['Full sync done ✅\nIntegrity check: 7 of 7 binome sheets checked, 0 problems found.']);
+assert.deepStrictEqual(call('webState').alerts.filter(a => /MANUAL_EDIT|INTEGRITY/.test(a.type)), [], 'the script never flags its own writes');
 backdateAssignments(3);
 call('webRun', 'sync');
 st = call('webState');
@@ -269,6 +270,182 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   run('DriveApp.getFileById = __rv');
   assert.deepStrictEqual([/^ENDED/.test(st2()), revokeAlert(), viewers()], [true, false, 0], 'next sync: removed, alert closed');
+}
+// ---- Phase D: hand edits against the baseline, odd values, full check of the binome sheets ----
+{
+  const J = JSON.stringify;
+  const ivRows = () => run("ss_().getSheetByName('Interviewees').getDataRange().getValues().slice(1)");
+  const IVI = run('idx_(IV_H)');
+  const ivRow = code => ivRows().find(r => r[IVI.Code] === code);
+  const ivSet = (code, col, v) => run(`(function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
+    for(var i=1;i<d.length;i++) if(d[i][${IVI.Code}]===${J(code)}) sh.getRange(i+1,${IVI[col] + 1}).setValue(${J(v)});})()`);
+  const open = type => call('webState').alerts.filter(a => a.type === (type || 'MANUAL_EDIT'));
+  const fix = (mode, ids) => call('webRun', 'edit' + mode, { ids: ids });
+  const fileOf = code => call('webState').binomes.find(b => b.code === code).fileUrl.split('/d/')[1];
+  const fileCodes = code => run(`__files[${J(fileOf(code))}].obj.sheets[0].cells.slice(1).map(function(r){return r[0];}).filter(String)`);
+  const BI = run('idx_(BIN_H)');
+  const binSet = (code, col, v) => run(`(function(){var sh=ss_().getSheetByName('Binomes'),d=sh.getDataRange().getValues();
+    for(var i=1;i<d.length;i++) if(d[i][0]===${J(code)}) sh.getRange(i+1,${BI[col] + 1}).setValue(${J(v)});})()`);
+  const active = call('webState').binomes.filter(b => b.status === 'ACTIVE');
+  const ivs = call('webState').interviewees.filter(x => x.status === 'ASSIGNED');
+
+  // an interviewee moved by hand in the Interviewees tab: flagged, then Apply moves the sheet rows properly
+  const x = ivs[0], to = active.find(b => b.code !== x.binome);
+  ivSet(x.code, 'Binome', to.code);
+  call('webRun', 'sync');
+  let a = open().find(e => e.code === x.code);
+  assert(a && /moved from .* by hand/.test(a.msg) && J(a.fix) === J(['apply', 'revert', 'accept']), J(open()));
+  assert(fileCodes(x.binome).includes(x.code) && !fileCodes(to.code).includes(x.code), 'the sheets were not touched');
+  out = fix('Apply', [a.id]);
+  assert(/moved to/.test(out.messages[0]), out.messages[0]);
+  assert(!fileCodes(x.binome).includes(x.code) && fileCodes(to.code).includes(x.code), 'Apply moved the sheet row');
+  call('webRun', 'sync');
+  assert.deepStrictEqual(open(), [], 'applied: nothing left to flag');
+
+  // a status typed by hand is put back (it is computed), a cleared binome is put back instead of re-assigned
+  const y = ivs[1];
+  ivSet(y.code, 'Status', 'INTERVIEWED'); ivSet(y.code, 'Binome', '');
+  call('webRun', 'sync');
+  assert.deepStrictEqual([ivRow(y.code)[IVI.Status], ivRow(y.code)[IVI.Binome], open().length], ['ASSIGNED', y.binome, 0], 'both put back, nothing left open');
+  assert(fileCodes(y.binome).includes(y.code));
+
+  // a row deleted by hand is not re-imported with a new code; Revert restores it, Accept forgets it for good
+  const n0 = ivRows().length, del = code => run(`(function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
+    for(var i=1;i<d.length;i++) if(d[i][${IVI.Code}]===${J(code)}) { sh.deleteRow(i+1); return; }})()`);
+  const z = ivs[2];
+  del(z.code);
+  call('webRun', 'sync');
+  a = open().find(e => e.code === z.code);
+  assert(a && /deleted from the Interviewees tab/.test(a.msg), J(open()));
+  assert.strictEqual(ivRows().length, n0 - 1, 'not re-imported under a new code');
+  out = fix('Revert', [a.id]);
+  assert(/restored/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual([ivRows().length, ivRow(z.code)[IVI.Binome]], [n0, z.binome], 'same code, same binome');
+  del(z.code);
+  call('webRun', 'sync');
+  fix('Accept', [open().find(e => e.code === z.code).id]);
+  call('webRun', 'sync');
+  assert.deepStrictEqual([ivRows().length, open().length], [n0 - 1, 0], 'accepted: stays deleted, never re-imported');
+
+  // Binomes tab: a member swapped by hand → Apply runs Change members (history row, file title); a tag / code edit → Revert
+  const c = active.find(b => b.people.length === 2 && b.code !== to.code);
+  const nChanges = run("ss_().getSheetByName('Member Changes').getLastRow()");
+  binSet(c.code, 'Member 2', 'Late Member'); binSet(c.code, 'Email 2', 'late@g.enp.edu.dz');
+  call('webRun', 'sync');
+  a = open().find(e => e.binome === c.code && /Member 2 of/.test(e.msg));
+  assert(a && a.severity === 'MEDIUM', J(open()));
+  out = fix('Apply', [a.id]);
+  assert(/→ Late Member/.test(out.messages[0]), out.messages[0]);
+  assert.strictEqual(run("ss_().getSheetByName('Member Changes').getLastRow()"), nChanges + 1, 'logged like a Change members');
+  assert(/Late/.test(run(`__files[${J(fileOf(c.code))}].obj.title`)), 'file renamed');
+  call('webRun', 'sync');
+  assert.deepStrictEqual(open(), [], 'applied, and brought in by Change members: not "missing from Team"');
+  binSet(c.code, 'Tag', c.tag === 'ALL' ? 'IT & HR' : 'ALL'); binSet(c.code, 'Binome', 'B.99');
+  call('webRun', 'sync');
+  const ed = open();
+  assert.deepStrictEqual(ed.map(e => e.severity).sort(), ['HIGH', 'MEDIUM'], J(ed));
+  out = fix('Revert', ed.map(e => e.id));
+  assert.strictEqual(out.messages[0].split('\n').length, 2, out.messages[0]);
+  call('webRun', 'sync');
+  const back = call('webState').binomes.find(b => b.code === c.code);
+  assert.deepStrictEqual([!!back, back && back.tag, open().length], [true, c.tag, 0], 'code and tag back, nothing open');
+  // a Binomes row deleted by hand: Revert rebuilds it, Created date included
+  const binRow = () => run(`(function(){var d=ss_().getSheetByName('Binomes').getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) return d[i];})()`);
+  const created = run(`(function(){var d=ss_().getSheetByName('Binomes').getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) return d[i][${BI.Created}].toISOString();})()`);
+  run(`(function(){var sh=ss_().getSheetByName('Binomes'),d=sh.getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) { sh.deleteRow(i+1); return; }})()`);
+  call('webRun', 'sync');
+  a = open().find(e => e.binome === c.code && /deleted from the Binomes tab/.test(e.msg));
+  assert(a && a.severity === 'HIGH', J(open()));
+  fix('Revert', [a.id]);
+  assert.strictEqual(run(`(function(){var d=ss_().getSheetByName('Binomes').getDataRange().getValues();for(var i=1;i<d.length;i++) if(d[i][0]===${J(c.code)}) return d[i][${BI.Created}].toISOString();})()`), created, 'Created kept');
+  assert(binRow(), 'row back');
+  call('webRun', 'sync');
+  assert.deepStrictEqual(open(), [], 'restored: nothing open');
+  binSet(c.code, 'Status', 'PAUSED');
+  call('webRun', 'sync');
+  assert.strictEqual(open().length, 0, 'ACTIVE ↔ PAUSED is taken as intended');
+  binSet(c.code, 'Status', 'ACTIVE');
+  call('webRun', 'sync');
+
+  // Team tab: a duplicated email is flagged, and closes itself once fixed
+  run("(function(){var sh=ss_().getSheetByName('Team');sh.appendRow(['Copy','sara@g.enp.edu.dz','IT','IT',false,'']);})()");
+  call('webRun', 'sync');
+  assert(open().some(e => /twice in the Team tab/.test(e.msg) && !e.fix.length), J(open()));
+  run("(function(){var sh=ss_().getSheetByName('Team');sh.deleteRow(sh.getLastRow());})()");
+  call('webRun', 'sync');
+  assert.strictEqual(open().length, 0);
+
+  // odd values typed by the binome: a year typo is flagged to them, and closes once corrected
+  const w = call('webState').interviewees.find(v => v.status === 'ASSIGNED' && v.binome === to.code);
+  const fileSet = (code, col, v) => run(`(function(){var c=__files[${J(fileOf(to.code))}].obj.sheets[0].cells,F=idx_(BF_H);
+    for(var i=1;i<c.length;i++) if(c[i][0]===${J(code)}) c[i][F[${J(col)}]]=${J(v)}; __touch(${J(fileOf(to.code))});})()`);
+  fileSet(w.code, 'Contacted', 'Yes'); fileSet(w.code, 'Interview Date', '15/10/2025'); fileSet(w.code, 'Interview Time', '14:00');
+  call('webRun', 'sync');
+  assert(open('ODD_VALUE').some(e => e.code === w.code && /typo in the year/.test(e.msg)), J(open('ODD_VALUE')));
+  fileSet(w.code, 'Interview Date', '15/10/2026');
+  call('webRun', 'sync');
+  assert(!open('ODD_VALUE').some(e => e.code === w.code), 'corrected: closed');
+
+  // full check of the sheets: a row missing from a sheet, protection removed, a tab put in front
+  const book = `__files[${J(fileOf(to.code))}].obj`;
+  run(`${book}.sheets[0].cells = ${book}.sheets[0].cells.filter(function(r){return r[0]!==${J(w.code)};})`);
+  run(`${book}.sheets[0].protections = []`);
+  call('webRun', 'integrity', {});
+  let ig = open('INTEGRITY').filter(e => e.binome === to.code);
+  assert(ig.some(e => e.severity === 'HIGH' && /missing from its sheet/.test(e.msg)) && ig.some(e => /no longer protected/.test(e.msg)), J(ig));
+  out = call('webRun', 'reassign', { code: w.code, binome: to.code });
+  assert(/put back in the sheet/.test(out.messages[0]), out.messages[0]);
+  assert(fileCodes(to.code).includes(w.code));
+  run(`${book}.sheets[0].protect()`);
+  run(`${book}.sheets.unshift(new MockSheet(${book}, 'Notes'))`);
+  call('webRun', 'integrity', {});
+  ig = open('INTEGRITY').filter(e => e.binome === to.code);
+  assert(ig.length === 1 && /put in front of/.test(ig[0].msg), J(ig));
+  run(`${book}.sheets.shift()`);
+  call('webRun', 'integrity', {});
+  assert.deepStrictEqual(open('INTEGRITY'), [], 'all fixed: the check closes its alerts');
+  // the cursor is a binome code: if the binome it points to is gone, the check resumes at the next one, never skips it
+  run('__props.INTEG_NEXT = "B.035"');
+  assert(/0 of 7/.test(run('integrityCheck_(loadCtx_(), 0)')));
+  assert.strictEqual(run('__props.INTEG_NEXT'), 'B.04');
+
+  // a move whose target sheet refuses the row: nothing moves, the row stays in the old sheet
+  const mv = call('webState').interviewees.find(v => v.status === 'ASSIGNED' && v.binome !== to.code);
+  run(`var __ap = appendToBinomeFile_; appendToBinomeFile_ = function (c, b, r, carry) { if (b.code === ${J(to.code)}) throw new Error('quota'); return __ap(c, b, r, carry); }`);
+  out = call('webRun', 'reassign', { code: mv.code, binome: to.code });
+  run('appendToBinomeFile_ = __ap');
+  assert(/Nothing moved/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual([ivRow(mv.code)[IVI.Binome], fileCodes(mv.binome).includes(mv.code), fileCodes(to.code).includes(mv.code)], [mv.binome, true, false]);
+
+  // the rollback fails too: the row is in neither sheet, so what the binome wrote is kept in the Master and the row can be rebuilt
+  const mvFile = `__files[${J(fileOf(mv.binome))}].obj.sheets[0].cells`;
+  run(`(function(){var c=${mvFile},F=idx_(BF_H);for(var i=1;i<c.length;i++) if(c[i][0]===${J(mv.code)}) { c[i][F.Contacted]='Yes'; c[i][F.Notes]='call after 18h'; }})()`);
+  run('appendToBinomeFile_ = function () { throw new Error("quota"); }');
+  out = call('webRun', 'reassign', { code: mv.code, binome: to.code });
+  run('appendToBinomeFile_ = __ap');
+  assert(/missing from both binome sheets/.test(out.messages[0]) && (out.messages[0].match(/quota/g) || []).length === 2, out.messages[0]);
+  assert.deepStrictEqual([ivRow(mv.code)[IVI.Binome], ivRow(mv.code)[IVI.Contacted], ivRow(mv.code)[IVI['Binome Notes']], fileCodes(mv.binome).includes(mv.code)],
+    [mv.binome, 'Yes', 'call after 18h', false], 'data kept in the Master');
+  assert(open('FILE_ERROR').some(e => e.severity === 'HIGH' && e.code === mv.code), 'HIGH alert saved');
+  out = call('webRun', 'reassign', { code: mv.code, binome: mv.binome });
+  assert(/put back in the sheet/.test(out.messages[0]), out.messages[0]);
+  assert.strictEqual(run(`(function(){var c=${mvFile},F=idx_(BF_H);for(var i=1;i<c.length;i++) if(c[i][0]===${J(mv.code)}) return c[i][F.Contacted] + '|' + c[i][F.Notes];})()`), 'Yes|call after 18h', 'row rebuilt with its data');
+  call('webRun', 'resolve', { ids: open('FILE_ERROR').map(e => e.id) });
+  assert.deepStrictEqual(open(), [], 'no hand edits left');
+
+  // the baseline spans several script properties (9 KB each, accents count double) and shrinks cleanly
+  run('var __b0 = loadBaseline_(), __n0 = __props.BASELINE_N');
+  run(`(function(){ var b = loadBaseline_(); for (var i = 0; i < 400; i++) b.iv['k' + i] = { Code: 'IT.' + i, Binome: 'B.01', Status: 'ASSIGNED',
+    'First Name': 'Éloïse Zoé', 'Family Name': 'Bénédicte', Email: 'e' + i + '@g.enp.edu.dz' }; saveBaseline_(b); })()`);
+  const n = Number(run('__props.BASELINE_N'));
+  assert(n > 3, 'split in ' + n);
+  for (let i = 0; i < n; i++) assert(Buffer.byteLength(run('__props.BASELINE_' + i)) <= 9216, 'chunk ' + i + ' fits');
+  assert.strictEqual(J(run('loadBaseline_().iv.k399')), J({ Code: 'IT.399', Binome: 'B.01', Status: 'ASSIGNED', 'First Name': 'Éloïse Zoé', 'Family Name': 'Bénédicte', Email: 'e399@g.enp.edu.dz' }));
+  assert.strictEqual(run('(function(){ var iv = loadBaseline_().iv; return Object.keys(iv).filter(function(k){ return iv[k] === 0; }).length; })()'), 1, 'the accepted deletion is remembered');
+  run('saveBaseline_(__b0)');
+  assert.deepStrictEqual([run('__props.BASELINE_N'), run('"BASELINE_" + (' + n + ' - 1) in __props')], [run('__n0'), false], 'old chunks deleted');
+  call('webRun', 'sync');
+  assert.deepStrictEqual(open(), [], 'baseline intact after the round trip');
 }
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');

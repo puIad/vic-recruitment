@@ -9,6 +9,7 @@ function onOpen() {
     .addItem('3 · Lock binomes & create their sheets', 'lockBinomes')
     .addSeparator()
     .addItem('Sync now', 'syncAllForce')
+    .addItem('Check integrity of the binome sheets', 'integrityCheck')
     .addItem('Reassign selected interviewee…', 'reassignSelected')
     .addItem('Mark selected alerts as resolved', 'resolveSelectedAlerts')
     .addItem('Re-share binome sheets with current members', 'reshareBinomeFiles')

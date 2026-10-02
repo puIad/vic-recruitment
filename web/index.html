@@ -281,9 +281,11 @@ a.kpi:hover .go { opacity: 1; transform: none; }
 .seg { display: inline-flex; background: var(--line-2); border-radius: 9px; padding: 3px; }
 .seg button { border: 0; background: transparent; padding: 5px 10px; border-radius: 7px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.seg button { display: inline-flex; align-items: center; gap: 6px; }
+.seg button { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .seg button::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c, transparent); box-shadow: inset 0 0 0 1.5px var(--c, var(--ink-3)); }
 .seg button[data-sev="HIGH"] { --c: var(--high); } .seg button[data-sev="MEDIUM"] { --c: var(--med); } .seg button[data-sev="INFO"] { --c: var(--info); }
+.seg button[data-sev="EDITS"] { --c: var(--navy-2); }
+.seg button[data-sev="EDITS"]::before { border-radius: 2px; transform: rotate(45deg); }
 .seg button b { font-family: var(--mono); font-weight: 600; color: var(--ink-3); }
 .alert-list { max-height: min(640px, calc(100vh - 300px)); min-height: 240px; overflow: auto; }
 .alert-row { display: grid; grid-template-columns: 22px 66px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 20px; border-bottom: 1px solid var(--line-2); cursor: pointer; transition: background .12s; }
@@ -296,6 +298,10 @@ a.kpi:hover .go { opacity: 1; transform: none; }
 .alert-row .refs span { font: 500 11.5px var(--mono); color: var(--navy-2); background: color-mix(in srgb, var(--navy) 9%, transparent); padding: 1px 6px; border-radius: 5px; }
 .alert-row .msg { font-size: 13.5px; color: var(--ink-2); margin-top: 3px; overflow-wrap: anywhere; }
 .alert-row time { font: 500 11.5px var(--mono); color: var(--ink-3); white-space: nowrap; padding-top: 2px; }
+.alert-row .fix { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.alert-row .fix .btn { padding: 4px 10px; font-size: 12.5px; }
+.alert-row .fix .btn.apply { border-color: color-mix(in srgb, var(--navy-2) 45%, var(--line)); color: var(--navy-2); }
+.alert-row .fix .btn.apply:hover { background: color-mix(in srgb, var(--navy) 8%, transparent); }
 .list-foot { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-top: 1px solid var(--line); background: var(--card); border-radius: 0 0 var(--radius) var(--radius); }
 .empty { padding: 38px 20px; text-align: center; color: var(--ink-3); }
 .empty strong { display: block; font: 700 17px var(--display); color: var(--ink); margin-bottom: 4px; }
@@ -394,6 +400,7 @@ dialog[open] { animation: pop .18s cubic-bezier(.2,.9,.3,1.2); }
   .step .dot { width: 30px; height: 30px; font-size: 12px; }
   .step .actions { grid-column: 2; }
   .alert-row { grid-template-columns: 20px 60px minmax(0, 1fr); padding: 12px 16px; }
+  .seg { flex-wrap: wrap; max-width: 100%; }
   .alert-row time { grid-column: 3; padding: 0; }
   .card-head, .card-body, .steps, .list-foot { padding-left: 16px; padding-right: 16px; }
   .bin-row { padding: 11px 16px; grid-template-columns: 46px minmax(0, 1fr) 70px 26px; }
@@ -654,6 +661,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
                 <button aria-pressed="false" data-sev="HIGH">High<b id="c-HIGH">0</b></button>
                 <button aria-pressed="false" data-sev="MEDIUM">Medium<b id="c-MEDIUM">0</b></button>
                 <button aria-pressed="false" data-sev="INFO">Info<b id="c-INFO">0</b></button>
+                <button aria-pressed="false" data-sev="EDITS" title="Changes made by hand in the Master's tabs, with Apply / Revert / Accept">Manual edits<b id="c-EDITS">0</b></button>
               </div>
               <input class="input" id="alertSearch" placeholder="Search code, binome, text" style="width:220px" aria-label="Search alerts">
             </div>
@@ -664,6 +672,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
               <input type="checkbox" id="selAll" style="accent-color:var(--accent);width:16px;height:16px"> Select shown
             </label>
             <span class="muted" style="font-size:13px;margin-left:auto" id="selInfo">0 selected</span>
+            <button class="btn sm" data-action="editAccept" disabled title="Take the selected manual edits as they are now"><span class="spin"></span><svg class="i"><use href="#i-check"/></svg>Accept edits</button>
             <button class="btn sm navy" data-action="resolve" disabled><span class="spin"></span><svg class="i"><use href="#i-check"/></svg>Mark resolved</button>
           </div>
         </section>
@@ -755,6 +764,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
             <div class="card-head"><h2 id="h-tools">Maintenance</h2></div>
             <div class="card-body">
               <div class="tools">
+                <div class="tool"><span class="ti"><svg class="i"><use href="#i-sheet"/></svg></span><div><b>Check integrity</b><small>Syncs, then opens every binome sheet: missing or extra rows, moved tabs, lost protection, who can edit. Also runs on Sync now and with the digest.</small></div><button class="btn sm" data-action="integrity"><span class="spin"></span><svg class="i"><use href="#i-check"/></svg>Check</button></div>
                 <div class="tool"><span class="ti"><svg class="i"><use href="#i-mail"/></svg></span><div><b>Send me the digest now</b><small>Syncs, then emails the admins the daily summary.</small></div><button class="btn sm" data-action="digest"><span class="spin"></span><svg class="i"><use href="#i-send"/></svg>Send</button></div>
                 <div class="tool"><span class="ti"><svg class="i"><use href="#i-share"/></svg></span><div><b>Re-share binome sheets</b><small>Adds current members as editors after you swap someone.</small></div><button class="btn sm" data-action="reshare"><span class="spin"></span><svg class="i"><use href="#i-share"/></svg>Re-share</button></div>
                 <div class="tool"><span class="ti"><svg class="i"><use href="#i-sliders"/></svg></span><div><b>Run setup again</b><small>Safe: re-checks tabs, form links and triggers.</small></div><button class="btn sm" data-action="setup"><span class="spin"></span><svg class="i"><use href="#i-play"/></svg>Run</button></div>
@@ -898,7 +908,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   function setBusy(on, btn) {
     busy = on;
     $('#busybar').classList.toggle('on', on);
-    $$('[data-action], #refreshBtn').forEach(b => { b.disabled = on || (b.dataset.action === 'resolve' && !selected.size) || (b.dataset.action === 'draft' && !!(state && state.locked)); });
+    $$('[data-action], #refreshBtn').forEach(b => { b.disabled = on || (b.dataset.action === 'resolve' && !selected.size) || (b.dataset.action === 'editAccept' && !selectedEdits().length) || (b.dataset.action === 'draft' && !!(state && state.locked)); });
+    $$('#alertList [data-fix]').forEach(b => { b.disabled = on; });
     if (btn) btn.classList.toggle('running', on);
   }
   async function run(btn, action, args, label) {
@@ -1011,6 +1022,16 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       if (out && out.result && out.result.done) { ['#chInEmail', '#chInName', '#chReason'].forEach(id => { $(id).value = ''; }); autoName = ''; }
     },
     async digest(btn) { await run(btn, 'digest', {}, 'Digest'); },
+    async integrity(btn) { await run(btn, 'integrity', { budgetMs: 200000 }, 'Check integrity'); }, // ends before Vercel's 300s limit; the next run carries on
+    async editAccept(btn) {
+      const ids = selectedEdits().map(a => a.id);
+      if (!ids.length) return;
+      const ok = await confirmBox('Accept ' + ids.length + ' manual edit' + (ids.length > 1 ? 's' : '') + '?',
+        '<p>The Master keeps these changes as they are now; the script stops flagging them. Nothing else is changed (an interviewee whose row was deleted is also removed from their binome sheet).</p>', 'Accept');
+      if (!ok) return;
+      await run(btn, 'editAccept', { ids: ids }, 'Accept edits');
+      ids.forEach(id => selected.delete(id));
+    },
     async reshare(btn) {
       const ok = await confirmBox('Re-share binome sheets?', '<p>Every current member who is not yet an editor of their binome sheet is added (Google emails them).</p>', 'Re-share');
       if (ok) await run(btn, 'reshare', {}, 'Re-share');
@@ -1090,12 +1111,13 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
 
   function shownAlerts() {
     const q = $('#alertSearch').value.trim().toLowerCase();
-    return state.alerts.filter(a => (sevFilter === 'ALL' || a.severity === sevFilter) &&
+    return state.alerts.filter(a => (sevFilter === 'ALL' || (sevFilter === 'EDITS' ? a.type === 'MANUAL_EDIT' : a.severity === sevFilter)) &&
       (!q || (a.id + ' ' + a.type + ' ' + a.code + ' ' + a.binome + ' ' + a.msg).toLowerCase().indexOf(q) >= 0));
   }
   function renderAlerts() {
     const ac = state.alertCounts;
     ['HIGH', 'MEDIUM', 'INFO'].forEach(k => { $('#c-' + k).textContent = ac[k] || 0; });
+    $('#c-EDITS').textContent = state.alerts.filter(a => a.type === 'MANUAL_EDIT').length;
     $('#al-count').textContent = $('#tb-al').textContent = state.alerts.length;
     $('#tb-al').classList.toggle('hot', !!ac.HIGH);
     const ids = new Set(state.alerts.map(a => a.id));
@@ -1106,15 +1128,41 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       '<input type="checkbox" aria-label="Select ' + esc(a.id) + '"' + (selected.has(a.id) ? ' checked' : '') + '>' +
       '<span class="sev ' + esc(a.severity) + '">' + esc(a.severity) + '</span>' +
       '<div class="what"><span class="type">' + esc(a.type) + '</span><span class="refs">' + (a.code ? '<span>' + esc(a.code) + '</span>' : '') + (a.binome ? '<span>' + esc(a.binome) + '</span>' : '') + '</span>' +
-      '<div class="msg">' + esc(a.msg) + '</div></div>' +
+      '<div class="msg">' + esc(a.msg) + '</div>' + fixButtons(a) + '</div>' +
       '<time title="' + esc(a.id) + '">' + esc(a.created) + '</time></div>').join('')
       : '<div class="empty"><strong>' + (state.alerts.length ? 'No match' : 'All clear') + '</strong>' + (state.alerts.length ? 'Nothing fits this filter.' : 'No open alerts right now.') + '</div>';
     updateSel(list);
+  }
+  const FIX = {
+    apply: ['Apply properly', 'Do this change with the proper tool (Change members / Move interviewee): sheets, sharing and history follow'],
+    revert: ['Revert', 'Put back the value the script had written'],
+    accept: ['Accept as is', 'Keep the change as it is now and stop flagging it'],
+  };
+  function fixButtons(a) {
+    if (!a.fix || !a.fix.length) return '';
+    return '<div class="fix">' + a.fix.map(f => '<button type="button" class="btn sm' + (f === 'apply' ? ' apply' : '') + '" data-fix="' + f + '" title="' + esc(FIX[f][1]) + '"' +
+      (busy ? ' disabled' : '') + '><span class="spin"></span>' + I(f === 'apply' ? 'wrench' : f === 'revert' ? 'rotate' : 'check') + esc(FIX[f][0]) + '</button>').join('') + '</div>';
+  }
+  const selectedEdits = () => (state ? state.alerts.filter(a => selected.has(a.id) && (a.fix || []).indexOf('accept') >= 0) : []);
+  async function fixOne(btn, a, mode) {
+    if (mode !== 'accept') {
+      const ok = await confirmBox(mode === 'apply' ? 'Apply this change properly?' : 'Revert this change?',
+        '<p class="muted">' + esc(a.msg) + '</p>' + (mode === 'apply'
+          ? '<p>Runs the matching tool with the new values: binome sheets, sharing, the Member Changes history and the emails follow, as if it had been done from the dashboard.</p>'
+          : '<p>Writes back the value the script had before the hand edit.</p>'), FIX[mode][0]);
+      if (!ok) return;
+    }
+    await run(btn, 'edit' + mode.charAt(0).toUpperCase() + mode.slice(1), { ids: [a.id] }, FIX[mode][0] + ' ' + a.id);
+    selected.delete(a.id);
+    refresh(true);
   }
   function updateSel(list) {
     list = list || shownAlerts();
     $('#selInfo').textContent = selected.size + ' selected';
     $('[data-action="resolve"]').disabled = busy || !selected.size;
+    const edits = selectedEdits().length;
+    $('[data-action="editAccept"]').disabled = busy || !edits;
+    $('[data-action="editAccept"]').hidden = !state.alerts.some(a => a.type === 'MANUAL_EDIT');
     const all = $('#selAll');
     all.checked = list.length > 0 && list.every(a => selected.has(a.id));
     all.indeterminate = !all.checked && list.some(a => selected.has(a.id));
@@ -1314,6 +1362,13 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   $('#binSearch').addEventListener('input', () => state && renderBinomes());
   $('#mvCode').addEventListener('input', showMvHint);
   $('#alertList').addEventListener('click', e => {
+    const fixBtn = e.target.closest('[data-fix]');
+    if (fixBtn) {
+      if (busy) return;
+      const a = state.alerts.find(x => x.id === fixBtn.closest('.alert-row').dataset.id);
+      if (a) fixOne(fixBtn, a, fixBtn.dataset.fix);
+      return;
+    }
     const row = e.target.closest('.alert-row'); if (!row) return;
     const id = row.dataset.id;
     if (selected.has(id)) selected.delete(id); else selected.add(id);

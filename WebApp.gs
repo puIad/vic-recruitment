@@ -85,6 +85,7 @@ function webState() {
   });
 
   const open = ctx.alerts.table.data.filter(r => r[A.Status] === 'OPEN');
+  const base = open.some(r => r[A.Type] === 'MANUAL_EDIT') ? loadBaseline_() : null;
   open.forEach(r => { if (perBin[r[A.Binome]]) perBin[r[A.Binome]].open++; });
   const alertCounts = { HIGH: 0, MEDIUM: 0, INFO: 0 };
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
@@ -131,7 +132,8 @@ function webState() {
     alertCounts: alertCounts,
     alerts: open.sort((a, b) => (SEV_RANK[b[A.Severity]] || 0) - (SEV_RANK[a[A.Severity]] || 0)).slice(0, 300).map(r => ({
       id: String(r[A.ID]), created: fmt_(r[A.Created], 'dd/MM HH:mm'), severity: r[A.Severity], type: r[A.Type],
-      code: String(r[A.Interviewee]), binome: String(r[A.Binome]), msg: String(r[A.Message]) })),
+      code: String(r[A.Interviewee]), binome: String(r[A.Binome]), msg: String(r[A.Message]),
+      fix: r[A.Type] === 'MANUAL_EDIT' ? editFixes_(String(r[A.Key]), base) : [] })),
     interviewees: ctx.iv.data.filter(r => r[I.Code]).map(r => ({ code: String(r[I.Code]), binome: String(r[I.Binome]), status: r[I.Status],
       name: (String(r[I['First Name']]) + ' ' + String(r[I['Family Name']])).trim() })),
   };
@@ -181,7 +183,14 @@ function webRun(action, args) {
   try {
     let result = null;
     switch (action) {
-      case 'sync': _webOut.push(runCycle_({ pull: true, force: true, timing: true, tracker: true }) ? 'Full sync done ✅' : 'Busy: another run is in progress, try again in a minute.'); break;
+      // budgetMs: the full sheet check stops in time to end before the Vercel function limit (300s); the next run carries on
+      case 'sync': { const c = runCycle_({ pull: true, force: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 150000 });
+        _webOut.push(c ? 'Full sync done ✅\n' + c.integrityMsg : 'Busy: another run is in progress, try again in a minute.'); break; }
+      case 'integrity': { const c = runCycle_({ pull: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 200000 });
+        _webOut.push(c ? c.integrityMsg : 'Busy: another run is in progress, try again in a minute.'); break; }
+      case 'editApply': result = editFixCore_('apply', args.ids); break;
+      case 'editRevert': result = editFixCore_('revert', args.ids); break;
+      case 'editAccept': result = editFixCore_('accept', args.ids); break;
       case 'importTeam': result = importTeamCore_(args.link, !!args.replace); break;
       case 'draft': draftBinomes(); break;
       case 'lockCheck': result = lockCheck_(); break;

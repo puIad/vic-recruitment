@@ -14,31 +14,63 @@ function reassignSelected() {
 
 function reassignCore_(code, binomeText) {
   code = String(code || '').trim();
-  const pb = parseBinomeCode(binomeText);
   const msg = withLock_(() => {
     const ctx = loadCtx_();
-    const I = ctx.iv.I;
-    const r = ctx.ivByCode[code];
-    const target = pb && ctx.binByCode[pb.code];
-    if (!r) return 'Unknown code ' + code;
-    if (!target || target.status === 'DRAFT') return 'Binome "' + binomeText + '" not found or not locked yet.';
-    if (r[I.Binome] === target.code) return code + ' is already in ' + target.code;
-    const old = ctx.binByCode[r[I.Binome]];
-    const carry = old ? removeFromBinomeFile_(ctx, old, code) : {};
-    r[I.Binome] = target.code;
-    r[I['Assigned At']] = ctx.now;
-    appendToBinomeFile_(ctx, target, r, carry);
-    r[I.Status] = statusOf_(ctx, r);
-    ctx.mailNew[target.code] = [r];
-    ctx.alerts.add({ severity: 'INFO', type: 'REASSIGNED', status: 'AUTO-FIXED', code: code, binome: target.code,
-      msg: code + ' moved from ' + (old ? old.code : 'nobody') + ' to ' + target.code + ' by ' + Session.getActiveUser().getEmail(), key: '' });
+    detectEdits_(ctx);
+    let done;
+    try { done = moveInterviewee_(ctx, code, binomeText) + ' ✅'; } catch (e) {
+      if (ctx.ivDirty) { saveTable_(ctx.iv); commitBase_(ctx); ctx.alerts.flush(); } // the row was lost from both sheets: keep its data and the alert
+      return e.message;
+    }
     saveTable_(ctx.iv);
+    commitBase_(ctx);
     ctx.alerts.flush();
     sendNewIntervieweeMails_(ctx);
     buildTracker_(ctx);
-    return code + ' moved to ' + target.code + ' ✅';
+    return done;
   }, 60000);
   say_(msg || 'Busy, try again in a minute.');
+}
+
+/** Move an interviewee to another binome's sheet, carrying Contacted/Date/Notes. The caller saves. Throws the reason it can't. */
+function moveInterviewee_(ctx, code, binomeText) {
+  const I = ctx.iv.I, r = ctx.ivByCode[code], pb = parseBinomeCode(binomeText), target = pb && ctx.binByCode[pb.code];
+  if (!r) throw new Error('Unknown code ' + code);
+  if (!target || target.status === 'DRAFT') throw new Error('Binome "' + binomeText + '" not found or not locked yet.');
+  if (r[I.Binome] === target.code) {
+    // already there: only puts back a row missing from its sheet (the integrity check reports those)
+    const sh = binomeSheet_(ctx, target);
+    if (!sh || findFileRow_(sh, code) > 0) throw new Error(code + ' is already in ' + target.code);
+    appendToBinomeFile_(ctx, target, r, { contacted: r[I.Contacted], date: r[I['Interview Date']], time: r[I['Interview Time']], notes: r[I['Binome Notes']],
+      form: r[I['Interview Submitted At']] ? '✅ ' + fmt_(r[I['Interview Submitted At']], 'dd/MM HH:mm') : '' });
+    return code + ' put back in the sheet of ' + target.code;
+  }
+  const old = ctx.binByCode[r[I.Binome]], before = { binome: r[I.Binome], at: r[I['Assigned At']] };
+  const carry = old ? removeFromBinomeFile_(ctx, old, code) : {};
+  r[I.Binome] = target.code;
+  r[I['Assigned At']] = ctx.now;
+  try { appendToBinomeFile_(ctx, target, r, carry); } catch (e) {
+    // the target sheet refused the row: put everything back where it was, then report
+    r[I.Binome] = before.binome; r[I['Assigned At']] = before.at;
+    let lost = '';
+    if (old) { try { appendToBinomeFile_(ctx, old, r, carry); } catch (e2) { lost = e2.message; } }
+    if (lost) {
+      // in neither sheet now: keep what the binome had written in the Master, so the row can be rebuilt from it
+      r[I.Contacted] = carry.contacted || ''; r[I['Interview Date']] = carry.date || ''; r[I['Interview Time']] = carry.time || ''; r[I['Binome Notes']] = carry.notes || '';
+      ctx.ivDirty = true;
+      const msg = code + ' is missing from both binome sheets: the sheet of ' + target.code + ' refused it (' + e.message + ') and putting it back in ' + old.code +
+        ' failed (' + lost + '). Their Contacted / Date / Notes are kept in the Interviewees tab: Move interviewee ' + code + ' to ' + old.code + ' to rebuild the row.';
+      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: code, binome: old.code, key: '', msg: msg });
+      throw new Error('Nothing moved, but ' + msg);
+    }
+    throw new Error('Nothing moved: could not write the sheet of ' + target.code + ' (' + e.message + ').');
+  }
+  r[I.Status] = statusOf_(ctx, r);
+  (ctx.mailNew[target.code] = ctx.mailNew[target.code] || []).push(r);
+  indexCtx_(ctx);
+  ctx.alerts.add({ severity: 'INFO', type: 'REASSIGNED', status: 'AUTO-FIXED', code: code, binome: target.code,
+    msg: code + ' moved from ' + (old ? old.code : 'nobody') + ' to ' + target.code + ' by ' + Session.getActiveUser().getEmail(), key: '' });
+  return code + ' moved to ' + target.code;
 }
 
 function resolveSelectedAlerts() {
@@ -71,7 +103,7 @@ function resolveAlertRows_(sh, rows) {
 /* ---------- daily digest ---------- */
 
 function sendDailyDigest() {
-  const ctx = runCycle_({ pull: true, timing: true, tracker: true, wait: 120000 }) || loadCtx_();
+  const ctx = runCycle_({ pull: true, timing: true, tracker: true, wait: 120000, integrity: 200000 }) || loadCtx_();
   const I = ctx.iv.I, A = ctx.alerts.table.I;
   const count = {}; ctx.iv.data.forEach(r => { count[r[I.Status]] = (count[r[I.Status]] || 0) + 1; });
   const open = ctx.alerts.table.data.filter(r => r[A.Status] === 'OPEN')

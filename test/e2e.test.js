@@ -157,4 +157,7 @@ run('__outbox.length = 0; sendDailyDigest()');
 const digest = run('__outbox.find(m => /digest/.test(m.subject))');
 assert(digest && digest.to === 'admin@g.enp.edu.dz');
 console.log('Digest subject:', digest.subject);
+// the whole run only wrote through the script: no hand edit flagged, and the digest's sheet check found nothing
+const flagged = run('master.getSheetByName("Alerts").getDataRange().getValues().filter(r => /MANUAL_EDIT|INTEGRITY/.test(r[3]))');
+assert.strictEqual(JSON.stringify(flagged), '[]', 'false manual-edit / integrity alerts');
 console.log('\nE2E OK');

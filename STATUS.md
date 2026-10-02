@@ -69,7 +69,21 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
   binome in Member Changes (Binomes tab untouched). View-only access to the sheet (not in TEST_MODE), counts as a member
   for those codes in the interview check, copied on their timing alerts, emailed the candidates; the binome is told.
   Ends by itself once those interviews are done or moved (each sync), or by hand ("Active covers" card).
-- Next: D = manual-edit detection (baseline + integrity check).
+- **D (Integrity.gs):** script properties `BASELINE_*` hold what the script last wrote in the Binomes (locked rows) and
+  Interviewees tabs. Every writing run (sync, Move, Change members, the fixes) compares the tabs with it first: a hand edit
+  becomes a `MANUAL_EDIT` alert (admins only) with **Apply properly / Revert / Accept as is** on the dashboard ("Manual
+  edits" filter, bulk Accept). Auto-fixed with an INFO note: a typed Status, a cleared Binome. An Interviewees row deleted
+  by hand is no longer re-imported under a new code (Revert restores it, Accept drops it and its sheet row). ACTIVE ↔ PAUSED
+  is taken as intended. Team tab: duplicate emails, members missing from it. `ODD_VALUE`: interview year typo / before
+  registration (binome emailed), >30 days ahead, time outside 07–23h, date while "Not yet"/"Withdrew", a form for someone
+  who withdrew, an unknown Final Dep. `INTEGRITY`: full check of every binome sheet (codes missing/extra/twice, protected
+  columns differing, protection removed, header changed or a tab put in front, title code, editors vs members + covers
+  when sharing is on) on Sync now, the digest and Maintenance › Check integrity; time-boxed, resumes where it stopped
+  (`INTEG_NEXT`). Move interviewee to its own binome puts a missing sheet row back. First run after deploy takes the
+  baseline silently: run **Check integrity** once right after deploying.
+- Deploy note (2026-10-02): `.claspignore` listed files one by one and missed `Members.gs`, so B and C were live without it
+  (Change members failed; after C every sync failed, 18:09–18:17). Hotfix pushed as web app @21 / API @22; the allow-list
+  is now `*.gs` / `*.html`.
 
 ## Live test in progress (paused 2026-10-01 22:30)
 - Master state: 49 binomes already **locked/ACTIVE** (under v1), files created, not shared. v2 Setup still not run

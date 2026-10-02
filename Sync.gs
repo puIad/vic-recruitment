@@ -181,17 +181,21 @@ function sendNewIntervieweeMails_(ctx) {
 /* ---------- the main cycle ---------- */
 
 function runCycle_(opts) {
+  const t0 = Date.now(); // the integrity budget counts from here, so the wait for the lock is included
   return withLock_(() => {
     _settings = null;
     const ctx = loadCtx_();
+    detectEdits_(ctx);
     processRegistrations_(ctx);
     assignUnassigned_(ctx);
     processInterviews_(ctx);
     if (opts.pull) pullBinomeFiles_(ctx, opts.force);
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });
     endFinishedCovers_(ctx);
-    if (opts.timing) timingAlerts_(ctx);
+    if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); }
+    if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity);
     saveTable_(ctx.iv);
+    commitBase_(ctx); // before the mails: if they fail, the tabs and the baseline still agree
     ctx.alerts.flush();
     sendNewIntervieweeMails_(ctx);
     if (opts.tracker) buildTracker_(ctx);
@@ -204,4 +208,6 @@ function onFormSubmitHandler(e) { runCycle_({ pull: false, timing: false, tracke
 
 /** Trigger: every N minutes. Also available from the menu. */
 function syncAll() { runCycle_({ pull: true, timing: true, tracker: true }); }
-function syncAllForce() { runCycle_({ pull: true, force: true, timing: true, tracker: true }); toast_('Full sync done'); }
+function syncAllForce() { const c = runCycle_({ pull: true, force: true, timing: true, tracker: true, integrity: 180000 }); toast_(c ? 'Full sync done. ' + c.integrityMsg : 'Busy, try again in a minute.'); }
+/** Menu: a sync plus the full check of every binome sheet. Budgets leave ~2 min of the 6-min limit for the writes after the check. */
+function integrityCheck() { const c = runCycle_({ pull: true, timing: true, tracker: true, integrity: 200000 }); say_(c ? c.integrityMsg : 'Busy, try again in a minute.'); }

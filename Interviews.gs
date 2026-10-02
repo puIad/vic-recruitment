@@ -56,6 +56,11 @@ function processInterviews_(ctx) {
     const logRowNumber = ctx.log.data.length + 1;
 
     const ivRow = res.interviewee ? ctx.ivByCode[res.interviewee] : null;
+    const odd = (check, msg) => ctx.alerts.add({ severity: 'INFO', type: 'ODD_VALUE', code: res.interviewee || String(get(row, H.interviewee)),
+      binome: res.binome, msg: msg + ' [Interview Log row ' + logRowNumber + ']', key: 'INT|' + check + '|' + key });
+    if (ivRow && String(ivRow[I.Contacted]).trim() === 'Withdrew') odd('WITHDREW', 'Interview form received for ' + res.interviewee + ', who is marked "Withdrew" in the binome sheet');
+    const finalDep = String(get(row, H.finalDep)).trim();
+    if (finalDep && !normDept(finalDep)) odd('FINAL_DEP', 'Final department "' + finalDep + '" on the interview form is not IT, COMM, FLER or HR');
     if (ivRow) {
       const first = !ivRow[I['Interview Submitted At']];
       if (first) {

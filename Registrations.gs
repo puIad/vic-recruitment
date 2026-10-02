@@ -84,6 +84,8 @@ function processRegistrations_(ctx) {
     const typed = String(get(row, H.typed)).trim();
     const key = responseKey_(ts, collected || typed, r + 1);
     if (ctx.ivKeys[key]) continue;
+    // a row deleted by hand stays aside (MANUAL_EDIT) instead of coming back with a new code; Revert restores it (ctx.restore)
+    if (ctx.restore ? !ctx.restore[key] : ctx.base && key in ctx.base.iv) continue;
 
     const c1raw = String(get(row, H.c1)).trim();
     const rec = { ts: ts, collected: collected, typedEmail: typed, first: String(get(row, H.first)).trim(),
@@ -110,6 +112,13 @@ function processRegistrations_(ctx) {
     out[I.Status] = ST.UNASSIGNED;
     ctx.iv.data.push(out);
     ctx.ivKeys[key] = true;
+    if (ctx.restore) {
+      const old = ctx.restore[key];
+      out[I.Code] = old.Code; out[I.Binome] = old.Binome;
+      out[I.Status] = old.Status === ST.DUPLICATE ? ST.DUPLICATE : statusOf_(ctx, out);
+      if (out[I.Code]) ctx.ivByCode[out[I.Code]] = out;
+      continue;
+    }
 
     if (chk.duplicateOf) {
       out[I.Status] = ST.DUPLICATE;
