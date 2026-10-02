@@ -102,6 +102,7 @@ assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPA
   assert.deepStrictEqual(call('webState').unpaired, [], 'placed again: nobody unpaired');
   assert(run('formerMembers_()["' + b1.code + '"].includes("' + leaving + '")'), 'the interview check knows who left');
 }
+
 st = call('webState');
 st = call('webState');
 
@@ -118,6 +119,65 @@ assert.strictEqual(st.interviewees.length, 12);
 assert(st.alerts.length > 0 && st.alerts.every(a => a.id && a.severity), 'open alerts listed');
 assert(st.binomes.some(b => b.assigned > 0));
 assert.strictEqual(st.team.source, '', 'registration responses are never mistaken for a team list');
+
+// ---- temporary cover, linked by interviewee code ----
+{
+  const ivs = call('webState').interviewees.filter(i => ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status) && i.binome);
+  const bin = ivs.find(i => ivs.filter(j => j.binome === i.binome).length >= 2).binome, mine = ivs.filter(i => i.binome === bin).slice(0, 2);
+  const b = call('webState').binomes.find(x => x.code === bin), member = b.people[0].email;
+  const cb = call('webState').binomes.find(x => x.code !== bin && x.people.length), coverer = cb.people[0];
+  const other = ivs.find(i => i.binome !== bin && i.binome !== cb.code);
+  // an alert reaches each person once, even if they are admin and cover the same interviewee twice
+  run("(function(){ var c = loadCtx_(); c.coverMap = {}; c.coverMap['" + mine[0].code + "'] = ['admin@g.enp.edu.dz', 'admin@g.enp.edu.dz']; __outbox.length = 0;" +
+    " c.alerts.add({ severity: 'HIGH', type: 'DEDUP_TEST', code: '" + mine[0].code + "', binome: '" + bin + "', msg: 'dedup-probe', key: 'DEDUP', notifyBinome: true }); c.alerts.flush(); })()");
+  assert.strictEqual(run("__outbox.filter(m => m.to === 'admin@g.enp.edu.dz').map(m => m.htmlBody.split('dedup-probe').length - 1).join()"), '1', 'one copy per recipient');
+  run("(function(){ var c = loadCtx_(); c.alerts.resolveWhere(function (r) { return r[c.alerts.table.I.Key] === 'DEDUP'; }, 'RESOLVED'); c.alerts.flush(); })()");
+  // a binome without a sheet: cover allowed, with a warning that no view access is given
+  const binSh2 = "ss_().getSheetByName('Binomes')", brow = run(binSh2 + ".getDataRange().getValues().findIndex(r => r[0] === '" + bin + "') + 1");
+  const fid = run(binSh2 + '.getRange(' + brow + ', 9).getValue()');
+  run(binSh2 + '.getRange(' + brow + ', 9).setValue("")');
+  out = call('webRun', 'addCover', { codes: mine[0].code, inEmail: coverer.email, dryRun: true });
+  assert(out.result.errors.length === 0 && out.result.warnings.some(w => /no binome sheet/.test(w)), JSON.stringify(out.result));
+  run(binSh2 + '.getRange(' + brow + ', 9).setValue("' + fid + '")');
+  out = call('webRun', 'addCover', { codes: 'XX.99', inEmail: coverer.email, dryRun: true });
+  assert(/Unknown interviewee code/.test(out.result.errors[0]));
+  out = call('webRun', 'addCover', { codes: mine[0].code + 'x, 5' + mine[0].code, inEmail: coverer.email, dryRun: true });
+  assert.deepStrictEqual(out.result.errors, ['Unknown interviewee code "' + mine[0].code + 'x".'], 'a suffix is not trimmed to a valid code; "5IT.01" is no code');
+  out = call('webRun', 'addCover', { codes: mine[0].code, inEmail: member, dryRun: true });
+  assert(/already in/.test(out.result.errors[0]), 'a member cannot cover their own binome');
+  out = call('webRun', 'addCover', { codes: mine.map(i => i.code.toLowerCase().replace('.', ' ')).join(', ') + ' ' + other.code, inEmail: coverer.email, outEmail: member, dryRun: true });
+  assert(out.result.errors.some(e => /is not in/.test(e)), 'the unavailable member must be in every covered binome: ' + JSON.stringify(out.result.errors));
+  out = call('webRun', 'addCover', { codes: mine.map(i => i.code).join(', ') + ', ' + other.code, inEmail: coverer.email, dryRun: true });
+  assert.deepStrictEqual([out.result.errors.length, out.result.groups.length], [0, 2], 'grouped per binome');
+  assert(out.result.warnings.some(w => /2 binomes/.test(w)));
+  out = call('webRun', 'addCover', { codes: mine.map(i => i.code).join(' '), inEmail: coverer.email, outEmail: member, reason: 'exams' });
+  assert(/covers .* for /.test(out.messages[0]), out.messages[0]);
+  let st2 = call('webState');
+  assert.deepStrictEqual(st2.covers.map(c => [c.binome, c.email, c.codes.join(',')]), [[bin, coverer.email, mine.map(i => i.code).join(',')]]);
+  assert.deepStrictEqual(call('webState').binomes.find(x => x.code === bin).people, b.people, 'the Binomes row is untouched');
+  assert(run('coverMap_(loadCtx_())["' + mine[0].code + '"][0]') === coverer.email);
+  // the cover person sends the interview form for a covered code: accepted as a member, no MEDIUM alert
+  run("ss_().getSheetByName('Interview Responses') || null");
+  const ir = run("(function(){ var s = ss_().getSheets().filter(function(x){ return x.formUrl && x.formUrl.indexOf(CONFIG.INTERVIEW_FORM_ID) >= 0; })[0]; return s.name; })()");
+  run("ss_().getSheetByName('" + ir + "').cells.push([new Date(), '" + coverer.email + "', '" + bin + "', '" + mine[0].code + "', 'intro', 'IT', 'IT', ''])");
+  call('webRun', 'sync');
+  const logRow = run("ss_().getSheetByName('Interview Log').getDataRange().getValues().slice(-1)[0]");
+  assert.deepStrictEqual([logRow[5], logRow[6]], [mine[0].code, 'OK'], 'cover interview logged OK: ' + logRow[7]);
+  st2 = call('webState');
+  assert.deepStrictEqual(st2.covers[0].live, [mine[1].code], 'one covered interview left');
+  out = call('webRun', 'endCover', { row: st2.covers[0].row });
+  assert(/no longer covers/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual(call('webState').covers, []);
+  out = call('webRun', 'endCover', { row: st2.covers[0].row });
+  assert(/not active any more/.test(out.messages[0]));
+  // auto-end: a cover whose interviewee is moved to another binome ends at the next sync
+  call('webRun', 'addCover', { codes: mine[1].code, inEmail: coverer.email });
+  call('webRun', 'reassign', { code: mine[1].code, binome: other.binome });
+  call('webRun', 'sync');
+  assert.deepStrictEqual(call('webState').covers, [], 'cover ended by itself');
+  assert(/ENDED .*interviews done/.test(run("ss_().getSheetByName('Member Changes').getDataRange().getValues().slice(-1)[0][10]")));
+}
+st = call('webState');
 
 const iv = st.interviewees[0];
 const target = st.binomes.find(b => b.code !== iv.binome && b.status === 'ACTIVE' && (b.tag === 'ALL' || b.tag.includes(iv.code.split('.')[0])));
@@ -156,6 +216,59 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(run('__files["' + id + '"].editors.includes("' + gone + '")'));
   call('webRun', 'changeMember', { binome: b.code, outEmail: gone, inName: 'New Person', inEmail: 'newp@g.enp.edu.dz' });
   assert(run('__files["' + id + '"].editors.includes("newp@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("' + gone + '")'), 'editors follow the change');
+}
+{ // sharing on: a cover person gets view-only access for the cover, taken back when it ends
+  const iv = call('webState').interviewees.find(i => ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status) && i.binome);
+  const id = call('webState').binomes.find(x => x.code === iv.binome).fileUrl.split('/d/')[1];
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  assert(run('(__files["' + id + '"].viewers || []).includes("standin@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("standin@g.enp.edu.dz")'), 'view-only');
+  call('webRun', 'endCover', { row: call('webState').covers[0].row });
+  assert(!run('(__files["' + id + '"].viewers || []).includes("standin@g.enp.edu.dz")'), 'access taken back');
+  const viewers = () => run('(__files["' + id + '"].viewers || []).filter(e => e === "standin@g.enp.edu.dz").length');
+  // access that predates the cover is kept
+  run('__files["' + id + '"].viewers.push("standin@g.enp.edu.dz")');
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  call('webRun', 'endCover', { row: call('webState').covers[0].row });
+  assert.strictEqual(viewers(), 1, 'pre-existing view access left alone');
+  run('__files["' + id + '"].viewers = []');
+  // two covers by the same person in one binome: the access lives until the last one ends
+  const two = call('webState').interviewees.filter(i => i.binome === iv.binome && ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status));
+  assert(two.length >= 2, 'test data: two pending interviewees in one binome'); {
+    call('webRun', 'addCover', { codes: two[0].code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+    call('webRun', 'addCover', { codes: two[1].code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+    let cs = call('webState').covers;
+    call('webRun', 'endCover', { row: cs[0].row });
+    assert.strictEqual(viewers(), 1, 'kept while another cover still needs it');
+    call('webRun', 'endCover', { row: call('webState').covers[0].row });
+    assert.strictEqual(viewers(), 0, 'taken back with the last cover (the mark was handed over)');
+  }
+  // Drive refuses the removal: the cover stops applying at once, the removal is retried each sync until it works
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  const row = call('webState').covers[0].row;
+  run('var __rv = DriveApp.getFileById; DriveApp.getFileById = function (x) { var f = __rv(x); f.removeViewer = function () { throw new Error("Service error: Drive"); }; return f; }');
+  out = call('webRun', 'endCover', { row: row });
+  assert(/could not be removed yet/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual([call('webState').covers.length, viewers()], [0, 1], 'cover over, access still there');
+  const status = () => run("ss_().getSheetByName('Member Changes').getRange(" + row + ", 11).getValue()");
+  assert.strictEqual(status(), 'ENDING · view access still to remove');
+  const revokeAlert = () => call('webState').alerts.some(a => a.type === 'FILE_ERROR' && /could not be removed yet/.test(a.msg));
+  call('webRun', 'sync');
+  assert(revokeAlert() && viewers() === 1, 'still refused: alert open, access still there');
+  run('DriveApp.getFileById = __rv');
+  call('webRun', 'sync');
+  assert.deepStrictEqual([viewers(), revokeAlert()], [0, false], 'retried: access removed, alert closed');
+  assert(/^ENDED .*view access removed/.test(status()), status());
+  // auto-end in a sync where Drive fails once then would work: the alert is kept for the next sync, never left open on an ENDED row
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  const row2 = call('webState').covers[0].row, other = call('webState').binomes.find(x => x.code !== iv.binome && x.status === 'ACTIVE').code;
+  run('var __fails = 1; DriveApp.getFileById = function (x) { var f = __rv(x), rv = f.removeViewer; f.removeViewer = function (e) { if (__fails-- > 0) throw new Error("Service error: Drive"); return rv(e); }; return f; }');
+  call('webRun', 'reassign', { code: iv.code, binome: other });
+  call('webRun', 'sync');
+  const st2 = () => run("ss_().getSheetByName('Member Changes').getRange(" + row2 + ", 11).getValue()");
+  assert.deepStrictEqual([st2(), revokeAlert()], ['ENDING · view access still to remove', true], 'failed in this sync: alert saved, retry waits');
+  call('webRun', 'sync');
+  run('DriveApp.getFileById = __rv');
+  assert.deepStrictEqual([/^ENDED/.test(st2()), revokeAlert(), viewers()], [true, false, 0], 'next sync: removed, alert closed');
 }
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');

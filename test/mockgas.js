@@ -131,6 +131,8 @@ var DriveApp = {
     const f = __files[id]; if (!f) throw new Error('no drive file ' + id);
     return { moveTo(folder) { f.parent = folder.id; }, getLastUpdated() { return f.lastUpdated; }, getId() { return id; },
       getEditors() { return f.editors.map(e => ({ getEmail: () => e })); }, addEditor(e) { f.editors.push(e); },
+      getViewers() { return (f.viewers || []).map(e => ({ getEmail: () => e })); },
+      addViewer(e) { (f.viewers = f.viewers || []).push(e); }, removeViewer(e) { f.viewers = (f.viewers || []).filter(x => x !== e); },
       removeEditor(e) { if (e === 'admin@g.enp.edu.dz') throw new Error('Cannot remove the owner'); f.editors = f.editors.filter(x => x !== e); } };
   },
   getFolderById(fid) {

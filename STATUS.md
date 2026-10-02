@@ -60,11 +60,16 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
 ## Binome changes after lock (plan: phases A–D, 2026-10-02)
 - **A (live, web app @15 / API @16):** Draft refuses once binomes are locked; Team members in no locked binome raise
   auto-resolving `UNPAIRED_MEMBER` alerts and show in the dashboard's "Unpaired members" card.
-- **B (Members.gs):** dashboard "Change members" card: replace / remove / fill a seat, or swap two members (dry-run check +
+- **B (live, web app @17 / API @18; Members.gs):** dashboard "Change members" card: replace / remove / fill a seat, or swap two members (dry-run check +
   confirm). Fixes file title + A1 note, gives the newcomer edit access (not in TEST_MODE), removes the leaver, logs to the
   `Member Changes` tab (created on first use or by Setup), emails both. Former members' interview forms are INFO, not MEDIUM.
   `API_VERSION` = 2.
-- Next: C = temporary cover by interviewee code (view-only access), D = manual-edit detection (baseline + integrity check).
+  Admins using it need **edit access to the Binome Sheets folder** (the check refuses otherwise).
+- **C (Members.gs, Cover mode of the same card):** someone stands in for given interviewee codes; one TEMPORARY row per
+  binome in Member Changes (Binomes tab untouched). View-only access to the sheet (not in TEST_MODE), counts as a member
+  for those codes in the interview check, copied on their timing alerts, emailed the candidates; the binome is told.
+  Ends by itself once those interviews are done or moved (each sync), or by hand ("Active covers" card).
+- Next: D = manual-edit detection (baseline + integrity check).
 
 ## Live test in progress (paused 2026-10-01 22:30)
 - Master state: 49 binomes already **locked/ACTIVE** (under v1), files created, not shared. v2 Setup still not run

@@ -25,6 +25,7 @@ function resolverCtx_(ctx) {
     interviewed: interviewed,
     nameByEmail: ctx.nameByEmail,
     former: formerMembers_(),
+    covers: ctx.coverMap,
     trustedBackups: String(S_().TRUSTED_BACKUPS || '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(e => /@/.test(e)),
   };
 }

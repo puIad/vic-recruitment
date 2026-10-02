@@ -221,6 +221,10 @@ a.kpi:hover .go { opacity: 1; transform: none; }
 /* ---------- layout ---------- */
 .col { display: grid; gap: 22px; align-content: start; min-width: 0; }
 .seg.plain button::before { display: none; }
+.cv-preview { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 0; }
+.cv-preview:empty { display: none; }
+.cv-preview .chip b { font-family: var(--mono); }
+.cov-codes { font: 600 12px var(--mono); color: var(--ink-2); }
 .gap-top { margin-top: 12px; }
 .swap-arrow { display: flex; justify-content: center; color: var(--ink-3); margin: 6px 0; }
 .chg-list { margin: 0 0 10px; padding: 0; list-style: none; display: grid; gap: 6px; }
@@ -691,7 +695,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
           <section class="card" aria-labelledby="h-chg" id="chCard">
             <div class="card-head"><h2 id="h-chg">Change members</h2>
               <div class="right"><div class="seg plain" id="chMode" role="group" aria-label="Kind of change">
-                <button type="button" aria-pressed="true" data-mode="replace">Replace</button><button type="button" aria-pressed="false" data-mode="swap">Swap</button>
+                <button type="button" aria-pressed="true" data-mode="replace">Replace</button><button type="button" aria-pressed="false" data-mode="swap">Swap</button><button type="button" aria-pressed="false" data-mode="cover">Cover</button>
               </div></div>
             </div>
             <div class="card-body">
@@ -716,11 +720,25 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
                   <label class="field"><span>Member of B</span><select class="input" id="swBm"><option value="">Choose a binome first</option></select></label>
                 </div>
               </div>
+              <div id="chCover" hidden>
+                <label class="field"><span>Interviewee codes</span><input class="input mono" id="cvCodes" placeholder="IT.07, HR.12" autocomplete="off" spellcheck="false"></label>
+                <div class="cv-preview" id="cvPreview"></div>
+                <div class="grid2 gap-top">
+                  <label class="field"><span>Who covers · email</span><input class="input" id="cvEmail" list="teamEmails" placeholder="name@g.enp.edu.dz" autocomplete="off" spellcheck="false"></label>
+                  <label class="field"><span>Their name</span><input class="input" id="cvName" placeholder="From the Team tab, or type it" autocomplete="off"></label>
+                </div>
+                <label class="field gap-top"><span>Unavailable member <i class="muted">(optional)</i></span><select class="input" id="cvOut"><option value="">Not said</option></select></label>
+              </div>
               <label class="field gap-top"><span>Reason <i class="muted">(optional, kept in the Member Changes tab)</i></span><input class="input" id="chReason" placeholder="e.g. no longer available for interviews" autocomplete="off"></label>
               <datalist id="teamEmails"></datalist>
               <p class="hint" id="chHint"></p>
               <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn navy" data-action="changeMember"><span class="spin"></span><svg class="i"><use href="#i-repeat"/></svg>Review…</button></div>
             </div>
+          </section>
+          <section class="card" aria-labelledby="h-cov" id="covCard" hidden>
+            <div class="card-head"><h2 id="h-cov">Active covers</h2><span class="count" id="cov-count">0</span></div>
+            <p class="unp-help">Temporary stand-ins, linked by interviewee code. Each ends by itself once its interviews are done (or the interviewee moves binome).</p>
+            <div class="unp-list" id="covList"></div>
           </section>
           <section class="card" aria-labelledby="h-unp" id="unpCard" hidden>
             <div class="card-head"><h2 id="h-unp">Unpaired members</h2><span class="count" id="unp-count">0</span></div>
@@ -960,6 +978,21 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       $('#mvCode').value = ''; $('#mvBin').value = ''; showMvHint();
     },
     async changeMember(btn) {
+      if (chMode === 'cover') {
+        const args = { codes: $('#cvCodes').value, inEmail: $('#cvEmail').value.trim(), inName: $('#cvName').value.trim(), outEmail: $('#cvOut').value, reason: $('#chReason').value.trim() };
+        if (!args.codes.trim()) { toast('Type the interviewee code(s) to cover.', true); $('#cvCodes').focus(); return; }
+        const check = await run(btn, 'addCover', Object.assign({ dryRun: true }, args), 'Check cover');
+        if (!check || !check.result || check.result.errors.length) return;
+        const r = check.result;
+        const ok = await confirmBox('Start this cover?', '<ul class="chg-list">' + r.groups.map(g => '<li><b>' + esc(r.inn.name) + '</b> covers <span class="mono">' +
+          esc(g.codes.join(', ')) + '</span> for <span class="mono">' + esc(g.binome) + '</span>' + (g.out ? ' <span class="muted">instead of ' + esc(g.out.name) + '</span>' : '') + '</li>').join('') + '</ul>' +
+          (r.warnings.length ? '<div class="warn-box"><b>Check before applying</b><ul>' + r.warnings.map(w => '<li>' + esc(w) + '</li>').join('') + '</ul></div>' : '') +
+          '<p class="muted">' + esc($('#chHint').textContent) + '</p>', 'Start cover');
+        if (!ok) return;
+        const out = await run(btn, 'addCover', args, 'Cover');
+        if (out && out.result && out.result.done) { ['#cvCodes', '#cvEmail', '#cvName', '#chReason'].forEach(id => { $(id).value = ''; }); autoName = ''; showCover(); }
+        return;
+      }
       const swap = chMode === 'swap';
       const args = swap
         ? { binomeA: $('#swA').value, emailA: $('#swAm').value, binomeB: $('#swB').value, emailB: $('#swBm').value, reason: $('#chReason').value.trim() }
@@ -1024,7 +1057,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     $('#statusbar').innerHTML = total ? STATUS.map(x => '<i style="width:' + (100 * (st[x[0]] || 0) / total) + '%;background:var(' + x[2] + ')" title="' + x[1] + ': ' + (st[x[0]] || 0) + '"></i>').join('') : '';
     $('#legend').innerHTML = STATUS.map(x => '<span style="--c:var(' + x[2] + ')">' + x[1] + ' <b class="mono">' + (st[x[0]] || 0) + '</b></span>').join('');
 
-    renderSteps(); renderAlerts(); renderBinomes(); renderUnpaired(); renderChange(); renderMove(); renderSettings();
+    renderSteps(); renderAlerts(); renderBinomes(); renderUnpaired(); renderCovers(); renderChange(); renderMove(); renderSettings();
   }
 
   function renderSteps() {
@@ -1135,33 +1168,76 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     ['#chBin', '#swA', '#swB'].forEach(id => fillBinSelect($(id)));
     fillPeople($('#chOut'), $('#chBin').value, true);
     fillPeople($('#swAm'), $('#swA').value); fillPeople($('#swBm'), $('#swB').value);
+    showCover();
     $('#teamEmails').innerHTML = (state.teamList || []).map(m => '<option value="' + esc(m.email) + '">' + esc(m.name + ' · ' + m.pairAs) + '</option>').join('');
     showChHint();
   }
   function setChMode(mode) {
     chMode = mode;
     $$('#chMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
-    $('#chReplace').hidden = mode !== 'replace'; $('#chSwap').hidden = mode !== 'swap';
+    $('#chReplace').hidden = mode !== 'replace'; $('#chSwap').hidden = mode !== 'swap'; $('#chCover').hidden = mode !== 'cover';
     showChHint();
   }
   function showChHint() {
     const set = state ? state.settings : {};
+    const mails = set.testMode ? '<b>Test mode</b>: the emails only reach admins.' : '';
+    if (chMode === 'cover') {
+      $('#chHint').innerHTML = 'The Binomes tab is not changed. The cover person counts as a member for these interviews only, gets ' +
+        (set.shareFiles ? '<b>view-only</b> access to the binome sheet' : 'no sheet access (<b>' + (set.testMode ? 'test mode' : 'sharing is off') + '</b>)') +
+        ' and is emailed the candidates; the binome is told and keeps filling its sheet. ' + mails;
+      return;
+    }
     $('#chHint').innerHTML = (chMode === 'swap' ? 'Each member moves to the other binome. ' : 'Interviewees stay with the binome. ') +
       'Leavers lose edit access to the binome sheet; ' +
       (set.shareFiles ? 'newcomers get it. ' : '<b>' + (set.testMode ? 'test mode' : 'sharing is off') + '</b>: newcomers are not given access. ') +
-      (set.testMode ? '<b>Test mode</b>: the join/leave emails only reach admins.' : 'Both are emailed.');
+      (mails || 'Both are emailed.');
   }
   $('#chMode').addEventListener('click', e => { const b = e.target.closest('button[data-mode]'); if (b) setChMode(b.dataset.mode); });
   $('#chBin').addEventListener('change', () => fillPeople($('#chOut'), $('#chBin').value, true));
   $('#swA').addEventListener('change', () => fillPeople($('#swAm'), $('#swA').value));
   $('#swB').addEventListener('change', () => fillPeople($('#swBm'), $('#swB').value));
-  $('#chInEmail').addEventListener('input', () => {
-    const m = state && (state.teamList || []).find(x => x.email === $('#chInEmail').value.trim().toLowerCase());
-    const name = $('#chInName');
-    // a Team email always brings its own name (never keep the previous person's); an outside email starts empty
+  // a Team email always brings its own name (never keep the previous person's); an outside email starts empty
+  [['#chInEmail', '#chInName'], ['#cvEmail', '#cvName']].forEach(([em, nm]) => $(em).addEventListener('input', () => {
+    const m = state && (state.teamList || []).find(x => x.email === $(em).value.trim().toLowerCase());
+    const name = $(nm);
     if (m) name.value = autoName = m.name;
     else if (name.value === autoName) name.value = autoName = '';
+  }));
+  // cover: show who each typed code is, and offer the members of that binome as "unavailable"
+  const DEP = { it: 'IT', info: 'IT', comm: 'COMM', com: 'COMM', hr: 'HR', rh: 'HR', fler: 'FLER', flr: 'FLER' };
+  function typedCodes() {
+    return ($('#cvCodes').value.match(/\b[A-Za-z]{2,13}[\s.\-_#:°]*\d{1,4}[A-Za-z0-9]*/g) || []).map(t => { // same rule as splitCodes_ (Members.gs)
+      const m = t.match(/^([A-Za-z]+)[\s.\-_#:°]*0*(\d+)$/), d = m && DEP[m[1].toLowerCase()];
+      return d ? d + '.' + (m[2].length < 2 ? '0' + m[2] : m[2]) : t;
+    });
+  }
+  function showCover() {
+    const ivs = typedCodes().map(c => ({ c: c, iv: state && state.interviewees.find(i => i.code === c) }));
+    $('#cvPreview').innerHTML = ivs.map(x => x.iv ? '<span class="chip"><b>' + esc(x.iv.code) + '</b> ' + esc(x.iv.name) + ' · ' + esc(x.iv.binome || 'no binome') + '</span>'
+      : '<span class="chip bad"><b>' + esc(x.c) + '</b> unknown</span>').join('');
+    const bins = [...new Set(ivs.filter(x => x.iv && x.iv.binome).map(x => x.iv.binome))];
+    const b = bins.length === 1 && state.binomes.find(x => x.code === bins[0]), sel = $('#cvOut'), keep = sel.value;
+    sel.innerHTML = '<option value="">Not said</option>' + (b ? b.people.map(p => '<option value="' + esc(p.email) + '">' + esc((p.name || p.email) + ' · ' + b.code) + '</option>').join('') : '');
+    sel.disabled = !b;
+    if (b && b.people.some(p => p.email === keep)) sel.value = keep;
+  }
+  $('#cvCodes').addEventListener('input', showCover);
+  $('#covList').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-end-cover]'); if (!btn || busy) return;
+    const c = state.covers.find(x => String(x.row) === btn.dataset.endCover);
+    const ok = await confirmBox('End this cover?', '<p><b>' + esc(c.name) + '</b> stops covering <span class="mono">' + esc(c.codes.join(', ')) + '</span> for <span class="mono">' +
+      esc(c.binome) + '</span>' + (state.settings.shareFiles ? ' and loses view access to its sheet' : '') + '.</p>', 'End cover');
+    if (ok) { await run(btn, 'endCover', { row: c.row }, 'End cover'); refresh(true); }
   });
+  function renderCovers() {
+    const list = state.covers || [];
+    $('#covCard').hidden = !list.length;
+    $('#cov-count').textContent = list.length;
+    $('#covList').innerHTML = list.map(c => '<div class="unp-row"><div title="' + esc(c.reason) + '">' + esc(c.name) + ' <span class="muted">for</span> <span class="mono">' + esc(c.binome) + '</span>' +
+      '<small>' + (c.outName ? 'instead of ' + esc(c.outName) + ' · ' : '') + '<span class="cov-codes">' + c.codes.map(x => c.live.includes(x) ? esc(x) : '<s>' + esc(x) + '</s>').join(', ') + '</span>' +
+      (c.reason ? ' · ' + esc(c.reason) : '') + '</small></div>' +
+      '<span><span class="chip">' + c.live.length + ' left</span><button type="button" class="btn sm" data-end-cover="' + c.row + '">End</button></span></div>').join('');
+  }
   $('#unpList').addEventListener('click', e => {
     const b = e.target.closest('[data-place]'); if (!b) return;
     const m = state.unpaired.find(x => x.email === b.dataset.place);
