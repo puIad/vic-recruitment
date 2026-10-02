@@ -27,6 +27,12 @@ const tabs = run('master.getSheets().map(s=>s.getName())');
 console.log('Tabs:', tabs.join(' | '));
 assert(tabs.includes('Registration Responses') && tabs.includes('Interview Responses') && tabs.includes('Tracker'));
 assert.strictEqual(run('__forms[CONFIG.REGISTRATION_FORM_ID].title'), 'VIC Registrations Form 2026');
+// re-running setup refreshes stale descriptions but keeps edited values
+run(`var _st = master.getSheetByName("Settings"); var _r = _st.getDataRange().getValues().findIndex(r => r[0] === "HOURS_NOT_CONTACTED") + 1;
+  _st.getRange(_r, 2, 1, 2).setValues([[36, "old text"]]); setup();`);
+assert.strictEqual(run('JSON.stringify(_st.getRange(_r, 2, 1, 2).getValues()[0])'),
+  JSON.stringify([36, run('SETTINGS_DEFAULTS.find(r => r[0] === "HOURS_NOT_CONTACTED")[2]')]));
+run('_st.getRange(_r, 2).setValue(24)');
 
 run('__uiQueue.push(""); importTeam()');
 const team = run('master.getSheetByName("Team").getDataRange().getValues().slice(1)');

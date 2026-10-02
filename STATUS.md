@@ -24,8 +24,7 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
   (set in `appsscript.json`: runs as the visitor, open to g.enp.edu.dz accounts). Google asks each visitor for
   permission once; anyone who can **edit the Master** gets the dashboard, other accounts get `NoAccess.html` with a
   switch-account button. Add an admin = share the Master with them as editor (same URL, no extra deployment).
-- Code change: `npm test && npx clasp push && npx clasp update-deployment AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT`
-  (same URL, new version).
+- Code change: `npm run deploy` (updates this web app **and** the API deployment below; same URLs, new version).
 
 ## Vercel front (PLAN-VERCEL.md) — built 2026-10-01
 - `web/` = static `index.html` (port of Index.html) + Node functions `api/{login,callback,run,logout}.js`, deployed by Vercel
@@ -33,7 +32,7 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
   calls the script through the Apps Script API **as the visitor** (`scripts.run`), so Drive still decides access.
 - API executable deployment: `AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU` (Vercel env
   `SCRIPT_API_DEPLOYMENT_ID`). A script change now updates **both** deployments:
-  `npx clasp push && npx clasp update-deployment <WEBAPP_ID> && npx clasp update-deployment <API_ID>`.
+  `npm run deploy` (tests → clasp push → update-deployment on both IDs; never `clasp create-deployment`, it makes a new URL).
   Bump `API_VERSION` in WebApp.gs **and** web/index.html together when webAccess/webState/webRun change shape.
 - Vercel env (Production): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY` (32 random bytes, base64; rotating it
   signs everyone out), `SCRIPT_API_DEPLOYMENT_ID`, `APP_ORIGIN=https://vic-recruitment.vercel.app`.
@@ -57,6 +56,16 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
 - Setup is owner-only from the web; the trigger owner is recorded in script property `TRIGGER_OWNER` (handover: delete it).
 - Local preview of the Vercel app on mock Google: `node test/webdev.js` → http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
   (`?as=stranger@g.enp.edu.dz` = no-access view). Tests: `test/vercel.test.js` (in `npm test`).
+
+## Live test in progress (paused 2026-10-01 22:30)
+- Master state: 49 binomes already **locked/ACTIVE** (under v1), files created, not shared. v2 Setup still not run
+  (no TEST_MODE row → code default TRUE). The 1-min sync trigger **does fire** after the GCP switch (verified).
+- Test data in the live Master (all `TEST-xx` / `sim.*@g.enp.edu.dz`): Registration Responses rows 3–14, Interviewees
+  rows 3–14 (IT.01–04, COMM.01–02, HR.01–03, FLER.02–03 + 1 duplicate), Alerts A-0003+, row 2 of binome files
+  B.03 B.04 B.05 B.06 B.07 B.10 B.17 B.25 (Contacted/Date/Time). Routing, flags, duplicate and sheet pull all verified.
+- Still to run: lower the 3 HOURS_* limits (0.1 / 0.15 / 0.05) to see NOT_CONTACTED / NO_DATE / OVERDUE; fill B.02
+  (Yes, 01/10/2026, 21:00) and B.09 (time `14h3` → BAD_DATE); interview-form cases (clean, `b3`/`comm 1`, name for
+  code, backup interviewer, wrong binome, unknown `IT.99`, duplicate). Then clean up all test rows and set limits back to 1000.
 
 ## Next
 1. Finish the Vercel manual checks with other accounts: an editor, a removed/non-editor ENP account (should see

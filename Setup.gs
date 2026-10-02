@@ -47,7 +47,13 @@ function ensureTabs_(ss) {
   // Settings
   const st = mk(TAB.SETTINGS, ['Setting', 'Value', 'What it does']);
   const have = {};
-  if (st.getLastRow() > 1) st.getRange(2, 1, st.getLastRow() - 1, 1).getValues().forEach(r => { have[r[0]] = true; });
+  if (st.getLastRow() > 1) {
+    // Descriptions belong to the code: refresh them, never touch the values
+    const help = {}; SETTINGS_DEFAULTS.forEach(r => { help[r[0]] = r[2]; });
+    const rows = st.getRange(2, 1, st.getLastRow() - 1, 3).getValues();
+    rows.forEach(r => { have[r[0]] = true; });
+    st.getRange(2, 3, rows.length, 1).setValues(rows.map(r => [help[r[0]] || r[2]]));
+  }
   const add = SETTINGS_DEFAULTS.filter(r => !have[r[0]]).map(r => [r[0], r[0] === 'ADMIN_EMAIL' ? Session.getEffectiveUser().getEmail() : r[1], r[2]]);
   if (add.length) st.getRange(st.getLastRow() + 1, 1, add.length, 3).setValues(add);
   st.setColumnWidth(1, 260); st.setColumnWidth(2, 220); st.setColumnWidth(3, 620);

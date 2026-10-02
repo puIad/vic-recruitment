@@ -1,5 +1,10 @@
 # HANDOFF — VIC Recruitment 2026 automation (Google Sheets + Apps Script)
 
+> **HISTORICAL — superseded by [STATUS.md](STATUS.md) for current state, deploy and next steps.** Still valid: the
+> goal, 2025 analysis, decisions (§3), Drive IDs (§4a) and open questions (§7). Out of date: §4b/§4c (single `Code.gs`
+> in `_inbox`; the source is now this repo, split into feature files), §6 and §8 (paste-into-editor install; the
+> script now ships with `npm run deploy`, which runs the tests, pushes with clasp and updates both deployments).
+
 Session date: 2026-09-30 → 2026-10-01 (Cowork, cloud session)
 Owner: Mourad (Pulad) — mourad_islam.fernane@g.enp.edu.dz
 
