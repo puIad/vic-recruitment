@@ -41,6 +41,49 @@ run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()
 call('webRun', 'sync');
 st = call('webState');
 assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPAIRED_MEMBER')], [0, false], 'Exclude closes it');
+
+// ---- change / swap members after lock ----
+{
+  const bins = st.binomes, two = bins.filter(b => b.people.length === 2);
+  const b1 = two[0], b2 = two[1], solo = bins.find(b => b.people.length === 1);
+  const fileOf = b => b.fileUrl.split('/d/')[1];
+  const changes = () => run("ss_().getSheetByName('Member Changes') ? ss_().getSheetByName('Member Changes').getLastRow() - 1 : 0");
+  const ppl = code => call('webState').binomes.find(b => b.code === code).people.map(p => p.email);
+  const leaving = b1.people[0].email;
+  out = call('webRun', 'changeMember', { binome: b1.code, outEmail: leaving, inEmail: b2.people[0].email, dryRun: true });
+  assert(/already in B\./.test(out.result.errors[0]) && /Swap/.test(out.result.errors[0]), 'someone already in a locked binome is refused');
+  out = call('webRun', 'changeMember', { binome: solo.code, outEmail: solo.people[0].email });
+  assert(/no member left/.test(out.messages[0]), out.messages[0]);
+  out = call('webRun', 'changeMember', { binome: b1.code, outEmail: leaving, inEmail: 'ext@g.enp.edu.dz', dryRun: true });
+  assert(/Give the name/.test(out.result.errors[0]), 'outsider needs a name');
+  out = call('webRun', 'changeMember', { binome: b1.code, outEmail: leaving, inName: 'Outside Person', inEmail: 'EXT@g.enp.edu.dz', dryRun: true });
+  assert.deepStrictEqual([out.result.errors.length, out.messages.length], [0, 0]);
+  assert(out.result.warnings.some(w => /outside the OT/.test(w)), out.result.warnings);
+  assert.strictEqual(changes(), 0, 'dry run writes nothing');
+  out = call('webRun', 'changeMember', { binome: b1.code, outEmail: leaving, inName: 'Outside Person', inEmail: 'EXT@g.enp.edu.dz', reason: 'left the club' });
+  assert(/→ Outside Person ✅/.test(out.messages[0]), out.messages[0]);
+  assert(ppl(b1.code).includes('ext@g.enp.edu.dz') && !ppl(b1.code).includes(leaving));
+  assert(/Outside/.test(run('__files["' + fileOf(b1) + '"].obj.title')), 'file renamed');
+  assert(/Outside Person/.test(run('__files["' + fileOf(b1) + '"].obj.sheets[0].notes["1:1"]')), 'file note updated');
+  assert.strictEqual(changes(), 1);
+  assert.strictEqual(run("ss_().getSheetByName('Member Changes').getRange(2, 10).getValue()"), 'left the club');
+  call('webRun', 'sync');
+  assert.deepStrictEqual(call('webState').unpaired.map(m => m.email), [leaving], 'the member who left is flagged, not re-paired');
+
+  out = call('webRun', 'swapMembers', { binomeA: b1.code, emailA: 'ext@g.enp.edu.dz', binomeB: b2.code, emailB: b2.people[0].email });
+  assert(out.result.done && out.result.done.length === 2, out.messages[0]);
+  assert(ppl(b1.code).includes(b2.people[0].email) && ppl(b2.code).includes('ext@g.enp.edu.dz'), 'swapped');
+  assert.strictEqual(changes(), 3);
+  out = call('webRun', 'swapMembers', { binomeA: b1.code, emailA: b2.people[0].email, binomeB: b1.code, emailB: b1.people[1].email });
+  assert(/two different binomes/.test(out.messages[0]));
+
+  out = call('webRun', 'changeMember', { binome: solo.code, inEmail: leaving });
+  assert(/\(empty seat\) →/.test(out.messages[0]), out.messages[0]);
+  call('webRun', 'sync');
+  assert.deepStrictEqual(call('webState').unpaired, [], 'placed again: nobody unpaired');
+  assert(run('formerMembers_()["' + b1.code + '"].includes("' + leaving + '")'), 'the interview check knows who left');
+}
+st = call('webState');
 st = call('webState');
 
 addRegistrations(12, 3);
@@ -89,6 +132,12 @@ call('webRun', 'saveSettings', { values: { ASSIGNMENTS_OPEN: true } });
 run("(function(){var sh=ss_().getSheetByName('Settings'),v=sh.getRange(2,1,sh.getLastRow()-1,1).getValues();v.forEach(function(r,i){if(r[0]==='TEST_MODE')sh.getRange(i+2,2).setValue(false);});_settings=null;})()");
 out = call('webRun', 'reshare');
 assert(/new share/.test(out.messages[0]), out.messages[0]);
+{ // sharing on: the newcomer becomes an editor, the leaver loses edit access
+  const b = call('webState').binomes.find(x => x.people.length === 2), id = b.fileUrl.split('/d/')[1], gone = b.people[1].email;
+  assert(run('__files["' + id + '"].editors.includes("' + gone + '")'));
+  call('webRun', 'changeMember', { binome: b.code, outEmail: gone, inName: 'New Person', inEmail: 'newp@g.enp.edu.dz' });
+  assert(run('__files["' + id + '"].editors.includes("newp@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("' + gone + '")'), 'editors follow the change');
+}
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');
 
@@ -116,19 +165,19 @@ assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of 
 assert.strictEqual(run('doGet()._file'), 'Index');
 
 // Vercel front (scripts.run): webAccess never throws, domain + owner rules, setup owner-only, trigger owner guard
-assert.deepStrictEqual(call('webAccess'), { ok: true, email: 'helper@g.enp.edu.dz', reason: '', owner: false, v: 1 });
+assert.deepStrictEqual(call('webAccess'), { ok: true, email: 'helper@g.enp.edu.dz', reason: '', owner: false, v: 2 });
 assert.strictEqual(call('webState').owner, false);
 assert.throws(() => call('webRun', 'setup'), /Only the owner/, 'an editor cannot run Setup');
 assert.throws(() => run('installTriggers_(ss_())'), /triggers belong to admin@g.enp.edu.dz/, 'menu path: a second account cannot double the triggers');
 run('ss_().addEditor("someone@gmail.com"); __as("someone@gmail.com")');
-assert.deepStrictEqual(call('webAccess'), { ok: false, email: 'someone@gmail.com', reason: 'DOMAIN', owner: false, v: 1 }, 'non-ENP editor refused');
+assert.deepStrictEqual(call('webAccess'), { ok: false, email: 'someone@gmail.com', reason: 'DOMAIN', owner: false, v: 2 }, 'non-ENP editor refused');
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
 {
   run('__as("stranger@g.enp.edu.dz")');
   assert.strictEqual(call('webAccess').reason, 'READ_ONLY');
 }
 run('__as("admin@g.enp.edu.dz")');
-assert.deepStrictEqual([call('webAccess').owner, call('webState').owner, call('webState').v], [true, true, 1]);
+assert.deepStrictEqual([call('webAccess').owner, call('webState').owner, call('webState').v], [true, true, 2]);
 assert.strictEqual(run('__props.TRIGGER_OWNER'), 'admin@g.enp.edu.dz', 'setup records the trigger owner');
 const before = run('__triggers.length');
 call('webRun', 'setup');

@@ -51,6 +51,7 @@ MockSheet.prototype = {
   getDataRange() { return new MockRange(this, 1, 1, Math.max(1, this.getLastRow()), Math.max(1, this.getLastColumn())); },
   deleteRow(r) { this.cells.splice(r - 1, 1); __touch(this.ss.id); return this; },
   clear() { this.cells = []; return this; },
+  appendRow(v) { this.getRange(this.getLastRow() + 1, 1, 1, v.length).setValues([v]); return this; },
   getProtections() { return []; },
   protect() { return chain({ getEditors: () => [], canDomainEdit: () => false }); },
   getActiveRange() { return new MockRange(this, this.activeRow, 1, 1, 1); },
@@ -95,6 +96,7 @@ function MockSS(title) {
   __files[this.id] = { kind: 'ss', obj: this, lastUpdated: new Date(Date.UTC(2026, 0, 1)), parent: 'root', editors: [] };
 }
 MockSS.prototype = {
+  rename(t) { this.title = t; return this; },
   getId() { return this.id; }, getUrl() { return 'https://docs.google.com/spreadsheets/d/' + this.id; }, getName() { return this.title; },
   getSheets() { return this.sheets.slice(); }, getSheetByName(n) { return this.sheets.find(s => s.name === n) || null; },
   insertSheet(n) { const s = new MockSheet(this, n); this.sheets.push(s); return s; },
@@ -128,7 +130,8 @@ var DriveApp = {
   getFileById(id) {
     const f = __files[id]; if (!f) throw new Error('no drive file ' + id);
     return { moveTo(folder) { f.parent = folder.id; }, getLastUpdated() { return f.lastUpdated; }, getId() { return id; },
-      getEditors() { return f.editors.map(e => ({ getEmail: () => e })); }, addEditor(e) { f.editors.push(e); } };
+      getEditors() { return f.editors.map(e => ({ getEmail: () => e })); }, addEditor(e) { f.editors.push(e); },
+      removeEditor(e) { if (e === 'admin@g.enp.edu.dz') throw new Error('Cannot remove the owner'); f.editors = f.editors.filter(x => x !== e); } };
   },
   getFolderById(fid) {
     return { id: fid, getFiles() { const ids = Object.keys(__files).filter(k => __files[k].parent === fid); let i = 0;

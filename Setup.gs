@@ -105,6 +105,7 @@ function ensureTabs_(ss) {
     SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=AND($I2="OPEN",$C2="MEDIUM")').setBackground('#fce5cd').setRanges([al.getRange('A2:K')]).build(),
     SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$I2<>"OPEN"').setFontColor('#999999').setRanges([al.getRange('A2:K')]).build(),
   ]);
+  mk(TAB.CHANGES, MC_H);
   mk(TAB.TRACKER, null);
 }
 
@@ -170,7 +171,7 @@ function cleanupAndOrder_(ss) {
   ss.getSheets().forEach(sh => {
     if (/^(Sheet1|Feuille 1|Feuille1)$/.test(sh.getName()) && sh.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(sh);
   });
-  [TAB.TRACKER, TAB.ALERTS, TAB.IV, TAB.BINOMES, TAB.TEAM, TAB.LOG, TAB.SETTINGS, TAB.REG_RESP, TAB.INT_RESP].forEach((name, i) => {
+  [TAB.TRACKER, TAB.ALERTS, TAB.IV, TAB.BINOMES, TAB.CHANGES, TAB.TEAM, TAB.LOG, TAB.SETTINGS, TAB.REG_RESP, TAB.INT_RESP].forEach((name, i) => {
     const sh = ss.getSheetByName(name);
     if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i + 1); }
   });

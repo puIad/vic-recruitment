@@ -119,7 +119,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
 
   // --- run proxy: real calls, as the visitor
   r = await rpc(admin, 'webAccess');
-  assert.deepStrictEqual(r.json.value, { ok: true, email: 'admin@g.enp.edu.dz', reason: '', owner: true, v: 1 });
+  assert.deepStrictEqual(r.json.value, { ok: true, email: 'admin@g.enp.edu.dz', reason: '', owner: true, v: 2 });
   assert.strictEqual(+r.headers['x-session-expires'] > Date.now() + 47 * 3600e3, true, 'session end exposed to the page');
   r = await rpc(admin, 'webRun', 'importTeam', { link: '' });
   assert(/Imported 13 members/.test(r.json.value.messages[0]));

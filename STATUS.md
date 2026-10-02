@@ -57,6 +57,15 @@ Master sheet: `19A46cGCoqNDL7Dat2i2CyHdT108k_dxl84g-N1C6Ghc` (Drive folder `1sXD
 - Local preview of the Vercel app on mock Google: `node test/webdev.js` → http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
   (`?as=stranger@g.enp.edu.dz` = no-access view). Tests: `test/vercel.test.js` (in `npm test`).
 
+## Binome changes after lock (plan: phases A–D, 2026-10-02)
+- **A (live, web app @15 / API @16):** Draft refuses once binomes are locked; Team members in no locked binome raise
+  auto-resolving `UNPAIRED_MEMBER` alerts and show in the dashboard's "Unpaired members" card.
+- **B (Members.gs):** dashboard "Change members" card: replace / remove / fill a seat, or swap two members (dry-run check +
+  confirm). Fixes file title + A1 note, gives the newcomer edit access (not in TEST_MODE), removes the leaver, logs to the
+  `Member Changes` tab (created on first use or by Setup), emails both. Former members' interview forms are INFO, not MEDIUM.
+  `API_VERSION` = 2.
+- Next: C = temporary cover by interviewee code (view-only access), D = manual-edit detection (baseline + integrity check).
+
 ## Live test in progress (paused 2026-10-01 22:30)
 - Master state: 49 binomes already **locked/ACTIVE** (under v1), files created, not shared. v2 Setup still not run
   (no TEST_MODE row → code default TRUE). The 1-min sync trigger **does fire** after the GCP switch (verified).

@@ -24,6 +24,7 @@ function resolverCtx_(ctx) {
       name: r[I['First Name']] + ' ' + r[I['Family Name']], firstChoice: String(r[I['1st Choice']]).trim() })),
     interviewed: interviewed,
     nameByEmail: ctx.nameByEmail,
+    former: formerMembers_(),
     trustedBackups: String(S_().TRUSTED_BACKUPS || '').split(/[,;\s]+/).map(e => e.trim().toLowerCase()).filter(e => /@/.test(e)),
   };
 }

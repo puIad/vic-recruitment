@@ -27,7 +27,7 @@ function appUrl_() { try { return ScriptApp.getService().getUrl(); } catch (e) {
 function switchUrl_() { return 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(appUrl_()); }
 
 /** Bumped when webAccess/webState/webRun change shape; the Vercel front (web/index.html) checks it. */
-const API_VERSION = 1;
+const API_VERSION = 2;
 const DOMAIN = 'g.enp.edu.dz';
 
 /**
@@ -119,9 +119,11 @@ function webState() {
     counts: { byStatus: byStatus, byDep: byDep },
     locked: activeOrPaused_(ctx).length > 0,
     unpaired: activeOrPaused_(ctx).length ? unpairedMembers(teamMembers_(ctx), ctx.binomes) : [],
+    teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
       return { code: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
+        people: b.members.map(m => ({ name: m.name, email: m.email })),
         assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open };
     }),
     alertCounts: alertCounts,
@@ -185,6 +187,8 @@ function webRun(action, args) {
       case 'reshare': reshareBinomeFiles(); break;
       case 'digest': sendDailyDigest(); _webOut.push('Digest sent to ' + (adminEmails_().join(', ') || 'nobody (ADMIN_EMAIL is empty)')); break;
       case 'reassign': reassignCore_(args.code, args.binome); break;
+      case 'changeMember': result = changeMemberCore_(args); break;
+      case 'swapMembers': result = swapMembersCore_(args); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;
