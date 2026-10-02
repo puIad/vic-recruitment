@@ -32,6 +32,8 @@ Repo: https://github.com/puIad/vic-recruitment-2026 (its own repo, not the AI-OS
 - The mock can't catch Apps Script quirks (protections, validations, locale parsing, trigger auth): verify on the live
   Master in TEST_MODE.
 - Admins can only change members / cover / apply fixes if they can edit the Binome Sheets folder.
+- The script runs on the `vic-recruitment` Cloud project, so Google APIs are not auto-enabled: "Permission denied while
+  enabling APIs: X" = enable API X in that project (Drive is needed; see [docs/vercel.md](docs/vercel.md#rebuilding-the-google-cloud-side-if-ever-needed)).
 - `clasp logs` doesn't work here (no GCP project ID set for clasp); use Apps Script › Executions.
 - Obscura (default browser) doesn't support `<form method="dialog">`: see [docs/testing.md](docs/testing.md#local-previews).
 - Personal data: `test/data/` (2025 exports) is git-ignored; never commit candidate data.
