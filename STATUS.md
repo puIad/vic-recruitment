@@ -20,8 +20,6 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 ## Next
 
-0. **Enable the Google Drive API** in the `vic-recruitment` Cloud project (Cloud Console › APIs & Services ›
-   Library). Until then every Drive call fails: sharing, Re-share, Lock of new binomes, the sync's change check.
 1. **Test A–D on the live Master** ([docs/testing.md](docs/testing.md#manual-test-on-the-live-master-test_mode--true)),
    starting with Maintenance › Check integrity. Check in Apps Script › Executions that the 1-minute sync runs.
 2. Finish the live test's timing and interview-form cases (same file), then delete all test data and Accept the edits.
