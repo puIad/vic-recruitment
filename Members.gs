@@ -352,10 +352,12 @@ function revokeCoverAccess_(ctx, c) {
 
 /** Run in every cycle: covers whose interviews are all done (or moved) end by themselves; failed removals are retried. */
 function endFinishedCovers_(ctx) {
-  (ctx.covers || []).slice().forEach(c => { if (!coverLive_(ctx, c).length) endCover_(ctx, c, 'interviews done'); });
+  const justEnded = {};
+  (ctx.covers || []).slice().forEach(c => { if (!coverLive_(ctx, c).length) { endCover_(ctx, c, 'interviews done'); justEnded[c.row] = true; } });
   const C = idx_(MC_H), KI = ctx.alerts.table.I;
   loadChanges_().forEach((r, i) => {
-    if (r[C.Type] !== 'TEMPORARY' || String(r[C.Status]) !== COVER_REVOKING) return;
+    // rows that failed just now wait for the next cycle: their alert is not saved yet, so it could not be closed here
+    if (r[C.Type] !== 'TEMPORARY' || String(r[C.Status]) !== COVER_REVOKING || justEnded[i + 2]) return;
     const c = { row: i + 2, binome: String(r[C.Binome]).trim(), email: lc_(r[C['In Email']]) };
     if (revokeCoverAccess_(ctx, c)) return; // still refused: the open alert stays, next cycle tries again
     changesSheet_().getRange(c.row, C.Status + 1).setValue('ENDED ' + fmt_(ctx.now, 'dd/MM HH:mm') + ': view access removed');

@@ -246,6 +246,17 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   assert.deepStrictEqual([viewers(), revokeAlert()], [0, false], 'retried: access removed, alert closed');
   assert(/^ENDED .*view access removed/.test(status()), status());
+  // auto-end in a sync where Drive fails once then would work: the alert is kept for the next sync, never left open on an ENDED row
+  call('webRun', 'addCover', { codes: iv.code, inName: 'Stand In', inEmail: 'standin@g.enp.edu.dz' });
+  const row2 = call('webState').covers[0].row, other = call('webState').binomes.find(x => x.code !== iv.binome && x.status === 'ACTIVE').code;
+  run('var __fails = 1; DriveApp.getFileById = function (x) { var f = __rv(x), rv = f.removeViewer; f.removeViewer = function (e) { if (__fails-- > 0) throw new Error("Service error: Drive"); return rv(e); }; return f; }');
+  call('webRun', 'reassign', { code: iv.code, binome: other });
+  call('webRun', 'sync');
+  const st2 = () => run("ss_().getSheetByName('Member Changes').getRange(" + row2 + ", 11).getValue()");
+  assert.deepStrictEqual([st2(), revokeAlert()], ['ENDING · view access still to remove', true], 'failed in this sync: alert saved, retry waits');
+  call('webRun', 'sync');
+  run('DriveApp.getFileById = __rv');
+  assert.deepStrictEqual([/^ENDED/.test(st2()), revokeAlert(), viewers()], [true, false, 0], 'next sync: removed, alert closed');
 }
 out = call('webRun', 'setup');
 assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');
