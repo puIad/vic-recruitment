@@ -8,7 +8,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 ## Live now
 
-- Script: web app **@23**, API **@24** (2026-10-02), `main` at `c618d77`. Vercel serves `main`.
+- Script: web app **@25**, API **@26** (2026-10-02), `main` at `96313cc`. Vercel serves `main`.
 - Built and deployed: v2 core, Vercel dashboard, settings editing, and the after-lock phases **A** (no pairing after
   lock), **B** (change/swap members), **C** (temporary covers), **D** (manual-edit detection, odd values, full sheet
   check). What each does: [docs/architecture.md](docs/architecture.md#after-lock-phases-ad).
