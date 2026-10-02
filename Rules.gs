@@ -44,6 +44,22 @@ function draftPairs(members, rnd) {
   return pairs;
 }
 
+/**
+ * Team members who should interview but sit in no ACTIVE/PAUSED binome (after lock nobody is auto-paired again).
+ * team: [{name,email,pairAs,exclude}] ; binomes: [{code,status,members:[{email}]}]
+ * returns [{name,email,pairAs,draft}] (draft = code of a DRAFT row they sit in, waiting for Lock)
+ */
+function unpairedMembers(team, binomes) {
+  const locked = {}, draft = {};
+  binomes.forEach(b => b.members.forEach(m => {
+    if (!m.email) return;
+    if (b.status === 'ACTIVE' || b.status === 'PAUSED') locked[m.email] = true;
+    else if (!draft[m.email]) draft[m.email] = b.code;
+  }));
+  return team.filter(m => m.email && !m.exclude && m.pairAs !== 'SKIP' && !locked[m.email])
+    .map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, draft: draft[m.email] || '' }));
+}
+
 /** Pick the binome for a new interviewee of department `dep`. binomes: [{code, tag, load}] */
 function pickBinome(dep, binomes, allWeight) {
   const w = Number(allWeight) > 0 ? Number(allWeight) : 1;

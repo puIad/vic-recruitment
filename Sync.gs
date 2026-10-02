@@ -75,6 +75,14 @@ function timingAlerts_(ctx) {
         key: key, notifyBinome: true });
     });
   });
+  if (activeOrPaused_(ctx).length) unpairedMembers(teamMembers_(ctx), ctx.binomes).forEach(m => {
+    const key = 'UNPAIRED|' + m.email;
+    current[key] = true;
+    ctx.alerts.add({ severity: 'MEDIUM', type: 'UNPAIRED_MEMBER', code: '', binome: '', key: key,
+      msg: m.name + ' (' + m.email + ', Pair As ' + m.pairAs + ') is in no locked binome' +
+        (m.draft ? ' (only in DRAFT row ' + m.draft + ': run Lock)' : '') +
+        '. Place them in a binome, or tick Exclude in the Team tab if they are not interviewing.' });
+  });
   const KI = ctx.alerts.table.I;
   ctx.alerts.resolveWhere(row => AUTO_RESOLVING.indexOf(row[KI.Type]) >= 0 && !current[row[KI.Key]]);
 }

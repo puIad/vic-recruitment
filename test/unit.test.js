@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const ctx = vm.createContext({ console });
 require('./gs')(ctx);
-vm.runInContext('globalThis.__x = {parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch};', ctx);
+vm.runInContext('globalThis.__x = {parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch,unpairedMembers};', ctx);
 const X = ctx.__x;
 const D = iso => vm.runInContext('new Date("' + iso + '")', ctx);
 let pass = 0; const t = (name, fn) => { try { fn(); pass++; } catch (e) { console.log('FAIL', name, '\n ', e.message); process.exitCode = 1; } };
@@ -121,6 +121,13 @@ t('draft pairs uneven', () => {
   const m = [{ name: 'h1', email: 'h1', pairAs: 'HR' }, { name: 'h2', email: 'h2', pairAs: 'HR' }, { name: 'h3', email: 'h3', pairAs: 'HR' }, { name: 'i1', email: 'i1', pairAs: 'IT' }];
   const p = X.draftPairs(m, Math.random);
   assert.strictEqual(p.length, 2); assert(p.some(x => x.tag === 'HR' && x.warning));
+});
+t('unpaired members: only locked binomes count; excluded and SKIP ignored', () => {
+  const team = [{ name: 'A', email: 'a', pairAs: 'HR' }, { name: 'B', email: 'b', pairAs: 'IT' }, { name: 'C', email: 'c', pairAs: 'IT', exclude: true },
+    { name: 'D', email: 'd', pairAs: 'SKIP' }, { name: 'E', email: 'e', pairAs: 'COMM' }, { name: 'F', email: 'f', pairAs: 'FLER' }];
+  const bins = [{ code: 'B.01', status: 'ACTIVE', members: [{ email: 'a' }] }, { code: 'B.02', status: 'PAUSED', members: [{ email: 'f' }] },
+    { code: 'B.03', status: 'DRAFT', members: [{ email: 'e' }, { email: '' }] }];
+  assert.deepStrictEqual(X.unpairedMembers(team, bins).map(m => m.email + ':' + m.draft), ['b:', 'e:B.03']);
 });
 t('pick binome balances + routes HR anywhere', () => {
   const bs = [{ code: 'B.01', tag: 'IT & HR', load: 3 }, { code: 'B.02', tag: 'IT & HR', load: 1 }, { code: 'B.03', tag: 'COMM & HR', load: 0 }, { code: 'B.04', tag: 'ALL', load: 1 }];

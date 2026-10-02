@@ -78,7 +78,7 @@ const ST = { ASSIGNED: 'ASSIGNED', CONTACTED: 'CONTACTED', SCHEDULED: 'SCHEDULED
 const PENDING_STATUSES = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED];
 const SEV_RANK = { INFO: 1, MEDIUM: 2, HIGH: 3 };
 // Alert types that close themselves once the problem disappears
-const AUTO_RESOLVING = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'NO_BINOME'];
+const AUTO_RESOLVING = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'NO_BINOME', 'UNPAIRED_MEMBER'];
 
 const DEPTS = ['IT', 'COMM', 'FLER', 'HR'];
 const DEPT_ALIASES = { it: 'IT', info: 'IT', comm: 'COMM', com: 'COMM', communication: 'COMM',

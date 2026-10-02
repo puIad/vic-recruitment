@@ -11,6 +11,7 @@ const s = require('./seed')();
 require('./googlemock')(s);
 if (!process.argv.includes('--empty')) {
   s.call('webRun', 'importTeam', { link: '' }); s.call('webRun', 'draft'); s.call('webRun', 'lock');
+  s.run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,1,6).setValues([['Late Member','late@g.enp.edu.dz','IT','IT',false,'']]);})()"); // shows the Unpaired card
   s.addRegistrations(40, 3); s.call('webRun', 'sync'); s.backdateAssignments(3); s.call('webRun', 'sync');
 }
 const api = { run: require('../web/api/run'), logout: require('../web/api/logout') };

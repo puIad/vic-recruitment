@@ -219,6 +219,11 @@ a.kpi:hover .go { opacity: 1; transform: none; }
 .legend span::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; background: var(--c); vertical-align: 0; }
 
 /* ---------- layout ---------- */
+.col { display: grid; gap: 22px; align-content: start; min-width: 0; }
+.unp-help { font-size: 12.5px; color: var(--ink-3); margin: 0; padding: 12px 20px; }
+.unp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 20px; border-top: 1px solid var(--line-2); }
+.unp-row div { font-size: 13.5px; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unp-row small { display: block; font: 400 11.5px var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; }
 .split { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 22px; align-items: start; }
 .kpis + .split { margin-top: 22px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
@@ -602,7 +607,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
                 <div class="dot">02</div>
                 <div>
                   <h3>Draft binomes</h3>
-                  <p>Random HR + other-department pairs, written to the Binomes tab as DRAFT. Edit them freely, redraw any time.</p>
+                  <p id="s2-text">Random HR + other-department pairs, written to the Binomes tab as DRAFT. Edit them freely, redraw any time.</p>
                   <div class="state" id="s2-state"></div>
                 </div>
                 <div class="actions"><button class="btn navy" data-action="draft"><span class="spin"></span><svg class="i"><use href="#i-shuffle"/></svg>Draft</button></div>
@@ -661,6 +666,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
             <div class="bin-list" id="binList"><div class="empty">Loading…</div></div>
           </section>
 
+          <div class="col">
           <section class="card" aria-labelledby="h-move">
             <div class="card-head"><h2 id="h-move">Move an interviewee</h2></div>
             <div class="card-body">
@@ -673,6 +679,12 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
               <div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="btn navy" data-action="reassign"><span class="spin"></span><svg class="i"><use href="#i-move"/></svg>Move</button></div>
             </div>
           </section>
+          <section class="card" aria-labelledby="h-unp" id="unpCard" hidden>
+            <div class="card-head"><h2 id="h-unp">Unpaired members</h2><span class="count" id="unp-count">0</span></div>
+            <p class="unp-help">In the Team tab but in no locked binome. Nobody is paired automatically after lock: place them in a binome, or tick <b>Exclude</b> in the Team tab.</p>
+            <div class="unp-list" id="unpList"></div>
+          </section>
+          </div>
         </div>
       </section>
 
@@ -825,7 +837,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   function setBusy(on, btn) {
     busy = on;
     $('#busybar').classList.toggle('on', on);
-    $$('[data-action], #refreshBtn').forEach(b => { b.disabled = on || (b.dataset.action === 'resolve' && !selected.size); });
+    $$('[data-action], #refreshBtn').forEach(b => { b.disabled = on || (b.dataset.action === 'resolve' && !selected.size) || (b.dataset.action === 'draft' && !!(state && state.locked)); });
     if (btn) btn.classList.toggle('running', on);
   }
   async function run(btn, action, args, label) {
@@ -951,7 +963,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     $('#statusbar').innerHTML = total ? STATUS.map(x => '<i style="width:' + (100 * (st[x[0]] || 0) / total) + '%;background:var(' + x[2] + ')" title="' + x[1] + ': ' + (st[x[0]] || 0) + '"></i>').join('') : '';
     $('#legend').innerHTML = STATUS.map(x => '<span style="--c:var(' + x[2] + ')">' + x[1] + ' <b class="mono">' + (st[x[0]] || 0) + '</b></span>').join('');
 
-    renderSteps(); renderAlerts(); renderBinomes(); renderMove(); renderSettings();
+    renderSteps(); renderAlerts(); renderBinomes(); renderUnpaired(); renderMove(); renderSettings();
   }
 
   function renderSteps() {
@@ -970,7 +982,13 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       (s.team.excluded ? '<span class="chip">' + s.team.excluded + ' excluded</span>' : '') +
       (s.team.issues ? '<span class="chip warn">' + s.team.issues + ' rows to check</span>' : '');
     $('#teamLink').placeholder = 'Optional link. Empty = ' + (s.team.source ? '“' + s.team.source + '” tab' : 'the 2025 database');
-    $('#s2-state').innerHTML = drafts ? '<span class="chip warn">' + drafts + ' drafts to review</span>' : (active ? '<span class="chip ok">Drafts locked</span>' : '<span class="chip">No drafts yet</span>');
+    const draftBtn = $('[data-action="draft"]');
+    draftBtn.disabled = busy || !!s.locked;
+    draftBtn.title = s.locked ? 'Closed: binomes are locked, nobody is paired automatically any more' : '';
+    $('#s2-text').textContent = s.locked ? 'Closed once binomes are locked: nobody is paired automatically again. Members left without a binome are listed on the Binomes tab for you to place.'
+      : 'Random HR + other-department pairs, written to the Binomes tab as DRAFT. Edit them freely, redraw any time.';
+    const unp = (s.unpaired || []).length;
+    $('#s2-state').innerHTML = s.locked ? '<span class="chip ok">Drafting closed</span>' + (unp ? '<span class="chip warn">' + unp + ' unpaired</span>' : '') : drafts ? '<span class="chip warn">' + drafts + ' drafts to review</span>' : (active ? '<span class="chip ok">Drafts locked</span>' : '<span class="chip">No drafts yet</span>');
     $('#s3-state').innerHTML = (active ? '<span class="chip ok">' + active + ' active</span>' : '<span class="chip">None locked</span>') +
       (paused ? '<span class="chip">' + paused + ' paused</span>' : '') +
       (s.settings.testMode ? '<span class="chip warn">test mode</span>' : s.settings.shareFiles ? '' : '<span class="chip warn">sharing off</span>');
@@ -1024,6 +1042,14 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
         (b.fileUrl ? '<a class="icon-link" href="' + esc(b.fileUrl) + '" target="_blank" rel="noopener" aria-label="Open ' + esc(b.code) + ' sheet">' + I('ext') + '</a>' : '<span></span>') +
         '</div>';
     }).join('') : '<div class="empty"><strong>' + (state.binomes.length ? 'No match' : 'No binomes yet') + '</strong>' + (state.binomes.length ? '' : 'Run step 02 to draft them.') + '</div>';
+  }
+
+  function renderUnpaired() {
+    const list = state.unpaired || [];
+    $('#unpCard').hidden = !list.length;
+    $('#unp-count').textContent = list.length;
+    $('#unpList').innerHTML = list.map(m => '<div class="unp-row"><div title="' + esc(m.name) + '">' + esc(m.name || m.email) + '<small>' + esc(m.email) + '</small></div>' +
+      '<span>' + (m.draft ? '<span class="chip warn">in draft ' + esc(m.draft) + '</span> ' : '') + '<span class="chip">' + esc(m.pairAs) + '</span></span></div>').join('');
   }
 
   function renderMove() {
