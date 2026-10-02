@@ -196,8 +196,9 @@ function report_(res) {
 // The Binomes row is not touched. The cover person gets view-only access to the sheet (the binome stays responsible for it),
 // counts as a member for those codes in the interview check, and the row ends itself once those interviews are done.
 
-/** Code-like tokens of a free text: "IT.01 it 2, HR-03;comm4" -> ['IT.01', 'it 2', 'HR-03', 'comm4'] (each then read by parseIntervieweeCode). */
-const splitCodes_ = s => String(s || '').match(/[A-Za-z]{2,13}[\s.\-_#:°]*\d{1,4}/g) || [];
+/** Code-like tokens of a free text: "IT.01 it 2, HR-03;comm4" -> ['IT.01', 'it 2', 'HR-03', 'comm4'] (each then read by parseIntervieweeCode).
+ *  Whole tokens only: "HR-03x" stays "HR-03x" (then reported as unknown), never cut down to a valid-looking "HR-03". */
+const splitCodes_ = s => String(s || '').match(/\b[A-Za-z]{2,13}[\s.\-_#:°]*\d{1,4}[A-Za-z0-9]*/g) || [];
 
 /** ACTIVE covers: [{row (sheet row), binome, name, email, outName, outEmail, codes[], reason}] */
 function loadCovers_() {

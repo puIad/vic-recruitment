@@ -1206,7 +1206,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   // cover: show who each typed code is, and offer the members of that binome as "unavailable"
   const DEP = { it: 'IT', info: 'IT', comm: 'COMM', com: 'COMM', hr: 'HR', rh: 'HR', fler: 'FLER', flr: 'FLER' };
   function typedCodes() {
-    return ($('#cvCodes').value.match(/[A-Za-z]{2,13}[\s.\-_#:°]*\d{1,4}/g) || []).map(t => {
+    return ($('#cvCodes').value.match(/\b[A-Za-z]{2,13}[\s.\-_#:°]*\d{1,4}[A-Za-z0-9]*/g) || []).map(t => { // same rule as splitCodes_ (Members.gs)
       const m = t.match(/^([A-Za-z]+)[\s.\-_#:°]*0*(\d+)$/), d = m && DEP[m[1].toLowerCase()];
       return d ? d + '.' + (m[2].length < 2 ? '0' + m[2] : m[2]) : t;
     });

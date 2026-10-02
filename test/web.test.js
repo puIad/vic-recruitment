@@ -129,6 +129,8 @@ assert.strictEqual(st.team.source, '', 'registration responses are never mistake
   const other = ivs.find(i => i.binome !== bin && i.binome !== cb.code);
   out = call('webRun', 'addCover', { codes: 'XX.99', inEmail: coverer.email, dryRun: true });
   assert(/Unknown interviewee code/.test(out.result.errors[0]));
+  out = call('webRun', 'addCover', { codes: mine[0].code + 'x, 5' + mine[0].code, inEmail: coverer.email, dryRun: true });
+  assert.deepStrictEqual(out.result.errors, ['Unknown interviewee code "' + mine[0].code + 'x".'], 'a suffix is not trimmed to a valid code; "5IT.01" is no code');
   out = call('webRun', 'addCover', { codes: mine[0].code, inEmail: member, dryRun: true });
   assert(/already in/.test(out.result.errors[0]), 'a member cannot cover their own binome');
   out = call('webRun', 'addCover', { codes: mine.map(i => i.code.toLowerCase().replace('.', ' ')).join(', ') + ' ' + other.code, inEmail: coverer.email, outEmail: member, dryRun: true });
