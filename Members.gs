@@ -75,8 +75,9 @@ function memberPlan_(ctx, binomeText, outEmail, inName, inEmail, swapWith) {
   } else if (!outEmail) errors.push('Nothing to change: give who leaves, who joins, or both.');
   else if (b.members.length < 2) errors.push(b.code + ' would have no member left: give a replacement.');
   if (!errors.length && b.fileId) {
-    try { DriveApp.getFileById(b.fileId).getEditors(); }
-    catch (e) { errors.push('Cannot open the sheet of ' + b.code + ' (' + e.message + '): fix its File ID / access first.'); }
+    // a no-op edit (same title) proves this account can edit the sheet, not just see it
+    try { const f = SpreadsheetApp.openById(b.fileId); f.rename(f.getName()); }
+    catch (e) { errors.push('Cannot edit the sheet of ' + b.code + ' (' + e.message + '): fix its File ID, or ask the owner of the Binome Sheets folder to give you edit access.'); }
   }
   if (!errors.length) {
     const after = [1, 2].map(k => (k === slot ? inn : used(k) ? seat(k) : null)).filter(Boolean);

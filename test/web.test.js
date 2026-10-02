@@ -82,8 +82,13 @@ assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPA
   const realId = run(binSh + '.getRange(' + rowOf(solo.code) + ', 9).getValue()');
   run(binSh + '.getRange(' + rowOf(solo.code) + ', 9).setValue("gone")');
   out = call('webRun', 'changeMember', { binome: solo.code, inEmail: leaving, dryRun: true });
-  assert(/Cannot open the sheet/.test(out.result.errors[0]), out.result.errors);
+  assert(/Cannot edit the sheet/.test(out.result.errors[0]), out.result.errors);
   run(binSh + '.getRange(' + rowOf(solo.code) + ', 9).setValue("' + realId + '")');
+  // can open it but not edit it (e.g. an admin the Binome Sheets folder isn't shared with): refused too
+  run('__files["' + realId + '"].obj.rename = () => { throw new Error("You do not have permission") }');
+  out = call('webRun', 'changeMember', { binome: solo.code, inEmail: leaving, dryRun: true });
+  assert(/Cannot edit the sheet/.test(out.result.errors[0]), out.result.errors);
+  run('delete __files["' + realId + '"].obj.rename');
   // a swap whose second row write fails leaves both rows as they were
   const before = JSON.stringify([ppl(b1.code), ppl(b2.code)]), nChanges = changes();
   run("var __sv = MockRange.prototype.setValues, __n = 0; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Binomes' && ++__n === 2) throw new Error('Service unavailable'); return __sv.call(this, v); }");
