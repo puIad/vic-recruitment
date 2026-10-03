@@ -75,7 +75,7 @@ delete a row → HIGH "missing from its sheet" (Move interviewee to that same bi
 HIGH "put in front of"; remove the sheet protection → MEDIUM. A tab in front stops the rest of that sheet's check (it
 would read the wrong tab), so the other two only show once the tab is gone.
 
-**Timing and interview-form cases** (left from the 2026-10-01 live test)
+**Timing and interview-form cases** (passed live on 2026-10-03, results below)
 1. Lower `HOURS_NOT_CONTACTED` / `HOURS_NO_INTERVIEW_DATE` / `HOURS_AFTER_INTERVIEW_NO_FORM` to 0.1 / 0.15 / 0.05 →
    NOT_CONTACTED / NO_DATE / OVERDUE appear.
 2. In B.02: Yes, 01/10/2026, 21:00; in B.09: time `14h3` → BAD_DATE.
@@ -101,6 +101,8 @@ made through the Sheets API, which the sync sees the same way as typing in the s
 | B | Pass: in another binome → refused with the Swap hint; outside Team → warning; Replace and Swap change title, A1 note, Member Changes and INFO alerts; Place… fills the form. All undone with Change members |
 | C | Pass: `IT.01 it 2` → Amine TEST-01 · B.02 and Nassim TEST-05 · B.06, `HR-03x` → unknown; a form from the stand-in is logged AUTOCORRECTED (only for `B2`), not FLAGGED; a cover ends by hand and by itself once the interview is in |
 | D | Pass: every row of the table above, Apply / Revert / Accept each tried; odd values raised and closed; full sheet check raised all three (tab in front first, then protection and missing row) |
+| Timing | Pass on @27 / @28, limits 0.1 / 0.15 / 0.05 with three new registrations (IT.05 B.08, IT.06 B.09, IT.07 B.11, assigned 17:12): `NOT_CONTACTED` IT.05 at 17:18, `NO_DATE` IT.05 at 17:21, `OVERDUE` IT.06 at 17:20 (interview 17:17), `BAD_DATE` IT.07 (`14h3`) at the first sync. Limits put back to 32 / 40 / 5 |
+| Interview forms | Pass: clean B.04 / HR.01 → OK; `b3` / `comm 1` → AUTOCORRECTED (normalized); `Sara TEST-04` → FLER.02 AUTOCORRECTED + INFO; B.08 member under B.07 → `BACKUP_INTERVIEWER` MEDIUM, FLAGGED; B.10 member typing B.11 → corrected to B.10, AUTOCORRECTED + INFO; `IT.99` → `UNKNOWN_INTERVIEWEE` HIGH; second form for IT.01 → `DUPLICATE_INTERVIEW` MEDIUM. Interviewees went INTERVIEWED, their OVERDUE alerts closed, the binome sheets got ✅ |
 | Not done | "Ticking several manual edits enables Accept edits" (UI only). The B.20 missing row (A-0068): IT.04 moved back to B.20 by hand on 2026-10-03; the alert closes at the next Check integrity |
 
 **Findings**
@@ -118,12 +120,17 @@ made through the Sheets API, which the sync sees the same way as typing in the s
    sheet differ from the Master" that is emailed. Apply closes the first; the second closes at the next integrity check. **Fix: [#11](https://github.com/puIad/vic-recruitment-2026/pull/11)** (no INTEGRITY alert while the MANUAL_EDIT is open), deployed @27 / @28.
 5. **A member name change in Binomes is INFO**, not MEDIUM as this file said (an email change is MEDIUM). Table fixed above.
 6. **A tab in front hides the other problems of that sheet** until it is removed (by design, documented above).
+7. **With a limit under 1h the timing messages say "0h after being assigned"** (`Math.floor`). Cosmetic, only seen with test limits.
 
 ### Test data currently in the live Master (from 2026-10-01, updated 2026-10-03)
 
 All `TEST-xx` / `sim.*@g.enp.edu.dz`: Registration Responses rows 3–14; Interviewees (IT.01–02, IT.04, COMM.01–02,
 HR.01–03, FLER.02–03 + 1 duplicate; IT.03 was dropped for good with Accept); Alerts A-0003 onwards; row 2 of the sheets
 of B.03 B.04 B.05 B.06 B.07 B.10 B.17 B.25 (Contacted/Date/Time). From 2026-10-03: Team row 102 `TEST-UNPAIRED`
-(`sim.unpaired@g.enp.edu.dz`, Exclude off, so it shows as unpaired); Interview Responses row 2 and Interview Log row 2
-(the C.3 form for IT.01, now INTERVIEWED); IT.04 moved to B.20 (Yes, 15/10/2026 15:00 in B.20's sheet now that the row is
-back); Member Changes rows 4–11 (B and C tests, all undone or ended).
+(`sim.unpaired@g.enp.edu.dz`, Exclude off, so it shows as unpaired); Interview Responses row 9 (row 2 until the rows below were
+inserted above it) and Interview Log row 2 (the C.3 form for IT.01, now INTERVIEWED); IT.04 moved to B.20 (Yes, 15/10/2026 15:00 in B.20's sheet now that the row is
+back); Member Changes rows 4–11 (B and C tests, all undone or ended). From the timing / form test: Registration
+Responses rows 15–17 (`TEST-13`–`15`, `sim.hana13` / `sim.karim14` / `sim.lyna15`) → Interviewees IT.05–07 and row 2 of the
+sheets of B.08 B.09 B.11 (B.09: Yes, 03/10/2026 17:17; B.11: Yes, 03/10/2026 `14h3`); Interview Responses rows 2–8
+(`TEST live: …` in "Introduce yourself", sent from real member emails) → Interview Log rows 3–9, and ✅ marks in the sheets of
+B.03 B.04 B.05 B.07 B.10.
