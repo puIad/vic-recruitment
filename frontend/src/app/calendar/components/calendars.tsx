@@ -119,6 +119,9 @@ export function Calendars({
                       <div className="flex items-center gap-3 flex-1">
                         {/* Calendar Color & Visibility Toggle */}
                         <button
+                          type="button"
+                          aria-label={`${item.name} calendar visibility`}
+                          aria-pressed={item.visible}
                           onClick={() => handleToggleVisibility(item.id)}
                           className={cn(
                             "flex aspect-square size-4 shrink-0 items-center justify-center rounded-sm border transition-all cursor-pointer",
