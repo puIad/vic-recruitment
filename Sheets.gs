@@ -66,12 +66,14 @@ function saveTable_(t) {
   const n = t.sh.getLastRow() - 1;
   const now = n > 0 ? t.sh.getRange(2, 1, n, t.H.length).getValues() : [];
   const at = {};
-  now.forEach((r, i) => { if (key(r)) at[key(r)] = i; });
+  now.forEach((r, i) => { const k = key(r); if (k) at[k] = k in at ? -1 : i; }); // -1: the key is on several rows
   const out = now.slice(), added = [];
   t.data.forEach((r, i) => {
     const o = i < t.orig.length ? t.orig[i] : null, k = key(o || r), p = k ? at[k] : undefined;
-    // a loaded row that is gone was deleted by hand meanwhile; one without a key (typed by hand) is left as it is
+    // a loaded row that is gone was deleted by hand meanwhile; one without a key (typed by hand) or whose key was
+    // copied onto another row is left as it is
     if (p === undefined) { if (!o) added.push(r); return; }
+    if (p < 0) return;
     out[p] = o ? r.map((v, j) => (sameVal_(v, o[j]) ? now[p][j] : v)) : r;
   });
   const all = out.concat(added);
