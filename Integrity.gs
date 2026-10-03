@@ -12,7 +12,7 @@ const EDIT_GROUPS = {
   iv: { Code: ['Code'], Binome: ['Binome'], Status: ['Status'], Person: ['First Name', 'Family Name', 'Email'] },
 };
 // Stored but never compared: only needed to rebuild a deleted row on Revert (dates kept as ISO text)
-const BASE_KEEP = { bin: ['Created'], iv: [] };
+const BASE_KEEP = { bin: ['Created'], iv: ['Assigned At'] };
 const BASE_F = { bin: [].concat.apply([], Object.keys(EDIT_GROUPS.bin).map(g => EDIT_GROUPS.bin[g])).concat(BASE_KEEP.bin),
   iv: [].concat.apply([], Object.keys(EDIT_GROUPS.iv).map(g => EDIT_GROUPS.iv[g])).concat(BASE_KEEP.iv) };
 

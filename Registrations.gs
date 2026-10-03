@@ -115,6 +115,7 @@ function processRegistrations_(ctx) {
     if (ctx.restore) {
       const old = ctx.restore[key];
       out[I.Code] = old.Code; out[I.Binome] = old.Binome;
+      out[I['Assigned At']] = old['Assigned At'] ? new Date(old['Assigned At']) : ''; // older baselines lack it: empty, as before
       out[I.Status] = old.Status === ST.DUPLICATE ? ST.DUPLICATE : statusOf_(ctx, out);
       if (out[I.Code]) ctx.ivByCode[out[I.Code]] = out;
       continue;
