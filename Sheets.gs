@@ -56,16 +56,25 @@ function loadTable_(name, headers) {
   return { sh: sh, H: headers, I: idx_(headers), data: data, originalLength: data.length, orig: data.map(r => r.slice()) };
 }
 function sameVal_(a, b) { return a === b || (a instanceof Date && b instanceof Date && a.getTime() === b.getTime()); }
-/** Write the table back, but only the cells the script changed: a cell typed while the run was going keeps the hand value
- *  (the baseline still has the old one, so the next run flags it). A row whose first column moved (a row deleted or
- *  inserted meanwhile) is written whole, as before. */
+/** Write the table back, matching rows by key (Response Key, else the first column) and writing only the cells the script
+ *  changed: a cell typed while the run was going keeps the hand value, a row deleted meanwhile stays deleted and a row
+ *  inserted meanwhile stays (the baseline still has the old state, so the next run flags them). New rows go at the end. */
 function saveTable_(t) {
   if (!t.data.length) return;
-  const n = Math.min(t.orig.length, t.sh.getLastRow() - 1);
+  const kc = t.I['Response Key'] !== undefined ? t.I['Response Key'] : 0;
+  const key = (r, i) => String(r[kc]) || '#' + i;
+  const n = t.sh.getLastRow() - 1;
   const now = n > 0 ? t.sh.getRange(2, 1, n, t.H.length).getValues() : [];
-  const out = t.data.map((r, i) => i >= n || !sameVal_(now[i][0], t.orig[i][0]) ? r
-    : r.map((v, j) => sameVal_(v, t.orig[i][j]) ? now[i][j] : v));
-  t.sh.getRange(2, 1, out.length, t.H.length).setValues(out);
+  const at = {};
+  now.forEach((r, i) => { at[key(r, i)] = i; });
+  const out = now.slice(), added = [];
+  t.data.forEach((r, i) => {
+    const o = i < t.orig.length ? t.orig[i] : null, p = at[key(o || r, i)];
+    if (p === undefined) { if (!o) added.push(r); return; } // a loaded row that is gone was deleted by hand meanwhile
+    out[p] = o ? r.map((v, j) => (sameVal_(v, o[j]) ? now[p][j] : v)) : r;
+  });
+  const all = out.concat(added);
+  if (all.length) t.sh.getRange(2, 1, all.length, t.H.length).setValues(all);
 }
 
 function withLock_(fn, waitMs) {
