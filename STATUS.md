@@ -8,24 +8,23 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 ## Live now
 
-- Script: web app **@27**, API **@28** (2026-10-03), `main` at `9b88d7b`. Vercel serves `main`.
+- Script: web app **@29**, API **@30** (2026-10-03), `main` at `1a8acd8`. Vercel serves `main`.
 - Built and deployed: v2 core, Vercel dashboard, settings editing, and the after-lock phases **A** (no pairing after
   lock), **B** (change/swap members), **C** (temporary covers), **D** (manual-edit detection, odd values, full sheet
   check). What each does: [docs/architecture.md](docs/architecture.md#after-lock-phases-ad).
 - **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
-- Master: 49 binomes locked (under v1), sheets created, **not shared**. Test data (`TEST-xx`, `sim.*`) still in it
-  ([docs/testing.md](docs/testing.md#test-data-currently-in-the-live-master-from-2026-10-01-updated-2026-10-03)). Timing
-  limits are 32 / 40 / 5 on purpose (the test rows mail NOT_CONTACTED / NO_DATE / OVERDUE alerts to admins).
-- Phase D took its baseline after the test rows existed: deleting them will raise manual-edit alerts → select them, **Accept edits**.
+- Master: 49 binomes locked (under v1), sheets created, **not shared**. All test data deleted on 2026-10-03
+  ([docs/testing.md](docs/testing.md#test-data-deleted-2026-10-03)): no registrations, interviewees, forms or alerts yet.
+  Timing limits are still 32 / 40 / 5 (24 / 48 / 12 before launch).
 
 ## Next
 
 1. **A–D passed on the live Master on 2026-10-03** ([results and findings](docs/testing.md#live-test-results-2026-10-03)).
-   IT.04 is back in B.20 (A-0068 closes at the next Check integrity). Left: the "Accept edits" UI check.
+   Accept edits on several alerts at once worked (15 deletions, 2026-10-03).
    Findings 1–4 are fixed and deployed (@27 / @28): [#8](https://github.com/puIad/vic-recruitment-2026/pull/8) hand edit lost during a sync (**before
    launch**), [#9](https://github.com/puIad/vic-recruitment-2026/pull/9) Revert keeps Assigned At, [#10](https://github.com/puIad/vic-recruitment-2026/pull/10) re-read sheets Drive calls unchanged, [#11](https://github.com/puIad/vic-recruitment-2026/pull/11) one alert
-   for a name edit. Findings 5–6 need no code.
-2. Timing and interview-form cases passed live on 2026-10-03 (same file). Next: delete all test data and Accept the edits.
+   for a name edit. Finding 8 (a row deleted during a sync came back) fixed in [#12](https://github.com/puIad/vic-recruitment-2026/pull/12), deployed @29 / @30. Findings 5–7 need no code.
+2. Timing and interview-form cases passed live on 2026-10-03 (same file); test data deleted and accepted the same day.
 3. Run **Setup** once from the dashboard (owner) if it hasn't been run since v2: adds missing Settings rows and the
    Member Changes tab, renames Team column E to "Exclude" — then untick E and tick only people who really won't interview.
 4. Vercel checks with other accounts (editor, removed account, viewer, multi-account, sign-out/in, Lock near the limit),

@@ -45,6 +45,7 @@ when someone isn't contacted, has no date, or has no interview form after the in
 | 10-02 | Drive API enabled in the Cloud project; Re-share skips Drive when nothing is shared ([#7](https://github.com/puIad/vic-recruitment-2026/pull/7)) | @25 / @26 |
 | 10-03 | Live test of A–D passed; 6 findings, one to fix before launch ([testing.md](testing.md#live-test-results-2026-10-03)) | |
 | 10-03 | Fixes for findings 1–4: [#8](https://github.com/puIad/vic-recruitment-2026/pull/8) [#9](https://github.com/puIad/vic-recruitment-2026/pull/9) [#10](https://github.com/puIad/vic-recruitment-2026/pull/10) [#11](https://github.com/puIad/vic-recruitment-2026/pull/11) | @27 / @28 |
+| 10-03 | Timing and interview-form cases passed live; finding 8 (row deleted during a sync came back) fixed ([#12](https://github.com/puIad/vic-recruitment-2026/pull/12)); all test data deleted | @29 / @30 |
 
 (web app @N / API @N.)
 

@@ -103,7 +103,7 @@ made through the Sheets API, which the sync sees the same way as typing in the s
 | D | Pass: every row of the table above, Apply / Revert / Accept each tried; odd values raised and closed; full sheet check raised all three (tab in front first, then protection and missing row) |
 | Timing | Pass on @27 / @28, limits 0.1 / 0.15 / 0.05 with three new registrations (IT.05 B.08, IT.06 B.09, IT.07 B.11, assigned 17:12): `NOT_CONTACTED` IT.05 at 17:18, `NO_DATE` IT.05 at 17:21, `OVERDUE` IT.06 at 17:20 (interview 17:17), `BAD_DATE` IT.07 (`14h3`) at the first sync. Limits put back to 32 / 40 / 5 |
 | Interview forms | Pass: clean B.04 / HR.01 → OK; `b3` / `comm 1` → AUTOCORRECTED (normalized); `Sara TEST-04` → FLER.02 AUTOCORRECTED + INFO; B.08 member under B.07 → `BACKUP_INTERVIEWER` MEDIUM, FLAGGED; B.10 member typing B.11 → corrected to B.10, AUTOCORRECTED + INFO; `IT.99` → `UNKNOWN_INTERVIEWEE` HIGH; second form for IT.01 → `DUPLICATE_INTERVIEW` MEDIUM. Interviewees went INTERVIEWED, their OVERDUE alerts closed, the binome sheets got ✅ |
-| Not done | "Ticking several manual edits enables Accept edits" (UI only). The B.20 missing row (A-0068): IT.04 moved back to B.20 by hand on 2026-10-03; the alert closes at the next Check integrity |
+| Accept edits | Pass on @29 / @30: the 15 Interviewees deletions of the cleanup, ticked together and accepted at once from the dashboard; each row also left its binome sheet |
 
 **Findings**
 
@@ -121,16 +121,13 @@ made through the Sheets API, which the sync sees the same way as typing in the s
 5. **A member name change in Binomes is INFO**, not MEDIUM as this file said (an email change is MEDIUM). Table fixed above.
 6. **A tab in front hides the other problems of that sheet** until it is removed (by design, documented above).
 7. **With a limit under 1h the timing messages say "0h after being assigned"** (`Math.floor`). Cosmetic, only seen with test limits.
+8. **A row deleted by hand while a sync runs came back**, with no alert: `saveTable_` wrote back every row it had loaded.
+   Seen twice in a row while deleting the test rows (syncs now run almost back to back). **Fix: [#12](https://github.com/puIad/vic-recruitment-2026/pull/12)**
+   (rows matched by Response Key; a row gone from the tab stays gone and is flagged at the next sync), deployed @29 / @30.
 
-### Test data currently in the live Master (from 2026-10-01, updated 2026-10-03)
+### Test data (deleted 2026-10-03)
 
-All `TEST-xx` / `sim.*@g.enp.edu.dz`: Registration Responses rows 3–14; Interviewees (IT.01–02, IT.04, COMM.01–02,
-HR.01–03, FLER.02–03 + 1 duplicate; IT.03 was dropped for good with Accept); Alerts A-0003 onwards; row 2 of the sheets
-of B.03 B.04 B.05 B.06 B.07 B.10 B.17 B.25 (Contacted/Date/Time). From 2026-10-03: Team row 102 `TEST-UNPAIRED`
-(`sim.unpaired@g.enp.edu.dz`, Exclude off, so it shows as unpaired); Interview Responses row 9 (row 2 until the rows below were
-inserted above it) and Interview Log row 2 (the C.3 form for IT.01, now INTERVIEWED); IT.04 moved to B.20 (Yes, 15/10/2026 15:00 in B.20's sheet now that the row is
-back); Member Changes rows 4–11 (B and C tests, all undone or ended). From the timing / form test: Registration
-Responses rows 15–17 (`TEST-13`–`15`, `sim.hana13` / `sim.karim14` / `sim.lyna15`) → Interviewees IT.05–07 and row 2 of the
-sheets of B.08 B.09 B.11 (B.09: Yes, 03/10/2026 17:17; B.11: Yes, 03/10/2026 `14h3`); Interview Responses rows 2–8
-(`TEST live: …` in "Introduce yourself", sent from real member emails) → Interview Log rows 3–9, and ✅ marks in the sheets of
-B.03 B.04 B.05 B.07 B.10.
+All test data was deleted on 2026-10-03, after the timing / form test: the rows of Registration Responses, Interview
+Responses, Interview Log, Member Changes, Interviewees (accepted as deletions, which also emptied the binome sheets) and
+Alerts, and Team row `TEST-UNPAIRED`. The Master now has the binomes and the Team tab only. Left on purpose: Team row
+`oulad moulad` (`pulad.moulad@g.enp.edu.dz`, Exclude ticked), used for the B.06 test on 10-02.
