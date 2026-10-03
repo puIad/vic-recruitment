@@ -62,15 +62,16 @@ function sameVal_(a, b) { return a === b || (a instanceof Date && b instanceof D
 function saveTable_(t) {
   if (!t.data.length) return;
   const kc = t.I['Response Key'] !== undefined ? t.I['Response Key'] : 0;
-  const key = (r, i) => String(r[kc]) || '#' + i;
+  const key = r => String(r[kc]);
   const n = t.sh.getLastRow() - 1;
   const now = n > 0 ? t.sh.getRange(2, 1, n, t.H.length).getValues() : [];
   const at = {};
-  now.forEach((r, i) => { at[key(r, i)] = i; });
+  now.forEach((r, i) => { if (key(r)) at[key(r)] = i; });
   const out = now.slice(), added = [];
   t.data.forEach((r, i) => {
-    const o = i < t.orig.length ? t.orig[i] : null, p = at[key(o || r, i)];
-    if (p === undefined) { if (!o) added.push(r); return; } // a loaded row that is gone was deleted by hand meanwhile
+    const o = i < t.orig.length ? t.orig[i] : null, k = key(o || r), p = k ? at[k] : undefined;
+    // a loaded row that is gone was deleted by hand meanwhile; one without a key (typed by hand) is left as it is
+    if (p === undefined) { if (!o) added.push(r); return; }
     out[p] = o ? r.map((v, j) => (sameVal_(v, o[j]) ? now[p][j] : v)) : r;
   });
   const all = out.concat(added);
