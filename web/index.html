@@ -1052,7 +1052,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       const ok = await confirmBox('Accept ' + ids.length + ' manual edit' + (ids.length > 1 ? 's' : '') + '?',
         '<p>The Master keeps these changes as they are now; the script stops flagging them. Nothing else is changed (an interviewee whose row was deleted is also removed from their binome sheet).</p>', 'Accept');
       if (!ok) return;
-      if (await run(btn, 'editAccept', { ids: ids }, 'Accept edits')) dropAlerts(ids);
+      const out = await run(btn, 'editAccept', { ids: ids }, 'Accept edits');
+      if (out && out.result) dropAlerts(ids); // result is null when the script lock was busy: nothing was accepted
     },
     async reshare(btn) {
       const ok = await confirmBox('Re-share binome sheets?', '<p>Every current member who is not yet an editor of their binome sheet is added (Google emails them).</p>', 'Re-share');
@@ -1174,7 +1175,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
           : '<p>Writes back the value the script had before the hand edit.</p>'), FIX[mode][0]);
       if (!ok) return;
     }
-    if (await run(btn, 'edit' + mode.charAt(0).toUpperCase() + mode.slice(1), { ids: [a.id] }, FIX[mode][0] + ' ' + a.id)) dropAlerts([a.id]);
+    const out = await run(btn, 'edit' + mode.charAt(0).toUpperCase() + mode.slice(1), { ids: [a.id] }, FIX[mode][0] + ' ' + a.id);
+    if (out && out.result) dropAlerts([a.id]); // null result = script busy, nothing changed
     refresh(true);
   }
   function updateSel(list) {
