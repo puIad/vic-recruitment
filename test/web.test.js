@@ -400,6 +400,16 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   assert(!open('ODD_VALUE').some(e => e.code === w.code), 'corrected: closed');
 
+  // an edit Drive has not dated yet: the trigger skips it while the sheet was read recently, re-read once that is REREAD_MINUTES old
+  const fid = fileOf(to.code), wTime = () => ivRow(w.code)[IVI['Interview Time']];
+  run(`(function(){var c=__files[${J(fid)}].obj.sheets[0].cells,F=idx_(BF_H);
+    for(var i=1;i<c.length;i++) if(c[i][0]===${J(w.code)}) c[i][F['Interview Time']]='16:00';})()`);
+  run('syncAll()'); // the trigger, not Sync now (which reads every sheet)
+  assert.strictEqual(wTime(), '14:00', 'read recently: skipped');
+  run(`(function(){var r=JSON.parse(__props.FILE_READ||'{}');r[${J(fid)}]=Date.now()-16*60000;__props.FILE_READ=JSON.stringify(r);})()`);
+  run('syncAll()');
+  assert.strictEqual(wTime(), '16:00', 'stale: re-read although Drive says unchanged');
+
   // full check of the sheets: a row missing from a sheet, protection removed, a tab put in front
   const book = `__files[${J(fileOf(to.code))}].obj`;
   run(`${book}.sheets[0].cells = ${book}.sheets[0].cells.filter(function(r){return r[0]!==${J(w.code)};})`);
