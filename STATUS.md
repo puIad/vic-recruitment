@@ -8,7 +8,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 ## Live now
 
-- Script: web app **@25**, API **@26** (2026-10-02), `main` at `96313cc`. Vercel serves `main`.
+- Script: web app **@27**, API **@28** (2026-10-03), `main` at `9b88d7b`. Vercel serves `main`.
 - Built and deployed: v2 core, Vercel dashboard, settings editing, and the after-lock phases **A** (no pairing after
   lock), **B** (change/swap members), **C** (temporary covers), **D** (manual-edit detection, odd values, full sheet
   check). What each does: [docs/architecture.md](docs/architecture.md#after-lock-phases-ad).
@@ -22,9 +22,9 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 1. **A–D passed on the live Master on 2026-10-03** ([results and findings](docs/testing.md#live-test-results-2026-10-03)).
    IT.04 is back in B.20 (A-0068 closes at the next Check integrity). Left: the "Accept edits" UI check.
-   Findings 1–4 have fixes in review, one PR each, not deployed: [#8](https://github.com/puIad/vic-recruitment-2026/pull/8) hand edit lost during a sync (**before
+   Findings 1–4 are fixed and deployed (@27 / @28): [#8](https://github.com/puIad/vic-recruitment-2026/pull/8) hand edit lost during a sync (**before
    launch**), [#9](https://github.com/puIad/vic-recruitment-2026/pull/9) Revert keeps Assigned At, [#10](https://github.com/puIad/vic-recruitment-2026/pull/10) re-read sheets Drive calls unchanged, [#11](https://github.com/puIad/vic-recruitment-2026/pull/11) one alert
-   for a name edit. Merge, then `npm run deploy`. Findings 5–6 need no code.
+   for a name edit. Findings 5–6 need no code.
 2. Finish the live test's timing and interview-form cases (same file), then delete all test data and Accept the edits.
 3. Run **Setup** once from the dashboard (owner) if it hasn't been run since v2: adds missing Settings rows and the
    Member Changes tab, renames Team column E to "Exclude" — then untick E and tick only people who really won't interview.

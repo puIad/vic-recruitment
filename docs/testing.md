@@ -108,14 +108,14 @@ made through the Sheets API, which the sync sees the same way as typing in the s
 1. **A hand edit made while a sync runs is lost, with no alert.** Every cycle loads Interviewees, then writes the whole
    range back (`saveTable_`, Sheets.gs); a cell typed in between is overwritten with the old value. Seen live: IT.04's
    Binome changed during a Sync now came back as B.09 with no alert; the same edit a minute later was caught. The window
-   is the cycle's length (seconds for the trigger, up to ~2.5 min for Sync now / Check integrity). **Fix: [#8](https://github.com/puIad/vic-recruitment-2026/pull/8)**, not deployed yet.
+   is the cycle's length (seconds for the trigger, up to ~2.5 min for Sync now / Check integrity). **Fix: [#8](https://github.com/puIad/vic-recruitment-2026/pull/8)**, deployed @27 / @28.
 2. **Revert of a deleted Interviewees row leaves Assigned At empty** (it rebuilds the row from the registration). Contacted /
-   Date / Time come back from the binome sheet at the next sync. Minor: timing checks then count from the registration time. **Fix: [#9](https://github.com/puIad/vic-recruitment-2026/pull/9)**, not deployed yet.
+   Date / Time come back from the binome sheet at the next sync. Minor: timing checks then count from the registration time. **Fix: [#9](https://github.com/puIad/vic-recruitment-2026/pull/9)**, deployed @27 / @28.
 3. **The 1-minute trigger can take several minutes to see an edit in a binome sheet:** it skips sheets whose Drive "last
    updated" time hasn't moved, and Drive was slow to bump it (3 cycles, still not read). Sync now forces it. Matters for
-   alerts that wait on a binome's correction. **Fix: [#10](https://github.com/puIad/vic-recruitment-2026/pull/10)** (a sheet not read for 15 min is re-read), not deployed yet.
+   alerts that wait on a binome's correction. **Fix: [#10](https://github.com/puIad/vic-recruitment-2026/pull/10)** (a sheet not read for 15 min is re-read), deployed @27 / @28.
 4. **A name edit in Interviewees raises two alerts:** INFO `MANUAL_EDIT` and a MEDIUM `INTEGRITY` "First Name in its
-   sheet differ from the Master" that is emailed. Apply closes the first; the second closes at the next integrity check. **Fix: [#11](https://github.com/puIad/vic-recruitment-2026/pull/11)** (no INTEGRITY alert while the MANUAL_EDIT is open), not deployed yet.
+   sheet differ from the Master" that is emailed. Apply closes the first; the second closes at the next integrity check. **Fix: [#11](https://github.com/puIad/vic-recruitment-2026/pull/11)** (no INTEGRITY alert while the MANUAL_EDIT is open), deployed @27 / @28.
 5. **A member name change in Binomes is INFO**, not MEDIUM as this file said (an email change is MEDIUM). Table fixed above.
 6. **A tab in front hides the other problems of that sheet** until it is removed (by design, documented above).
 
