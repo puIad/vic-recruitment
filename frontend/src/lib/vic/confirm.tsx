@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,8 @@ export interface ConfirmOptions {
   okLabel?: string
   /** writes that are hard to undo (lock, replace, redraw) use the stronger button */
   danger?: boolean
+  /** the confirm button stays disabled until this exact text is typed (for actions nobody should trigger by accident) */
+  phrase?: string
 }
 
 type Ask = (o: ConfirmOptions) => Promise<boolean>
@@ -31,6 +34,7 @@ export function useConfirm(): Ask {
 
 export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [opts, setOpts] = React.useState<ConfirmOptions | null>(null)
+  const [typed, setTyped] = React.useState("")
   const resolver = React.useRef<((v: boolean) => void) | null>(null)
   const setModals = useVic((s) => s.setModals)
 
@@ -40,6 +44,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         if (resolver.current) resolver.current(false)
         else setModals(1)
         resolver.current = resolve
+        setTyped("")
         setOpts(o)
       }),
     [setModals]
@@ -63,11 +68,31 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             <DialogDescription className="sr-only">Confirm this action</DialogDescription>
           </DialogHeader>
           <div className="text-sm leading-relaxed text-foreground/90 [&_li]:mt-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5">{opts?.body}</div>
+          {opts?.phrase && (
+            <div className="space-y-2">
+              <label htmlFor="confirm-phrase" className="text-sm font-semibold">
+                To go ahead, type <span className="select-all rounded bg-muted px-1.5 py-0.5 font-mono text-[0.8rem]">{opts.phrase}</span>
+              </label>
+              <Input
+                id="confirm-phrase"
+                value={typed}
+                onChange={(e) => setTyped(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={!!typed && typed.trim() !== opts.phrase}
+              />
+            </div>
+          )}
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => close(false)}>
               Cancel
             </Button>
-            <Button autoFocus variant={opts?.danger ? "destructive" : "default"} onClick={() => close(true)}>
+            <Button
+              autoFocus={!opts?.phrase}
+              variant={opts?.danger ? "destructive" : "default"}
+              disabled={!!opts?.phrase && typed.trim() !== opts.phrase}
+              onClick={() => close(true)}
+            >
               {opts?.okLabel || "Confirm"}
             </Button>
           </DialogFooter>

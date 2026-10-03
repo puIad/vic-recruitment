@@ -40,7 +40,7 @@ Product record: [../PRODUCT.md](../PRODUCT.md); visual system: `DESIGN.md` at th
 | Test mode chip | Header pill and a sidebar notice |
 | Gate (sign in, expired, no access, error) | Same states, set in the iris of the charter's divider disc |
 
-New without an old equivalent: command palette (Ctrl K: pages, candidates by code or name, binomes, alerts, Sync), Interviewees and Team tables,
+New without an old equivalent: Reset all binomes (Maintenance > Danger zone: trashes the binome sheets, empties Team and Member Changes, interviewees back to Unassigned; needs the typed phrase "I confirm to reset the binomes", checked by the script too; `resetBinomesCore_` in Team.gs, deploy the script before using it), command palette (Ctrl K: pages, candidates by code or name, binomes, alerts, Sync), Interviewees and Team tables,
 Help (FAQ), Appearance with charter palettes (VIC, SPARK, English Bubble, Training).
 
 ## Placeholders (sample data, each labelled) and what makes them real

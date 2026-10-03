@@ -193,6 +193,62 @@ function lockBinomesCore_(budgetMs) {
     '\nWaiting registrants (if any) have been assigned.');
 }
 
+const RESET_PHRASE = 'I confirm to reset the binomes';
+// Open alerts of these types belong to the old binomes (any alert with a Binome does too) and are closed by a reset
+const RESET_ALERT_TYPES = ['MANUAL_EDIT', 'INTEGRITY', 'UNPAIRED_MEMBER', 'MEMBER_CHANGED', 'COVER_ADDED', 'REASSIGNED', 'FILE_ERROR'];
+
+/**
+ * Start over with a new organizing team (OT). Trashes every binome sheet (Drive keeps them 30 days), empties Binomes, Team
+ * and Member Changes, sends every interviewee back to UNASSIGNED (codes and registration data stay; what the binomes had
+ * written is cleared), closes the alerts of the old binomes and forgets what the script knew about them. Registrations
+ * deleted by hand stay deleted. The phrase is checked here, not only in the dashboard. Returns null when the script is busy.
+ */
+function resetBinomesCore_(phrase) {
+  if (String(phrase || '').trim() !== RESET_PHRASE) throw new Error('Type exactly: ' + RESET_PHRASE);
+  return withLock_(() => {
+    const ctx = loadCtx_();
+    const I = ctx.iv.I, A = ctx.alerts.table.I;
+    const failed = [];
+    let trashed = 0;
+    ctx.binomes.forEach(b => {
+      if (!b.fileId) return;
+      try { DriveApp.getFileById(b.fileId).setTrashed(true); trashed++; } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); }
+    });
+    const nBinomes = ctx.binomes.length, nTeam = ctx.team.data.filter(r => String(r[ctx.team.I.Email]).trim()).length;
+    [[TAB.BINOMES, BIN_H], [TAB.TEAM, TEAM_H], [TAB.CHANGES, MC_H]].forEach(t => {
+      const sh = ss_().getSheetByName(t[0]);
+      if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, t[1].length).clearContent();
+      if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 1).clearNote().setBackground(null);
+    });
+    let nIv = 0;
+    ctx.iv.data.forEach(r => {
+      if (r[I.Status] === ST.DUPLICATE || !(r[I.Binome] || r[I.Code])) return;
+      ['Binome', 'Assigned At', 'Contacted', 'Contacted Seen At', 'Interview Date', 'Interview Time', 'Interview At',
+        'Interview Submitted At', 'Interview Log Row', 'Binome Notes'].forEach(h => { r[I[h]] = ''; });
+      r[I.Status] = ST.UNASSIGNED;
+      nIv++;
+    });
+    saveTable_(ctx.iv);
+    let nAlerts = 0;
+    const alerts = ctx.alerts.table;
+    alerts.data.forEach((r, i) => {
+      if (r[A.Status] !== 'OPEN' || !(r[A.Binome] || RESET_ALERT_TYPES.indexOf(r[A.Type]) >= 0)) return;
+      alerts.sh.getRange(i + 2, A.Status + 1).setValue('AUTO-RESOLVED');
+      alerts.sh.getRange(i + 2, A['Resolved At'] + 1).setValue(ctx.now);
+      nAlerts++;
+    });
+    // forget the old binomes; registrations deleted on purpose (iv entry 0) stay remembered so they are not re-imported
+    const props = PropertiesService.getScriptProperties();
+    ['FILE_SEEN', 'FILE_READ', 'INTEG_NEXT'].forEach(k => props.deleteProperty(k));
+    const old = loadBaseline_(), fresh = loadCtx_();
+    fresh.base = { bin: {}, iv: {} };
+    Object.keys((old && old.iv) || {}).forEach(k => { if (old.iv[k] === 0) fresh.base.iv[k] = 0; });
+    saveBaseline_(editSnapshot_(fresh));
+    buildTracker_(fresh);
+    return { trashed: trashed, failed: failed, binomes: nBinomes, team: nTeam, interviewees: nIv, alerts: nAlerts };
+  }, 60000);
+}
+
 function reshareBinomeFiles() {
   if (bool_(S_().TEST_MODE)) { say_('TEST_MODE is TRUE in Settings: files are not shared. Set it to FALSE for the real launch.'); return; }
   const ctx = loadCtx_();

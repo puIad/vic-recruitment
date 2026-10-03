@@ -212,6 +212,10 @@ function webRun(action, args) {
       case 'lockCheck': result = lockCheck_(); break;
       case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;
+      case 'resetBinomes': { result = resetBinomesCore_(args.phrase);
+        _webOut.push(!result ? 'Busy: another run is in progress, try again in a minute.' : 'Binomes reset ✅ ' + result.binomes + ' binomes removed, ' + result.trashed + ' sheets trashed, ' +
+          result.interviewees + ' interviewees back to Unassigned, Team emptied.\nImport the new team to start again.' +
+          (result.failed.length ? '\n⚠️ ' + result.failed.length + ' sheet(s) could not be trashed, delete them in the Binome Sheets folder:\n' + result.failed.slice(0, 5).join('\n') : '')); break; }
       case 'digest': sendDailyDigest(); _webOut.push('Digest sent to ' + (adminEmails_().join(', ') || 'nobody (ADMIN_EMAIL is empty)')); break;
       case 'reassign': reassignCore_(args.code, args.binome); break;
       case 'changeMember': result = changeMemberCore_(args); break;

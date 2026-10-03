@@ -129,7 +129,7 @@ var SpreadsheetApp = {
 var DriveApp = {
   getFileById(id) {
     const f = __files[id]; if (!f) throw new Error('no drive file ' + id);
-    return { moveTo(folder) { f.parent = folder.id; }, getLastUpdated() { return f.lastUpdated; }, getId() { return id; },
+    return { moveTo(folder) { f.parent = folder.id; }, setTrashed(t) { f.trashed = t; return this; }, getLastUpdated() { return f.lastUpdated; }, getId() { return id; },
       getEditors() { return f.editors.map(e => ({ getEmail: () => e })); }, addEditor(e) { f.editors.push(e); }, getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; },
       getViewers() { return (f.viewers || []).map(e => ({ getEmail: () => e })); },
       addViewer(e) { (f.viewers = f.viewers || []).push(e); }, removeViewer(e) { f.viewers = (f.viewers || []).filter(x => x !== e); },

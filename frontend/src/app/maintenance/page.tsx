@@ -1,4 +1,4 @@
-import { Check, FileSpreadsheet, Mail, Play, Send, Share2, SlidersHorizontal, type LucideIcon } from "lucide-react"
+import { Check, FileSpreadsheet, Mail, Play, RotateCcw, Send, Share2, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
@@ -21,7 +21,7 @@ interface Tool {
 
 /** The old Maintenance tools, one row each. Setup installs triggers, so only the owner sees it (the script enforces it too). */
 export default function MaintenancePage() {
-  const { integrity, digest, reshare, setup } = useActions()
+  const { integrity, digest, reshare, setup, resetBinomes } = useActions()
   const busy = useVic((s) => s.busy)
   const running = useVic((s) => s.busyAction)
   const owner = useVic((s) => !!s.access?.owner)
@@ -62,6 +62,32 @@ export default function MaintenancePage() {
                 </li>
               ))}
           </ul>
+        </CardContent>
+      </Card>
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg font-bold text-destructive">
+            <TriangleAlert className="size-5" /> Danger zone
+          </CardTitle>
+          <CardDescription>Drafting is closed once binomes are locked. To pair again with a new team, reset first.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="min-w-0 flex-1 basis-72">
+              <p className="font-bold">Reset all binomes</p>
+              <p className="mt-0.5 max-w-prose text-sm leading-relaxed text-muted-foreground">
+                Deletes every binome and its sheet, empties the Team tab and sends every interviewee back to Unassigned, so you can import a new team and start over. You will be asked to type a confirmation.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              disabled={busy || !st}
+              onClick={() => st && resetBinomes(st.binomes.length, st.interviewees.length)}
+              className="min-w-28"
+            >
+              {busy && running === "resetBinomes" ? <Spinner /> : <RotateCcw />} Reset…
+            </Button>
+          </div>
         </CardContent>
       </Card>
       <p className="text-sm text-muted-foreground">

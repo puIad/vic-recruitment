@@ -45,6 +45,9 @@ export interface CoverArgs {
   reason: string
 }
 
+/** The script checks this phrase too; keep both in step (Team.gs RESET_PHRASE). */
+const RESET_PHRASE = "I confirm to reset the binomes"
+
 const Mono = ({ children }: { children: React.ReactNode }) => <span className="font-bold">{children}</span>
 
 function ChangeSummary({ p }: { p: ChangePlan }) {
@@ -365,6 +368,33 @@ export function useActions() {
           okLabel: "Re-share",
         })
         if (ok) await go("reshare", {}, "Re-share")
+        after()
+      },
+      async resetBinomes(binomes: number, interviewees: number) {
+        const ok = await confirm({
+          title: "Reset all binomes?",
+          danger: true,
+          phrase: RESET_PHRASE,
+          okLabel: "Reset all binomes",
+          body: (
+            <>
+              <p className="rounded-xl bg-destructive/10 p-3 font-bold text-destructive">
+                Warning: this cannot be undone from the dashboard. Do it only to start the whole pairing over with a new team.
+              </p>
+              <ul>
+                <li>
+                  <b>{binomes}</b> binomes are deleted and their Google Sheets are moved to the Drive trash (Drive keeps them 30 days). Whatever the binomes wrote in them — contacted, dates, notes — goes with them.
+                </li>
+                <li>
+                  <b>{interviewees}</b> interviewees go back to Unassigned. Their codes and registration answers stay; their binome, dates and notes are cleared.
+                </li>
+                <li>The Team tab and the Member Changes history are emptied. Open alerts about the old binomes are closed.</li>
+                <li>Afterwards you import the new team, draft and lock again, and waiting interviewees are placed in the new binomes.</li>
+              </ul>
+            </>
+          ),
+        })
+        if (ok) await go("resetBinomes", { phrase: RESET_PHRASE }, "Reset binomes", true)
         after()
       },
       async setup() {
