@@ -1,0 +1,93 @@
+import * as React from "react"
+import { LogOut, Repeat, ShieldCheck } from "lucide-react"
+import { BaseLayout } from "@/components/layouts/base-layout"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { signInUrl, signOut } from "@/lib/vic/api"
+import { displayName, initials } from "@/lib/vic/format"
+import { useVic } from "@/lib/vic/store"
+
+const SESSION_MS = 48 * 3600e3
+
+export default function AccountSettings() {
+  const access = useVic((s) => s.access)
+  const email = useVic((s) => s.state?.user) || access?.email || ""
+  const ends = useVic((s) => s.sessionEnds)
+  const [now, setNow] = React.useState(() => Date.now())
+  React.useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(id)
+  }, [])
+  const left = ends ? Math.max(0, ends - now) : 0
+  const hours = Math.floor(left / 3600e3)
+  const mins = Math.round((left % 3600e3) / 60e3)
+
+  return (
+    <BaseLayout title="Account" description="Who is signed in, what that account may do, and when the sign-in ends." watermark="Account">
+      <div className="grid gap-6 lg:grid-cols-5">
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Signed in</CardTitle>
+            <CardDescription>The script runs as this account, so Google decides what it can touch.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center gap-4">
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-vic-aqua text-xl font-extrabold text-vic-ink" aria-hidden="true">
+                {initials(email)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-2xl font-extrabold leading-tight">{displayName(email)}</p>
+                <p className="truncate text-muted-foreground">{email}</p>
+              </div>
+              <Badge variant={access?.owner ? "success" : "info"} className="ml-auto self-start">
+                {access?.owner ? "Owner" : "Editor"}
+              </Badge>
+            </div>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start gap-2">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> An ENP account that can edit the VIC Recruitment 2026 master sheet.
+              </li>
+              <li className="flex items-start gap-2">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> {access?.owner ? "You own the Master: you may also run Setup." : "Setup is reserved for the owner of the Master."}
+              </li>
+            </ul>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => signOut(signInUrl)}>
+                <Repeat /> Switch account
+              </Button>
+              <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => signOut("/")}>
+                <LogOut /> Sign out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Session</CardTitle>
+            <CardDescription>Sign-ins last 48 hours from the moment you sign in.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {ends ? (
+              <>
+                <p className="num text-4xl font-extrabold text-heading">
+                  {hours}
+                  <span className="text-lg font-bold text-muted-foreground"> h </span>
+                  {mins}
+                  <span className="text-lg font-bold text-muted-foreground"> min left</span>
+                </p>
+                <Progress value={Math.min(100, (left / SESSION_MS) * 100)} aria-label="Sign-in time left" />
+                <p className="text-sm text-muted-foreground">
+                  Ends {new Date(ends).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}. Signing back in within the window skips Google's permission screen.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">The end time appears after the first request.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </BaseLayout>
+  )
+}

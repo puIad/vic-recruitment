@@ -127,6 +127,7 @@ function webState() {
     unpaired: activeOrPaused_(ctx).length ? unpairedMembers(teamMembers_(ctx), ctx.binomes) : [],
     covers: (ctx.covers || []).map(c => ({ row: c.row, binome: c.binome, name: c.name, email: c.email, outName: c.outName,
       codes: c.codes, live: coverLive_(ctx, c), reason: c.reason })),
+    history: historyRows_(),
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
@@ -144,7 +145,17 @@ function webState() {
   };
 }
 
-const SETTING_ENUMS = { INSTANT_EMAIL_MIN_SEVERITY: ['HIGH', 'MEDIUM', 'INFO'], BALANCE_BY: ['ACTIVE', 'TOTAL'], SYNC_EVERY_MINUTES: [1, 5, 10, 15, 30] };
+/** The Member Changes tab for the dashboard's Change history, newest first (last 300). A swap is two PERMANENT rows. */
+function historyRows_() {
+  const C = idx_(MC_H), s = v => String(v == null ? '' : v).trim();
+  return loadChanges_().map(r => ({
+    at: fmt_(r[C.At], 'dd/MM/yyyy HH:mm'), by: s(r[C.By]), type: s(r[C.Type]), binome: s(r[C.Binome]),
+    out: s(r[C['Out Name']]) || s(r[C['Out Email']]), inn: s(r[C['In Name']]) || s(r[C['In Email']]),
+    codes: splitCodes_(r[C.Interviewees]), reason: s(r[C.Reason]), status: s(r[C.Status]),
+  })).filter(h => h.at || h.binome).reverse().slice(0, 300);
+}
+
+const SETTING_ENUMS ={ INSTANT_EMAIL_MIN_SEVERITY: ['HIGH', 'MEDIUM', 'INFO'], BALANCE_BY: ['ACTIVE', 'TOTAL'], SYNC_EVERY_MINUTES: [1, 5, 10, 15, 30] };
 /** How the dashboard edits a setting: bool (switch), enum (dropdown), number or text. Types come from the defaults. */
 function settingKind_(r) {
   if (SETTING_ENUMS[r[0]]) return { type: 'enum', options: SETTING_ENUMS[r[0]] };

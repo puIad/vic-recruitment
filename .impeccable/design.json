@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-03T00:00:00Z",
+  "title": "Design System: VIC Recruitment 2026 Control Room",
+  "extensions": {
+    "colorMeta": {
+      "primary": { "role": "primary", "displayName": "Working Blue", "canonical": "oklch(0.54 0.129 242.2)", "tonalRamp": ["oklch(0.15 0.05 242)", "oklch(0.25 0.08 242)", "oklch(0.38 0.1 242)", "oklch(0.54 0.129 242)", "oklch(0.64 0.12 242)", "oklch(0.75 0.09 242)", "oklch(0.88 0.05 242)", "oklch(0.95 0.022 242)"] },
+      "charter-blue": { "role": "primary", "displayName": "Cyan Cornflower Blue (exact swatch)", "canonical": "#127dbb", "tonalRamp": ["oklch(0.15 0.05 242)", "oklch(0.25 0.08 242)", "oklch(0.38 0.1 242)", "oklch(0.52 0.12 242)", "oklch(0.64 0.12 242)", "oklch(0.75 0.09 242)", "oklch(0.88 0.05 242)", "oklch(0.95 0.022 242)"] },
+      "charter-aqua": { "role": "secondary", "displayName": "Medium Aquamarine", "canonical": "#69c4af", "tonalRamp": ["oklch(0.2 0.04 177)", "oklch(0.3 0.06 177)", "oklch(0.47 0.09 177)", "oklch(0.6 0.1 177)", "oklch(0.758 0.093 177)", "oklch(0.84 0.07 177)", "oklch(0.92 0.045 177)", "oklch(0.955 0.035 177)"] },
+      "charter-ink": { "role": "neutral", "displayName": "Dark Jungle Green", "canonical": "#141e27", "tonalRamp": ["oklch(0.155 0.019 246)", "oklch(0.185 0.02 246)", "oklch(0.23 0.023 246)", "oklch(0.35 0.025 246)", "oklch(0.49 0.03 246)", "oklch(0.74 0.02 246)", "oklch(0.915 0.006 246)", "oklch(0.967 0.004 246)"] },
+      "charter-gray": { "role": "neutral", "displayName": "Bright Gray", "canonical": "#efefef", "tonalRamp": ["oklch(0.3 0.01 246)", "oklch(0.45 0.01 246)", "oklch(0.6 0.008 246)", "oklch(0.75 0.006 246)", "oklch(0.87 0.01 246)", "oklch(0.915 0.006 246)", "oklch(0.955 0.004 246)", "oklch(0.967 0.004 246)"] },
+      "charter-tangelo": { "role": "tertiary", "displayName": "Tangelo (needs a person)", "canonical": "#f24407", "tonalRamp": ["oklch(0.25 0.08 33)", "oklch(0.35 0.12 33)", "oklch(0.45 0.17 33)", "oklch(0.52 0.2 33)", "oklch(0.57 0.2 33)", "oklch(0.7 0.19 33)", "oklch(0.85 0.09 33)", "oklch(0.962 0.03 35)"] },
+      "charter-orange": { "role": "tertiary", "displayName": "Orange (needs a person)", "canonical": "#f29a09", "tonalRamp": ["oklch(0.25 0.06 70)", "oklch(0.34 0.06 70)", "oklch(0.5 0.12 65)", "oklch(0.65 0.14 70)", "oklch(0.76 0.16 69)", "oklch(0.85 0.12 78)", "oklch(0.93 0.07 85)", "oklch(0.962 0.06 85)"] }
+    },
+    "typographyMeta": {
+      "page-title": { "displayName": "Page title", "purpose": "One h1 per page, Heavy, charter blue, over a Regular context line." },
+      "card-title": { "displayName": "Card title", "purpose": "Every card heading, Bold lg." },
+      "body": { "displayName": "Body", "purpose": "Default text, Medium. Tabular figures via .num in tables and counters." },
+      "label": { "displayName": "Label", "purpose": "Badges and counters, Semibold small. Never uppercase." },
+      "watermark": { "displayName": "Outlined word", "purpose": "Decorative hairline-outlined Light word behind page titles on large screens." }
+    },
+    "shadows": [
+      { "name": "rest", "value": "shadow-xs / shadow-sm (Tailwind defaults)", "purpose": "Buttons and cards at rest." },
+      { "name": "float", "value": "shadow-md / shadow-lg (Tailwind defaults)", "purpose": "Menus, selects, popovers, sheets." },
+      { "name": "modal", "value": "shadow-xl (Tailwind default)", "purpose": "Dialogs and the phone sign-in card." }
+    ],
+    "motion": [
+      { "name": "control-transition", "value": "200ms on color, background, shadow, transform; active scale 0.98", "purpose": "Buttons and badges." },
+      { "name": "vic-turn", "value": "900ms cubic-bezier(0.22, 1, 0.36, 1) once, rotate 1turn", "purpose": "Live pulse: the mini ring turns once when the Master changes." },
+      { "name": "reduced-motion", "value": "durations collapse to 0.001ms under prefers-reduced-motion", "purpose": "Accessibility fallback." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Pill, blue fill, white text; the one working action per view (Sync now).",
+      "html": "<button class=\"ds-btn-primary\">Sync now</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:8px 16px;border:0;border-radius:9999px;background:var(--primary,oklch(0.54 0.129 242.2));color:#fff;font:600 14px/1 Gilroy,system-ui,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer;transition:background-color .2s,transform .2s,box-shadow .2s}.ds-btn-primary:hover{background:color-mix(in oklab,var(--primary,oklch(0.54 0.129 242.2)) 90%,transparent)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:2px solid var(--ring,oklch(0.64 0.12 242));outline-offset:2px;box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.64 0.12 242)) 50%,transparent)}"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Pill with hairline stroke for secondary actions.",
+      "html": "<button class=\"ds-btn-outline\">Preview</button>",
+      "css": ".ds-btn-outline{display:inline-flex;align-items:center;justify-content:center;height:36px;padding:8px 16px;border:1px solid var(--border,oklch(0.915 0.006 246));border-radius:9999px;background:#fff;color:var(--foreground,oklch(0.23 0.023 246.1));font:600 14px/1 Gilroy,system-ui,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,.05);cursor:pointer;transition:background-color .2s,transform .2s}.ds-btn-outline:hover{background:var(--accent,oklch(0.962 0.022 242));color:var(--accent-foreground,oklch(0.38 0.1 242))}.ds-btn-outline:active{transform:scale(.98)}.ds-btn-outline:focus-visible{outline:2px solid var(--ring,oklch(0.64 0.12 242));outline-offset:2px}"
+    },
+    {
+      "name": "Status Badges",
+      "kind": "chip",
+      "refersTo": "badge-info",
+      "description": "Pill soft-fill badges for info, success, warning and danger.",
+      "html": "<span class=\"ds-badge ds-badge-info\">Info</span> <span class=\"ds-badge ds-badge-success\">Done</span> <span class=\"ds-badge ds-badge-warning\">Medium</span> <span class=\"ds-badge ds-badge-danger\">High</span>",
+      "css": ".ds-badge{display:inline-flex;align-items:center;padding:2px 10px;border-radius:9999px;font:600 12px/1.33 Gilroy,system-ui,sans-serif;white-space:nowrap}.ds-badge-info{background:var(--info-soft,oklch(0.955 0.025 242));color:var(--info,oklch(0.45 0.12 242))}.ds-badge-success{background:var(--success-soft,oklch(0.955 0.035 177));color:var(--success,oklch(0.47 0.09 177))}.ds-badge-warning{background:var(--warning-soft,oklch(0.962 0.06 85));color:var(--warning,oklch(0.5 0.12 65))}.ds-badge-danger{background:var(--danger-soft,oklch(0.962 0.03 35));color:var(--danger,oklch(0.52 0.2 33))}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Hairline white card with Bold lg title and muted description.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Pipeline</div><div class=\"ds-card-desc\">Six stages, live from the Master.</div></div>",
+      "css": ".ds-card{display:flex;flex-direction:column;gap:6px;padding:24px;border:1px solid var(--border,oklch(0.915 0.006 246));border-radius:18px;background:var(--card,#fff);color:var(--card-foreground,oklch(0.23 0.023 246.1));box-shadow:0 1px 3px rgba(0,0,0,.08);font-family:Gilroy,system-ui,sans-serif;font-weight:500}.ds-card-title{font-size:18px;font-weight:700;line-height:1}.ds-card-desc{font-size:14px;color:var(--muted-foreground,oklch(0.49 0.03 246))}"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "36px field, 11px radius, hairline input stroke, ring on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Search\" />",
+      "css": ".ds-input{height:36px;width:220px;padding:4px 12px;border:1px solid var(--input,oklch(0.87 0.01 246));border-radius:11px;background:transparent;color:var(--foreground,oklch(0.23 0.023 246.1));font:500 14px Gilroy,system-ui,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,.05);outline:none;transition:box-shadow .2s,border-color .2s}.ds-input::placeholder{color:var(--muted-foreground,oklch(0.49 0.03 246))}.ds-input:focus-visible{border-color:var(--ring,oklch(0.64 0.12 242));box-shadow:0 0 0 3px color-mix(in oklab,var(--ring,oklch(0.64 0.12 242)) 50%,transparent)}"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "sidebar",
+      "description": "White Medium label on Dark Jungle Green, 9% white active tint, aquamarine counter.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item ds-nav-active\" href=\"#\">Overview</a><a class=\"ds-nav-item\" href=\"#\">Alerts <span class=\"ds-nav-count\">4</span></a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:2px;width:220px;padding:8px;border-radius:14px;background:oklch(0.23 0.023 246.1);font-family:Gilroy,system-ui,sans-serif}.ds-nav-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:11px;color:oklch(0.96 0.006 246);font-weight:500;font-size:14px;text-decoration:none;transition:background .2s}.ds-nav-item:hover{background:oklch(1 0 0 / 9%)}.ds-nav-item:focus-visible{outline:2px solid oklch(0.758 0.093 176.8);outline-offset:2px}.ds-nav-active{background:oklch(1 0 0 / 9%);color:#fff}.ds-nav-count{margin-left:auto;padding:0 8px;border-radius:9999px;background:oklch(0.758 0.093 176.8);color:oklch(0.23 0.023 246.1);font-size:12px;font-weight:600}"
+    },
+    {
+      "name": "Footer Rule",
+      "kind": "custom",
+      "refersTo": "charter-motifs",
+      "description": "The charter's page footer: gradient hairline, label left, note right.",
+      "html": "<div class=\"ds-rule\"><div class=\"ds-rule-line\"></div><div class=\"ds-rule-row\"><span>VIC Recruitment 2026 · Control room</span><span>Master read 14:02</span></div></div>",
+      "css": ".ds-rule{width:420px;font-family:Gilroy,system-ui,sans-serif}.ds-rule-line{height:1px;background-image:linear-gradient(90deg,var(--deco-from,#5ab3b1),var(--deco-to,#127dbb))}.ds-rule-row{display:flex;justify-content:space-between;gap:16px;padding-top:8px;font-size:12px;font-weight:400;color:var(--primary,oklch(0.54 0.129 242.2))}"
+    },
+    {
+      "name": "Placeholder Banner",
+      "kind": "custom",
+      "refersTo": "placeholder-banner",
+      "description": "Dashed banner that marks sample data and feature ideas; dashed borders mean placeholder only.",
+      "html": "<div class=\"ds-banner\"><b>Placeholder: a feature idea, shown with sample data</b><span>The idea. What it is, and what it needs to become real.</span></div>",
+      "css": ".ds-banner{display:flex;flex-direction:column;gap:4px;padding:16px;border:2px dashed color-mix(in oklab,var(--primary,oklch(0.54 0.129 242.2)) 35%,transparent);border-radius:24px;background:color-mix(in oklab,var(--accent,oklch(0.962 0.022 242)) 60%,transparent);color:var(--foreground,oklch(0.23 0.023 246.1));font:500 14px/1.6 Gilroy,system-ui,sans-serif}.ds-banner b{font-weight:700}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Charter, Alive",
+    "overview": "The world is the VIC IT Charter 2026, taken literally: its palette, its Gilroy typeface, its gradients, its divider disc, arches, outlined words and dot grid. The working surface is calm and white; the charter's boldness lives in the frame (the dark sidebar, the page header, the sign-in and error stages, empty states, the footer rule) and never in the data. It refuses the generic admin look: neutral gray, Inter, a stray blue accent, a KPI tile grid.\n\nDensity is moderate and legible: hairline cards on white, pill-shaped controls, one working accent (Cornflower Blue) and one reward color (Aquamarine). Warm colors are reserved for people-needed signals. Light is the default; dark is supported and keeps AA contrast.",
+    "keyCharacteristics": [
+      "White working surface inside a Dark Jungle Green frame.",
+      "Gilroy only; Heavy blue titles over Light or Regular context lines; Medium body; never all-caps.",
+      "Pill buttons, pill badges, hairline cards, 14px base radius.",
+      "Gradient hairline footer rule, label left and note right.",
+      "Decorative charter motifs on the frame only, always aria-hidden.",
+      "A palette switch (VIC, SPARK, English Bubble, Training) recolors accents and decorative gradient ends, never the logo."
+    ],
+    "rules": [
+      { "name": "The Nudge Rule", "body": "Blue that carries text or a fill is `primary` (L .54). The exact #127dbb appears only in the logo, gradients and swatches. Never use #127dbb as text on white.", "section": "colors" },
+      { "name": "The Needs-A-Person Rule", "body": "Orange and tangelo appear only where a human has to act (alerts, warnings, test mode). They are never decoration, a category color, or a chart accent for good news.", "section": "colors" },
+      { "name": "The Aqua-Takes-Dark Rule", "body": "Text on aquamarine is Dark Jungle Green. Text on blue and on the dark frame is white.", "section": "colors" },
+      { "name": "The Never-Caps Rule", "body": "Gilroy is never set in all caps and the build carries no uppercase or tracked eyebrows. Sentence case everywhere.", "section": "typography" },
+      { "name": "The Weight-Is-The-Hierarchy Rule", "body": "Titles Heavy or Bold, paragraphs Regular or Medium, attribution Light. Do not add a second family.", "section": "typography" },
+      { "name": "The Soft-Shadow-Only Rule", "body": "Shadows are Tailwind's soft blurred defaults. Hard offset shadows are not part of this world.", "section": "elevation" },
+      { "name": "The Gradient-Stays-Flat Rule", "body": "Gradients fill decorative motifs, the status bar and the footer hairline; they never sit behind running text or tables.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep working surfaces white and put charter boldness in the frame.",
+      "Do use `primary` oklch(0.54 0.129 242.2) for any blue that carries text or fills.",
+      "Do give every semantic state a soft pair (text plus `*-soft` fill) and keep AA in light and dark.",
+      "Do use pills for buttons and badges, hairline 1px borders on cards.",
+      "Do place white text on blue and the dark frame, and dark text on aquamarine.",
+      "Do label placeholders with a dashed border and the words \"sample\" or \"placeholder\".",
+      "Do use the logo files from `public/brand` at their given colors and keep clear space."
+    ],
+    "donts": [
+      "Don't recolor, distort, shadow, outline or put the logo on a photo.",
+      "Don't extract the logo's ring or iris as a standalone graphic. The divider disc is the charter's own artwork and the only ring motif.",
+      "Don't set Gilroy in all caps or add a second typeface.",
+      "Don't use orange or tangelo as decoration or category color; they mean needs-a-person.",
+      "Don't use dashed borders for anything but placeholder, sample or empty.",
+      "Don't use hard offset shadows, neutral-gray admin chrome, Inter, or a KPI tile grid.",
+      "Don't place gradients behind running text or data."
+    ]
+  }
+}

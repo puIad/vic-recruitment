@@ -1,5 +1,10 @@
 test/data/
-data/
+/data/
 /graphify-out/
 .claude/rules/aios
 node_modules/
+.playwright-mcp/
+frontend/dist/
+.impeccable/review/
+.impeccable/build/
+web/dist/

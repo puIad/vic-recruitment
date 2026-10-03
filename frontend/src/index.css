@@ -1,0 +1,285 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Gilroy: the VIC IT Charter 2026 typeface (files supplied by the club, assets/Gilroy).
+   Charter usage: Bold/Heavy for headings, Regular/Medium for paragraphs, Light for attribution; never all caps. */
+@font-face { font-family: "Gilroy"; font-weight: 300; font-style: normal; font-display: swap; src: url("./assets/fonts/Gilroy-Light.woff2") format("woff2"); }
+@font-face { font-family: "Gilroy"; font-weight: 400; font-style: normal; font-display: swap; src: url("./assets/fonts/Gilroy-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Gilroy"; font-weight: 500; font-style: normal; font-display: swap; src: url("./assets/fonts/Gilroy-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Gilroy"; font-weight: 600 700; font-style: normal; font-display: swap; src: url("./assets/fonts/Gilroy-Bold.woff2") format("woff2"); }
+@font-face { font-family: "Gilroy"; font-weight: 800 900; font-style: normal; font-display: swap; src: url("./assets/fonts/Gilroy-Heavy.woff2") format("woff2"); }
+
+@theme inline {
+  --font-sans: "Gilroy", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Semantic states: the charter palette, tinted for text and for soft fills */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-heading: var(--heading);
+
+  /* Charter swatches, verbatim from the IT Charter 2026 (pages 13 and 16) */
+  --color-vic-aqua: #69c4af;
+  --color-vic-blue: #127dbb;
+  --color-vic-cobalt: #1a52a2;
+  --color-vic-ink: #141e27;
+  --color-vic-gray: #efefef;
+  --color-vic-orange: #f29a09;
+  --color-vic-tangelo: #f24407;
+  --color-vic-violet: #5700cf;
+  --color-vic-purple: #7849a8;
+}
+
+:root {
+  --radius: 0.875rem;
+
+  /* Charter colours: Bright Gray #efefef, Dark Jungle Green #141e27, Cyan Cornflower Blue #127dbb, Medium Aquamarine #69c4af.
+     The logo, gradients and swatches use the exact hex; UI text/fills nudge the blue's lightness to clear 4.5:1 on white. */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.23 0.023 246.1);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.23 0.023 246.1);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.23 0.023 246.1);
+  --primary: oklch(0.54 0.129 242.2);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.955 0.004 246);
+  --secondary-foreground: oklch(0.23 0.023 246.1);
+  --muted: oklch(0.967 0.004 246);
+  --muted-foreground: oklch(0.49 0.03 246);
+  --accent: oklch(0.962 0.022 242);
+  --accent-foreground: oklch(0.38 0.1 242);
+  --destructive: oklch(0.57 0.2 33);
+  --border: oklch(0.915 0.006 246);
+  --input: oklch(0.87 0.01 246);
+  --ring: oklch(0.64 0.12 242);
+
+  --chart-1: #127dbb;
+  --chart-2: #69c4af;
+  --chart-3: #1a52a2;
+  --chart-4: #f29a09;
+  --chart-5: #7849a8;
+
+  /* Working surfaces are white; the frame (sidebar) is Dark Jungle Green, the charter's dark-background variant */
+  --sidebar: oklch(0.23 0.023 246.1);
+  --sidebar-foreground: oklch(0.96 0.006 246);
+  --sidebar-primary: oklch(0.758 0.093 176.8);
+  --sidebar-primary-foreground: oklch(0.23 0.023 246.1);
+  --sidebar-accent: oklch(1 0 0 / 9%);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.758 0.093 176.8);
+
+  --success: oklch(0.47 0.09 177);
+  --success-soft: oklch(0.955 0.035 177);
+  --warning: oklch(0.5 0.12 65);
+  --warning-soft: oklch(0.962 0.06 85);
+  --danger: oklch(0.52 0.2 33);
+  --danger-soft: oklch(0.962 0.03 35);
+  --info: oklch(0.45 0.12 242);
+  --info-soft: oklch(0.955 0.025 242);
+
+  --heading: oklch(0.54 0.129 242.2);
+
+  /* Decorative gradient ends (ring, arches, dots, rule): the charter's teal and blue; palettes may swap them */
+  --deco-from: #5ab3b1;
+  --deco-to: #127dbb;
+
+  /* Charter gradients (sampled from the divider, cover and content pages) */
+  --gradient-ring: linear-gradient(90deg, #5ab3b1 0%, #127dbb 100%);
+  --gradient-cover: linear-gradient(180deg, #3997b4 0%, #1f84b7 100%);
+  --gradient-strip: linear-gradient(0deg, #6fc2ae 0%, #1a7fb8 100%);
+  --gradient-brand: linear-gradient(135deg, #127dbb 0%, #69c4af 100%);
+}
+
+.dark {
+  --background: oklch(0.185 0.02 246);
+  --foreground: oklch(0.96 0.006 246);
+  --card: oklch(0.23 0.023 246.1);
+  --card-foreground: oklch(0.96 0.006 246);
+  --popover: oklch(0.255 0.024 246);
+  --popover-foreground: oklch(0.96 0.006 246);
+  --primary: oklch(0.7 0.115 242);
+  --primary-foreground: oklch(0.23 0.023 246.1);
+  --secondary: oklch(0.285 0.022 246);
+  --secondary-foreground: oklch(0.96 0.006 246);
+  --muted: oklch(0.27 0.021 246);
+  --muted-foreground: oklch(0.74 0.02 246);
+  --accent: oklch(0.32 0.045 242);
+  --accent-foreground: oklch(0.9 0.04 242);
+  --destructive: oklch(0.7 0.19 33);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.7 0.115 242 / 70%);
+
+  --chart-1: #3d9bd4;
+  --chart-2: #69c4af;
+  --chart-3: #4f84d6;
+  --chart-4: #f29a09;
+  --chart-5: #a07fcb;
+
+  --sidebar: oklch(0.155 0.019 246);
+  --sidebar-foreground: oklch(0.96 0.006 246);
+  --sidebar-primary: oklch(0.758 0.093 176.8);
+  --sidebar-primary-foreground: oklch(0.23 0.023 246.1);
+  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.758 0.093 176.8);
+
+  --success: oklch(0.82 0.09 177);
+  --success-soft: oklch(0.32 0.05 177);
+  --warning: oklch(0.82 0.13 75);
+  --warning-soft: oklch(0.34 0.06 70);
+  --danger: oklch(0.76 0.15 33);
+  --danger-soft: oklch(0.33 0.07 33);
+  --info: oklch(0.8 0.09 242);
+  --info-soft: oklch(0.32 0.06 242);
+
+  --heading: oklch(0.78 0.1 242);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "kern" 1, "liga" 1;
+    caret-color: var(--primary);
+  }
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: oklch(0.85 0.07 177 / 0.55);
+    color: inherit;
+  }
+  .dark ::selection {
+    background: oklch(0.55 0.08 177 / 0.55);
+  }
+  /* themed scrollbars: thin, charter-neutral */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Numerals in tables and counters line up */
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Charter gradient fills as utilities */
+@utility bg-vic-ring { background-image: var(--gradient-ring); }
+@utility bg-vic-cover { background-image: var(--gradient-cover); }
+@utility bg-vic-strip { background-image: var(--gradient-strip); }
+@utility bg-vic-brand { background-image: var(--gradient-brand); }
+
+/* The charter's footer rule: a hairline running aquamarine to blue, label left, page right */
+.vic-rule {
+  height: 1px;
+  background-image: linear-gradient(90deg, var(--deco-from), var(--deco-to));
+}
+
+/* Charter sticker dots: blue and aquamarine discs on a staggered grid (IT Charter p.29) */
+.vic-dots {
+  --d: 22px;
+  background-image:
+    radial-gradient(circle at center, var(--deco-to) 0 28%, transparent 30%),
+    radial-gradient(circle at center, var(--deco-from) 0 28%, transparent 30%);
+  background-size: var(--d) var(--d), var(--d) var(--d);
+  background-position: 0 0, calc(var(--d) / 2) calc(var(--d) / 2);
+}
+
+/* Sidebar layout fixes carried over from the template */
+.sidebar-none-mode [data-slot="sidebar"] {
+  height: 100vh !important;
+  min-height: 100vh !important;
+}
+@media (min-width: 768px) {
+  [data-side="right"][data-variant="inset"] ~ [data-slot="sidebar-inset"] {
+    margin-right: 0 !important;
+  }
+  [data-side="right"][data-variant="inset"][data-state="collapsed"] ~ [data-slot="sidebar-inset"] {
+    margin-right: 0.5rem !important;
+  }
+}
+
+/* Live pulse: the mini ring completes one turn each time the Master changes */
+@keyframes vic-turn {
+  from { transform: rotate(0turn); }
+  to { transform: rotate(1turn); }
+}
+.vic-turn {
+  animation: vic-turn 900ms cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

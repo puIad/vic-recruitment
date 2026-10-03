@@ -1,0 +1,66 @@
+import { Link } from "react-router-dom"
+import { ArrowRight } from "lucide-react"
+import { OpenChip } from "@/components/open-chip"
+import { Button } from "@/components/ui/button"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { pct } from "@/lib/vic/format"
+import { useVic } from "@/lib/vic/store"
+
+/** The busiest binomes: who carries the most candidates and how far along they are. */
+export function BinomeLoad() {
+  const s = useVic((x) => x.state)
+  if (!s) return <Skeleton className="h-72 rounded-xl" />
+  const live = s.binomes.filter((b) => b.status !== "DRAFT")
+  const top = live.slice().sort((a, b) => b.assigned - a.assigned || a.code.localeCompare(b.code)).slice(0, 6)
+  const max = Math.max(1, ...top.map((b) => b.assigned))
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg font-bold">Busiest binomes</CardTitle>
+        <CardDescription>{live.length ? `Top ${top.length} of ${live.length} locked binomes by candidates` : "Appears once binomes are locked"}</CardDescription>
+        {live.length > 0 && (
+          <CardAction>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/binomes">
+                All binomes <ArrowRight />
+              </Link>
+            </Button>
+          </CardAction>
+        )}
+      </CardHeader>
+      <CardContent>
+        {top.length === 0 ? (
+          <p className="rounded-xl border-2 border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">No locked binomes yet. Run the launch sequence to create their sheets.</p>
+        ) : (
+          <ul className="space-y-3.5">
+            {top.map((b) => {
+              const denom = b.assigned - b.withdrew
+              return (
+                <li key={b.code} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto]">
+                  <Link to={`/binomes?q=${encodeURIComponent(b.code)}`} className="text-sm font-bold text-primary hover:underline">
+                    {b.code}
+                  </Link>
+                  <p className="truncate text-sm" title={b.members.join(" & ")}>{b.members.join(" & ") || "—"}</p>
+                  <span className="num flex items-center justify-end gap-1.5 text-right text-sm">
+                    <span>
+                      <b>{b.interviewed}</b>
+                      <span className="text-muted-foreground">/{denom}</span>
+                    </span>
+                    {b.open > 0 && <OpenChip code={b.code} open={b.open} />}
+                  </span>
+                  <div className="col-span-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary sm:col-span-1 sm:col-start-2" aria-hidden="true">
+                    <div className="h-full overflow-hidden rounded-full bg-primary/20" style={{ width: `${Math.max(8, (b.assigned / max) * 100)}%` }} title={`${b.assigned} candidates`}>
+                      <div className="h-full rounded-full bg-vic-ring" style={{ width: `${pct(b.interviewed, denom || 1)}%` }} />
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
