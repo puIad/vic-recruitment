@@ -70,6 +70,9 @@ assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPA
   assert(/Outside Person/.test(run('__files["' + fileOf(b1) + '"].obj.sheets[0].notes["1:1"]')), 'file note updated');
   assert.strictEqual(changes(), 1);
   assert.strictEqual(run("ss_().getSheetByName('Member Changes').getRange(2, 10).getValue()"), 'left the club');
+  const h0 = call('webState').history[0];
+  assert.deepStrictEqual([h0.type, h0.binome, h0.inn, h0.reason, h0.status], ['PERMANENT', b1.code, 'Outside Person', 'left the club', 'DONE'], 'history lists the change');
+  assert(/^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(h0.at) && h0.by, 'history carries a formatted time and who did it');
   call('webRun', 'sync');
   assert.deepStrictEqual(call('webState').unpaired.map(m => m.email), [leaving], 'the member who left is flagged, not re-paired');
 
@@ -159,6 +162,8 @@ assert.strictEqual(st.team.source, '', 'registration responses are never mistake
   let st2 = call('webState');
   assert.deepStrictEqual(st2.covers.map(c => [c.binome, c.email, c.codes.join(',')]), [[bin, coverer.email, mine.map(i => i.code).join(',')]]);
   assert.deepStrictEqual(call('webState').binomes.find(x => x.code === bin).people, b.people, 'the Binomes row is untouched');
+  const hc = st2.history[0];
+  assert.deepStrictEqual([hc.type, hc.binome, hc.codes.join(','), hc.reason], ['TEMPORARY', bin, mine.map(i => i.code).join(','), 'exams'], 'history lists the cover, newest first');
   assert(run('coverMap_(loadCtx_())["' + mine[0].code + '"][0]') === coverer.email);
   // the cover person sends the interview form for a covered code: accepted as a member, no MEDIUM alert
   run("ss_().getSheetByName('Interview Responses') || null");

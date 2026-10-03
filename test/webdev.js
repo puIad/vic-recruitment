@@ -17,6 +17,10 @@ if (!process.argv.includes('--empty')) {
   s.run("(function(){var iv=ss_().getSheetByName('Interviewees'),bn=ss_().getSheetByName('Binomes');iv.getRange(2,2).setValue(iv.getRange(2,2).getValue()==='B.03'?'B.04':'B.03');" +
     "bn.getRange(3,4,1,2).setValues([['Late Member','late@g.enp.edu.dz']]);})()");
   s.call('webRun', 'sync');
+  // a replacement and a swap after lock, so Change history has rows
+  const two = s.call('webState').binomes.filter(b => b.people.length === 2);
+  s.call('webRun', 'changeMember', { binome: two[0].code, outEmail: two[0].people[0].email, inName: 'Outside Person', inEmail: 'outside@g.enp.edu.dz', reason: 'left the club' });
+  s.call('webRun', 'swapMembers', { binomeA: two[1].code, emailA: two[1].people[0].email, binomeB: two[2].code, emailB: two[2].people[0].email });
 }
 const api = { run: require('../web/api/run'), logout: require('../web/api/logout') };
 http.createServer((req, res) => {
