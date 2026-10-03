@@ -8,7 +8,10 @@ work on the project). Open these only when the task needs them:
 | [architecture.md](architecture.md) | changing code: files, Master tabs, the sync cycle, phases A–D, alert types |
 | [decisions.md](decisions.md) | changing behaviour: what was decided and why; open questions |
 | [reference.md](reference.md) | you need an ID, URL, script property, env var or setting |
-| [vercel.md](vercel.md) | touching `web/`, sign-in, sessions or the Google Cloud project |
-| [frontend.md](frontend.md) | touching `frontend/` (the new dashboard UI): stack, old-to-new map, placeholders, what is left before it replaces `web/` |
+| [frontend.md](frontend.md) | touching `frontend/` (the dashboard UI): decisions, where each action lives, Reset, placeholders, what is open |
+| [vercel.md](vercel.md) | touching `web/` (sign-in, the `/api/run` proxy, sessions), the Vercel project settings or the Google Cloud project |
 | [testing.md](testing.md) | testing: automated suites, local previews, the manual test plan on the live Master |
-| [history.md](history.md) | background: the 2025 analysis, the simulation, the timeline, incidents |
+| [history.md](history.md) | background: the 2025 analysis, the simulation, the timeline, the 2026-10-03 live test and its findings, incidents |
+
+Also at the root: [PRODUCT.md](../PRODUCT.md) (who the dashboard is for, product principles) and
+[DESIGN.md](../DESIGN.md) (the charter-based visual system). `frontend/README.md` says how to run the UI.

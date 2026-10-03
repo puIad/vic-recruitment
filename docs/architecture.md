@@ -1,7 +1,7 @@
 # Architecture
 
-A Google Sheet (the **Master**) is the database; an Apps Script bound to it does the work; a static dashboard on Vercel
-calls that script **as the visitor**, so Drive sharing decides who may do what.
+A Google Sheet (the **Master**) is the database; an Apps Script bound to it does the work; a single-page dashboard on
+Vercel (`frontend/`) calls that script **as the visitor**, so Drive sharing decides who may do what.
 
 ```
 Registration form ─┐                         ┌─► one Google Sheet per binome (Binome Sheets folder)
@@ -26,13 +26,14 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | `Interviews.gs` | interview form → Interview Log (validated, autocorrected) |
 | `Sync.gs` | pull binome sheets, timing alerts, Tracker, the main cycle `runCycle_`, triggers |
 | `Setup.gs` | menu, `setup`, tabs, form links, trigger install (owner only) |
-| `Team.gs` | team import, Draft / Lock / Re-share |
+| `Team.gs` | team import, Draft / Lock / Re-share, Reset all binomes (`resetBinomesCore_`) |
 | `Members.gs` | after lock: change / swap members, temporary covers (Member Changes tab) |
 | `Actions.gs` | Move interviewee, resolve alerts, daily digest |
 | `Integrity.gs` | manual-edit detection (baseline), odd values, full binome-sheet check |
-| `WebApp.gs` | `webAccess` / `webState` / `webRun` — the API both dashboards call; `API_VERSION` |
-| `Index.html`, `NoAccess.html` | old Apps Script dashboard (read-only fallback) |
-| `web/` | the Vercel dashboard (`index.html`) + `api/{login,callback,run,logout}.js` |
+| `WebApp.gs` | `webAccess` / `webState` / `webPulse` / `webRun`, the API the dashboard calls; `API_VERSION`; `doGet` |
+| `Index.html`, `NoAccess.html` | the Apps Script web app's old dashboard (`doGet`), kept as a read-only fallback |
+| `frontend/` | the dashboard UI: [frontend.md](frontend.md) |
+| `web/` | the Vercel project: `api/{login,callback,run,logout}.js`, `lib/session.js`, `vercel.json`: [vercel.md](vercel.md) |
 
 ## Master tabs
 

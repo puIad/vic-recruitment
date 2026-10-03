@@ -38,12 +38,13 @@ Why the system is built the way it is. Read before changing behaviour; add a row
 | ACTIVE ↔ PAUSED by hand is intended (INFO only) | That is how a binome is paused. |
 | Full sheet check never runs on the frequent trigger; it is time-boxed and resumable | It opens ~50 files (1–2 min); Vercel's limit is 300s. |
 | Manual-edit / integrity alerts go to admins only | They're about the Master, not the binome's work. |
+| **Reset all binomes** (2026-10-03): typed phrase, checked by the script too; binome sheets trashed, not deleted; registrations deleted on purpose stay remembered | Starting over with a new team must be possible before launch, and impossible by a misclick; trash keeps 30 days to undo. |
 
-## Dashboard on Vercel (2026-10-01) — details in [vercel.md](vercel.md)
+## Dashboard on Vercel (2026-10-01) — details in [vercel.md](vercel.md); UI decisions in [frontend.md](frontend.md#decisions)
 
 | Decision | Why |
 |---|---|
-| Static page + plain Node functions on Vercel; the script runs **as the visitor** through `scripts.run` | Fixes multi-account breakage of `google.script.run`; Drive keeps deciding access. |
+| Static single-page app + plain Node functions on Vercel; the script runs **as the visitor** through `scripts.run` | Fixes multi-account breakage of `google.script.run`; Drive keeps deciding access. |
 | Access = `@g.enp.edu.dz` **and** editor/owner of the Master; Setup is owner-only | Sharing the Master is the only access switch. |
 | OAuth client in an ENP Cloud project, consent screen Internal | Only ENP accounts can sign in. |
 | 48h session fixed from sign-in; refresh token sealed in an HttpOnly cookie | No token reaches browser JS. |
@@ -53,9 +54,13 @@ Why the system is built the way it is. Read before changing behaviour; add a row
 
 ## Open questions
 
-1. Should the president and other board members interview at all? (Tick Exclude if not.)
-2. Leftover non-HR members: accept a no-HR binome (decided fine for one), 3-person binomes, or move someone to the HR side?
-3. Should ALL (board) binomes receive fewer candidates? → `ALL_BINOME_WEIGHT` (e.g. 1.5).
+1. Should the president and other board members interview at all? (Tick Exclude if not.) The team imported on
+   2026-10-03 has no Pair As `ALL` rows, so no ALL (board-led) binomes were drafted.
+2. Leftovers of the draft. The 2026-10-03 team has more HR than other-department members (33 vs 30): two binomes are
+   HR + HR (B.29, B.30; tag `HR`, so HR candidates only) and B.31 is one member alone. Accept them, make 3-person
+   binomes, or move people with Change members? (In 2025 the leftover went the other way: one no-HR binome, decided fine.)
+3. Should ALL (board) binomes receive fewer candidates? → `ALL_BINOME_WEIGHT` (1.25 in the live Settings). Only
+   matters if ALL binomes come back.
 4. Confirmation email to registrants with their code? (Not built.)
 5. Is the interview form's "Their 1st Department Choice" meant to equal the registration choice? 28 mismatches in 2025
    suggest interviewers use it differently — maybe drop that check.

@@ -33,7 +33,7 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | What | Value |
 |---|---|
 | Script ID (`.clasp.json`) | `1S7GFkJplZLM9Nc9A4beZx3M5XGa0LniNiB3xeDJEr48piY6U7Aoq7Vv8` |
-| Web app deployment (old dashboard) | `AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT` → https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec |
+| Web app deployment (`doGet`: the old read-only dashboard, a fallback) | `AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT` → https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec |
 | API executable deployment (used by Vercel) | `AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU` |
 | Google Cloud project | `vic-recruitment` (ENP org, number `444885197277`, consent screen Internal, Apps Script API + Google Drive API on (Drive enabled 2026-10-02)) |
 
@@ -46,6 +46,7 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | `MASTER_ID` | The Master's ID, so web/API runs (no active sheet) can open it |
 | `REG_SHEET_ID`, `INT_SHEET_ID` | Sheet IDs of the two form-response tabs |
 | `FILE_SEEN` | Per binome file, last change already read (the sync skips unchanged files) |
+| `FILE_READ` | Per binome file, when it was last read (a sheet not read for 15 min is re-read even if Drive says unchanged) |
 | `TRIGGER_OWNER` | Account whose triggers run the sync/digest; only it may re-run Setup. Handover: delete it, then Setup from the new account |
 | `BASELINE_N`, `BASELINE_0…` | What the script last wrote in Binomes/Interviewees, JSON split in 4000-char chunks (manual-edit detection). Deleting them = next run re-takes it silently |
 | `INTEG_NEXT` | Binome code where the next full sheet check resumes |
@@ -55,7 +56,7 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | What | Value |
 |---|---|
 | Production URL | https://vic-recruitment.vercel.app (team `puiads-projects`, project `vic-recruitment`) |
-| Source | Git, root `web/`, branch `main` = production; previews protected |
+| Source | Git, Root Directory `web` (its build compiles `../frontend` into `web/dist`), branch `main` = production; previews protected. Settings that must stay: [vercel.md](vercel.md#vercel-project-settings) |
 
 Environment (Production, never in git): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY` (32 random bytes,
 base64 — rotating it signs everyone out), `SCRIPT_API_DEPLOYMENT_ID` (the API deployment above),
@@ -68,6 +69,7 @@ Settings card show the same text). Ones that matter at launch:
 
 - `TEST_MODE` (default TRUE) — mail to anyone but `ADMIN_EMAIL` is dropped and logged, sheets are not shared. FALSE only for the real launch.
 - `ADMIN_EMAIL` — who gets alerts and the digest (comma-separated).
-- `HOURS_NOT_CONTACTED` 24 / `HOURS_NO_INTERVIEW_DATE` 48 / `HOURS_AFTER_INTERVIEW_NO_FORM` 12 — timing alerts.
+- `HOURS_NOT_CONTACTED` 24 / `HOURS_NO_INTERVIEW_DATE` 48 / `HOURS_AFTER_INTERVIEW_NO_FORM` 12 — timing alerts
+  (the live Master has the test values 32 / 40 / 5 until launch).
 - `SYNC_EVERY_MINUTES`, `DIGEST_HOUR` — need Setup (owner) to reschedule the triggers after a change.
 - `TRUSTED_BACKUPS` — people who often stand in (e.g. the HR head): their backup interviews are INFO only.

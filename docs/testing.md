@@ -9,25 +9,28 @@ Everything runs on an in-memory mock of the Apps Script services (`test/mockgas.
 | `test/unit.test.js` | pure logic: code parsing, autocorrect, pairing, routing, registration and timing checks |
 | `test/e2e.test.js` | the whole flow through the menu: setup → import → draft → lock → registrations → sheet edits → sync → interview forms → move → digest; asserts no false manual-edit/integrity alert |
 | `test/web.test.js` | every dashboard action through `webState` / `webRun` under web-app conditions: TEST_MODE, change/swap, covers, every manual-edit fix path, odd values, the full sheet check, access control |
-| `test/vercel.test.js` | the Vercel functions against a mocked Google (`test/googlemock.js`): session, proxy, refusals |
+| `test/vercel.test.js` | the Vercel functions against a mocked Google (`test/googlemock.js`): session, proxy, refusals; the UI calls only `/api/run` and its `API_VERSION` matches the script |
+| `test/reset.test.js` | Reset all binomes: the typed phrase, what is wiped and what stays, then a new team drafted and locked |
 | `test/realdata.js` | not in `npm test`: replays the 2025 data; needs `test/data/` exports (personal data, git-ignored, not on disk) |
 
 The mock can't catch Apps Script quirks (protections, validations, locale parsing, trigger auth): live checks below.
 
 ## Local previews
 
-- Vercel dashboard on mock Google: `node test/webdev.js` → http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
-  (`?as=stranger@g.enp.edu.dz` = no-access view, `--empty` = before team import). It seeds 40 registrations and two
-  hand edits, so the Manual edits filter has something to show. Also in `.claude/launch.json` as `vercel-preview`.
-- Old Apps Script dashboard: `node test/devserver.js` → http://localhost:8787.
-- Browser automation note: Obscura doesn't implement `<form method="dialog">`, so confirming the dashboard's dialogs
-  navigates away there; set `dialog.returnValue = 'ok'` and call `close()` instead, or use Chrome.
+- Dashboard on mock Google: `npm run mock` and `npm run dev` in `frontend/` (or the `vic-mock` and `vic-frontend`
+  entries of `.claude/launch.json`) → http://localhost:5173/dev-login?as=admin@g.enp.edu.dz. `?as=stranger@g.enp.edu.dz`
+  = no-access view, `?as=` = signed out, `npm run mock -- --empty` = before team import. The mock seeds 40
+  registrations, two hand edits, an unpaired member, a replacement and a swap. Restarting it signs everyone out.
+- Old Apps Script dashboard (`Index.html`): `node test/devserver.js` → http://localhost:8787.
+- Screenshots: Obscura doesn't draw Tailwind v4's `rounded-full` (pills come out square), so use Chrome
+  (`playwright-chrome`). Wait until the loading skeleton is gone: the dev server serves ~140 unbundled modules.
 
 ## Manual test on the live Master (TEST_MODE = TRUE)
 
 Use https://vic-recruitment.vercel.app with the owner account. Nobody but the admins gets mail; nothing is shared.
+Results of the 2026-10-03 run and its findings: [history.md](history.md#live-test-2026-10-03).
 
-**0. Once, after a deploy that touches the checks:** Maintenance › **Check integrity** ("N of 49 binome sheets checked";
+**0. Once, after a deploy that touches the checks:** Maintenance › **Check integrity** ("N of 31 binome sheets checked";
 anything found is drift that already existed). Apps Script › Executions should show the 1-minute sync running.
 
 **A. No pairing after lock**
@@ -75,7 +78,7 @@ delete a row → HIGH "missing from its sheet" (Move interviewee to that same bi
 HIGH "put in front of"; remove the sheet protection → MEDIUM. A tab in front stops the rest of that sheet's check (it
 would read the wrong tab), so the other two only show once the tab is gone.
 
-**Timing and interview-form cases** (passed live on 2026-10-03, results below)
+**Timing and interview-form cases** (passed live on 2026-10-03, [results](history.md#live-test-2026-10-03))
 1. Lower `HOURS_NOT_CONTACTED` / `HOURS_NO_INTERVIEW_DATE` / `HOURS_AFTER_INTERVIEW_NO_FORM` to 0.1 / 0.15 / 0.05 →
    NOT_CONTACTED / NO_DATE / OVERDUE appear.
 2. In B.02: Yes, 01/10/2026, 21:00; in B.09: time `14h3` → BAD_DATE.
@@ -90,44 +93,6 @@ if A reused an existing member, put back their Team row and Exclude as they were
 Change members, and end any active cover. Other admins using Change members / Cover / Apply need edit access to the
 Binome Sheets folder.
 
-### Live test results (2026-10-03)
-
-A–D on @25 / @26, run from the dashboard's own calls (`webRun` / `webState` through `/api/run`, signed in as the owner) with the hand edits
-made through the Sheets API, which the sync sees the same way as typing in the sheet.
-
-| Part | Result |
-|---|---|
-| A | Pass: Draft refused ("already locked"); a new Team row → `UNPAIRED_MEMBER` + card within a minute; Exclude closes both |
-| B | Pass: in another binome → refused with the Swap hint; outside Team → warning; Replace and Swap change title, A1 note, Member Changes and INFO alerts; Place… fills the form. All undone with Change members |
-| C | Pass: `IT.01 it 2` → Amine TEST-01 · B.02 and Nassim TEST-05 · B.06, `HR-03x` → unknown; a form from the stand-in is logged AUTOCORRECTED (only for `B2`), not FLAGGED; a cover ends by hand and by itself once the interview is in |
-| D | Pass: every row of the table above, Apply / Revert / Accept each tried; odd values raised and closed; full sheet check raised all three (tab in front first, then protection and missing row) |
-| Timing | Pass on @27 / @28, limits 0.1 / 0.15 / 0.05 with three new registrations (IT.05 B.08, IT.06 B.09, IT.07 B.11, assigned 17:12): `NOT_CONTACTED` IT.05 at 17:18, `NO_DATE` IT.05 at 17:21, `OVERDUE` IT.06 at 17:20 (interview 17:17), `BAD_DATE` IT.07 (`14h3`) at the first sync. Limits put back to 32 / 40 / 5 |
-| Interview forms | Pass: clean B.04 / HR.01 → OK; `b3` / `comm 1` → AUTOCORRECTED (normalized); `Sara TEST-04` → FLER.02 AUTOCORRECTED + INFO; B.08 member under B.07 → `BACKUP_INTERVIEWER` MEDIUM, FLAGGED; B.10 member typing B.11 → corrected to B.10, AUTOCORRECTED + INFO; `IT.99` → `UNKNOWN_INTERVIEWEE` HIGH; second form for IT.01 → `DUPLICATE_INTERVIEW` MEDIUM. Interviewees went INTERVIEWED, their OVERDUE alerts closed, the binome sheets got ✅ |
-| Accept edits | Pass on @29 / @30: the 15 Interviewees deletions of the cleanup, ticked together and accepted at once from the dashboard; each row also left its binome sheet |
-
-**Findings**
-
-1. **A hand edit made while a sync runs is lost, with no alert.** Every cycle loads Interviewees, then writes the whole
-   range back (`saveTable_`, Sheets.gs); a cell typed in between is overwritten with the old value. Seen live: IT.04's
-   Binome changed during a Sync now came back as B.09 with no alert; the same edit a minute later was caught. The window
-   is the cycle's length (seconds for the trigger, up to ~2.5 min for Sync now / Check integrity). **Fix: [#8](https://github.com/puIad/vic-recruitment-2026/pull/8)**, deployed @27 / @28.
-2. **Revert of a deleted Interviewees row leaves Assigned At empty** (it rebuilds the row from the registration). Contacted /
-   Date / Time come back from the binome sheet at the next sync. Minor: timing checks then count from the registration time. **Fix: [#9](https://github.com/puIad/vic-recruitment-2026/pull/9)**, deployed @27 / @28.
-3. **The 1-minute trigger can take several minutes to see an edit in a binome sheet:** it skips sheets whose Drive "last
-   updated" time hasn't moved, and Drive was slow to bump it (3 cycles, still not read). Sync now forces it. Matters for
-   alerts that wait on a binome's correction. **Fix: [#10](https://github.com/puIad/vic-recruitment-2026/pull/10)** (a sheet not read for 15 min is re-read), deployed @27 / @28.
-4. **A name edit in Interviewees raises two alerts:** INFO `MANUAL_EDIT` and a MEDIUM `INTEGRITY` "First Name in its
-   sheet differ from the Master" that is emailed. Apply closes the first; the second closes at the next integrity check. **Fix: [#11](https://github.com/puIad/vic-recruitment-2026/pull/11)** (no INTEGRITY alert while the MANUAL_EDIT is open), deployed @27 / @28.
-5. **A member name change in Binomes is INFO**, not MEDIUM as this file said (an email change is MEDIUM). Table fixed above.
-6. **A tab in front hides the other problems of that sheet** until it is removed (by design, documented above).
-7. **With a limit under 1h the timing messages say "0h after being assigned"** (`Math.floor`). Cosmetic, only seen with test limits.
-8. **A row deleted by hand while a sync runs came back**, with no alert: `saveTable_` wrote back every row it had loaded.
-   Seen twice in a row while deleting the test rows (syncs now run almost back to back). **Fix: [#12](https://github.com/puIad/vic-recruitment-2026/pull/12)**
-   (rows matched by Response Key; a row gone from the tab stays gone and is flagged at the next sync), deployed @29 / @30.
-
-### Test data (deleted 2026-10-03)
-
-All test data was deleted on 2026-10-03, after the timing / form test: the rows of Registration Responses, Interview
-Responses, Interview Log, Member Changes, Interviewees (accepted as deletions, which also emptied the binome sheets) and
-Alerts, and Team row `TEST-UNPAIRED`. The Master now has the binomes and the Team tab only. Left on purpose: Team row
-`oulad moulad` (`pulad.moulad@g.enp.edu.dz`, Exclude ticked), used for the B.06 test on 10-02.
+**Reset all binomes** (Maintenance › Danger zone; only while nothing is shared and before registrations matter): a
+wrong phrase is refused; "I confirm to reset the binomes" trashes every binome sheet, empties Binomes, Team and Member
+Changes, and closes the binome alerts. Then Import team → Draft → Lock. Passed live on 2026-10-03 (49 → 31 binomes).

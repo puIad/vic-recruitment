@@ -40,6 +40,6 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 ## Unresolved
 
-- Cut-over: whether `frontend/` replaces `web/` as the Vercel project root, and when.
-- Which placeholder ideas become real first.
-- Whether the Gilroy files may stay in the repo (it is private today).
+- Which placeholder ideas become real next (Change history is done; Schedule, Binome desk, Analytics are left).
+
+Resolved 2026-10-03: `frontend/` replaced `web/index.html` at the same URL (built into `web/dist`, the Vercel root stays `web/`), and the old page was deleted; the Gilroy files stay in the private repo.

@@ -1,8 +1,8 @@
-# VIC Recruitment: new dashboard (`frontend/`)
+# VIC Recruitment: dashboard (`frontend/`)
 
 Vite + React 19 + TypeScript + Tailwind v4 + shadcn/ui, started from the ShadcnStore dashboard template and restyled to the
-VIC IT Charter 2026. It speaks the same `/api/run` contract as the legacy `web/index.html`, so it can replace it without
-touching the Apps Script. Not deployed yet; `web/` is still what https://vic-recruitment.vercel.app serves.
+VIC IT Charter 2026. Live at https://vic-recruitment.vercel.app since 2026-10-03: Vercel builds it into `web/dist` next to
+the `web/api` functions (`web/vercel.json`). It calls the Apps Script only through `POST /api/run`.
 
 Why this and not the template's Next.js version: the app is a signed-in SPA that only calls the existing Vercel functions
 (`web/api/*`). No server rendering is needed and those functions stay as they are. Details: [../docs/frontend.md](../docs/frontend.md).
@@ -17,7 +17,7 @@ npm run dev      # terminal 2: http://localhost:5173/dev-login?as=admin@g.enp.ed
 ```
 
 `?as=helper@g.enp.edu.dz` shows the no-access gate, `?as=` the sign-in gate. The dev server proxies `/api` and `/dev-login` to the mock
-(`VIC_API=http://host:port` to point elsewhere). `npm run build` type-checks and builds to `dist/`; `npm run typecheck` alone is `tsc -b`.
+(`VIC_API=http://host:port` to point elsewhere). `npm run build` type-checks and builds to `../web/dist/`; `npm run typecheck` alone is `tsc -b`.
 
 ## Where things are
 

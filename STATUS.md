@@ -1,38 +1,59 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-03 (evening). Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything else:
-[docs/](docs/README.md).
+Updated 2026-10-03 (night). Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
 
 ## Live now
 
-- Script: web app **@29**, API **@30** (2026-10-03), `main` at `1a8acd8`. Vercel serves `main`.
-- Built and deployed: v2 core, Vercel dashboard, settings editing, and the after-lock phases **A** (no pairing after
-  lock), **B** (change/swap members), **C** (temporary covers), **D** (manual-edit detection, odd values, full sheet
-  check). What each does: [docs/architecture.md](docs/architecture.md#after-lock-phases-ad).
-- **New dashboard UI built, not deployed** (`frontend/`): Vite + React + shadcn in the VIC charter look, same `/api/run` contract, every old action ported. Settings > **Change history** is real (reads the Member Changes tab, needs the script redeployed). Three labelled placeholders left: Schedule, Binome desk, Analytics. The Vercel cut-over is wired on branch `frontend-cutover` (**not merged**; merging is the cut-over). `web/` still serves production. Plan and order: [docs/frontend.md](docs/frontend.md#cut-over-to-vercel-plan).
+- **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
+  [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
+  deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
+- **Script:** web app **@37**, API **@38**, deployed from `a231845` (includes Reset all binomes). Later commits change
+  comments, tests and docs only, so no deploy is pending.
 - **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
-- Master: 49 binomes locked (under v1), sheets created, **not shared**. All test data deleted on 2026-10-03
-  ([docs/testing.md](docs/testing.md#test-data-deleted-2026-10-03)): no registrations, interviewees, forms or alerts yet.
-  Timing limits are still 32 / 40 / 5 (24 / 48 / 12 before launch).
+- **Master** (redone on the evening of 2026-10-03 with Reset all binomes, then Import team → Draft → Lock):
+  - Team: 63 rows (33 HR, 12 IT, 10 FLER, 8 COMM, no board / ALL rows). **Two IT rows have no email**, so they are in
+    no binome and raise no alert.
+  - 31 binomes locked, sheets created, **not shared**: B.01–B.28 pair HR with IT / FLER / COMM; B.29 and B.30 are two
+    HR members (tag `HR`, so they only get HR candidates); **B.31 is one HR member alone**.
+  - No registrations, interviewees, forms or member changes. The ~185 alerts raised by the re-import and reset are all
+    closed. The 49 old binome sheets are in the owner's Drive trash (Drive deletes them after 30 days).
+  - Setup's v2 changes are in place (every Settings row, the Member Changes tab, Team column E "Exclude").
+  - Timing limits are still the test values 32 / 40 / 5 (24 / 48 / 12 before launch).
+- Phases A–D, the timing and interview-form cases and the Reset were all tested live on 2026-10-03:
+  [docs/history.md](docs/history.md#live-test-2026-10-03).
 
-## Next
+## Brief for 2026-10-04
 
-0. **Cut over to the new dashboard** ([plan](docs/frontend.md#cut-over-to-vercel-plan)): `npm run deploy` the script (adds `webState.history`) → check the Vercel project settings (outside-root files on, no dashboard build override) → PR `frontend-cutover`, green preview build → merge → owner check on the live URL → the other-account checks (item 4) → delete `web/index.html` and port the tests. Instant Rollback in Vercel undoes it.
-1. **A–D passed on the live Master on 2026-10-03** ([results and findings](docs/testing.md#live-test-results-2026-10-03)).
-   Accept edits on several alerts at once worked (15 deletions, 2026-10-03).
-   Findings 1–4 are fixed and deployed (@27 / @28): [#8](https://github.com/puIad/vic-recruitment-2026/pull/8) hand edit lost during a sync (**before
-   launch**), [#9](https://github.com/puIad/vic-recruitment-2026/pull/9) Revert keeps Assigned At, [#10](https://github.com/puIad/vic-recruitment-2026/pull/10) re-read sheets Drive calls unchanged, [#11](https://github.com/puIad/vic-recruitment-2026/pull/11) one alert
-   for a name edit. Finding 8 (a row deleted during a sync came back) fixed in [#12](https://github.com/puIad/vic-recruitment-2026/pull/12), deployed @29 / @30. Findings 5–7 need no code.
-2. Timing and interview-form cases passed live on 2026-10-03 (same file); test data deleted and accepted the same day.
-3. Run **Setup** once from the dashboard (owner) if it hasn't been run since v2: adds missing Settings rows and the
-   Member Changes tab, renames Team column E to "Exclude" — then untick E and tick only people who really won't interview.
-4. Vercel checks with other accounts (they now run against the new UI, after item 0) (editor, removed account, viewer, multi-account, sign-out/in, Lock near the limit),
-   then share the URL with the editors ([docs/vercel.md](docs/vercel.md#still-open)).
-5. Before launch: reword the 2026 forms (still say 2025 in places); verify the two guessed OT emails (Rami Ahmane,
-   Meriem Hayet Belkacem); answer the [open questions](docs/decisions.md#open-questions); give admins edit access to
-   the Binome Sheets folder (Change members / Cover / Apply need it); timing limits back to 24 / 48 / 12.
-6. Launch: TEST_MODE = FALSE → Re-share binome sheets → share the registration form → watch Alerts.
-7. After recruitment: hand over the Cloud project, Vercel and the trigger owner ([docs/vercel.md](docs/vercel.md#still-open)).
+In order. Each step says where to do it.
+
+1. **Fix the two IT members without an email.** Add their emails at the source the team was imported from (or the
+   Team tab directly). Then place them, either by hand (Binomes › Change members: B.31 has a free seat; the tool keeps
+   the Tag, so change B.31's Tag in the Binomes tab afterwards and Accept that manual edit) or, simpler while nothing is
+   shared and nobody has registered: Maintenance › Danger zone › **Reset all binomes** → Import team → Draft → Lock.
+2. **Settle the leftovers of the draft** at the same time: B.29 / B.30 (HR + HR) and B.31 (alone). Accept them, or
+   move people with Change members. Open question 2 in [decisions.md](docs/decisions.md#open-questions).
+3. **Check the new sheets once:** Maintenance › Check integrity (expect "31 of 31 binome sheets checked", nothing
+   found). Apps Script › Executions should show the 1-minute sync running, and how long today's Lock took (Vercel
+   stops a call at 300 s).
+4. **Other-account checks on the new UI** ([vercel.md](docs/vercel.md#still-open)): an editor, a removed ENP account
+   ("No access", no flash of the dashboard), a viewer ("View only"), a multi-account browser, sign-out then sign-in
+   within 48 h. Then share the URL with the editors.
+5. **Before launch:** reword the 2026 forms (they still say 2025 in places); verify the guessed email
+   `rami.ahmane@g.enp.edu.dz` (now in B.19); answer the [open questions](docs/decisions.md#open-questions); give
+   admins edit access to the Binome Sheets folder (Change members / Cover / Apply need it); timing limits back to
+   24 / 48 / 12 in Settings › Alerts and timing.
+6. **Launch:** TEST_MODE off (Settings › Sharing and email) → Maintenance › Re-share binome sheets → share the
+   registration form → watch Alerts.
+7. **After recruitment:** hand over the Cloud project, Vercel and the trigger owner
+   ([vercel.md](docs/vercel.md#still-open)).
+
+## Later (not needed for launch)
+
+- The three placeholder pages (Schedule, Binome desk, Analytics) and a read-only "my binome" view for binome members:
+  [docs/frontend.md](docs/frontend.md#still-open).
+- Retire the Apps Script web app too (`Index.html`, `NoAccess.html`, `doGet`): once the other-account checks pass,
+  make `doGet` send people to Vercel. It is the last copy of the old dashboard, kept as a read-only fallback.
