@@ -3,8 +3,8 @@
  * -----------------------------------------------------------------------------
  * Deployed with clasp (`npx clasp push`). Run the function `setup` once
  * (▶ Run) and accept the permissions. After that, everything is driven from the
- * "VIC Recruitment" menu + triggers, or from the web dashboard (WebApp.gs +
- * Index.html, see STATUS.md).
+ * "VIC Recruitment" menu + triggers, or from the Vercel dashboard (frontend/,
+ * through WebApp.gs; see STATUS.md).
  *
  * All .gs files share one global scope. This file holds the top-level constants
  * and must load first (filePushOrder in .clasp.json); the others only declare

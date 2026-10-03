@@ -1,5 +1,5 @@
 // Shapes returned by the Apps Script web API (WebApp.gs: webAccess / webState / webRun / webPulse).
-// API_VERSION must match the script; bump together with web/index.html and WebApp.gs.
+// API_VERSION must match the script; bump together with WebApp.gs (test/vercel.test.js checks they match).
 export const API_VERSION = 2
 
 export type Severity = "HIGH" | "MEDIUM" | "INFO"

@@ -174,11 +174,11 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   r = await invoke('logout', { method: 'POST', cookie: sess('admin@g.enp.edu.dz', { iat: Date.now() - 49 * 3600e3 }) });
   assert.deepStrictEqual([g.log.revoked, r.jar[S.COOKIE]], [['rt:admin@g.enp.edu.dz'], ''], 'past 48h: logout revokes');
 
-  // --- front: the one RPC wrapper is the proxy, version matches the script
-  const html = require('fs').readFileSync(__dirname + '/../web/index.html', 'utf8');
-  assert(!/google\.script/.test(html), 'no google.script.run left');
+  // --- front (frontend/): the one RPC wrapper is the proxy, version matches the script
+  const front = f => require('fs').readFileSync(__dirname + '/../frontend/src/lib/vic/' + f, 'utf8');
+  assert(/fetch\("\/api\/run"/.test(front('api.ts')) && !/google\.script/.test(front('api.ts')), 'every call goes through /api/run');
   const gs = require('fs').readFileSync(__dirname + '/../WebApp.gs', 'utf8');
-  assert.strictEqual(html.match(/const API_VERSION = (\d+)/)[1], gs.match(/const API_VERSION = (\d+)/)[1], 'front and script API_VERSION match');
+  assert.strictEqual(front('types.ts').match(/export const API_VERSION = (\d+)/)[1], gs.match(/const API_VERSION = (\d+)/)[1], 'front and script API_VERSION match');
 
   g.restore();
   process.stdout.write('VERCEL OK\n');

@@ -1,7 +1,8 @@
-// Local preview of the Vercel app (web/): the real api/ functions and index.html, Google mocked (googlemock.js).
-//   node test/webdev.js [port]      then open http://localhost:3000/dev-login?as=admin@g.enp.edu.dz
+// Mock backend for the dashboard: the real web/api functions, Google mocked (googlemock.js), seeded data.
+//   node test/webdev.js [port]  (or `npm run mock` in frontend/), then `npm run dev` in frontend/ and open
+//   http://localhost:5173/dev-login?as=admin@g.enp.edu.dz (Vite proxies /api and /dev-login here).
 //   ?as=helper@g.enp.edu.dz → no-access view; /dev-login?as=  → signed-out view. --empty = before team import.
-const http = require('http'), fs = require('fs'), crypto = require('crypto');
+const http = require('http'), crypto = require('crypto');
 const port = +process.argv.find(a => /^\d+$/.test(a)) || 3000;
 process.env.SESSION_KEY = crypto.randomBytes(32).toString('base64');
 process.env.APP_ORIGIN = 'http://localhost:' + port;
@@ -36,6 +37,6 @@ http.createServer((req, res) => {
   if (path === '/api/login') return S.redirect(res, '/dev-login?as=admin@g.enp.edu.dz'); // no real Google locally
   const fn = api[path.replace(/^\/api\//, '')];
   if (fn) return fn(req, res);
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.end(fs.readFileSync(__dirname + '/../web/index.html'));
-}).listen(port, () => console.log('Vercel app preview on http://localhost:' + port + '/dev-login?as=admin@g.enp.edu.dz'));
+  res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end('Mock API only. The UI: npm run dev in frontend/, then http://localhost:5173/dev-login?as=admin@g.enp.edu.dz\n');
+}).listen(port, () => console.log('Mock API on http://localhost:' + port + '. UI: npm run dev in frontend/, then http://localhost:5173/dev-login?as=admin@g.enp.edu.dz'));

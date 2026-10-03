@@ -26,7 +26,7 @@ function appUrl_() { try { return ScriptApp.getService().getUrl(); } catch (e) {
 /** Google's account picker, coming back to this web app with the chosen account. */
 function switchUrl_() { return 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(appUrl_()); }
 
-/** Bumped when webAccess/webState/webRun change shape; the Vercel front (web/index.html) checks it. */
+/** Bumped when webAccess/webState/webRun change shape; the Vercel front (frontend/src/lib/vic/types.ts) checks it. */
 const API_VERSION = 2;
 const DOMAIN = 'g.enp.edu.dz';
 

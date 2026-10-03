@@ -2,15 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "vercel-preview",
-      "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "test/webdev.js",
-        "3000"
-      ],
-      "port": 3000
-    },
-    {
       "name": "vic-mock",
       "runtimeExecutable": "node",
       "runtimeArgs": [
