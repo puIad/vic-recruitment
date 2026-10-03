@@ -184,7 +184,7 @@ function alertBuffer_(ctx) {
           to.join(', '), a.status || 'OPEN', a.status && a.status !== 'OPEN' ? ctx.now : '', a.key || ''];
       });
       t.sh.getRange(t.sh.getLastRow() + 1, 1, rows.length, ALERT_H.length).setValues(rows);
-      rows.forEach(r => t.data.push(r));
+      rows.forEach(r => { t.data.push(r); t.orig.push(r.slice()); }); // written: a later save merges them like loaded rows
       Object.keys(perRecipient).forEach(email => {
         const list = perRecipient[email];
         const isAdmin = admins.indexOf(email) >= 0;
