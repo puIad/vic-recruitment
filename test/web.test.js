@@ -330,6 +330,20 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   assert.deepStrictEqual([ivRow(h.code)[IVI.Binome], open().length], [h.binome, 0], 'reverted');
 
+  // a row deleted while a sync runs stays deleted (not written back from memory) and is flagged at the next sync
+  const n1 = ivRows().length;
+  run(`var __pull = pullBinomeFiles_; pullBinomeFiles_ = function (c, f) { (function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
+    for(var i=1;i<d.length;i++) if(d[i][${IVI.Code}]===${J(h.code)}) { sh.deleteRow(i+1); return; }})(); return __pull(c, f); }`);
+  call('webRun', 'sync');
+  run('pullBinomeFiles_ = __pull');
+  assert.deepStrictEqual([ivRows().length, !!ivRow(h.code)], [n1 - 1, false], 'the row deleted during the sync came back');
+  call('webRun', 'sync');
+  a = open().find(e => e.code === h.code);
+  assert(a && /deleted from the Interviewees tab/.test(a.msg), J(open()));
+  fix('Revert', [a.id]);
+  call('webRun', 'sync');
+  assert.deepStrictEqual([ivRows().length, ivRow(h.code)[IVI.Binome], open().length], [n1, h.binome, 0], 'restored');
+
   // a status typed by hand is put back (it is computed), a cleared binome is put back instead of re-assigned
   const y = ivs[1];
   ivSet(y.code, 'Status', 'INTERVIEWED'); ivSet(y.code, 'Binome', '');
