@@ -2,7 +2,7 @@
 // The script re-checks access on every call; this proxy only gates who may talk to it and never sees more than it needs.
 const S = require('../lib/session');
 
-const ALLOWED = ['webAccess', 'webState', 'webRun'];
+const ALLOWED = ['webAccess', 'webState', 'webRun', 'webPulse'];
 const TIMEOUT_MS = 285000; // under maxDuration 300 (vercel.json)
 
 async function body(req) {

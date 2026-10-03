@@ -44,7 +44,7 @@ http.createServer((req, res) => {
       const { fn, args } = JSON.parse(body);
       let out;
       try {
-        if (['webState', 'webRun'].indexOf(fn) < 0) throw new Error('Not exposed: ' + fn);
+        if (['webState', 'webRun', 'webPulse'].indexOf(fn) < 0) throw new Error('Not exposed: ' + fn);
         out = { value: s.call(fn, ...args) };
       } catch (e) { out = { error: e.message }; }
       setTimeout(() => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(out)); }, 350);
