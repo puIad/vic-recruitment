@@ -323,6 +323,18 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert.deepStrictEqual([ivRow(y.code)[IVI.Status], ivRow(y.code)[IVI.Binome], open().length], ['ASSIGNED', y.binome, 0], 'both put back, nothing left open');
   assert(fileCodes(y.binome).includes(y.code));
 
+  // a name edited in the Interviewees tab: one MANUAL_EDIT, no INTEGRITY alert on top; Apply copies it to the sheet
+  const p = ivs[4];
+  ivSet(p.code, 'First Name', 'Renamed');
+  call('webRun', 'integrity', {});
+  a = open().find(e => e.code === p.code);
+  assert(a && /Name\/email of/.test(a.msg) && a.fix.includes('apply'), J(open()));
+  assert.deepStrictEqual(open('INTEGRITY').filter(e => e.code === p.code), [], 'no second alert for the same edit');
+  fix('Apply', [a.id]);
+  call('webRun', 'integrity', {});
+  assert.deepStrictEqual([open().length, open('INTEGRITY').length], [0, 0], 'applied: nothing open');
+  assert(run(`__files[${J(fileOf(p.binome))}].obj.sheets[0].cells.some(function(r){return r[0]===${J(p.code)} && r[1]==='Renamed';})`), 'copied to the sheet');
+
   // a row deleted by hand is not re-imported with a new code; Revert restores it, Accept forgets it for good
   const n0 = ivRows().length, del = code => run(`(function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
     for(var i=1;i<d.length;i++) if(d[i][${IVI.Code}]===${J(code)}) { sh.deleteRow(i+1); return; }})()`);
