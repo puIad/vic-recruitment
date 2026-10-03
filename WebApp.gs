@@ -60,6 +60,11 @@ function webAccess() {
   return { ok: a.ok, email: a.email, reason: a.reason || '', owner: !!a.owner, v: API_VERSION };
 }
 
+/** Cheap change detector for the dashboard's live refresh: when the Master was last edited (by anyone, the script included). */
+function webPulse() {
+  return DriveApp.getFileById(ss_().getId()).getLastUpdated().getTime();
+}
+
 /** Everything the dashboard shows, read-only. Dates are pre-formatted (google.script.run can't return Date). */
 function webState() {
   const a = access_();

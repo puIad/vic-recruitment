@@ -932,10 +932,37 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   async function refresh(quiet) {
     const btn = $('#refreshBtn');
     if (!quiet) btn.classList.add('running');
-    try { state = await call('webState'); render(); }
+    try {
+      const p = await call('webPulse').catch(() => null); // read before the state, so an edit in between still shows as a change
+      state = await call('webState'); render();
+      pulse = p;
+    }
     catch (e) { if (!gateShown) toast('Could not load the dashboard:\n' + e.message, true); }
     finally { btn.classList.remove('running'); }
   }
+  // Alerts leave the screen the moment the script confirms; the refresh that follows just re-syncs.
+  function dropAlerts(ids) {
+    const gone = new Set(ids);
+    state.alerts.forEach(a => { if (gone.has(a.id) && state.alertCounts[a.severity]) state.alertCounts[a.severity]--; });
+    state.alerts = state.alerts.filter(a => !gone.has(a.id));
+    render();
+  }
+
+  // Live refresh: poll the Master's last-edit time (one cheap Drive call) and reload the numbers only when it moved.
+  // The refresh button stays as the manual backup.
+  const PULSE_MS = 15000;
+  let pulse = null, pulsing = false;
+  async function checkPulse() {
+    if (pulsing || busy || document.hidden || gateShown || !state || $('#modal').open) return;
+    pulsing = true;
+    try {
+      const p = await call('webPulse');
+      if (p !== pulse && !busy) await refresh(true); // pulse only advances inside a successful refresh, so a failed one is retried
+    } catch (e) { /* stay quiet: the next tick or the refresh button retries */ }
+    finally { pulsing = false; }
+  }
+  setInterval(checkPulse, PULSE_MS);
+  document.addEventListener('visibilitychange', checkPulse);
 
   const ACTIONS = {
     async sync(btn) { await run(btn, 'sync', {}, 'Sync'); },
@@ -974,8 +1001,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     async resolve(btn) {
       const ids = Array.from(selected);
       if (!ids.length) return;
-      await run(btn, 'resolve', { ids: ids }, 'Resolve alerts');
-      selected.clear();
+      if (await run(btn, 'resolve', { ids: ids }, 'Resolve alerts')) dropAlerts(ids);
     },
     async reassign(btn) {
       const code = $('#mvCode').value.trim().toUpperCase(), bin = $('#mvBin').value;
@@ -1029,8 +1055,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
       const ok = await confirmBox('Accept ' + ids.length + ' manual edit' + (ids.length > 1 ? 's' : '') + '?',
         '<p>The Master keeps these changes as they are now; the script stops flagging them. Nothing else is changed (an interviewee whose row was deleted is also removed from their binome sheet).</p>', 'Accept');
       if (!ok) return;
-      await run(btn, 'editAccept', { ids: ids }, 'Accept edits');
-      ids.forEach(id => selected.delete(id));
+      const out = await run(btn, 'editAccept', { ids: ids }, 'Accept edits');
+      if (out && out.result) dropAlerts(ids); // result is null when the script lock was busy: nothing was accepted
     },
     async reshare(btn) {
       const ok = await confirmBox('Re-share binome sheets?', '<p>Every current member who is not yet an editor of their binome sheet is added (Google emails them).</p>', 'Re-share');
@@ -1152,8 +1178,8 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
           : '<p>Writes back the value the script had before the hand edit.</p>'), FIX[mode][0]);
       if (!ok) return;
     }
-    await run(btn, 'edit' + mode.charAt(0).toUpperCase() + mode.slice(1), { ids: [a.id] }, FIX[mode][0] + ' ' + a.id);
-    selected.delete(a.id);
+    const out = await run(btn, 'edit' + mode.charAt(0).toUpperCase() + mode.slice(1), { ids: [a.id] }, FIX[mode][0] + ' ' + a.id);
+    if (out && out.result) dropAlerts([a.id]); // null result = script busy, nothing changed
     refresh(true);
   }
   function updateSel(list) {
