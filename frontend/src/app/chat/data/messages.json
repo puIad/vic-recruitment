@@ -1,0 +1,24 @@
+{
+  "conv-1": [
+    { "id": "msg-1-1", "content": "IT.07 has been waiting for a first message for 26 hours. Can one of you reach out today?", "timestamp": "2026-10-03T09:02:00Z", "senderId": "current-user", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-1-2", "content": "On it. I have lectures until 16:00, then I will call.", "timestamp": "2026-10-03T09:20:00Z", "senderId": "1", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-1-3", "content": "I can take HR.12 meanwhile, her slot would fit before the break.", "timestamp": "2026-10-03T09:31:00Z", "senderId": "2", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-1-4", "content": "Great. Please write the date in the B.03 sheet so the overdue check can see it.", "timestamp": "2026-10-03T09:34:00Z", "senderId": "current-user", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-1-5", "content": "Called her, interview is set for Sunday 14:00.", "timestamp": "2026-10-03T17:58:00Z", "senderId": "1", "type": "text", "isEdited": false, "reactions": [], "replyTo": null }
+  ],
+  "conv-2": [
+    { "id": "msg-2-1", "content": "The interview form for IT.03 is still missing, 14 hours after the slot.", "timestamp": "2026-10-03T14:40:00Z", "senderId": "current-user", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-2-2", "content": "Sorry, submitting it now.", "timestamp": "2026-10-03T15:01:00Z", "senderId": "3", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-2-3", "content": "Done. The code was typed as it.3, hope the autocorrect handles it.", "timestamp": "2026-10-03T15:09:00Z", "senderId": "3", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-2-4", "content": "Thanks. I will mark the alert resolved once the form is in.", "timestamp": "2026-10-03T15:12:00Z", "senderId": "current-user", "type": "text", "isEdited": false, "reactions": [], "replyTo": null }
+  ],
+  "conv-3": [
+    { "id": "msg-3-1", "content": "B.01 has 14 open alerts, mostly not contacted. Is there a blocker?", "timestamp": "2026-10-03T11:20:00Z", "senderId": "current-user", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-3-2", "content": "Exams this week. We will do a calling session tonight.", "timestamp": "2026-10-03T11:33:00Z", "senderId": "6", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-3-3", "content": "We are two candidates behind, catching up tonight.", "timestamp": "2026-10-03T11:40:00Z", "senderId": "5", "type": "text", "isEdited": false, "reactions": [], "replyTo": null }
+  ],
+  "conv-4": [
+    { "id": "msg-4-1", "content": "Hi! Were you able to find a binome?", "timestamp": "2026-10-02T20:50:00Z", "senderId": "7", "type": "text", "isEdited": false, "reactions": [], "replyTo": null },
+    { "id": "msg-4-2", "content": "You are on the unpaired list. B.07 has a free seat, would that suit you?", "timestamp": "2026-10-02T21:05:00Z", "senderId": "current-user", "type": "text", "isEdited": false, "reactions": [], "replyTo": null }
+  ]
+}
