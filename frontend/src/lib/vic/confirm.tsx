@@ -37,15 +37,17 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const ask = React.useCallback<Ask>(
     (o) =>
       new Promise<boolean>((resolve) => {
+        if (resolver.current) resolver.current(false)
+        else setModals(1)
         resolver.current = resolve
-        setModals(1)
         setOpts(o)
       }),
     [setModals]
   )
 
   const close = (v: boolean) => {
-    resolver.current?.(v)
+    if (!resolver.current) return
+    resolver.current(v)
     resolver.current = null
     setOpts(null)
     setModals(-1)

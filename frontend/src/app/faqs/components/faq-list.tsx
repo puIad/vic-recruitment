@@ -57,10 +57,12 @@ export function FAQList({ faqs, categories }: FAQListProps) {
         </CardHeader>
         <CardContent className="space-y-2">
           {categories.map((category) => (
-            <div
+            <button
+              type="button"
+              aria-pressed={selectedCategory === category.name}
               key={category.name}
               className={cn(
-                "flex items-center justify-between px-3 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors group",
+                "flex w-full items-center justify-between px-3 py-2 rounded-lg hover:bg-muted cursor-pointer transition-colors group",
                 selectedCategory === category.name && "bg-muted"
               )}
               onClick={() => setSelectedCategory(category.name)}
@@ -75,7 +77,7 @@ export function FAQList({ faqs, categories }: FAQListProps) {
               >
                 {category.name === "All" ? faqs.length : category.count}
               </Badge>
-            </div>
+            </button>
           ))}
         </CardContent>
       </Card>

@@ -57,7 +57,7 @@ Three are left. **Change history is real** (2026-10-03): `webState.history` read
 
 Goal: `https://vic-recruitment.vercel.app` serves `frontend/` instead of `web/index.html`, same URL, same `api/`. Merging to `main` is the cut-over, so it is one reversible step: **Vercel > Deployments > previous production deployment > Instant Rollback** restores `web/index.html` in seconds, no git needed.
 
-**How (wired on branch `frontend-cutover`, not merged):**
+**How (wired on branch `frontend-cutover`; merging it is the go-live step):**
 
 - `frontend/vite.config.ts` builds into `web/dist` (git-ignored).
 - `web/vercel.json` gets `buildCommand` (`npm --prefix ../frontend ci && npm --prefix ../frontend run build`), `outputDirectory: dist`, and a rewrite of every non-`/api/` path to `/index.html` so deep links (`/settings/history`) and reloads work. The Vercel project root stays `web/`, so `api/`, `lib/` and the env vars are untouched.

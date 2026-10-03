@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -58,6 +58,11 @@ export function CalendarMain({ selectedDate, onDateSelect, onMenuClick, events, 
   }))
 
   const [currentDate, setCurrentDate] = useState(selectedDate || new Date())
+
+  // follow a date picked in the sidebar into its month
+  useEffect(() => {
+    if (selectedDate) setCurrentDate((cur) => (isSameMonth(selectedDate, cur) ? cur : selectedDate))
+  }, [selectedDate])
   const [viewMode, setViewMode] = useState<"month" | "week" | "day" | "list">("month")
   const [showEventDialog, setShowEventDialog] = useState(false)
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
@@ -126,7 +131,10 @@ export function CalendarMain({ selectedDate, onDateSelect, onMenuClick, events, 
                   isSelected && "ring-2 ring-primary ring-inset",
                   isDayToday && "bg-accent/20"
                 )}
-                onClick={() => onDateSelect?.(day)}
+                onClick={() => {
+                  if (!isSameMonth(day, currentDate)) setCurrentDate(day)
+                  onDateSelect?.(day)
+                }}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className={cn(

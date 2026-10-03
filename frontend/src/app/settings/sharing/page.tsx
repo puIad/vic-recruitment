@@ -23,7 +23,7 @@ function WhoHears() {
     ["An alert at or above " + min.toLowerCase(), <Yes on note="instantly" />, <Yes on={st.settings.notifyBinome && !test} note={test ? "test mode" : undefined} />, <Yes on note="in the digest" />],
     ["A new interviewee for a binome", <Yes on={false} />, <Yes on={st.settings.notifyNew && !test} note={test ? "test mode" : undefined} />, <Yes on note="in the digest" />],
     ["A hand edit of the Master or a sheet check", <Yes on note="instantly" />, <Yes on={false} note="admins only" />, <Yes on note="in the digest" />],
-    ["Edit access to a binome sheet", <Yes on />, <Yes on={st.settings.shareFiles} note={test ? "test mode: nothing shared" : st.settings.shareFiles ? undefined : "sharing is off"} />, <Yes on={false} />],
+    ["Edit access to a binome sheet", <Yes on />, <Yes on={st.settings.shareFiles && !test} note={test ? "test mode: nothing shared" : st.settings.shareFiles ? undefined : "sharing is off"} />, <Yes on={false} />],
   ]
   return (
     <Card>

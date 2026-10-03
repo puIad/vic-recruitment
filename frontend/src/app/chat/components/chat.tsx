@@ -23,6 +23,8 @@ export function Chat({
   users,
 }: ChatProps) {
   const {
+    conversations: storeConversations,
+    messages: storeMessages,
     selectedConversation,
     setSelectedConversation,
     setConversations,
@@ -56,14 +58,17 @@ export function Chat({
       setMessages(conversationId, conversationMessages)
     })
 
-    // Auto-select first conversation if none selected
-    if (!selectedConversation && conversations.length > 0) {
-      setSelectedConversation(conversations[0].id)
-    }
-  }, [conversations, messages, users, selectedConversation, setConversations, setMessages, setUsers, setSelectedConversation])
+  }, [conversations, messages, users, setConversations, setMessages, setUsers])
 
-  const currentConversation = conversations.find(conv => conv.id === selectedConversation)
-  const currentMessages = selectedConversation ? messages[selectedConversation] || [] : []
+  // Auto-select first conversation if none selected
+  useEffect(() => {
+    if (!selectedConversation && storeConversations.length > 0) {
+      setSelectedConversation(storeConversations[0].id)
+    }
+  }, [selectedConversation, storeConversations, setSelectedConversation])
+
+  const currentConversation = storeConversations.find(conv => conv.id === selectedConversation)
+  const currentMessages = selectedConversation ? storeMessages[selectedConversation] || [] : []
 
   const handleSendMessage = (content: string) => {
     if (!selectedConversation) return
@@ -121,7 +126,7 @@ export function Chat({
           </div>
 
           <ConversationList
-            conversations={conversations}
+            conversations={storeConversations}
             selectedConversation={selectedConversation}
             onSelectConversation={(id) => {
               setSelectedConversation(id)

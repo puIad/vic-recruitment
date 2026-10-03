@@ -153,12 +153,14 @@ export function Calendars({
                         {/* More Options */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <div
-                              className="h-5 w-5 flex items-center justify-center p-0 opacity-0 group-hover/calendar-item:opacity-100 cursor-pointer hover:bg-accent rounded-sm"
+                            <button
+                              type="button"
+                              aria-label={`Options for ${item.name}`}
+                              className="h-5 w-5 flex items-center justify-center p-0 opacity-0 group-hover/calendar-item:opacity-100 focus-visible:opacity-100 cursor-pointer hover:bg-accent rounded-sm"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreHorizontal className="h-3 w-3" />
-                            </div>
+                            </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" side="right">
                             <DropdownMenuItem 

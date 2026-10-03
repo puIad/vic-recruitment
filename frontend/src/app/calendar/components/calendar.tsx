@@ -66,6 +66,7 @@ export function Calendar({ events, eventDates }: CalendarProps) {
 
       {/* Event Form Dialog */}
       <EventForm
+        key={calendar.showEventForm ? (calendar.editingEvent?.id ?? "new") : "closed"}
         event={calendar.editingEvent}
         open={calendar.showEventForm}
         onOpenChange={calendar.setShowEventForm}

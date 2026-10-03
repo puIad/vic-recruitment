@@ -49,7 +49,8 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
   // Re-apply the chosen palette when the mode flips (each palette has a light and a dark side)
   React.useEffect(() => {
     applyTheme(selectedTheme, isDarkMode)
-  }, [isDarkMode, selectedTheme, applyTheme])
+    document.documentElement.style.setProperty("--radius", selectedRadius)
+  }, [isDarkMode, selectedTheme, selectedRadius, applyTheme])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} modal={false}>

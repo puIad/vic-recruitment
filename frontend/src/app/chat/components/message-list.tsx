@@ -83,26 +83,26 @@ export function MessageList({ messages, users, currentUserId = "current-user" }:
     }
   }
 
-  const shouldShowAvatar = (message: Message, index: number) => {
+  const shouldShowAvatar = (message: Message, index: number, siblings: Message[]) => {
     if (message.senderId === currentUserId) return false
     if (index === 0) return true
 
-    const prevMessage = messages[index - 1]
+    const prevMessage = siblings[index - 1]
     return prevMessage.senderId !== message.senderId
   }
 
-  const shouldShowName = (message: Message, index: number) => {
+  const shouldShowName = (message: Message, index: number, siblings: Message[]) => {
     if (message.senderId === currentUserId) return false
     if (index === 0) return true
 
-    const prevMessage = messages[index - 1]
+    const prevMessage = siblings[index - 1]
     return prevMessage.senderId !== message.senderId
   }
 
-  const isConsecutiveMessage = (message: Message, index: number) => {
+  const isConsecutiveMessage = (message: Message, index: number, siblings: Message[]) => {
     if (index === 0) return false
 
-    const prevMessage = messages[index - 1]
+    const prevMessage = siblings[index - 1]
     const timeDiff = new Date(message.timestamp).getTime() - new Date(prevMessage.timestamp).getTime()
 
     return prevMessage.senderId === message.senderId && timeDiff < 5 * 60 * 1000 // 5 minutes
@@ -158,9 +158,9 @@ export function MessageList({ messages, users, currentUserId = "current-user" }:
               {group.messages.map((message, messageIndex) => {
                 const user = getUserById(message.senderId)
                 const isOwnMessage = message.senderId === currentUserId
-                const showAvatar = shouldShowAvatar(message, messageIndex)
-                const showName = shouldShowName(message, messageIndex)
-                const isConsecutive = isConsecutiveMessage(message, messageIndex)
+                const showAvatar = shouldShowAvatar(message, messageIndex, group.messages)
+                const showName = shouldShowName(message, messageIndex, group.messages)
+                const isConsecutive = isConsecutiveMessage(message, messageIndex, group.messages)
 
                 return (
                   <div

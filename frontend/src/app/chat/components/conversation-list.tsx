@@ -56,7 +56,7 @@ export function ConversationList({
   selectedConversation, 
   onSelectConversation 
 }: ConversationListProps) {
-  const { searchQuery, setSearchQuery } = useChat()
+  const { searchQuery, setSearchQuery, users } = useChat()
 
   const filteredConversations = conversations.filter((conversation) =>
     conversation.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -73,8 +73,7 @@ export function ConversationList({
 
   const getOnlineStatus = (conversation: Conversation) => {
     if (conversation.type === "direct" && conversation.participants.length === 1) {
-      // In a real app, you'd check user online status
-      return Math.random() > 0.5 // Mock online status
+      return users.find((u) => u.id === conversation.participants[0])?.status === "online"
     }
     return false
   }
