@@ -6,11 +6,12 @@ import { cn } from "@/lib/utils"
  * Gotham logotype as outlines; the gradients are rebuilt so the mark scales and themes cleanly.
  * Charter rules: never recolour, crop, distort, outline, shadow or fade it. Full colour sits on white, on
  * dark (#141e27) or on the brand gradient; tone="white" is the one-colour version for gradient fills.
+ * The default tone="auto" follows the theme: dark wordmark on light, white wordmark in dark mode.
  */
 type Props = {
   variant?: "horizontal" | "icon"
-  /** color: full colour on light. ondark: full-colour icon, white wordmark. white: one-colour white. */
-  tone?: "color" | "ondark" | "white"
+  /** auto: color on light, ondark in dark mode. color: full colour on light. ondark: full-colour icon, white wordmark. white: one-colour white. */
+  tone?: "auto" | "color" | "ondark" | "white"
   className?: string
   title?: string
 }
@@ -23,7 +24,7 @@ const LOW = "M207.559 313.259H203.633 199.708 195.782C195.786 313.115 195.788 31
 const STEM_CAP = "M234.259 312.097V312.036H249.96V312.097C249.96 316.432 246.445 319.946 242.109 319.946 237.774 319.946 234.259 316.432 234.259 312.097"
 const PILL: string[] = ["M220.926 246.326C220.057 242.173 222.677 238.1 226.794 237.156 226.844 237.145 226.895 237.134 226.944 237.123 226.976 237.116 227.008 237.109 227.04 237.103L230.299 252.309 230.279 252.313 230.06 252.357C229.546 252.46 229.034 252.509 228.528 252.509 224.926 252.509 221.693 249.991 220.926 246.326", "M253.428 252.306C250.025 251.627 246.461 251.296 242.854 251.243 240.737 251.231 238.603 251.308 236.48 251.485 236.215 251.508 235.949 251.529 235.685 251.552 235.421 251.58 235.157 251.608 234.893 251.636 234.363 251.686 233.842 251.756 233.318 251.823 233.055 251.852 232.799 251.894 232.54 251.931 232.284 251.969 232.023 252.004 231.773 252.047 231.525 252.089 231.261 252.128 231.026 252.173 230.907 252.194 230.786 252.216 230.666 252.238 230.558 252.258 230.45 252.28 230.342 252.301 230.342 252.301 230.321 252.305 230.279 252.313 229.723 249.782 229.445 248.515 229.445 248.515 229.167 247.25 228.889 245.984 228.611 244.718 228.333 243.452 228.056 242.186 227.777 240.92 227.777 240.92 227.499 239.655 226.944 237.123 227.138 237.083 227.235 237.062 227.235 237.062 227.417 237.027 227.6 236.991 227.783 236.955 227.954 236.924 228.126 236.893 228.297 236.862 228.644 236.796 228.967 236.749 229.303 236.693 229.638 236.635 229.964 236.59 230.293 236.542 230.621 236.495 230.951 236.444 231.276 236.405 231.928 236.322 232.582 236.237 233.23 236.173 233.556 236.138 233.881 236.104 234.207 236.07 234.532 236.042 234.857 236.014 235.183 235.987 237.784 235.77 240.391 235.675 243.012 235.692 247.483 235.755 251.999 236.16 256.522 237.064 256.522 237.064 256.589 237.077 256.724 237.102 256.2 239.641 255.938 240.91 255.938 240.91 255.677 242.179 255.416 243.449 255.154 244.718 254.892 245.987 254.63 247.257 254.368 248.526 254.368 248.526 254.106 249.795 253.582 252.334 253.48 252.315 253.428 252.306 253.428 252.306", "M253.944 252.399 253.582 252.334C253.565 252.331 253.548 252.328 253.531 252.325L256.657 237.09C256.679 237.094 256.702 237.098 256.724 237.102 256.825 237.123 256.927 237.144 257.029 237.165 261.058 238.077 263.697 242.007 262.963 246.113 262.291 249.877 259.015 252.521 255.32 252.521 254.867 252.521 254.407 252.482 253.944 252.399"]
 
-export function VicLogo({ variant = "horizontal", tone = "color", className, title = "Vision & Innovation Club" }: Props) {
+export function VicLogo({ variant = "horizontal", tone = "auto", className, title = "Vision & Innovation Club" }: Props) {
   const id = useId().replace(/:/g, "")
   const white = tone === "white"
   const icon = variant === "icon"
@@ -84,7 +85,10 @@ export function VicLogo({ variant = "horizontal", tone = "color", className, tit
       </g>
       <circle cx="242.14" cy="281.94" r="15.4" fill={solid("#69c4af")} />
       {!icon && (
-        <g fill={white || tone === "ondark" ? "#fff" : "#141e27"}>
+        <g
+          className={tone === "auto" ? "fill-[#141e27] dark:fill-white" : undefined}
+          fill={tone === "auto" ? undefined : white || tone === "ondark" ? "#fff" : "#141e27"}
+        >
           {WORDMARK.map(([t, d], i) => (
             <path key={i} transform={t} d={d} />
           ))}
