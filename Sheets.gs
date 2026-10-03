@@ -53,11 +53,19 @@ function loadTable_(name, headers) {
   const sh = ss_().getSheetByName(name);
   const n = sh.getLastRow();
   const data = n > 1 ? sh.getRange(2, 1, n - 1, headers.length).getValues() : [];
-  return { sh: sh, H: headers, I: idx_(headers), data: data, originalLength: data.length };
+  return { sh: sh, H: headers, I: idx_(headers), data: data, originalLength: data.length, orig: data.map(r => r.slice()) };
 }
+function sameVal_(a, b) { return a === b || (a instanceof Date && b instanceof Date && a.getTime() === b.getTime()); }
+/** Write the table back, but only the cells the script changed: a cell typed while the run was going keeps the hand value
+ *  (the baseline still has the old one, so the next run flags it). A row whose first column moved (a row deleted or
+ *  inserted meanwhile) is written whole, as before. */
 function saveTable_(t) {
   if (!t.data.length) return;
-  t.sh.getRange(2, 1, t.data.length, t.H.length).setValues(t.data);
+  const n = Math.min(t.orig.length, t.sh.getLastRow() - 1);
+  const now = n > 0 ? t.sh.getRange(2, 1, n, t.H.length).getValues() : [];
+  const out = t.data.map((r, i) => i >= n || !sameVal_(now[i][0], t.orig[i][0]) ? r
+    : r.map((v, j) => sameVal_(v, t.orig[i][j]) ? now[i][j] : v));
+  t.sh.getRange(2, 1, out.length, t.H.length).setValues(out);
 }
 
 function withLock_(fn, waitMs) {

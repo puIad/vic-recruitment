@@ -316,6 +316,20 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   assert.deepStrictEqual(open(), [], 'applied: nothing left to flag');
 
+  // a hand edit typed while a sync runs is kept, not overwritten, and flagged at the next sync
+  const h = ivs[3], hTo = active.find(b => b.code !== h.binome);
+  run(`var __pull = pullBinomeFiles_; pullBinomeFiles_ = function (c, f) { (function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
+    for(var i=1;i<d.length;i++) if(d[i][${IVI.Code}]===${J(h.code)}) sh.getRange(i+1,${IVI.Binome + 1}).setValue(${J(hTo.code)});})(); return __pull(c, f); }`);
+  call('webRun', 'sync');
+  run('pullBinomeFiles_ = __pull');
+  assert.strictEqual(ivRow(h.code)[IVI.Binome], hTo.code, 'the edit made during the sync was overwritten');
+  call('webRun', 'sync');
+  a = open().find(e => e.code === h.code);
+  assert(a && /moved from .* by hand/.test(a.msg), J(open()));
+  fix('Revert', [a.id]);
+  call('webRun', 'sync');
+  assert.deepStrictEqual([ivRow(h.code)[IVI.Binome], open().length], [h.binome, 0], 'reverted');
+
   // a status typed by hand is put back (it is computed), a cleared binome is put back instead of re-assigned
   const y = ivs[1];
   ivSet(y.code, 'Status', 'INTERVIEWED'); ivSet(y.code, 'Binome', '');
