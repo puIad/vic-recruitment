@@ -42,6 +42,8 @@ when someone isn't contacted, has no date, or has no interview form after the in
 | 10-02 | **C** temporary covers ([#4](https://github.com/puIad/vic-recruitment-2026/pull/4)) | @19 / @20 |
 | 10-02 | Hotfix: Members.gs uploaded | @21 / @22 |
 | 10-02 | **D** manual edits, odd values, full sheet check ([#5](https://github.com/puIad/vic-recruitment-2026/pull/5)) | @23 / @24 |
+| 10-02 | Drive API enabled in the Cloud project; Re-share skips Drive when nothing is shared ([#7](https://github.com/puIad/vic-recruitment-2026/pull/7)) | @25 / @26 |
+| 10-03 | Live test of A–D passed; 6 findings, one to fix before launch ([testing.md](testing.md#live-test-results-2026-10-03)) | |
 
 (web app @N / API @N.)
 

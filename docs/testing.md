@@ -57,7 +57,8 @@ anything found is drift that already existed). Apps Script › Executions should
 | Interviewees: clear a Binome | put back, not re-assigned | — |
 | Interviewees: delete a TEST row | MEDIUM "deleted"; not re-imported with a new code | **Revert** restores it with the same code; delete again → **Accept** drops it for good |
 | Interviewees: edit a name | INFO | **Apply** copies it to the binome sheet |
-| Binomes: change a member's email/name | MEDIUM | **Apply** = a proper Change members |
+| Binomes: change a member's email | MEDIUM (+ INFO "no longer in the Team tab") | **Apply** = a proper Change members |
+| Binomes: change only a member's name | INFO | **Apply** = a proper Change members (renames the sheet) |
 | Binomes: change a Tag, or a code (B.05 → B.99) | MEDIUM / HIGH | **Revert** |
 | Binomes: delete a row | HIGH | **Revert** rebuilds it (Created date kept) |
 | Binomes: ACTIVE → PAUSED | INFO only | — |
@@ -66,11 +67,13 @@ anything found is drift that already existed). Apps Script › Executions should
 Also: undoing an edit by hand closes its alert by itself; ticking several manual edits enables **Accept edits**.
 
 **Odd values** — in a test binome sheet, then Sync now: Interview Date `15/10/2025` → MEDIUM year typo; time `03:00` →
-INFO; a date while Contacted = "Not yet" → INFO. Correct each → closed at the next sync.
+INFO; a date while Contacted = "Not yet" → INFO. Correct each, then **Sync now** → closed. (The 1-minute trigger only
+re-reads a binome sheet once Drive bumps its "last updated" time, which can take several minutes; Sync now forces it.)
 
 **Full sheet check** — in one test binome sheet, then Check integrity, undo, check again (alert closes):
 delete a row → HIGH "missing from its sheet" (Move interviewee to that same binome puts it back); add a tab in front →
-HIGH "put in front of"; remove the sheet protection → MEDIUM.
+HIGH "put in front of"; remove the sheet protection → MEDIUM. A tab in front stops the rest of that sheet's check (it
+would read the wrong tab), so the other two only show once the tab is gone.
 
 **Timing and interview-form cases** (left from the 2026-10-01 live test)
 1. Lower `HOURS_NOT_CONTACTED` / `HOURS_NO_INTERVIEW_DATE` / `HOURS_AFTER_INTERVIEW_NO_FORM` to 0.1 / 0.15 / 0.05 →
@@ -78,7 +81,8 @@ HIGH "put in front of"; remove the sheet protection → MEDIUM.
 2. In B.02: Yes, 01/10/2026, 21:00; in B.09: time `14h3` → BAD_DATE.
 3. Interview forms: a clean one, `b3` / `comm 1`, a name instead of a code, a backup interviewer, a wrong binome,
    an unknown `IT.99`, a duplicate.
-4. Put the limits back to 1000 while testing goes on (they were raised so the test rows stay quiet); 24 / 48 / 12 before launch.
+4. Put the limits back afterwards. They are 32 / 40 / 5 on purpose since 2026-10-03 (the test rows raise
+   NOT_CONTACTED / NO_DATE / OVERDUE mails to admins); 24 / 48 / 12 before launch.
 
 **Clean up at the end:** delete every TEST row (Registration Responses, Interviewees, Alerts) and the test rows in the
 binome sheets, Sync now, then **Accept edits** on the resulting manual edits. Also delete the Team row added in A (or,
@@ -86,8 +90,40 @@ if A reused an existing member, put back their Team row and Exclude as they were
 Change members, and end any active cover. Other admins using Change members / Cover / Apply need edit access to the
 Binome Sheets folder.
 
-### Test data currently in the live Master (from 2026-10-01)
+### Live test results (2026-10-03)
 
-All `TEST-xx` / `sim.*@g.enp.edu.dz`: Registration Responses rows 3–14; Interviewees rows 3–14 (IT.01–04, COMM.01–02,
-HR.01–03, FLER.02–03 + 1 duplicate); Alerts A-0003 onwards; row 2 of the sheets of B.03 B.04 B.05 B.06 B.07 B.10 B.17
-B.25 (Contacted/Date/Time).
+A–D on @25 / @26, run from the dashboard's own calls (`webRun` / `webState` through `/api/run`, signed in as the owner) with the hand edits
+made through the Sheets API, which the sync sees the same way as typing in the sheet.
+
+| Part | Result |
+|---|---|
+| A | Pass: Draft refused ("already locked"); a new Team row → `UNPAIRED_MEMBER` + card within a minute; Exclude closes both |
+| B | Pass: in another binome → refused with the Swap hint; outside Team → warning; Replace and Swap change title, A1 note, Member Changes and INFO alerts; Place… fills the form. All undone with Change members |
+| C | Pass: `IT.01 it 2` → Amine TEST-01 · B.02 and Nassim TEST-05 · B.06, `HR-03x` → unknown; a form from the stand-in is logged AUTOCORRECTED (only for `B2`), not FLAGGED; a cover ends by hand and by itself once the interview is in |
+| D | Pass: every row of the table above, Apply / Revert / Accept each tried; odd values raised and closed; full sheet check raised all three (tab in front first, then protection and missing row) |
+| Not done | "Ticking several manual edits enables Accept edits" (UI only). The B.20 missing row (A-0068) is still open: **Move interviewee IT.04 → B.20** puts it back |
+
+**Findings**
+
+1. **A hand edit made while a sync runs is lost, with no alert.** Every cycle loads Interviewees, then writes the whole
+   range back (`saveTable_`, Sheets.gs); a cell typed in between is overwritten with the old value. Seen live: IT.04's
+   Binome changed during a Sync now came back as B.09 with no alert; the same edit a minute later was caught. The window
+   is the cycle's length (seconds for the trigger, up to ~2.5 min for Sync now / Check integrity). **To fix before launch.**
+2. **Revert of a deleted Interviewees row leaves Assigned At empty** (it rebuilds the row from the registration). Contacted /
+   Date / Time come back from the binome sheet at the next sync. Minor: timing checks then count from the registration time.
+3. **The 1-minute trigger can take several minutes to see an edit in a binome sheet:** it skips sheets whose Drive "last
+   updated" time hasn't moved, and Drive was slow to bump it (3 cycles, still not read). Sync now forces it. Matters for
+   alerts that wait on a binome's correction.
+4. **A name edit in Interviewees raises two alerts:** INFO `MANUAL_EDIT` and a MEDIUM `INTEGRITY` "First Name in its
+   sheet differ from the Master" that is emailed. Apply closes the first; the second closes at the next integrity check.
+5. **A member name change in Binomes is INFO**, not MEDIUM as this file said (an email change is MEDIUM). Table fixed above.
+6. **A tab in front hides the other problems of that sheet** until it is removed (by design, documented above).
+
+### Test data currently in the live Master (from 2026-10-01, updated 2026-10-03)
+
+All `TEST-xx` / `sim.*@g.enp.edu.dz`: Registration Responses rows 3–14; Interviewees (IT.01–02, IT.04, COMM.01–02,
+HR.01–03, FLER.02–03 + 1 duplicate; IT.03 was dropped for good with Accept); Alerts A-0003 onwards; row 2 of the sheets
+of B.03 B.04 B.05 B.06 B.07 B.10 B.17 B.25 (Contacted/Date/Time). From 2026-10-03: Team row 102 `TEST-UNPAIRED`
+(`sim.unpaired@g.enp.edu.dz`, Exclude off, so it shows as unpaired); Interview Responses row 2 and Interview Log row 2
+(the C.3 form for IT.01, now INTERVIEWED); IT.04 moved to B.20 (Yes, 15/10/2026 15:00 in B.20's sheet once the row is
+back); Member Changes rows 4–11 (B and C tests, all undone or ended).

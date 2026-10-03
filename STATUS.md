@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-02. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything else:
+Updated 2026-10-03. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything else:
 [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
@@ -14,14 +14,15 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   check). What each does: [docs/architecture.md](docs/architecture.md#after-lock-phases-ad).
 - **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
 - Master: 49 binomes locked (under v1), sheets created, **not shared**. Test data (`TEST-xx`, `sim.*`) still in it
-  ([docs/testing.md](docs/testing.md#test-data-currently-in-the-live-master-from-2026-10-01)). Timing limits were raised
-  to 1000h during the live test.
+  ([docs/testing.md](docs/testing.md#test-data-currently-in-the-live-master-from-2026-10-01-updated-2026-10-03)). Timing
+  limits are 32 / 40 / 5 on purpose (the test rows mail NOT_CONTACTED / NO_DATE / OVERDUE alerts to admins).
 - Phase D took its baseline after the test rows existed: deleting them will raise manual-edit alerts → select them, **Accept edits**.
 
 ## Next
 
-1. **Test A–D on the live Master** ([docs/testing.md](docs/testing.md#manual-test-on-the-live-master-test_mode--true)).
-   Check integrity and the 1-minute sync verified on 2026-10-02 (@25/@26, Drive API on, no failed executions).
+1. **A–D passed on the live Master on 2026-10-03** ([results and findings](docs/testing.md#live-test-results-2026-10-03)).
+   Left: Move interviewee IT.04 → B.20 (closes A-0068) and the "Accept edits" UI check. **Fix before launch:** a hand
+   edit made while a sync runs is overwritten without an alert (finding 1); the other findings are minor.
 2. Finish the live test's timing and interview-form cases (same file), then delete all test data and Accept the edits.
 3. Run **Setup** once from the dashboard (owner) if it hasn't been run since v2: adds missing Settings rows and the
    Member Changes tab, renames Team column E to "Exclude" — then untick E and tick only people who really won't interview.
