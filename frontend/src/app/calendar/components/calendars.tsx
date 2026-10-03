@@ -93,23 +93,22 @@ export function Calendars({
             defaultOpen={index === 0}
             className="group/collapsible"
           >
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-accent hover:text-accent-foreground rounded-md cursor-pointer">
-              <span className="text-sm font-medium">{calendar.name}</span>
-              <div className="flex items-center gap-1">
-                {index === 0 && (
-                  <div
-                    className="h-5 w-5 flex items-center justify-center opacity-0 group-hover/collapsible:opacity-100 cursor-pointer hover:bg-accent rounded-sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onNewCalendar?.()
-                    }}
-                  >
-                    <Plus className="h-3 w-3" />
-                  </div>
-                )}
+            <div className="flex items-center gap-1 rounded-md hover:bg-accent hover:text-accent-foreground">
+              <CollapsibleTrigger className="flex flex-1 items-center justify-between p-2 cursor-pointer">
+                <span className="text-sm font-medium">{calendar.name}</span>
                 <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
-              </div>
-            </CollapsibleTrigger>
+              </CollapsibleTrigger>
+              {index === 0 && (
+                <button
+                  type="button"
+                  aria-label="New calendar"
+                  className="mr-1 h-5 w-5 flex items-center justify-center opacity-0 group-hover/collapsible:opacity-100 focus-visible:opacity-100 cursor-pointer hover:bg-accent rounded-sm"
+                  onClick={() => onNewCalendar?.()}
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              )}
+            </div>
 
             <CollapsibleContent>
               <div className="mt-2 space-y-1">
