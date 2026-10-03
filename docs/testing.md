@@ -101,21 +101,21 @@ made through the Sheets API, which the sync sees the same way as typing in the s
 | B | Pass: in another binome → refused with the Swap hint; outside Team → warning; Replace and Swap change title, A1 note, Member Changes and INFO alerts; Place… fills the form. All undone with Change members |
 | C | Pass: `IT.01 it 2` → Amine TEST-01 · B.02 and Nassim TEST-05 · B.06, `HR-03x` → unknown; a form from the stand-in is logged AUTOCORRECTED (only for `B2`), not FLAGGED; a cover ends by hand and by itself once the interview is in |
 | D | Pass: every row of the table above, Apply / Revert / Accept each tried; odd values raised and closed; full sheet check raised all three (tab in front first, then protection and missing row) |
-| Not done | "Ticking several manual edits enables Accept edits" (UI only). The B.20 missing row (A-0068) is still open: **Move interviewee IT.04 → B.20** puts it back |
+| Not done | "Ticking several manual edits enables Accept edits" (UI only). The B.20 missing row (A-0068): IT.04 moved back to B.20 by hand on 2026-10-03; the alert closes at the next Check integrity |
 
 **Findings**
 
 1. **A hand edit made while a sync runs is lost, with no alert.** Every cycle loads Interviewees, then writes the whole
    range back (`saveTable_`, Sheets.gs); a cell typed in between is overwritten with the old value. Seen live: IT.04's
    Binome changed during a Sync now came back as B.09 with no alert; the same edit a minute later was caught. The window
-   is the cycle's length (seconds for the trigger, up to ~2.5 min for Sync now / Check integrity). **To fix before launch.**
+   is the cycle's length (seconds for the trigger, up to ~2.5 min for Sync now / Check integrity). **Fix: [#8](https://github.com/puIad/vic-recruitment-2026/pull/8)**, not deployed yet.
 2. **Revert of a deleted Interviewees row leaves Assigned At empty** (it rebuilds the row from the registration). Contacted /
-   Date / Time come back from the binome sheet at the next sync. Minor: timing checks then count from the registration time.
+   Date / Time come back from the binome sheet at the next sync. Minor: timing checks then count from the registration time. **Fix: [#9](https://github.com/puIad/vic-recruitment-2026/pull/9)**, not deployed yet.
 3. **The 1-minute trigger can take several minutes to see an edit in a binome sheet:** it skips sheets whose Drive "last
    updated" time hasn't moved, and Drive was slow to bump it (3 cycles, still not read). Sync now forces it. Matters for
-   alerts that wait on a binome's correction.
+   alerts that wait on a binome's correction. **Fix: [#10](https://github.com/puIad/vic-recruitment-2026/pull/10)** (a sheet not read for 15 min is re-read), not deployed yet.
 4. **A name edit in Interviewees raises two alerts:** INFO `MANUAL_EDIT` and a MEDIUM `INTEGRITY` "First Name in its
-   sheet differ from the Master" that is emailed. Apply closes the first; the second closes at the next integrity check.
+   sheet differ from the Master" that is emailed. Apply closes the first; the second closes at the next integrity check. **Fix: [#11](https://github.com/puIad/vic-recruitment-2026/pull/11)** (no INTEGRITY alert while the MANUAL_EDIT is open), not deployed yet.
 5. **A member name change in Binomes is INFO**, not MEDIUM as this file said (an email change is MEDIUM). Table fixed above.
 6. **A tab in front hides the other problems of that sheet** until it is removed (by design, documented above).
 
@@ -125,5 +125,5 @@ All `TEST-xx` / `sim.*@g.enp.edu.dz`: Registration Responses rows 3–14; Interv
 HR.01–03, FLER.02–03 + 1 duplicate; IT.03 was dropped for good with Accept); Alerts A-0003 onwards; row 2 of the sheets
 of B.03 B.04 B.05 B.06 B.07 B.10 B.17 B.25 (Contacted/Date/Time). From 2026-10-03: Team row 102 `TEST-UNPAIRED`
 (`sim.unpaired@g.enp.edu.dz`, Exclude off, so it shows as unpaired); Interview Responses row 2 and Interview Log row 2
-(the C.3 form for IT.01, now INTERVIEWED); IT.04 moved to B.20 (Yes, 15/10/2026 15:00 in B.20's sheet once the row is
+(the C.3 form for IT.01, now INTERVIEWED); IT.04 moved to B.20 (Yes, 15/10/2026 15:00 in B.20's sheet now that the row is
 back); Member Changes rows 4–11 (B and C tests, all undone or ended).
