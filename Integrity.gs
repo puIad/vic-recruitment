@@ -456,8 +456,11 @@ function checkBinomeFile_(ctx, b, owed, env) {
     const r = ctx.ivByCode[code];
     if (!r) return add('MEDIUM', 'unknown|' + code, 'row ' + (k + 2) + ' of its sheet has code ' + code + ', which is not in the Interviewees tab.', code);
     if (r[I.Binome] !== b.code) return add('MEDIUM', 'extra|' + code, code + ' is in its sheet but belongs to ' + (r[I.Binome] || 'no binome') + ' in the Master: delete that row from the sheet.', code);
-    // a name/email edited by hand in the Master is already an open MANUAL_EDIT (Apply copies it here): not raised twice
-    const person = ctx.alerts.openKeys[editKey_('iv', 'Person', r[I['Response Key']])] ? EDIT_GROUPS.iv.Person : [];
+    // a name/email edited by hand in the Master is already an open MANUAL_EDIT (Apply copies it here): those fields are not
+    // raised twice; the others still are. No baseline entry: all three are skipped while the alert is open.
+    const key = r[I['Response Key']], prev = ctx.base && ctx.base.iv[key], now = prev && editEntry_('iv', r, I);
+    const person = !ctx.alerts.openKeys[editKey_('iv', 'Person', key)] ? []
+      : EDIT_GROUPS.iv.Person.filter(f => !prev || now[f] !== prev[f]);
     const cols = ['First Name', 'Family Name', 'Email', 'Phone'].filter(h => person.indexOf(h) < 0 && cellNorm_(v[F[h]]) !== cellNorm_(r[I[h]]));
     if (cols.length) add('MEDIUM', 'cols|' + code, code + ': ' + cols.join(', ') + ' in its sheet differ from the Master (these columns are protected: edited by someone with owner access, or changed in the Master).', code);
   });
