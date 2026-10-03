@@ -1,0 +1,219 @@
+import * as React from "react"
+import { useSearchParams } from "react-router-dom"
+import { CheckCheck, CircleCheck, Search, X } from "lucide-react"
+
+import { BaseLayout } from "@/components/layouts/base-layout"
+import { RingSlot } from "@/components/brand/motifs"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Spinner } from "@/lib/vic/confirm"
+import { useActions } from "@/lib/vic/actions"
+import { alertLabel, SEVERITY } from "@/lib/vic/format"
+import { useVic } from "@/lib/vic/store"
+import type { Alert } from "@/lib/vic/types"
+import { cn } from "@/lib/utils"
+import { AlertDetail } from "./components/alert-detail"
+
+type Filter = "ALL" | "HIGH" | "MEDIUM" | "INFO" | "EDITS"
+const NONE: Alert[] = []
+
+/**
+ * Alerts as an inbox: the template's Mail layout (list left, reading pane right). Same data and same fixes as the
+ * old Alerts tab: filter by severity or manual edits, search, select several, Mark resolved / Accept edits.
+ */
+export default function AlertsPage() {
+  const alerts = useVic((s) => s.state?.alerts) ?? NONE
+  const counts = useVic((s) => s.state?.alertCounts)
+  const loading = useVic((s) => !s.state)
+  const busy = useVic((s) => s.busy)
+  const action = useVic((s) => s.busyAction)
+  const { resolve, editAccept } = useActions()
+  const isMobile = useIsMobile()
+  const [params, setParams] = useSearchParams()
+
+  const [filter, setFilter] = React.useState<Filter>("ALL")
+  const [q, setQ] = React.useState("")
+  const [selected, setSelected] = React.useState<Set<string>>(new Set())
+  const activeId = params.get("id")
+
+  const editCount = alerts.filter((a) => a.type === "MANUAL_EDIT").length
+  const shown = React.useMemo(() => {
+    const s = q.trim().toLowerCase()
+    return alerts.filter(
+      (a) =>
+        (filter === "ALL" || (filter === "EDITS" ? a.type === "MANUAL_EDIT" : a.severity === filter)) &&
+        (!s || `${a.id} ${a.type} ${alertLabel(a.type)} ${a.code} ${a.binome} ${a.msg}`.toLowerCase().includes(s))
+    )
+  }, [alerts, filter, q])
+
+  // keep the selection to alerts that still exist (they leave the screen when resolved)
+  React.useEffect(() => {
+    const ids = new Set(alerts.map((a) => a.id))
+    setSelected((cur) => (Array.from(cur).every((i) => ids.has(i)) ? cur : new Set(Array.from(cur).filter((i) => ids.has(i)))))
+  }, [alerts])
+
+  const active = alerts.find((a) => a.id === activeId) || null
+  // a deep link (?id=) or the bell can open an alert that sits far down the list: bring its row into view
+  React.useEffect(() => {
+    if (activeId) document.querySelector("[aria-current=true]")?.scrollIntoView({ block: "nearest" })
+  }, [activeId, shown.length, loading])
+  const open = (id: string | null) => {
+    const next = new URLSearchParams(params)
+    if (id) next.set("id", id)
+    else next.delete("id")
+    setParams(next, { replace: true })
+  }
+  const toggle = (id: string) =>
+    setSelected((cur) => {
+      const n = new Set(cur)
+      if (n.has(id)) n.delete(id)
+      else n.add(id)
+      return n
+    })
+
+  const allShown = shown.length > 0 && shown.every((a) => selected.has(a.id))
+  const someShown = shown.some((a) => selected.has(a.id))
+  const selectedEdits = alerts.filter((a) => selected.has(a.id) && a.fix.includes("accept"))
+
+  const list = (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="space-y-3 p-4 pb-3">
+        <div role="group" aria-label="Filter by severity" className="flex flex-wrap gap-1.5">
+          {(
+            [
+              ["ALL", "All", alerts.length],
+              ["HIGH", "High", counts?.HIGH || 0],
+              ["MEDIUM", "Medium", counts?.MEDIUM || 0],
+              ["INFO", "Info", counts?.INFO || 0],
+              ["EDITS", "Manual edits", editCount],
+            ] as const
+          ).map(([v, label, n]) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={filter === v}
+              onClick={() => setFilter(v)}
+              className={cn(
+                "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors",
+                filter === v ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-accent"
+              )}
+            >
+              {label}
+              <span className="num text-xs font-bold opacity-80">{n}</span>
+            </button>
+          ))}
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code, binome, text" aria-label="Search alerts" className="h-10 rounded-full pl-9" />
+          {q && (
+            <button type="button" onClick={() => setQ("")} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 border-y bg-muted/40 px-4 py-2">
+        <Checkbox
+          checked={allShown ? true : someShown ? "indeterminate" : false}
+          onCheckedChange={(c) => setSelected((cur) => { const n = new Set(cur); shown.forEach((a) => (c ? n.add(a.id) : n.delete(a.id))); return n })}
+          aria-label="Select all shown"
+        />
+        <span className="text-sm text-muted-foreground">{selected.size ? `${selected.size} selected` : `${shown.length} shown`}</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          {editCount > 0 && (
+            <Button size="sm" variant="outline" disabled={busy || !selectedEdits.length} onClick={async () => { if (await editAccept(selectedEdits.map((a) => a.id))) setSelected(new Set()) }} title="Take the selected manual edits as they are now">
+              {busy && action === "editAccept" ? <Spinner /> : <CheckCheck />} Accept edits
+            </Button>
+          )}
+          <Button size="sm" disabled={busy || !selected.size} onClick={async () => { if (await resolve(Array.from(selected))) setSelected(new Set()) }}>
+            {busy && action === "resolve" ? <Spinner /> : <CircleCheck />} Mark resolved
+          </Button>
+        </div>
+      </div>
+
+      <ScrollArea className="min-h-0 flex-1">
+        {loading ? (
+          <div className="space-y-3 p-4">
+            {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          </div>
+        ) : shown.length === 0 ? (
+          <div className="relative flex min-h-64 flex-col items-center justify-center gap-2 overflow-hidden p-8 text-center">
+            <RingSlot tone="soft" className="absolute -bottom-32 -right-24 w-72" />
+            <span className="relative flex size-12 items-center justify-center rounded-full bg-success-soft text-success">
+              <CircleCheck className="size-6" />
+            </span>
+            <p className="relative text-xl font-extrabold text-heading">{alerts.length ? "No match" : "All clear"}</p>
+            <p className="relative max-w-xs text-sm text-muted-foreground">{alerts.length ? "Nothing fits this filter." : "No open alerts right now. New ones appear here as the script finds them."}</p>
+          </div>
+        ) : (
+          <ul className="divide-y">
+            {shown.map((a) => {
+              const sev = SEVERITY[a.severity]
+              const on = a.id === activeId
+              return (
+                <li key={a.id} className={cn("flex scroll-my-3 gap-3 px-4 py-3 transition-colors", on ? "bg-accent" : "hover:bg-muted/50", selected.has(a.id) && !on && "bg-accent/40")}>
+                  <Checkbox className="mt-1" checked={selected.has(a.id)} onCheckedChange={() => toggle(a.id)} aria-label={`Select ${alertLabel(a.type)} ${a.code || a.binome}`} />
+                  <button type="button" onClick={() => open(a.id)} className="min-w-0 flex-1 text-left" aria-current={on ? "true" : undefined}>
+                    <span className="flex items-center gap-2">
+                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", sev.tone)}>{sev.label}</span>
+                      <span className="truncate text-sm font-bold">{alertLabel(a.type)}</span>
+                      <span className="num ml-auto shrink-0 text-xs text-muted-foreground">{a.created}</span>
+                    </span>
+                    <span className="mt-1 line-clamp-2 block text-sm text-muted-foreground">{a.msg}</span>
+                    {(a.code || a.binome) && (
+                      <span className="mt-1.5 flex gap-1.5 text-xs font-semibold text-primary">
+                        {a.code && <span className="rounded-full bg-secondary px-2 py-0.5">{a.code}</span>}
+                        {a.binome && <span className="rounded-full bg-secondary px-2 py-0.5">{a.binome}</span>}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </ScrollArea>
+    </div>
+  )
+
+  return (
+    <BaseLayout title="Alerts" description="What the script found that needs a person, worst first." watermark="Alerts">
+      <div className="h-[calc(100svh-15rem)] min-h-[34rem] overflow-hidden rounded-2xl border bg-card">
+        {isMobile ? (
+          <>
+            {list}
+            <Sheet open={!!active} onOpenChange={(o) => !o && open(null)}>
+              <SheetContent side="bottom" className="max-h-[88svh] overflow-auto rounded-t-3xl p-0">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>Alert</SheetTitle>
+                  <SheetDescription>Alert details and actions</SheetDescription>
+                </SheetHeader>
+                <AlertDetail alert={active} />
+              </SheetContent>
+            </Sheet>
+          </>
+        ) : (
+          <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanel defaultSize={46} minSize={32}>
+              {list}
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={54} minSize={34}>
+              <ScrollArea className="h-full">
+                <AlertDetail alert={active} />
+              </ScrollArea>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
+      </div>
+    </BaseLayout>
+  )
+}

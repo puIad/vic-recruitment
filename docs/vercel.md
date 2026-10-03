@@ -27,7 +27,8 @@ web/
                     scripts.run, maps script errors to JSON, logs email/action/ms/ok
   api/logout.js     marks the session signed out (the grant is kept until 48h so signing back in skips consent)
   lib/session.js    AES-256-GCM seal/open (node:crypto), cookie helpers
-  vercel.json       maxDuration 300 for api/run.js, security headers (CSP, frame-ancestors none, no-referrer)
+  vercel.json       maxDuration 300 for api/run.js, security headers (CSP, frame-ancestors none, no-referrer);
+                    on branch frontend-cutover also buildCommand/outputDirectory/rewrite for the new UI
 ```
 
 ## Rules worth knowing
@@ -46,6 +47,7 @@ web/
 
 ## Still open
 
+- **The dashboard is being replaced** by `frontend/` at this same URL: [frontend.md](frontend.md#cut-over-to-vercel-plan). Until then everything above about `web/index.html` is current; after it, `web/` is only `api/`, `lib/`, `vercel.json` and the built `dist/`.
 - Manual checks with other accounts: an editor, a removed/non-editor ENP account ("No access", no dashboard flash), a
   viewer ("View only"), a multi-account browser, sign-out → sign back in within 48h (no consent screen), Lock near the
   time limit. Owner sign-in, dashboard and Sync were verified in production on 2026-10-01.
