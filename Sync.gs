@@ -1,17 +1,26 @@
 /* ---------- 3) read what binomes wrote ---------- */
 
+// Drive can take minutes to bump a sheet's "last updated" time, so a sheet it calls unchanged is still re-read once it
+// has not been read for REREAD_MINUTES; at most REREAD_MAX of those per run, the longest unread first.
+const REREAD_MINUTES = 15, REREAD_MAX = 3; // ponytail: fixed knobs; move to Settings if a sheet still lags or runs get slow
+
 function pullBinomeFiles_(ctx, force) {
   const props = PropertiesService.getScriptProperties();
-  const seen = JSON.parse(props.getProperty('FILE_SEEN') || '{}');
+  const seen = JSON.parse(props.getProperty('FILE_SEEN') || '{}'), readAt = JSON.parse(props.getProperty('FILE_READ') || '{}');
   const updated = {};
   try {
     const it = DriveApp.getFolderById(CONFIG.BINOME_FOLDER_ID).getFiles();
     while (it.hasNext()) { const f = it.next(); updated[f.getId()] = f.getLastUpdated().getTime(); }
   } catch (e) { console.warn('Folder listing failed: ' + e); }
   const I = ctx.iv.I, F = idx_(BF_H), offset = tzOffset_();
-  ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {
+  const files = ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT');
+  const unchanged = b => !force && updated[b.fileId] && seen[b.fileId] && updated[b.fileId] <= seen[b.fileId];
+  const stale = {};
+  files.filter(b => unchanged(b) && ctx.now.getTime() - (readAt[b.fileId] || 0) > REREAD_MINUTES * 60000)
+    .sort((a, b) => (readAt[a.fileId] || 0) - (readAt[b.fileId] || 0)).slice(0, REREAD_MAX).forEach(b => { stale[b.fileId] = true; });
+  files.forEach(b => {
     const lu = updated[b.fileId];
-    if (!force && lu && seen[b.fileId] && lu <= seen[b.fileId]) return;
+    if (unchanged(b) && !stale[b.fileId]) return;
     let sh;
     try { sh = binomeSheet_(ctx, b); } catch (e) {
       ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: b.code, msg: 'Cannot open the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code });
@@ -37,8 +46,9 @@ function pullBinomeFiles_(ctx, force) {
       });
     }
     seen[b.fileId] = lu || ctx.now.getTime();
+    readAt[b.fileId] = ctx.now.getTime();
   });
-  props.setProperty('FILE_SEEN', JSON.stringify(seen));
+  props.setProperties({ FILE_SEEN: JSON.stringify(seen), FILE_READ: JSON.stringify(readAt) });
 }
 
 function statusOf_(ctx, r) {
