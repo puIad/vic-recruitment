@@ -932,7 +932,11 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
   async function refresh(quiet) {
     const btn = $('#refreshBtn');
     if (!quiet) btn.classList.add('running');
-    try { state = await call('webState'); render(); }
+    try {
+      const p = await call('webPulse').catch(() => null); // read before the state, so an edit in between still shows as a change
+      state = await call('webState'); render();
+      pulse = p;
+    }
     catch (e) { if (!gateShown) toast('Could not load the dashboard:\n' + e.message, true); }
     finally { btn.classList.remove('running'); }
   }
@@ -953,8 +957,7 @@ body.gated > :not(.gate):not(.sprite) { display: none !important; }
     pulsing = true;
     try {
       const p = await call('webPulse');
-      if (pulse !== null && p !== pulse && !busy) await refresh(true);
-      pulse = p;
+      if (p !== pulse && !busy) await refresh(true); // pulse only advances inside a successful refresh, so a failed one is retried
     } catch (e) { /* stay quiet: the next tick or the refresh button retries */ }
     finally { pulsing = false; }
   }
