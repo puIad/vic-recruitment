@@ -19,11 +19,28 @@ function regHeaders_(headers) {
     c2: find(h => (h.indexOf('2nd department') >= 0 || h.indexOf('second department') >= 0) && h.indexOf('why') < 0),
     avail: find(h => h.indexOf('available for an interview') >= 0 || h.indexOf('availab') >= 0 && h.indexOf('interview') >= 0),
     anything: find(h => h.indexOf('anything to add') >= 0),
+    attend: find(h => h.indexOf('will you be able to attend') >= 0),
+    discover: find(h => h.indexOf('discover') >= 0),
+    whyVic: find(h => h.indexOf('why do you want to be part') >= 0),
+    clubs: find(h => h.indexOf('other clubs') >= 0),
     motiv: {},
+    deptQ: {}, // dept -> columns of that department's own questions (between its "why" and the next section)
   };
   n.forEach((h, i) => { const m = h.match(/why did you choose the (\w+) department/); if (m && DEPT_ALIASES[m[1]]) H.motiv[DEPT_ALIASES[m[1]]] = i; });
+  const stop = {};
+  [H.avail, H.anything, H.attend].concat(Object.keys(H.motiv).map(d => H.motiv[d])).forEach(i => { if (i >= 0) stop[i] = true; });
+  Object.keys(H.motiv).forEach(d => { const q = []; for (let i = H.motiv[d] + 1; i < n.length && !stop[i]; i++) q.push(i); H.deptQ[d] = q; });
   return H;
 }
+
+/** The registration answers shown in the binome sheet but not used by the routing. */
+function regExtras_(H, head, row, dep) {
+  const get = i => (i >= 0 ? row[i] : '');
+  const qs = (H.deptQ[dep] || []).filter(i => String(row[i]).trim()).map(i => String(head[i]).trim() + ' ' + String(row[i]).trim());
+  return { 'Birth Date': get(H.birth), 'Discovered VIC': get(H.discover), 'Why VIC': get(H.whyVic), 'Other Clubs': get(H.clubs),
+    'Department Questions': qs.join('\n') };
+}
+const REG_EXTRAS = ['Birth Date', 'Discovered VIC', 'Why VIC', 'Other Clubs', 'Department Questions'];
 
 function responseSheet_(which) {
   const id = PropertiesService.getScriptProperties().getProperty(which === 'REG' ? 'REG_SHEET_ID' : 'INT_SHEET_ID');
@@ -76,6 +93,8 @@ function processRegistrations_(ctx) {
   const H = regHeaders_(data[0]);
   const I = ctx.iv.I, s = S_();
   const get = (row, i) => (i >= 0 ? row[i] : '');
+  const byKey = {};
+  ctx.iv.data.forEach(x => { if (x[I['Response Key']]) byKey[x[I['Response Key']]] = x; });
   for (let r = 1; r < data.length; r++) {
     const row = data[r];
     const ts = get(row, H.ts);
@@ -83,7 +102,15 @@ function processRegistrations_(ctx) {
     const collected = String(get(row, H.collected)).trim().toLowerCase();
     const typed = String(get(row, H.typed)).trim();
     const key = responseKey_(ts, collected || typed, r + 1);
-    if (ctx.ivKeys[key]) continue;
+    if (ctx.ivKeys[key]) {
+      // rows imported before these columns existed (or with one cleared) get the blank ones from the registration
+      const x = byKey[key];
+      if (x && REG_EXTRAS.some(h => x[I[h]] === '')) {
+        const e = regExtras_(H, data[0], row, normDept(get(row, H.c1)));
+        REG_EXTRAS.forEach(h => { if (x[I[h]] === '') x[I[h]] = e[h]; });
+      }
+      continue;
+    }
     // a row deleted by hand stays aside (MANUAL_EDIT) instead of coming back with a new code; Revert restores it (ctx.restore)
     if (ctx.restore ? !ctx.restore[key] : ctx.base && key in ctx.base.iv) continue;
 
@@ -107,6 +134,9 @@ function processRegistrations_(ctx) {
     out[I.Availability] = get(row, H.avail); out[I['Anything to add']] = get(row, H.anything);
     out[I.Motivation] = rec.c1 && H.motiv[rec.c1] !== undefined ? get(row, H.motiv[rec.c1]) : '';
     out[I.Contacted] = '';
+    const extra = regExtras_(H, data[0], row, rec.c1);
+    REG_EXTRAS.forEach(h => { out[I[h]] = extra[h]; });
+    out[I['Interview Done']] = false;
     out[I.Flags] = chk.alerts.map(a => a.type).join(', ');
     out[I['Response Key']] = key;
     out[I.Status] = ST.UNASSIGNED;

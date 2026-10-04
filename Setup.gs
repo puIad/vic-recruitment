@@ -28,6 +28,7 @@ function setup() {
   const formNotes = linkForms_(ss);
   installTriggers_(ss);
   cleanupAndOrder_(ss);
+  styleMaster_(ss);
   runCycle_({ pull: false, timing: false, tracker: true });
   say_('Setup complete.\n\n' + formNotes.join('\n') +
     '\n\nNext steps:\n1. Check the Settings tab (ADMIN_EMAIL etc.).\n2. VIC Recruitment › 1 · Import organizing team (or fill the Team tab).\n' +
@@ -39,8 +40,8 @@ function ensureTabs_(ss) {
     let sh = ss.getSheetByName(name);
     if (!sh) sh = ss.insertSheet(name);
     if (headers) {
-      sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold')
-        .setBackground('#1f3864').setFontColor('#ffffff').setWrap(true);
+      if (sh.getMaxColumns() < headers.length) sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
+      sh.getRange(1, 1, 1, headers.length).setValues([headers]);
       sh.setFrozenRows(1);
     }
     return sh;
@@ -81,6 +82,7 @@ function ensureTabs_(ss) {
   ['Registered At', 'Assigned At', 'Contacted Seen At', 'Interview At', 'Interview Submitted At'].forEach(h => {
     iv.getRange(2, I[h] + 1, iv.getMaxRows() - 1, 1).setNumberFormat('dd/mm/yyyy HH:mm');
   });
+  iv.getRange(2, I['Birth Date'] + 1, iv.getMaxRows() - 1, 1).setNumberFormat('dd/mm/yyyy');
   iv.setFrozenColumns(3);
   if (!iv.getProtections(SpreadsheetApp.ProtectionType.SHEET).length) {
     iv.protect().setDescription('Managed by the script — use the menu to reassign').setWarningOnly(true);
@@ -123,7 +125,7 @@ function linkForms_(ss) {
       form.getItems().forEach(it => {
         const t = normText(it.getTitle());
         if (t.indexOf('binome code') >= 0) it.setHelpText('Your binome code, e.g. B.05 (it is in the title of your binome sheet).');
-        if (t.indexOf('interviewee code') >= 0) it.setHelpText('The code in column A of your binome sheet, e.g. IT.58 or COMM.12.');
+        if (t.indexOf('interviewee code') >= 0) it.setHelpText('The code in the "Their Code" column of your binome sheet, e.g. IT.58 or COMM.12.');
       });
     }
     let sheet = ss.getSheets().filter(sh => { const u = sh.getFormUrl(); return u && u.indexOf(id) >= 0; })[0];
@@ -177,4 +179,51 @@ function cleanupAndOrder_(ss) {
     if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i + 1); }
   });
   ss.setActiveSheet(ss.getSheetByName(TAB.TRACKER));
+}
+
+/* ---------- the Master's look ---------- */
+
+// Tab colours: one Hogwarts colour per tab family
+const TAB_COLOR = { Tracker: '#D3A625', Alerts: '#740001', Interviewees: '#0E1A40', Binomes: '#1A472A', 'Member Changes': '#946B2D',
+  Team: '#ECB939', 'Interview Log': '#5D5D5D', Settings: '#372E29', 'Registration Responses': '#B08D57', 'Interview Responses': '#B08D57' };
+
+/** Montserrat, a scarlet-and-gold header row and parchment bands on one tab. Only formats: safe to re-run. */
+function styleTab_(sh, nCols) {
+  const rows = Math.max(sh.getMaxRows(), 2), cols = Math.max(nCols || sh.getLastColumn(), 1);
+  sh.getRange(1, 1, rows, cols).setFontFamily(THEME.font).setFontSize(10).setFontColor(THEME.ink).setVerticalAlignment('middle');
+  sh.getRange(1, 1, 1, cols).setBackground(THEME.head).setFontColor(THEME.headInk).setFontWeight('bold').setWrap(true)
+    .setHorizontalAlignment('center');
+  sh.setRowHeight(1, 38);
+  sh.getBandings().forEach(b => b.remove());
+  sh.getRange(2, 1, rows - 1, cols).applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, false, false)
+    .setFirstRowColor(THEME.band1).setSecondRowColor(THEME.band2);
+  sh.getRange(2, 1, rows - 1, cols).setBorder(null, null, null, null, true, null, THEME.line, SpreadsheetApp.BorderStyle.SOLID);
+  sh.setHiddenGridlines(true);
+  if (TAB_COLOR[sh.getName()]) sh.setTabColor(TAB_COLOR[sh.getName()]);
+}
+
+/** Every tab of the Master except the Tracker (rebuilt in the theme by buildTracker_ every run). */
+function styleMaster_(ss) {
+  const widths = { [TAB.IV]: IV_H.length, [TAB.BINOMES]: BIN_H.length, [TAB.TEAM]: TEAM_H.length, [TAB.LOG]: LOG_H.length,
+    [TAB.ALERTS]: ALERT_H.length, [TAB.CHANGES]: MC_H.length, [TAB.SETTINGS]: 3 };
+  ss.getSheets().forEach(sh => {
+    if (sh.getName() === TAB.TRACKER) return;
+    try { styleTab_(sh, widths[sh.getName()]); } catch (e) { console.warn('Style of ' + sh.getName() + ': ' + e); }
+  });
+  const iv = ss.getSheetByName(TAB.IV);
+  if (iv) {
+    const I = idx_(IV_H), rows = iv.getMaxRows() - 1, col = h => iv.getRange(2, I[h] + 1, rows, 1);
+    const rule = () => SpreadsheetApp.newConditionalFormatRule();
+    const cf = DEPTS.map(d => rule().whenTextEqualTo(d).setBackground(HOUSE[d].light).setFontColor(HOUSE[d].main)
+      .setRanges([col('1st Choice'), col('2nd Choice'), col('Final Affectation')]).build());
+    [[ST.INTERVIEWED, '#DCEBDF', '#1A472A'], [ST.SCHEDULED, '#DDE3F0', '#0E1A40'], [ST.CONTACTED, '#FBEFC8', '#6B4E00'],
+      [ST.ASSIGNED, '#FFFDF7', THEME.ink], [ST.WITHDRAWN, '#E6E1D8', THEME.muted], [ST.DUPLICATE, '#E6E1D8', THEME.muted],
+      [ST.UNASSIGNED, '#F5DCDC', '#740001']].forEach(x => cf.push(rule().whenTextEqualTo(x[0]).setBackground(x[1]).setFontColor(x[2])
+      .setBold(true).setRanges([col('Status')]).build()));
+    cf.push(rule().setGradientMinpointWithValue('#F5DCDC', SpreadsheetApp.InterpolationType.NUMBER, '0')
+      .setGradientMidpointWithValue('#FBEFC8', SpreadsheetApp.InterpolationType.NUMBER, '5')
+      .setGradientMaxpointWithValue('#DCEBDF', SpreadsheetApp.InterpolationType.NUMBER, '10').setRanges([col('Rating')]).build());
+    iv.setConditionalFormatRules(cf);
+    iv.getRange(1, I.Code + 1, rows + 1, 2).setFontWeight('bold');
+  }
 }

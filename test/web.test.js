@@ -304,7 +304,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   const open = type => call('webState').alerts.filter(a => a.type === (type || 'MANUAL_EDIT'));
   const fix = (mode, ids) => call('webRun', 'edit' + mode, { ids: ids });
   const fileOf = code => call('webState').binomes.find(b => b.code === code).fileUrl.split('/d/')[1];
-  const fileCodes = code => run(`__files[${J(fileOf(code))}].obj.sheets[0].cells.slice(1).map(function(r){return r[0];}).filter(String)`);
+  const fileCodes = code => run(`__files[${J(fileOf(code))}].obj.sheets[0].cells.slice(1).map(function(r){return r[BFI.Code];}).filter(String)`);
   const BI = run('idx_(BIN_H)');
   const binSet = (code, col, v) => run(`(function(){var sh=ss_().getSheetByName('Binomes'),d=sh.getDataRange().getValues();
     for(var i=1;i<d.length;i++) if(d[i][0]===${J(code)}) sh.getRange(i+1,${BI[col] + 1}).setValue(${J(v)});})()`);
@@ -363,8 +363,8 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   // change in the sheet is still raised); Apply copies name and email to the sheet
   const p = ivs[4];
   ivSet(p.code, 'First Name', 'Renamed');
-  run(`(function(){var c=__files[${J(fileOf(p.binome))}].obj.sheets[0].cells,F=idx_(BF_H);
-    for(var i=1;i<c.length;i++) if(c[i][0]===${J(p.code)}) c[i][F.Email]='other@g.enp.edu.dz';})()`);
+  run(`(function(){var c=__files[${J(fileOf(p.binome))}].obj.sheets[0].cells,F=BFI;
+    for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(p.code)}) c[i][F.Email]='other@g.enp.edu.dz';})()`);
   call('webRun', 'integrity', {});
   a = open().find(e => e.code === p.code && e.type === 'MANUAL_EDIT');
   assert(a && /Name\/email of/.test(a.msg) && a.fix.includes('apply'), J(open()));
@@ -373,7 +373,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   fix('Apply', [a.id]);
   call('webRun', 'integrity', {});
   assert.deepStrictEqual([open().length, open('INTEGRITY').length], [0, 0], 'applied: nothing open');
-  assert(run(`__files[${J(fileOf(p.binome))}].obj.sheets[0].cells.some(function(r){return r[0]===${J(p.code)} && r[1]==='Renamed';})`), 'copied to the sheet');
+  assert(run(`__files[${J(fileOf(p.binome))}].obj.sheets[0].cells.some(function(r){return r[BFI.Code]===${J(p.code)} && r[BFI['First Name']]==='Renamed';})`), 'copied to the sheet');
 
   // a row deleted by hand is not re-imported with a new code; Revert restores it, Accept forgets it for good
   const n0 = ivRows().length, del = code => run(`(function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
@@ -444,8 +444,8 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
 
   // odd values typed by the binome: a year typo is flagged to them, and closes once corrected
   const w = call('webState').interviewees.find(v => v.status === 'ASSIGNED' && v.binome === to.code);
-  const fileSet = (code, col, v) => run(`(function(){var c=__files[${J(fileOf(to.code))}].obj.sheets[0].cells,F=idx_(BF_H);
-    for(var i=1;i<c.length;i++) if(c[i][0]===${J(code)}) c[i][F[${J(col)}]]=${J(v)}; __touch(${J(fileOf(to.code))});})()`);
+  const fileSet = (code, col, v) => run(`(function(){var c=__files[${J(fileOf(to.code))}].obj.sheets[0].cells,F=BFI;
+    for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}) c[i][F[${J(col)}]]=${J(v)}; __touch(${J(fileOf(to.code))});})()`);
   fileSet(w.code, 'Contacted', 'Yes'); fileSet(w.code, 'Interview Date', '15/10/2025'); fileSet(w.code, 'Interview Time', '14:00');
   call('webRun', 'sync');
   assert(open('ODD_VALUE').some(e => e.code === w.code && /typo in the year/.test(e.msg)), J(open('ODD_VALUE')));
@@ -455,8 +455,8 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
 
   // an edit Drive has not dated yet: the trigger skips it while the sheet was read recently, re-read once that is REREAD_MINUTES old
   const fid = fileOf(to.code), wTime = () => ivRow(w.code)[IVI['Interview Time']];
-  run(`(function(){var c=__files[${J(fid)}].obj.sheets[0].cells,F=idx_(BF_H);
-    for(var i=1;i<c.length;i++) if(c[i][0]===${J(w.code)}) c[i][F['Interview Time']]='16:00';})()`);
+  run(`(function(){var c=__files[${J(fid)}].obj.sheets[0].cells,F=BFI;
+    for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(w.code)}) c[i][F['Interview Time']]='16:00';})()`);
   run('syncAll()'); // the trigger, not Sync now (which reads every sheet)
   assert.strictEqual(wTime(), '14:00', 'read recently: skipped');
   run(`(function(){var r=JSON.parse(__props.FILE_READ||'{}');r[${J(fid)}]=Date.now()-16*60000;__props.FILE_READ=JSON.stringify(r);})()`);
@@ -465,7 +465,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
 
   // full check of the sheets: a row missing from a sheet, protection removed, a tab put in front
   const book = `__files[${J(fileOf(to.code))}].obj`;
-  run(`${book}.sheets[0].cells = ${book}.sheets[0].cells.filter(function(r){return r[0]!==${J(w.code)};})`);
+  run(`${book}.sheets[0].cells = ${book}.sheets[0].cells.filter(function(r){return r[BFI.Code]!==${J(w.code)};})`);
   run(`${book}.sheets[0].protections = []`);
   call('webRun', 'integrity', {});
   let ig = open('INTEGRITY').filter(e => e.binome === to.code);
@@ -496,7 +496,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
 
   // the rollback fails too: the row is in neither sheet, so what the binome wrote is kept in the Master and the row can be rebuilt
   const mvFile = `__files[${J(fileOf(mv.binome))}].obj.sheets[0].cells`;
-  run(`(function(){var c=${mvFile},F=idx_(BF_H);for(var i=1;i<c.length;i++) if(c[i][0]===${J(mv.code)}) { c[i][F.Contacted]='Yes'; c[i][F.Notes]='call after 18h'; }})()`);
+  run(`(function(){var c=${mvFile},F=BFI;for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(mv.code)}) { c[i][F.Contacted]='Yes'; c[i][F.Notes]='call after 18h'; }})()`);
   run('appendToBinomeFile_ = function () { throw new Error("quota"); }');
   out = call('webRun', 'reassign', { code: mv.code, binome: to.code });
   run('appendToBinomeFile_ = __ap');
@@ -506,7 +506,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(open('FILE_ERROR').some(e => e.severity === 'HIGH' && e.code === mv.code), 'HIGH alert saved');
   out = call('webRun', 'reassign', { code: mv.code, binome: mv.binome });
   assert(/put back in the sheet/.test(out.messages[0]), out.messages[0]);
-  assert.strictEqual(run(`(function(){var c=${mvFile},F=idx_(BF_H);for(var i=1;i<c.length;i++) if(c[i][0]===${J(mv.code)}) return c[i][F.Contacted] + '|' + c[i][F.Notes];})()`), 'Yes|call after 18h', 'row rebuilt with its data');
+  assert.strictEqual(run(`(function(){var c=${mvFile},F=BFI;for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(mv.code)}) return c[i][F.Contacted] + '|' + c[i][F.Notes];})()`), 'Yes|call after 18h', 'row rebuilt with its data');
   call('webRun', 'resolve', { ids: open('FILE_ERROR').map(e => e.id) });
   assert.deepStrictEqual(open(), [], 'no hand edits left');
 
