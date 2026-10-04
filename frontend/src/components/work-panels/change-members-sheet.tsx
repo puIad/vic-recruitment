@@ -104,7 +104,7 @@ function hintFor(mode: ChangeMode, st: WebState) {
 }
 
 function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
-  const { changeMember, swapMembers, newBinome, addCover } = useActions()
+  const { changeMember, swapMembers, newBinome, addCover, resolve } = useActions()
   const busy = useVic((s) => s.busy)
   const action = useVic((s) => s.busyAction)
   const close = useUi((s) => s.closeMemberSheet)
@@ -170,7 +170,9 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
       if (!binome) return
       ok = await changeMember({ binome, outEmail, inEmail: inEmail.trim(), inName: inName.trim(), reason: reason.trim() }, hint)
     }
-    if (ok) close()
+    if (!ok) return
+    close()
+    if (init.alertId) await resolve([init.alertId])
   }
 
   const canSubmit = mode === "cover" ? !!codes.trim() : mode === "swap" ? !!(swA && swB) : mode === "pair" ? !!(pA && pB && pA !== pB) : !!binome

@@ -97,6 +97,7 @@ function webState() {
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
 
   const formUrl = id => { try { return FormApp.openById(id).getPublishedUrl(); } catch (e) { return ''; } };
+  const look = quickLookups_(ctx);
   const teamSrc = findTeamSource_(ss_());
 
   return {
@@ -140,7 +141,8 @@ function webState() {
     alerts: open.sort((a, b) => (SEV_RANK[b[A.Severity]] || 0) - (SEV_RANK[a[A.Severity]] || 0)).slice(0, 300).map(r => ({
       id: String(r[A.ID]), created: fmt_(r[A.Created], 'dd/MM HH:mm'), severity: r[A.Severity], type: r[A.Type],
       code: String(r[A.Interviewee]), binome: String(r[A.Binome]), msg: String(r[A.Message]),
-      fix: r[A.Type] === 'MANUAL_EDIT' ? editFixes_(String(r[A.Key]), base) : [] })),
+      fix: r[A.Type] === 'MANUAL_EDIT' ? editFixes_(String(r[A.Key]), base) : [], q: quickInfo_(ctx, r, look) })),
+    muted: heldAlerts_(ctx),
     interviewees: ctx.iv.data.filter(r => r[I.Code]).map(r => ({ code: String(r[I.Code]), binome: String(r[I.Binome]), status: r[I.Status],
       name: (String(r[I['First Name']]) + ' ' + String(r[I['Family Name']])).trim() })),
   };
@@ -224,6 +226,7 @@ function webRun(action, args) {
       case 'newBinome': result = newBinomeCore_(args); break;
       case 'addCover': result = addCoverCore_(args); break;
       case 'endCover': result = endCoverCore_(args); break;
+      case 'quick': result = quickCore_(String(args.op || ''), args); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked as resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;

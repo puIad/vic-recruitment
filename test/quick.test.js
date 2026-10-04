@@ -1,0 +1,243 @@
+// The dashboard's quick actions on alerts (QuickFix.gs), driven through webState / webRun('quick') under web-app conditions
+const assert = require('assert');
+const { run, call, addRegistrations, backdateAssignments } = require('./seed')();
+
+call('webRun', 'importTeam', { link: '' }); call('webRun', 'draft'); call('webRun', 'lock');
+addRegistrations(8, 3);
+run(`(function () { var reg = master.getSheetByName('Registration Responses'), t = Date.now();
+  reg.cells.push(regRow(new Date(t + 1e3), 'bad.phone@g.enp.edu.dz', 'Bad', 'Phone', 'bad.phone@g.enp.edu.dz', '01/03/2005', '12345', 'IT', 'HR'));
+  reg.cells.push(regRow(new Date(t + 2e3), 'no.dept@g.enp.edu.dz', 'No', 'Dept', 'no.dept@g.enp.edu.dz', '01/03/2005', '0555999001', 'Marketing', 'HR'));
+  reg.cells.push(regRow(new Date(t + 3e3), 'amine.belkacem0@g.enp.edu.dz', 'Amine', 'Belkacem', 'amine.belkacem0@g.enp.edu.dz', '01/03/2005', '0555999002', 'IT', 'FLER'));
+  reg.cells.push(regRow(new Date(t + 4e3), 'twin@g.enp.edu.dz', 'Twin', 'One', 'twin@g.enp.edu.dz', '01/03/2005', '0555999003', 'HR', 'IT'));
+  reg.cells.push(regRow(new Date(t + 5e3), 'twin@g.enp.edu.dz', 'Twin', 'Two', 'twin@g.enp.edu.dz', '02/03/2005', '0555999004', 'HR', 'IT'));
+})()`);
+call('webRun', 'sync');
+
+const quick = (op, ids, extra) => call('webRun', 'quick', Object.assign({ op: op, ids: [].concat(ids) }, extra || {}));
+const open = () => call('webState').alerts;
+const find = (type, pred) => open().find(a => a.type === type && (!pred || pred(a)));
+const fileId = code => call('webState').binomes.find(b => b.code === code).fileUrl.split('/d/')[1];
+const sheetRow = (bin, code) => run(`__files["${fileId(bin)}"].obj.sheets[0].getDataRange().getValues()`).find(r => r[BFI.Code] === code);
+const ivRow = pred => run('master.getSheetByName("Interviewees").getDataRange().getValues().slice(1)').find(pred);
+const IV = run('idx_(IV_H)'), BFI = run('BFI');
+const noEdits = () => assert.deepStrictEqual(open().filter(a => a.type === 'MANUAL_EDIT').map(a => a.msg), [], 'the script never flags its own writes');
+
+// ---- a typo fixed in place: Master + binome sheet, no manual edit, alert closed ----
+{
+  const a = find('BAD_PHONE');
+  assert.deepStrictEqual([a.q.kind, a.q.iv.phone, a.q.iv.first], ['reg', '12345', 'Bad']);
+  const cd = quick('draft', a.id, { to: 'candidate' }).result.drafts[0];
+  assert(/phone number \("12345"\) does not look valid/.test(cd.body) && cd.to.includes('bad.phone@g.enp.edu.dz'), cd.body);
+  assert.throws(() => quick('edit', a.id, { values: { Phone: 'abc' } }), /not an Algerian phone/);
+  assert(find('BAD_PHONE'), 'a wrong value is refused and the alert stays');
+  const out = quick('edit', a.id, { values: { Phone: '0555 12 34 56' } });
+  assert(/Phone "12345" → "0555123456", also in the sheet of B\.\d\d/.test(out.messages[0]), out.messages[0]);
+  const r = ivRow(x => x[IV['First Name']] === 'Bad');
+  assert.strictEqual(r[IV.Phone], '0555123456');
+  assert.strictEqual(String(sheetRow(r[IV.Binome], r[IV.Code])[BFI.Phone]), '0555123456', 'binome sheet follows');
+  assert(!find('BAD_PHONE'), 'resolved');
+  call('webRun', 'sync');
+  noEdits();
+}
+
+// ---- a department picked for a candidate the routing could not place assigns them ----
+{
+  const a = find('INVALID_CHOICE');
+  assert.deepStrictEqual([a.q.iv.status, a.q.iv.code], ['UNASSIGNED', '']);
+  const out = quick('edit', a.id, { values: { '1st Choice': 'IT' } });
+  assert(/assigned to B\.\d\d as IT\.\d\d/.test(out.messages[0]), out.messages[0]);
+  const r = ivRow(x => x[IV['First Name']] === 'No');
+  assert(r[IV.Binome] && sheetRow(r[IV.Binome], r[IV.Code]), 'in a binome and its sheet');
+  call('webRun', 'sync');
+  noEdits();
+}
+
+// ---- duplicate registrations: use the new answers / a different person ----
+{
+  const a = find('DUPLICATE_REGISTRATION', x => /Amine/.test(x.msg));
+  assert.deepStrictEqual([a.q.iv.phone, a.q.old.phone, a.q.old.code !== ''], ['0555999002', '0555100000', true]);
+  let out = quick('dupNew', a.id);
+  assert(/Phone, 2nd Choice taken from the new registration, also in the sheet/.test(out.messages[0]), out.messages[0]);
+  const r = ivRow(x => x[IV.Code] === a.q.old.code);
+  assert.deepStrictEqual([r[IV.Phone], r[IV['2nd Choice']]], ['0555999002', 'FLER']);
+  assert.strictEqual(String(sheetRow(r[IV.Binome], r[IV.Code])[BFI.Phone]), '0555999002');
+  const t = find('DUPLICATE_REGISTRATION', x => /Twin/.test(x.msg));
+  out = quick('dupSeparate', t.id);
+  assert(/Twin Two is now a candidate of their own \(HR\.\d\d\), assigned to B\.\d\d/.test(out.messages[0]), out.messages[0]);
+  assert(call('webState').interviewees.some(i => i.name === 'Twin Two' && /^HR\.\d\d$/.test(i.code)));
+  call('webRun', 'sync');
+  noEdits();
+}
+
+// ---- snooze, expiry, mute, unmute ----
+{
+  backdateAssignments(3);
+  call('webRun', 'sync');
+  const nc = open().filter(a => a.type === 'NOT_CONTACTED');
+  assert(nc.length >= 3, 'timing alerts');
+  const [a, b] = nc;
+  assert.throws(() => quick('snooze', a.id, { for: 'interview' }), /no interview date ahead/);
+  quick('snooze', a.id, { for: '24h' });
+  let st = call('webState');
+  assert(!st.alerts.some(x => x.id === a.id) && st.muted.find(x => x.id === a.id).status === 'SNOOZED', 'snoozed: out of the open list');
+  call('webRun', 'sync');
+  assert(!open().some(x => x.type === 'NOT_CONTACTED' && x.code === a.code), 'not raised again while snoozed');
+  run(`(function () { var sh = master.getSheetByName('Alerts'), I = idx_(ALERT_H);
+    for (var k = 1; k < sh.cells.length; k++) if (sh.cells[k][0] === '${a.id}') sh.cells[k][I['Resolved At']] = new Date(Date.now() - 1000); })()`);
+  call('webRun', 'sync');
+  assert(open().some(x => x.id === a.id), 'a snooze that ran out opens the same alert again');
+  quick('mute', b.id);
+  call('webRun', 'sync');
+  st = call('webState');
+  assert(!st.alerts.some(x => x.type === 'NOT_CONTACTED' && x.code === b.code) && st.muted.some(x => x.id === b.id && x.status === 'MUTED'), 'muted for good');
+  quick('unmute', b.id);
+  assert(open().some(x => x.id === b.id), 'unmuted');
+  const e = open().find(x => x.type === 'MANUAL_EDIT');
+  if (e) assert.throws(() => quick('mute', e.id), /Apply \/ Revert \/ Accept/, 'manual edits keep their own buttons');
+}
+
+// ---- odd value fixed in the binome sheet ----
+let oddCode;
+{
+  const r = ivRow(x => x[IV.Status] === 'ASSIGNED');
+  oddCode = r[IV.Code];
+  // a week ahead, typed with last year: the YEAR check catches it
+  const p2 = n => String(n).padStart(2, '0'), wk = new Date(Date.now() + 7 * 864e5), y = wk.getFullYear();
+  const dd = p2(wk.getDate()) + '/' + p2(wk.getMonth() + 1);
+  run(`(function () { var sh = __files["${fileId(r[IV.Binome])}"].obj.sheets[0];
+    for (var k = 1; k < sh.cells.length; k++) if (sh.cells[k][BFI.Code] === '${oddCode}') {
+      sh.cells[k][BFI.Contacted] = 'Yes'; sh.cells[k][BFI['Interview Date']] = '${dd}/${y - 1}'; sh.cells[k][BFI['Interview Time']] = '14:00'; } })()`);
+  call('webRun', 'sync');
+  const a = find('ODD_VALUE', x => x.code === oddCode);
+  const iso = yy => yy + '-' + p2(wk.getMonth() + 1) + '-' + p2(wk.getDate());
+  assert.deepStrictEqual([a.q.check, a.q.date, a.q.time, a.q.regYear], ['YEAR', iso(y - 1), '14:00', String(new Date(Date.now() - 3 * 864e5).getFullYear())]);
+  assert.throws(() => quick('setCell', a.id, { date: y + '-02-31', time: '14:00' }), /not a real date/);
+  const out = quick('setCell', a.id, { date: iso(y), time: '14:00' });
+  assert(out.messages[0].includes('interview on ' + dd + '/' + y + ' at 14:00, written in the sheet of'), out.messages[0]);
+  assert.strictEqual(sheetRow(r[IV.Binome], oddCode)[BFI['Interview Date']], dd + '/' + y);
+  call('webRun', 'sync');
+  assert(!find('ODD_VALUE', x => x.code === oddCode), 'fixed: not raised again');
+  assert.strictEqual(ivRow(x => x[IV.Code] === oddCode)[IV.Status], 'SCHEDULED');
+}
+
+// ---- a free member excluded in one click ----
+{
+  run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,1,6).setValues([['Late Member','late@g.enp.edu.dz','IT','IT',false,'']]);})()");
+  call('webRun', 'sync');
+  const a = find('UNPAIRED_MEMBER');
+  assert.strictEqual(a.q.email, 'late@g.enp.edu.dz');
+  assert(/#gid=\d+&range=A\d+$/.test(quick('locate', a.id, { target: 'team' }).result.url), 'link to the Team row');
+  quick('exclude', a.id);
+  call('webRun', 'sync');
+  assert(!find('UNPAIRED_MEMBER') && call('webState').unpaired.length === 0, 'excluded: nobody unpaired');
+}
+
+// ---- interview forms: unknown code, second form ----
+{
+  const st = call('webState'), it = st.interviewees.find(i => i.status === 'ASSIGNED' && i.code !== oddCode), b = st.binomes.find(x => x.code === it.binome);
+  const it2 = st.interviewees.find(i => i.status === 'ASSIGNED' && i.code !== it.code && i.code !== oddCode && i.binome === it.binome) ||
+    st.interviewees.find(i => i.status === 'ASSIGNED' && i.code !== it.code && i.code !== oddCode);
+  const b2 = st.binomes.find(x => x.code === it2.binome), sub = b.people[0].email, sub2 = b2.people[0].email;
+  run(`(function () { var ir = master.getSheetByName('Interview Responses'), t = Date.now();
+    ir.cells.push([new Date(t), '${sub}', '${b.code}', 'XX.99', 'intro', 'IT', 'IT', '']);
+    ir.cells.push([new Date(t + 1000), '${sub2}', '${b2.code}', '${it2.code}', 'intro', 'IT', 'IT', '']);
+    ir.cells.push([new Date(t + 2000), '${sub2}', '${b2.code}', '${it2.code}', 'intro', 'IT', 'IT', '']); })()`);
+  call('webRun', 'sync');
+  const u = find('UNKNOWN_INTERVIEWEE');
+  assert.deepStrictEqual([u.q.form.typedIv, u.q.form.submitter, u.q.form.subBinome], ['XX.99', sub, b.code]);
+  const d = quick('draft', u.id, { to: 'submitter' }).result;
+  assert(d.testMode && d.drafts.length === 1 && /"XX\.99"/.test(d.drafts[0].body) && d.drafts[0].to.includes(sub), JSON.stringify(d));
+  assert(/Interview%20Log|#gid=\d+&range=A\d+$/.test(quick('locate', u.id, { target: 'log' }).result.url));
+  let out = quick('pickCandidate', u.id, { code: it.code.toLowerCase() });
+  assert(/now interviewed/.test(out.messages[0]), out.messages[0]);
+  assert.strictEqual(call('webState').interviewees.find(i => i.code === it.code).status, 'INTERVIEWED');
+  assert.strictEqual(sheetRow(b.code, it.code)[BFI['Interview Done']], true);
+
+  const dup = find('DUPLICATE_INTERVIEW', x => x.code === it2.code);
+  assert(dup.q.first && dup.q.first.row < dup.q.form.row, 'both forms shown');
+  out = quick('keepForm', dup.id, { which: 'latest' });
+  assert(/latest form \(row \d+\) counts/.test(out.messages[0]), out.messages[0]);
+  const log = run('master.getSheetByName("Interview Log").getDataRange().getValues()');
+  assert.strictEqual(log[dup.q.first.row - 1][6], 'IGNORED');
+  assert.strictEqual(ivRow(x => x[IV.Code] === it2.code)[IV['Interview Log Row']], dup.q.form.row);
+}
+
+// ---- links ----
+{
+  const st = call('webState'), a = st.alerts.find(x => x.type === 'NOT_CONTACTED');
+  const url = quick('locate', a.id, { target: 'cell' }).result.url, col = run('a1_(1, bfCol_("Contacted"))').replace('1', '');
+  assert(url.includes(fileId(a.binome)) && new RegExp('&range=' + col + '\\d+$').test(url), url);
+  const regGid = run("String(responseSheet_('REG').getSheetId())");
+  const dupA = run(`ss_().getSheetByName('Alerts').getDataRange().getValues().find(r => r[3] === 'DUPLICATE_REGISTRATION')[0]`);
+  assert(quick('locate', dupA, { target: 'form' }).result.url.includes('#gid=' + regGid + '&range=A'), 'link to the form response');
+}
+
+// ---- binome sheet repairs ----
+{
+  const bins = call('webState').binomes.filter(b => b.status === 'ACTIVE' && b.assigned >= 2);
+  const B1 = bins[0].code, B2 = bins[1].code, f1 = fileId(B1), f2 = fileId(B2);
+  run(`(function () { var bk = __files["${f1}"].obj; bk.title = 'my notes'; var s = bk.insertSheet('Scratch'); bk.sheets = [s].concat(bk.sheets.filter(x => x !== s)); })()`);
+  call('webRun', 'integrity');
+  const fixes = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
+  assert.deepStrictEqual(fixes.map(a => a.q.repair).sort(), ['rename', 'reorder'], JSON.stringify(fixes.map(a => a.msg)));
+  let out = quick('repair', fixes.map(a => a.id));
+  assert(/is titled "\[B\.\d\d\]/.test(out.messages[0]) && /first tab of/.test(out.messages[0]), out.messages[0]);
+
+  const own = call('webState').interviewees.filter(i => i.binome === B1), other = call('webState').interviewees.find(i => i.binome === B2);
+  run(`(function () { var sh = __files["${f1}"].obj.sheets[0]; sh.protections = [];
+    var k = sh.cells.findIndex(r => r && r[BFI.Code] === '${own[0].code}'); sh.cells.push(sh.cells[k].slice());
+    var x = sh.cells[k].slice(); x[BFI.Code] = '${other.code}'; sh.cells.push(x);
+    sh.cells.splice(sh.cells.findIndex(r => r && r[BFI.Code] === '${own[1].code}'), 1); })()`);
+  call('webRun', 'integrity');
+  const more = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
+  assert.deepStrictEqual(more.map(a => a.q.repair).sort(), ['dedupe', 'protect', 'putback', 'remove'], JSON.stringify(more.map(a => a.msg)));
+  out = quick('repair', more.filter(a => /dedupe|remove/.test(a.q.repair)).map(a => a.id), { dryRun: true });
+  assert(/keep row \d+ \(.*\), delete row \d+/.test(out.result.lines.join('\n')) && /delete .* from the sheet of/.test(out.result.lines.join('\n')), out.result.lines);
+  assert.strictEqual(out.messages.length, 0, 'a dry run says nothing');
+  out = quick('repair', more.map(a => a.id));
+  assert.strictEqual(out.result.done.length, 4, out.messages[0]);
+  call('webRun', 'integrity');
+  assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'all repaired');
+  assert(run(`__files["${f2}"].obj.sheets[0].getDataRange().getValues()`).some(r => r[BFI.Code] === other.code), 'the other binome keeps its row');
+
+  // a sheet that could not be opened: retried
+  run(`var __ob = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id === "${f2}") throw new Error("Service unavailable"); return __ob.call(SpreadsheetApp, id); }`);
+  call('webRun', 'sync');
+  run('SpreadsheetApp.openById = __ob');
+  const fe = find('FILE_ERROR', x => x.binome === B2);
+  assert.strictEqual(fe.q.repair, 'retry');
+  out = quick('repair', fe.id);
+  assert(/opens, its title and banner are up to date/.test(out.messages[0]), out.messages[0]);
+  assert(!find('FILE_ERROR', x => x.binome === B2));
+}
+
+// ---- sharing (test mode off) and emails ----
+{
+  call('webRun', 'saveSettings', { values: { TEST_MODE: false } });
+  const B = call('webState').binomes.find(b => b.status === 'ACTIVE' && b.people.length === 2), f = fileId(B.code);
+  run(`__files["${f}"].editors.push('stranger@g.enp.edu.dz')`);
+  call('webRun', 'integrity');
+  const mine = open().filter(a => a.type === 'INTEGRITY' && a.binome === B.code);
+  assert.deepStrictEqual(mine.map(a => a.q.repair).sort(), ['reshare', 'reshare', 'unshare'], JSON.stringify(mine.map(a => a.msg)));
+  quick('repair', mine.map(a => a.id));
+  const eds = run(`__files["${f}"].editors`);
+  assert(B.people.every(p => eds.includes(p.email)) && !eds.includes('stranger@g.enp.edu.dz'), JSON.stringify(eds));
+
+  const nc = open().filter(a => /NOT_CONTACTED|NO_DATE/.test(a.type));
+  const bin = nc.find(a => nc.filter(x => x.binome === a.binome).length >= 2).binome, ids = nc.filter(a => a.binome === bin).map(a => a.id);
+  const d = quick('draft', ids, { to: 'binome' }).result;
+  assert(!d.testMode && d.drafts.length === 1 && d.drafts[0].ids.length === ids.length, 'one email per binome');
+  assert.strictEqual((d.drafts[0].body.match(/^• /gm) || []).length, ids.length);
+  assert.throws(() => quick('send', ids, { to: 'binome', drafts: [{ group: d.drafts[0].group, subject: '', body: 'x' }] }), /subject and a text/);
+  run('__outbox.length = 0');
+  const out = quick('send', ids, { to: 'binome', drafts: [{ group: d.drafts[0].group, subject: 'Please call them', body: 'Hi <both>\nline two', to: 'evil@x.dz' }] });
+  assert(/Email sent to B\.\d\d/.test(out.messages[0]), out.messages[0]);
+  const sent = run('__outbox.slice()'), people = call('webState').binomes.find(b => b.code === bin).people.map(p => p.email);
+  assert.strictEqual(sent.map(m => m.to).sort().join(), people.slice().sort().join(), 'the members, never an address from the page');
+  assert(sent.every(m => m.subject === 'Please call them' && /Hi &lt;both&gt;<br>line two/.test(m.htmlBody)), 'the edited text, escaped');
+  const rows = run('ss_().getSheetByName("Alerts").getDataRange().getValues()');
+  assert(ids.every(id => people.every(p => rows.find(r => r[0] === id)[7].includes(p))), 'Emailed To records it');
+  assert(ids.every(id => open().some(a => a.id === id)), 'a nudge does not close the alerts');
+}
+
+console.log('QUICK OK');

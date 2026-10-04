@@ -8,6 +8,8 @@ export interface MemberSheetOpen {
   inEmail?: string
   inName?: string
   codes?: string
+  /** opened from this alert: it is resolved once the change is done */
+  alertId?: string
 }
 
 interface UiStore {
@@ -18,8 +20,8 @@ interface UiStore {
   openMemberSheet: (o?: MemberSheetOpen) => void
   closeMemberSheet: () => void
   /** Move an interviewee to another binome */
-  moveDialog: { open: boolean; code?: string; binome?: string; nonce: number } | null
-  openMoveDialog: (o?: { code?: string; binome?: string }) => void
+  moveDialog: { open: boolean; code?: string; binome?: string; alertId?: string; nonce: number } | null
+  openMoveDialog: (o?: { code?: string; binome?: string; alertId?: string }) => void
   closeMoveDialog: () => void
 }
 

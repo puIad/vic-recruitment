@@ -29,6 +29,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | `Team.gs` | team import, Draft / Lock / Re-share, Reset all binomes (`resetBinomesCore_`) |
 | `Members.gs` | after lock: change / swap members, temporary covers (Member Changes tab) |
 | `Actions.gs` | Move interviewee, resolve alerts, daily digest |
+| `QuickFix.gs` | the Alerts page's quick actions (`webRun('quick', {op, ids})`): fixes, snooze / mute, emails, links to the exact row or cell |
 | `Integrity.gs` | manual-edit detection (baseline), odd values, full binome-sheet check |
 | `WebApp.gs` | `webAccess` / `webState` / `webPulse` / `webRun`, the API the dashboard calls; `API_VERSION`; `doGet` |
 | `Index.html`, `NoAccess.html` | the Apps Script web app's old dashboard (`doGet`), kept as a read-only fallback |
@@ -40,7 +41,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | Tab | Who writes | Content |
 |---|---|---|
 | Tracker | script | per-binome progress, rebuilt each sync |
-| Alerts | script (+ admins resolve) | ID, severity, type, status OPEN / RESOLVED / AUTO-RESOLVED / AUTO-FIXED, key (dedup) |
+| Alerts | script (+ admins resolve) | ID, severity, type, status OPEN / RESOLVED / AUTO-RESOLVED / AUTO-FIXED / SNOOZED / MUTED, key (dedup) |
 | Interviewees | script (warning-protected) | one row per registration: code, binome, status, contact data, what the binome wrote |
 | Binomes | admins before Lock, then the tools | code, 2 members, tag, status DRAFT / ACTIVE / PAUSED, sheet link |
 | Member Changes | script | PERMANENT (change/swap) and TEMPORARY (cover) rows |
@@ -110,6 +111,29 @@ Any missed trigger self-heals: unprocessed form rows are picked up by the next r
 | `MANUAL_EDIT` | baseline compare, Team check | yes, once undone; or via the fix buttons |
 | `ODD_VALUE` | odd-value check | yes (form ones: no) |
 | `INTEGRITY` | full sheet check | yes, at the next clean check of that binome |
+
+## Quick actions (Alerts page)
+
+`QuickFix.gs`, one entry point `webRun('quick', {op, ids, …})`. Each op does what the matching tool would (Master,
+binome sheet and baseline stay in step, so nothing comes back as a `MANUAL_EDIT`) and resolves the alert; when every
+alert of a call fails it throws, so the page shows an error. `webState` gives each alert a `q` with what its actions
+need (`quickInfo_`) and lists the held ones in `muted`.
+
+| Alerts | Ops |
+|---|---|
+| `BAD_PHONE`, `BAD_EMAIL`, `BAD_BIRTHDATE`, `MISSING_NAME`, `EMAIL_MISMATCH`, `INVALID_CHOICE`, `SAME_CHOICES`, `NO_BINOME` | `edit` (checked like the registration check; a new 1st choice places an unassigned candidate) |
+| `DUPLICATE_REGISTRATION` | `dupNew` (copy the new answers onto the earlier candidate), `dupSeparate` (a candidate of their own) |
+| `ODD_VALUE` (sheet) | `setCell` (Contacted, or date + time, in the binome's own cells) |
+| `UNPAIRED_MEMBER` | `exclude` (ticks Exclude in the Team tab) |
+| `UNKNOWN_INTERVIEWEE` | `pickCandidate` (rewrites the Interview Log row, marks them interviewed) |
+| `DUPLICATE_INTERVIEW` | `keepForm` first / latest (the other log row becomes `IGNORED`) |
+| `INTEGRITY`, `FILE_ERROR` | `repair` (rename, tab back first, protect, dedupe / remove a row, put rows back, re-share, unshare, retry), with `dryRun` |
+| any but `MANUAL_EDIT` | `snooze` (4h / 24h / 3d / until the interview), `mute`, `unmute` |
+| timing, odd values, registrations, unknown forms | `draft` + `send`: email the binome (one per binome), the candidate or the form's sender; recipients are worked out again on send |
+| all | `locate`: URL of the exact row or cell (form response, Interviewees, Interview Log, Team, Binomes, binome sheet) |
+
+Snooze / mute: the status is `SNOOZED` (Resolved At = until when) or `MUTED`. While held, the alert's key is not
+raised again; a snooze that ran out opens the same alert again, and one whose problem went away closes as usual.
 
 Severity routing: HIGH/MEDIUM are emailed instantly (threshold `INSTANT_EMAIL_MIN_SEVERITY`); `notifyBinome` alerts also
 go to the binome and whoever covers the interviewee; everything appears in the daily digest.

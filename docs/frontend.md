@@ -31,7 +31,7 @@ The sidebar has four groups: Control room, People, Coming up, System. Alerts car
 |---|---|
 | Header | Live status button (reload; numbers also refresh every 15 s from the Master's last edit), the primary **Sync now**, Test mode pill |
 | Overview | Pipeline card (registrants by status), Launch sequence (Import team → Draft → Lock, only the current step is primary), attention, binome load, departments, Activity of this session |
-| Alerts | Inbox: list left, reading pane right; severity filter and Manual edits, search, select, Mark resolved, Accept edits on several, Apply / Revert / Accept per manual edit |
+| Alerts | Inbox: list left, reading pane right; severity filter, Manual edits and Muted, search, select, Mark resolved, Accept edits on several, Apply / Revert / Accept per manual edit. Quick fix per alert type in the reading pane (inline fixes, comparisons, emails with an editable preview, links to the exact row or cell), one quick action on each row, and Nudge / Repair / Snooze on a selection (`app/alerts/components/quick-actions.tsx`, `lib/vic/quick.tsx`) |
 | Binomes | Table (filter, sort, status facet, row menu); Unpaired members and Active covers cards (Place… opens Change members prefilled; Pair two… opens its New binome tab) |
 | Change members | Sheet with Replace / Swap / New binome / Cover, each with the script's dry-run preview; opened from Binomes or a row menu |
 | Move interviewee | Dialog, from Binomes, an interviewee row or a binome row menu |

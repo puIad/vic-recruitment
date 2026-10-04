@@ -21,6 +21,7 @@
  *   Members.gs        after lock: change / swap binome members, temporary covers (Member Changes tab)
  *   Integrity.gs      hand-edit detection (baseline in script properties), odd values, full binome-sheet check
  *   Actions.gs        reassign interviewee, resolve alerts, daily digest
+ *   QuickFix.gs       the dashboard's quick actions on alerts: fixes, snooze / mute, emails, links
  ******************************************************************************/
 
 // IDs of the files created in Drive › Recruitment › VIC Recruitment 2026
@@ -108,6 +109,8 @@ const PENDING_STATUSES = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED];
 const SEV_RANK = { INFO: 1, MEDIUM: 2, HIGH: 3 };
 // Alert types that close themselves once the problem disappears
 const AUTO_RESOLVING = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'NO_BINOME', 'UNPAIRED_MEMBER'];
+// Statuses of an alert put aside from the dashboard: its key is not raised again while it holds one
+const HELD_STATUSES = ['SNOOZED', 'MUTED'];
 
 const DEPTS = ['IT', 'COMM', 'FLER', 'HR'];
 const DEPT_ALIASES = { it: 'IT', info: 'IT', comm: 'COMM', com: 'COMM', communication: 'COMM',

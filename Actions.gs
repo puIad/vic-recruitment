@@ -99,7 +99,7 @@ function resolveAlertRows_(sh, rows) {
   let n = 0;
   rows.forEach(r => {
     const cell = sh.getRange(r, I.Status + 1);
-    if (cell.getValue() === 'OPEN') { cell.setValue('RESOLVED'); sh.getRange(r, I['Resolved At'] + 1).setValue(new Date()); n++; }
+    if (cell.getValue() === 'OPEN' || cell.getValue() === 'SNOOZED') { cell.setValue('RESOLVED'); sh.getRange(r, I['Resolved At'] + 1).setValue(new Date()); n++; }
   });
   return n;
 }

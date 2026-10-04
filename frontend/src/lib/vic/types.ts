@@ -25,6 +25,78 @@ export interface Alert {
   binome: string
   msg: string
   fix: FixMode[]
+  /** what the quick actions need (QuickFix.gs quickInfo_); absent on an older script */
+  q?: QuickInfo | null
+}
+
+/** A registration as the Interviewees tab holds it (dates already formatted). */
+export interface RegView {
+  code: string
+  binome: string
+  status: Status | string
+  first: string
+  family: string
+  email: string
+  typed: string
+  phone: string
+  birth: string
+  c1: string
+  c2: string
+  field: string
+  year: string
+  availability: string
+  registered: string
+}
+
+/** One Interview Log row. subBinome = the locked binome its sender is a member of. */
+export interface FormView {
+  row: number
+  at: string
+  submitter: string
+  submitterName: string
+  typedBinome: string
+  typedIv: string
+  binome: string
+  interviewee: string
+  result: string
+  finalDep: string
+  subBinome: string
+}
+
+export type RepairKind = "rename" | "reorder" | "protect" | "dedupe" | "remove" | "putback" | "reshare" | "unshare" | "retry" | ""
+
+export type QuickInfo =
+  | { kind: "reg"; iv: RegView; old?: RegView }
+  | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean }
+  | { kind: "log"; check: string; form: FormView; first?: FormView }
+  | { kind: "integ"; check: string; subject: string; repair: RepairKind }
+  | { kind: "member"; email: string }
+  | { kind: "file"; repair: RepairKind }
+
+/** A snoozed or muted alert (the Muted filter). until = end of the snooze. */
+export interface HeldAlert {
+  id: string
+  created: string
+  severity: Severity
+  type: string
+  code: string
+  binome: string
+  msg: string
+  status: "SNOOZED" | "MUTED"
+  until: string
+}
+
+export interface QuickOut {
+  lines: string[]
+  done: string[]
+}
+
+export interface MailDraft {
+  group: string
+  to: string
+  ids: string[]
+  subject: string
+  body: string
 }
 
 export interface Person {
@@ -127,6 +199,8 @@ export interface WebState {
   binomes: Binome[]
   alertCounts: Record<Severity, number>
   alerts: Alert[]
+  /** snoozed and muted alerts; absent on an older script */
+  muted?: HeldAlert[]
   interviewees: Interviewee[]
 }
 

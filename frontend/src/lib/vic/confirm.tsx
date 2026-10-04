@@ -20,6 +20,8 @@ export interface ConfirmOptions {
   danger?: boolean
   /** the confirm button stays disabled until this exact text is typed (for actions nobody should trigger by accident) */
   phrase?: string
+  /** a wider dialog with a scrolling body (email previews) */
+  wide?: boolean
 }
 
 type Ask = (o: ConfirmOptions) => Promise<boolean>
@@ -62,12 +64,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     <ConfirmContext.Provider value={ask}>
       {children}
       <Dialog open={!!opts} onOpenChange={(o) => !o && close(false)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className={opts?.wide ? "sm:max-w-2xl" : "sm:max-w-md"}>
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">{opts?.title}</DialogTitle>
             <DialogDescription className="sr-only">Confirm this action</DialogDescription>
           </DialogHeader>
-          <div className="text-sm leading-relaxed text-foreground/90 [&_li]:mt-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5">{opts?.body}</div>
+          <div className={"text-sm leading-relaxed text-foreground/90 [&_li]:mt-1 [&_p+p]:mt-2 [&_ul]:list-disc [&_ul]:pl-5" + (opts?.wide ? " -mx-1 max-h-[62vh] overflow-y-auto px-1" : "")}>{opts?.body}</div>
           {opts?.phrase && (
             <div className="space-y-2">
               <label htmlFor="confirm-phrase" className="text-sm font-semibold">

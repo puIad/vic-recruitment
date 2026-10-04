@@ -150,25 +150,42 @@ function activeBinomes_(ctx) { return ctx.binomes.filter(b => b.status === 'ACTI
 function alertBuffer_(ctx) {
   const t = loadTable_(TAB.ALERTS, ALERT_H);
   const I = t.I;
-  const openKeys = {};
-  t.data.forEach(r => { if (r[I.Status] === 'OPEN' && r[I.Key]) openKeys[r[I.Key]] = true; });
-  const fresh = [];
+  const openKeys = {}, held = {}; // held: keys of SNOOZED / MUTED alerts, never raised again while held
   let dirty = false;
+  t.data.forEach(r => {
+    // a snooze that ran out opens its alert again (Resolved At holds the snooze end)
+    if (r[I.Status] === 'SNOOZED' && !(r[I['Resolved At']] > ctx.now)) { r[I.Status] = 'OPEN'; r[I['Resolved At']] = ''; dirty = true; }
+    if (!r[I.Key]) return;
+    if (r[I.Status] === 'OPEN') openKeys[r[I.Key]] = true;
+    if (HELD_STATUSES.indexOf(r[I.Status]) >= 0) held[r[I.Key]] = true;
+  });
+  const fresh = [];
   return {
     table: t,
     openKeys: openKeys,
     /** a: {severity, type, code, binome, msg, key, notifyBinome, status} */
     add: function (a) {
-      if (a.key && openKeys[a.key]) return false;
+      if (a.key && (openKeys[a.key] || held[a.key])) return false;
       if (a.key) openKeys[a.key] = true;
       fresh.push(a);
       return true;
     },
+    /** Closes open alerts, and snoozed ones whose problem went away (a muted alert stays muted). */
     resolveWhere: function (pred, status) {
       t.data.forEach(r => {
-        if (r[I.Status] === 'OPEN' && pred(r)) { r[I.Status] = status || 'AUTO-RESOLVED'; r[I['Resolved At']] = ctx.now; delete openKeys[r[I.Key]]; dirty = true; }
+        if ((r[I.Status] === 'OPEN' || r[I.Status] === 'SNOOZED') && pred(r)) {
+          r[I.Status] = status || 'AUTO-RESOLVED'; r[I['Resolved At']] = ctx.now; delete openKeys[r[I.Key]]; delete held[r[I.Key]]; dirty = true;
+        }
       });
     },
+    /** OPEN, SNOOZED (at = until when) or MUTED, for one loaded row. */
+    setStatus: function (r, status, at) {
+      const k = r[I.Key];
+      r[I.Status] = status; r[I['Resolved At']] = at || '';
+      if (k) { delete openKeys[k]; delete held[k]; if (status === 'OPEN') openKeys[k] = true; else if (HELD_STATUSES.indexOf(status) >= 0) held[k] = true; }
+      dirty = true;
+    },
+    touch: function () { dirty = true; },
     flush: function () {
       if (dirty) saveTable_(t);
       if (!fresh.length) return;

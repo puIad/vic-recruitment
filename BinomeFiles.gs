@@ -186,8 +186,12 @@ function formatBinomeSheet_(sh, b, members) {
   DEPTS.forEach(d => cf.push(rule().whenTextEqualTo(d).setBackground(HOUSE[d].light).setFontColor(HOUSE[d].main)
     .setRanges([col('1st Choice'), col('2nd Choice'), col('Final Affectation')]).build()));
   sh.setConditionalFormatRules(cf);
+  protectBinomeSheet_(sh);
+  return F;
+}
 
-  // Protect everything except the binome's own columns
+/** Protect everything except the binome's own columns. */
+function protectBinomeSheet_(sh) {
   sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
   const p = sh.protect().setDescription('Filled by the recruitment script');
   p.setUnprotectedRanges(BF_EDITABLE.map(k => sh.getRange(2, bfCol_(k), BF_ROWS - 1, 1)));
@@ -195,7 +199,6 @@ function formatBinomeSheet_(sh, b, members) {
   p.addEditor(me);
   p.removeEditors(p.getEditors().filter(u => u.getEmail() !== me.getEmail()));
   if (p.canDomainEdit()) p.setDomainEdit(false);
-  return F;
 }
 
 function createBinomeFile_(b, members) {
