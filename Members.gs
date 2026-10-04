@@ -203,6 +203,7 @@ function newBinomeCore_(a) {
     const ctx = loadCtx_();
     detectEdits_(ctx);
     const errors = [], free = {};
+    if (!activeOrPaused_(ctx).length) errors.push('Binomes are not locked yet: pair people in the Binomes tab (DRAFT rows), then Lock.');
     unpairedMembers(teamMembers_(ctx), ctx.binomes).forEach(m => { free[m.email] = m; });
     const ea = lc_(a.emailA), eb = lc_(a.emailB);
     if (!ea || !eb) errors.push('Choose two members.');
@@ -232,19 +233,29 @@ function newBinomeCore_(a) {
     ctx.bin.data.push(row);
     indexCtx_(ctx);
     const by = Session.getActiveUser().getEmail(), names = members.map(m => m.name).join(' & ');
+    // The binome exists from here on: a failed history write or email is reported, never thrown (a retry would refuse the pair)
+    const issues = [];
+    try {
+      const sh = changesSheet_();
+      sh.getRange(sh.getLastRow() + 1, 1, 2, MC_H.length).setValues(members.map(m =>
+        [ctx.now, by, 'PERMANENT', b.code, '', '', m.name, m.email, '', a.reason || 'new binome', 'DONE']));
+    } catch (e) { issues.push('Member Changes history not written (' + e.message + ')'); }
     members.forEach(m => {
-      changesSheet_().appendRow([ctx.now, by, 'PERMANENT', b.code, '', '', m.name, m.email, '', a.reason || 'new binome', 'DONE']);
-      mail_(m.email, '[VIC Recruitment] You are in binome ' + b.code,
-        '<p>Hi ' + esc_(m.name.split(' ')[0]) + ',</p><p>You are now a member of binome <b>' + b.code + '</b> (' + esc_(names) + ').</p>' +
-        '<p><a href="' + file.getUrl() + '">Open the binome sheet</a>. In the interview form, use the binome code <b>' + b.code + '</b>.</p>');
+      try {
+        mail_(m.email, '[VIC Recruitment] You are in binome ' + b.code,
+          '<p>Hi ' + esc_(m.name.split(' ')[0]) + ',</p><p>You are now a member of binome <b>' + b.code + '</b> (' + esc_(names) + ').</p>' +
+          '<p><a href="' + file.getUrl() + '">Open the binome sheet</a>. In the interview form, use the binome code <b>' + b.code + '</b>.</p>');
+      } catch (e) { issues.push('email to ' + m.email + ' not sent (' + e.message + ')'); }
     });
     const what = b.code + ' created (' + b.tag + '): ' + names;
     ctx.alerts.add({ severity: 'INFO', type: 'MEMBER_CHANGED', status: 'AUTO-FIXED', code: '', binome: b.code,
       msg: what + ' by ' + by + (a.reason ? ' (' + a.reason + ')' : ''), key: '' });
+    if (issues.length) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: b.code, key: '',
+      msg: b.code + ' was created, but: ' + issues.join('; ') + '. Add the missing row / tell them by hand.' });
     ctx.alerts.flush();
     buildTracker_(ctx);
     commitBase_(ctx);
-    return { done: [what] };
+    return { done: [what + (issues.length ? ' ⚠️ ' + issues.join('; ') : '')] };
   }, 60000);
   return report_(res);
 }

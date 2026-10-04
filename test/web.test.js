@@ -13,6 +13,9 @@ assert.deepStrictEqual([out.result.confirm, out.result.existing, out.messages.le
 out = call('webRun', 'importTeam', { link: '', replace: true });
 assert(/Imported 13/.test(out.messages[0]));
 
+out = call('webRun', 'newBinome', { emailA: 'a@x.dz', emailB: 'b@x.dz', dryRun: true });
+assert(/not locked yet/.test(out.result.errors[0]), 'no new binome before Lock');
+
 out = call('webRun', 'draft');
 assert(/Drafted \d+ binomes/.test(out.messages[0]), out.messages[0]);
 out = call('webRun', 'lockCheck');
@@ -591,6 +594,17 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   assert.deepStrictEqual([st.binomes.length, nb.status, !!nb.fileUrl, st.unpaired.some(m => /free/.test(m.email))], [n + 1, 'ACTIVE', true, false]);
   assert.strictEqual(run("ss_().getSheetByName('Member Changes').getLastRow()"), nChanges + 2, 'one history row per member');
   assert.deepStrictEqual(st.alerts.filter(a => a.type === 'MANUAL_EDIT' || (a.type === 'UNPAIRED_MEMBER' && /free/.test(a.msg))), [], 'not flagged as a hand edit; their unpaired alerts closed');
+  // the history write fails after the binome exists: reported, not thrown, and the binome stays valid
+  run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,2,6).setValues([['Free Three','free3@g.enp.edu.dz','HR','HR',false,''],['Free Four','free4@g.enp.edu.dz','HR','HR',false,'']]);})()");
+  run("var __sv2 = MockRange.prototype.setValues; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Member Changes') throw new Error('Service unavailable'); return __sv2.call(this, v); }");
+  out = call('webRun', 'newBinome', { emailA: 'free3@g.enp.edu.dz', emailB: 'free4@g.enp.edu.dz' });
+  run('MockRange.prototype.setValues = __sv2');
+  assert(/created \(HR\).*⚠️ Member Changes history not written/.test(out.messages[0]), out.messages[0]);
+  call('webRun', 'sync');
+  st = call('webState');
+  assert.deepStrictEqual([st.binomes.length, st.unpaired.some(m => /free[34]/.test(m.email))], [n + 2, false]);
+  assert(st.alerts.some(a => a.type === 'FILE_ERROR' && /history not written/.test(a.msg)), 'MEDIUM alert for the missing history');
+  assert(!st.alerts.some(a => a.type === 'MANUAL_EDIT'), 'baseline still saved');
 }
 run('__as("")');
 assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
