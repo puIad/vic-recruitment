@@ -170,13 +170,24 @@ assert.strictEqual(JSON.stringify(flagged), '[]', 'false manual-edit / integrity
 // ---- a sheet still in the first layout is rebuilt in the current one, keeping what the binome typed ----
 const hrB = ivs.find(r => r[0] === 'HR.01')[1], hrFile = bins.find(r => r[0] === hrB)[8];
 run(`(function(){ var sh = __files["${hrFile}"].obj.sheets[0], row = BF_H_V1.map(function(){ return ''; });
-  row[0] = 'HR.01'; row[BF_H_V1.indexOf('Contacted')] = 'Yes'; row[BF_H_V1.indexOf('Notes')] = 'calls after 6pm';
+  row[0] = 'HR.01'; row[BF_H_V1.indexOf('Contacted')] = 'Yes'; row[BF_H_V1.indexOf('Notes')] = 'calls after 6pm'; row[BF_H_V1.indexOf('Interview Form')] = '✅ 03/10 18:00';
   sh.cells = [BF_H_V1.slice(), row]; sh.protections = []; })()`);
 run(`(function(){ var c = loadCtx_(); binomeSheet_(c, c.binByCode["${hrB}"]); })()`);
 const up = run(`__files["${hrFile}"].obj.sheets[0].getDataRange().getValues()`);
 assert.strictEqual(up[0].slice(BFI.Code).join('|'), run('BF_HEAD.join("|")'), 'current header');
 const upRow = up.find(r => r[BFI.Code] === 'HR.01');
-assert.deepStrictEqual([upRow[BFI.Contacted], upRow[BFI.Notes], upRow[BFI['First Name']]], ['Yes', 'calls after 6pm', 'Naima'], 'carried over');
+assert.deepStrictEqual([upRow[BFI.Contacted], upRow[BFI.Notes], upRow[BFI['First Name']], upRow[BFI['Interview Done']]],
+  ['Yes', 'calls after 6pm', 'Naima', true], 'carried over, done still ticked');
 assert.strictEqual(run(`__files["${hrFile}"].obj.sheets[0].getProtections().length`), 1, 'protected again');
 assert.strictEqual(run(`__files["${hrFile}"].obj.getSheets().length`), 1, 'backup tab removed once the rebuild ends');
+// a rebuild that stopped half-way (first tab cleared, copy of the old tab left) starts again from the copy
+const flB = ivs.find(r => r[0] === 'FLER.01')[1], flFile = bins.find(r => r[0] === flB)[8];
+run(`(function(){ var book = __files["${flFile}"].obj, row = BF_H_V1.map(function(){ return ''; });
+  row[0] = 'FLER.01'; row[BF_H_V1.indexOf('Notes')] = 'met at the stand';
+  var copy = book.insertSheet("${flB}" + BF_BACKUP); copy.cells = [BF_H_V1.slice(), row];
+  book.sheets[0].cells = []; book.sheets[0].protections = []; })()`);
+run(`(function(){ var c = loadCtx_(); binomeSheet_(c, c.binByCode["${flB}"]); })()`);
+const fl = run(`__files["${flFile}"].obj.sheets[0].getDataRange().getValues()`).find(r => r[BFI.Code] === 'FLER.01');
+assert.strictEqual(fl[BFI.Notes], 'met at the stand', 'recovered from the copy');
+assert.strictEqual(run(`__files["${flFile}"].obj.getSheets().length`), 1, 'copy removed after the recovery');
 console.log('\nE2E OK');
