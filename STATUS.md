@@ -48,7 +48,9 @@ In order. Each step says where to do it.
 6. **Full simulation on real data, before TEST_MODE goes off.** Feed the 273 applications of 2025 (Drive: VIC
    Recruitment 2026 › "Last Year Registration Applications", tab RAW, same 34 columns as Registration Responses) into
    Registration Responses one at a time, each stamped with its arrival time. The 1-minute sync routes them into the 32
-   binomes. Then the owner plays each binome and fills its sheet. Not started yet.
+   binomes. Then the owner plays each binome and fills its sheet. **Fed 2026-10-04 20:18–20:50**: all 273 assigned,
+   none waiting, no duplicates; IT & HR binomes 13–14 each, FLER/COMM & HR 5–6, HR-only 5. The owner is now filling
+   the sheets. (The 1-minute sync had stopped at 20:10; re-running Setup brought it back.)
    - Rows written through the Sheets API don't fire the form trigger; the 1-minute sync picks them up the same way.
    - The test timing limits (32 / 40 / 5) apply: candidates not handled in time raise NOT_CONTACTED / NO_DATE alerts,
      emailed to both admins.
