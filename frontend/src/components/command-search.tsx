@@ -11,6 +11,7 @@ import { useActions } from "@/lib/vic/actions"
 import { alertLabel, STATUS_LABEL } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import { cn } from "@/lib/utils"
+import { MemberNames } from "@/components/member-name"
 
 const Item = ({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Item>) => (
   <CommandPrimitive.Item
@@ -106,7 +107,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
                     <Item key={b.code} value={`${b.code} ${b.members.join(" ")} ${b.tag} binome`} onSelect={() => go(`/binomes?q=${encodeURIComponent(b.code)}`)}>
                       <Users className="size-4 text-muted-foreground" />
                       <span className="font-bold">{b.code}</span>
-                      <span className="truncate">{b.members.join(" & ") || "empty"}</span>
+                      <span className="truncate"><MemberNames names={b.members} empty="empty" /></span>
                     </Item>
                   ))}
                 </Group>

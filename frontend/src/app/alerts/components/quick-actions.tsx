@@ -37,6 +37,7 @@ import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { Alert, FormView, QuickInfo, RegView } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { MemberName } from "@/components/member-name"
 
 /* ---------- which alerts get which actions ---------- */
 
@@ -124,8 +125,8 @@ function Who({ v }: { v: RegView }) {
 }
 
 function FormFacts({ f, title, right }: { f: FormView; title?: string; right?: React.ReactNode }) {
-  const rows: [string, string][] = [
-    ["Sent by", f.submitterName ? `${f.submitterName} (${f.submitter})` : f.submitter],
+  const rows: [string, React.ReactNode][] = [
+    ["Sent by", f.submitterName ? <><MemberName name={f.submitterName} /> ({f.submitter})</> : f.submitter],
     ["On", f.at],
     ["Binome typed", f.typedBinome || "—"],
     ["Interviewee typed", f.typedIv || "—"],

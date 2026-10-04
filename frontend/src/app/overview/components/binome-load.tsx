@@ -6,6 +6,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton"
 import { pct } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
+import { MemberNames } from "@/components/member-name"
 
 /** The busiest binomes: who carries the most candidates and how far along they are. */
 export function BinomeLoad() {
@@ -42,7 +43,7 @@ export function BinomeLoad() {
                   <Link to={`/binomes?q=${encodeURIComponent(b.code)}`} className="text-sm font-bold text-primary hover:underline">
                     {b.code}
                   </Link>
-                  <p className="truncate text-sm" title={b.members.join(" & ")}>{b.members.join(" & ") || "—"}</p>
+                  <p className="truncate text-sm" title={b.members.join(" & ")}><MemberNames names={b.members} /></p>
                   <span className="num flex items-center justify-end gap-1.5 text-right text-sm">
                     <span>
                       <b>{b.interviewed}</b>

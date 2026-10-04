@@ -14,6 +14,7 @@ import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { WebState } from "@/lib/vic/types"
 import { toast } from "sonner"
+import { MemberNames } from "@/components/member-name"
 
 function Form({ init, state }: { init: { code?: string; binome?: string; alertId?: string }; state: WebState }) {
   const { reassign, resolve } = useActions()
@@ -57,7 +58,7 @@ function Form({ init, state }: { init: { code?: string; binome?: string; alertId
           <SelectContent>
             {targets.map((b) => (
               <SelectItem key={b.code} value={b.code}>
-                {b.code} · {b.members.join(" & ")}
+                {b.code} · <MemberNames names={b.members} />
                 {b.status === "PAUSED" ? " (paused)" : ""}
               </SelectItem>
             ))}

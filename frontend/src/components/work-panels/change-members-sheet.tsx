@@ -15,6 +15,7 @@ import { useVic } from "@/lib/vic/store"
 import { useUi, type ChangeMode, type MemberSheetOpen } from "@/lib/vic/ui"
 import type { Binome, Unpaired, WebState } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { MemberName, MemberNames } from "@/components/member-name"
 
 const NOBODY = "__none__"
 
@@ -38,7 +39,7 @@ function BinomeSelect({ value, onChange, binomes, id }: { value: string; onChang
       <SelectContent>
         {binomes.map((b) => (
           <SelectItem key={b.code} value={b.code}>
-            {b.code} · {b.members.join(" & ") || "empty"}
+            {b.code} · <MemberNames names={b.members} empty="empty" />
             {b.status === "PAUSED" ? " (paused)" : ""}
           </SelectItem>
         ))}
@@ -58,7 +59,7 @@ function PeopleSelect({ value, onChange, binome, emptySeat, placeholder = "Choos
         {seat && <SelectItem value={NOBODY}>Nobody (fill the empty seat)</SelectItem>}
         {binome?.people.map((p) => (
           <SelectItem key={p.email} value={p.email}>
-            {(p.name || p.email) + " · " + p.email}
+            <MemberName name={p.name || p.email} /> · {p.email}
           </SelectItem>
         ))}
       </SelectContent>
@@ -75,7 +76,7 @@ function UnpairedSelect({ value, onChange, list, other }: { value: string; onCha
       <SelectContent>
         {list.map((m) => (
           <SelectItem key={m.email} value={m.email} disabled={m.email === other || !!m.draft}>
-            {(m.name || m.email) + " · " + m.pairAs}
+            <MemberName name={m.name || m.email} /> · {m.pairAs}
             {m.draft ? ` (in draft ${m.draft})` : ""}
           </SelectItem>
         ))}
@@ -277,7 +278,7 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
                   <SelectItem value={NOBODY}>Not said</SelectItem>
                   {coverBinome?.people.map((p) => (
                     <SelectItem key={p.email} value={p.email}>
-                      {(p.name || p.email) + " · " + coverBinome.code}
+                      <MemberName name={p.name || p.email} /> · {coverBinome.code}
                     </SelectItem>
                   ))}
                 </SelectContent>

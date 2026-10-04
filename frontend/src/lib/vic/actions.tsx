@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { useConfirm } from "./confirm"
 import { useVic } from "./store"
 import { signInUrl } from "./api"
+import { MemberName, MemberNames } from "@/components/member-name"
 import type {
   Alert,
   ChangeCheck,
@@ -60,8 +61,8 @@ function ChangeSummary({ p }: { p: ChangePlan }) {
   return (
     <li>
       <Mono>{p.binome}</Mono> ·{" "}
-      {p.out ? <span className="text-muted-foreground line-through">{p.out.name || p.out.email}</span> : <i className="text-muted-foreground">empty seat</i>} →{" "}
-      {p.inn ? <b>{p.inn.name}</b> : <i className="text-muted-foreground">nobody</i>}
+      {p.out ? <span className="text-muted-foreground line-through"><MemberName name={p.out.name || p.out.email} /></span> : <i className="text-muted-foreground">empty seat</i>} →{" "}
+      {p.inn ? <b><MemberName name={p.inn.name} /></b> : <i className="text-muted-foreground">nobody</i>}
     </li>
   )
 }
@@ -323,7 +324,7 @@ export function useActions() {
           body: (
             <>
               <p>
-                <b>{r.members.map((m) => m.name).join(" & ")}</b> become binome <Mono>{r.binome}</Mono>, tagged <Mono>{r.tag}</Mono>: it receives {r.tag === "ALL" ? "interviewees of every department" : `${r.tag.replace(" & ", " and ")} interviewees`} from now on.
+                <b><MemberNames names={r.members.map((m) => m.name)} /></b> become binome <Mono>{r.binome}</Mono>, tagged <Mono>{r.tag}</Mono>: it receives {r.tag === "ALL" ? "interviewees of every department" : `${r.tag.replace(" & ", " and ")} interviewees`} from now on.
               </p>
               <Warnings list={r.warnings} />
               <p className="mt-3 text-muted-foreground">{hint} Logged in the Member Changes tab.</p>
@@ -348,8 +349,8 @@ export function useActions() {
               <ul>
                 {r.groups.map((g, i) => (
                   <li key={i}>
-                    <b>{r.inn.name}</b> covers <Mono>{g.codes.join(", ")}</Mono> for <Mono>{g.binome}</Mono>
-                    {g.out ? <span className="text-muted-foreground"> instead of {g.out.name}</span> : null}
+                    <b><MemberName name={r.inn.name} /></b> covers <Mono>{g.codes.join(", ")}</Mono> for <Mono>{g.binome}</Mono>
+                    {g.out ? <span className="text-muted-foreground"> instead of <MemberName name={g.out.name} /></span> : null}
                   </li>
                 ))}
               </ul>
@@ -370,7 +371,7 @@ export function useActions() {
           title: "End this cover?",
           body: (
             <p>
-              <b>{c.name}</b> stops covering <Mono>{c.codes.join(", ")}</Mono> for <Mono>{c.binome}</Mono>
+              <b><MemberName name={c.name} /></b> stops covering <Mono>{c.codes.join(", ")}</Mono> for <Mono>{c.binome}</Mono>
               {sharing ? " and loses view access to its sheet" : ""}.
             </p>
           ),

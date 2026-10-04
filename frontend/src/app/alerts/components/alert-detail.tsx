@@ -9,6 +9,7 @@ import { useVic } from "@/lib/vic/store"
 import type { Alert, FixMode } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { QuickActions, SnoozeMenu } from "./quick-actions"
+import { MemberNames } from "@/components/member-name"
 
 const FIX_ICON: Record<FixMode, typeof Wrench> = { apply: Wrench, revert: RotateCcw, accept: Check }
 
@@ -62,7 +63,7 @@ export function AlertDetail({ alert }: { alert: Alert | null }) {
                   <Users className="size-3.5" />
                   {alert.binome}
                 </Link>
-                {binome && <span className="ml-1.5 text-muted-foreground">{binome.members.join(" & ")}</span>}
+                {binome && <span className="ml-1.5 text-muted-foreground"><MemberNames names={binome.members} empty="" /></span>}
               </dd>
             </div>
           )}

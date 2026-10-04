@@ -20,6 +20,7 @@ import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { Binome, Cover, Unpaired } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { MemberName, MemberNames } from "@/components/member-name"
 
 const NONE: Binome[] = []
 
@@ -67,7 +68,7 @@ const columns: ColumnDef<Binome>[] = [
     id: "members",
     accessorFn: (b) => b.members.join(" & "),
     header: "Members",
-    cell: ({ row }) => <span className="block max-w-[22rem] truncate" title={row.getValue("members")}>{(row.getValue("members") as string) || "—"}</span>,
+    cell: ({ row }) => <span className="block max-w-[22rem] truncate" title={row.getValue("members")}><MemberNames names={row.original.members} /></span>,
   },
   {
     id: "status",
@@ -137,7 +138,7 @@ function UnpairedCard({ list }: { list: Unpaired[] }) {
           {list.map((m) => (
             <li key={m.email} className="flex flex-wrap items-center gap-3 py-2.5">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-bold" title={m.name}>{m.name || m.email}</p>
+                <p className="truncate font-bold" title={m.name}>{m.name ? <MemberName name={m.name} /> : m.email}</p>
                 <p className="truncate text-sm text-muted-foreground">{m.email}</p>
               </div>
               {m.draft && <Badge variant="warning">in draft {m.draft}</Badge>}
@@ -172,10 +173,10 @@ function CoversCard({ list }: { list: Cover[] }) {
             <li key={c.row} className="flex flex-wrap items-center gap-3 py-2.5">
               <div className="min-w-0 flex-1" title={c.reason}>
                 <p className="truncate">
-                  <b>{c.name}</b> <span className="text-muted-foreground">for</span> <b className="text-primary">{c.binome}</b>
+                  <b><MemberName name={c.name} /></b> <span className="text-muted-foreground">for</span> <b className="text-primary">{c.binome}</b>
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {c.outName ? `instead of ${c.outName} · ` : ""}
+                  {c.outName ? <>instead of <MemberName name={c.outName} /> · </> : null}
                   {c.codes.map((x, i) => (
                     <React.Fragment key={x}>
                       {i > 0 && ", "}

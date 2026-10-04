@@ -17,6 +17,7 @@ import { initials } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { TeamMember, WebState } from "@/lib/vic/types"
+import { MemberName } from "@/components/member-name"
 
 type Row = TeamMember & { binome: string; state: "Paired" | "Unpaired" | "In draft" }
 
@@ -50,7 +51,7 @@ const columns: ColumnDef<Row>[] = [
           {initials(row.original.name || row.original.email)}
         </span>
         <div className="min-w-0">
-          <p className="truncate font-bold">{row.original.name || "—"}</p>
+          <p className="truncate font-bold">{row.original.name ? <MemberName name={row.original.name} /> : "—"}</p>
           <p className="truncate text-sm text-muted-foreground">{row.original.email}</p>
         </div>
       </div>

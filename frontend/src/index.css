@@ -61,6 +61,12 @@
   --color-info-soft: var(--info-soft);
   --color-heading: var(--heading);
 
+  /* Member names by department; each clears 4.5:1 on every surface the app uses, light and dark */
+  --color-dep-it: var(--dep-it);
+  --color-dep-comm: var(--dep-comm);
+  --color-dep-hr: var(--dep-hr);
+  --color-dep-fler: var(--dep-fler);
+
   /* Charter swatches, verbatim from the IT Charter 2026 (pages 13 and 16) */
   --color-vic-aqua: #69c4af;
   --color-vic-blue: #127dbb;
@@ -124,6 +130,11 @@
 
   --heading: oklch(0.54 0.129 242.2);
 
+  --dep-it: oklch(0.5 0.2 27);
+  --dep-comm: oklch(0.47 0.17 258);
+  --dep-hr: oklch(0.47 0.12 150);
+  --dep-fler: oklch(0.52 0.115 88);
+
   /* Decorative gradient ends (ring, arches, dots, rule): the charter's teal and blue; palettes may swap them */
   --deco-from: #5ab3b1;
   --deco-to: #127dbb;
@@ -180,6 +191,11 @@
   --info-soft: oklch(0.32 0.06 242);
 
   --heading: oklch(0.78 0.1 242);
+
+  --dep-it: oklch(0.76 0.15 25);
+  --dep-comm: oklch(0.76 0.12 250);
+  --dep-hr: oklch(0.8 0.15 150);
+  --dep-fler: oklch(0.88 0.15 95);
 }
 
 @layer base {

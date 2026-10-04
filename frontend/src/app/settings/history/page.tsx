@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useVic } from "@/lib/vic/store"
 import type { HistoryRow } from "@/lib/vic/types"
+import { MemberName } from "@/components/member-name"
 
 type Kind = "replace" | "swap" | "cover"
 
@@ -19,18 +20,24 @@ const KINDS: Record<Kind, { label: string }> = {
 }
 
 /** What a Member Changes row means: a swap is two PERMANENT rows whose reason the script writes as "swap B.01 ↔ B.02". */
-function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon; what: string } {
-  if (h.type === "TEMPORARY")
+function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon; what: React.ReactNode; text: string } {
+  const out = h.out && <MemberName name={h.out} />
+  const inn = h.inn && <MemberName name={h.inn} />
+  if (h.type === "TEMPORARY") {
+    const codes = h.codes.join(", ") || "some interviews"
     return {
       kind: "cover",
       title: "Cover",
       icon: UsersRound,
-      what: `${h.inn} covers ${h.codes.join(", ") || "some interviews"}${h.out ? ` instead of ${h.out}` : ""}`,
+      what: <>{inn} covers {codes}{out && <> instead of {out}</>}</>,
+      text: `${h.inn} covers ${codes}${h.out ? ` instead of ${h.out}` : ""}`,
     }
-  if (/^swap /i.test(h.reason)) return { kind: "swap", title: "Swapped", icon: ArrowRightLeft, what: `${h.out} → ${h.inn}` }
-  if (h.out && h.inn) return { kind: "replace", title: "Replaced", icon: Repeat, what: `${h.out} → ${h.inn}` }
-  if (h.inn) return { kind: "replace", title: "Seat filled", icon: UserRoundPlus, what: `${h.inn} joins` }
-  return { kind: "replace", title: "Member left", icon: UserMinus, what: `${h.out} leaves` }
+  }
+  const arrow = { what: <>{out} → {inn}</>, text: `${h.out} → ${h.inn}` }
+  if (/^swap /i.test(h.reason)) return { kind: "swap", title: "Swapped", icon: ArrowRightLeft, ...arrow }
+  if (h.out && h.inn) return { kind: "replace", title: "Replaced", icon: Repeat, ...arrow }
+  if (h.inn) return { kind: "replace", title: "Seat filled", icon: UserRoundPlus, what: <>{inn} joins</>, text: `${h.inn} joins` }
+  return { kind: "replace", title: "Member left", icon: UserMinus, what: <>{out} leaves</>, text: `${h.out} leaves` }
 }
 
 /** The tab keeps the outcome as free text: DONE, FILE NOT UPDATED: …, ACTIVE, ENDED …, ENDING …. */
@@ -53,7 +60,7 @@ export default function HistorySettings() {
     const needle = q.trim().toLowerCase()
     return (history ?? [])
       .map((h) => ({ h, d: describe(h) }))
-      .filter(({ h, d }) => (!kind || d.kind === kind) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.what].join(" ").toLowerCase().includes(needle)))
+      .filter(({ h, d }) => (!kind || d.kind === kind) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
   }, [history, q, kind])
 
   if (!history)
