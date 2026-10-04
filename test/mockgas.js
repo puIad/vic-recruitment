@@ -90,7 +90,7 @@ MockRange.prototype = {
   clearContent() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = ''; } return this; },
   setNumberFormat(f) { for (let j = 0; j < this.nc; j++) this.sh.fmt[this.c + j] = f; return this; },
   setNote(n) { this.sh.notes[this.r + ':' + this.c] = n; return this; },
-  insertCheckboxes() { return this; },
+  insertCheckboxes() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = false; } return this; }, // like Apps Script: every box unticked
   applyRowBanding() { return chain(); },
 };
 ['setFontWeight', 'setBackground', 'setFontColor', 'setWrap', 'setDataValidation', 'clearDataValidations', 'clearNote', 'setFontSize',

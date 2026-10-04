@@ -1,6 +1,7 @@
 /* ---------- binome files ---------- */
 
 const BF_ROWS = 400; // rows formatted (validations, banding, protection) in every binome sheet
+const BF_BACKUP = ' (old layout, kept until the upgrade ends)'; // name suffix of the copy kept during a rebuild
 
 function bfCol_(key) { return BF_COL + BF_H.indexOf(key); } // sheet column of a binome-file key
 
@@ -8,8 +9,12 @@ function bfCol_(key) { return BF_COL + BF_H.indexOf(key); } // sheet column of a
 function binomeSheet_(ctx, b) {
   if (!b || !b.fileId) return null;
   if (!ctx.files[b.fileId]) {
-    const sh = (ctx.books[b.fileId] = ctx.books[b.fileId] || SpreadsheetApp.openById(b.fileId)).getSheets()[0];
-    if (bfLayout_(sh) === 'v1') upgradeBinomeSheet_(ctx, b, sh);
+    const book = ctx.books[b.fileId] = ctx.books[b.fileId] || SpreadsheetApp.openById(b.fileId), sh = book.getSheets()[0];
+    const layout = bfLayout_(sh);
+    // a rebuild that stopped half-way left its copy of the old tab: start again from that copy
+    const backup = layout !== 'v2' && book.getSheets().filter(x => x !== sh && x.getName().slice(-BF_BACKUP.length) === BF_BACKUP)[0];
+    if (backup && bfLayout_(backup) === 'v1') upgradeBinomeSheet_(ctx, b, sh, backup);
+    else if (layout === 'v1') upgradeBinomeSheet_(ctx, b, sh);
     ctx.files[b.fileId] = sh;
   }
   return ctx.files[b.fileId];
@@ -207,11 +212,11 @@ function createBinomeFile_(b, members) {
 
 /** Rebuild a first-layout sheet in the current one: keep what the binome typed, take everything else from the Master,
  *  keep the sheet's row order, and add any interviewee of the binome that was missing from it. */
-function upgradeBinomeSheet_(ctx, b, sh) {
-  const V = idx_(BF_H_V1), I = ctx.iv.I, n = sh.getLastRow();
+function upgradeBinomeSheet_(ctx, b, sh, from) {
+  const src = from || sh, V = idx_(BF_H_V1), I = ctx.iv.I, n = src.getLastRow();
   const carry = {}, order = [];
   if (n >= 2) {
-    const rng = sh.getRange(2, 1, n - 1, BF_H_V1.length), disp = rng.getDisplayValues();
+    const rng = src.getRange(2, 1, n - 1, BF_H_V1.length), disp = rng.getDisplayValues();
     disp.forEach(d => {
       const code = String(d[V.Code]).trim();
       if (!code || carry[code]) return;
@@ -224,7 +229,7 @@ function upgradeBinomeSheet_(ctx, b, sh) {
   const rows = order.map(c => ctx.ivByCode[c]).filter(r => r && r[I.Binome] === b.code)
     .map(r => ivToFileRow_(ctx, r, carry[String(r[I.Code]).trim()] || ivCarry_(ctx, r)));
   // a copy of the old tab stays until the new rows are written: if anything below fails, what the binome typed is still there
-  const book = sh.getParent(), backup = sh.copyTo(book).setName(b.code + ' (old layout, kept until the upgrade ends)');
+  const book = sh.getParent(), backup = from || sh.copyTo(book).setName(b.code + BF_BACKUP);
   sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
   const all = sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns());
   all.breakApart().clearDataValidations().clearNote();
@@ -234,6 +239,8 @@ function upgradeBinomeSheet_(ctx, b, sh) {
   sh.getRange(2, bfCol_('Phone'), Math.max(rows.length, 1), 1).setNumberFormat('@'); // keep the leading 0 of the numbers
   if (rows.length) sh.getRange(2, BF_COL, rows.length, BF_H.length).setValues(rows);
   formatBinomeSheet_(sh, b, b.members);
+  // inserting the checkboxes unticked every cell: tick back the interviews already done
+  if (rows.length) sh.getRange(2, bfCol_('Interview Done'), rows.length, 1).setValues(rows.map(r => [r[BF_H.indexOf('Interview Done')]]));
   book.deleteSheet(backup);
   ctx.upgraded = (ctx.upgraded || 0) + 1;
   console.log('Binome sheet of ' + b.code + ' moved to the current layout (' + rows.length + ' interviewees)');
