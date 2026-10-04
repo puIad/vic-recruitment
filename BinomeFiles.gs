@@ -12,7 +12,8 @@ function binomeSheet_(ctx, b) {
     const book = ctx.books[b.fileId] = ctx.books[b.fileId] || SpreadsheetApp.openById(b.fileId), sh = book.getSheets()[0];
     const layout = bfLayout_(sh);
     // a rebuild that stopped half-way left its copy of the old tab: start again from that copy
-    const backup = layout !== 'v2' && book.getSheets().filter(x => x !== sh && x.getName().slice(-BF_BACKUP.length) === BF_BACKUP)[0];
+    // (even under a current header: it may have stopped before Interview Done was ticked back)
+    const backup = book.getSheets().filter(x => x !== sh && x.getName().slice(-BF_BACKUP.length) === BF_BACKUP)[0];
     if (backup && bfLayout_(backup) === 'v1') upgradeBinomeSheet_(ctx, b, sh, backup);
     else if (layout === 'v1') upgradeBinomeSheet_(ctx, b, sh);
     ctx.files[b.fileId] = sh;

@@ -46,7 +46,10 @@ function moveInterviewee_(ctx, code, binomeText) {
     return code + ' put back in the sheet of ' + target.code;
   }
   const old = ctx.binByCode[r[I.Binome]], before = { binome: r[I.Binome], at: r[I['Assigned At']] };
-  const carry = old ? removeFromBinomeFile_(ctx, old, code) : {};
+  const removed = old ? removeFromBinomeFile_(ctx, old, code) : {};
+  // no row in the old sheet: what the Master knows is the carry, so Rating / Final Affectation are not wiped
+  const carry = Object.keys(removed).length ? removed : Object.assign(ivCarry_(ctx, r),
+    { form: r[I['Interview Submitted At']] ? '✅ ' + fmt_(r[I['Interview Submitted At']], 'dd/MM HH:mm') : '' });
   r[I.Binome] = target.code;
   r[I['Assigned At']] = ctx.now;
   try { appendToBinomeFile_(ctx, target, r, carry); } catch (e) {
