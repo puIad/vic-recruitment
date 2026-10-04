@@ -12,6 +12,7 @@ import type {
   FixMode,
   ImportConfirm,
   LockCheck,
+  NewBinomeCheck,
   Person,
 } from "./types"
 
@@ -34,6 +35,11 @@ export interface SwapArgs {
   binomeA: string
   emailA: string
   binomeB: string
+  emailB: string
+  reason: string
+}
+export interface NewBinomeArgs {
+  emailA: string
   emailB: string
   reason: string
 }
@@ -304,6 +310,29 @@ export function useActions() {
         })
         if (!ok) return false
         const out = await go<ChangeCheck>("swapMembers", { ...args }, "Swap members")
+        after()
+        return !!(out && out.result && out.result.done)
+      },
+
+      async newBinome(args: NewBinomeArgs, hint: string) {
+        const check = await go<NewBinomeCheck>("newBinome", { dryRun: true, ...args }, "Check new binome")
+        if (!check || !check.result || check.result.errors.length) return false
+        const r = check.result
+        const ok = await confirm({
+          title: `Create ${r.binome}?`,
+          body: (
+            <>
+              <p>
+                <b>{r.members.map((m) => m.name).join(" & ")}</b> become binome <Mono>{r.binome}</Mono>, tagged <Mono>{r.tag}</Mono>: it receives {r.tag === "ALL" ? "interviewees of every department" : `${r.tag.replace(" & ", " and ")} interviewees`} from now on.
+              </p>
+              <Warnings list={r.warnings} />
+              <p className="mt-3 text-muted-foreground">{hint} Logged in the Member Changes tab.</p>
+            </>
+          ),
+          okLabel: "Create",
+        })
+        if (!ok) return false
+        const out = await go<NewBinomeCheck>("newBinome", { ...args }, `Create ${r.binome}`)
         after()
         return !!(out && out.result && out.result.done)
       },

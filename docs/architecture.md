@@ -69,7 +69,7 @@ Any missed trigger self-heals: unprocessed form rows are picked up by the next r
 
 - **A — no automatic pairing after lock.** Draft refuses once a binome is ACTIVE/PAUSED. Team members in no locked
   binome raise `UNPAIRED_MEMBER` (auto-resolving) and show in the "Unpaired members" card.
-- **B — change members** (dashboard card): replace / remove / fill a seat, or swap two members in one go. Dry-run check
+- **B — change members** (dashboard card): replace / remove / fill a seat, swap two members in one go, or pair two unpaired members into a new binome (next code, own sheet, tag by the draft rules). Dry-run check
   first; then fixes the sheet title + A1 note, sharing (not in TEST_MODE), logs a PERMANENT row, emails both people.
   A former member's interview form is INFO, not MEDIUM. Needs edit access to the Binome Sheets folder.
 - **C — temporary cover**: someone stands in for given interviewee codes. One TEMPORARY row per binome; view-only

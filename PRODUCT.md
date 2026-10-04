@@ -37,7 +37,7 @@ Not a generic admin template: every screen and button maps to a rule VIC decided
 
 ## Capabilities and Constraints
 
-Actions, all through `webRun(action, args)`: `sync`, `importTeam` (with replace confirm), `draft` (redraw confirm), `lockCheck` then `lock`, `resolve`, `editApply` / `editRevert` / `editAccept`, `reassign` (move interviewee), `changeMember` and `swapMembers` (each with a dry-run preview), `addCover` (dry-run preview) and `endCover`, `digest`, `integrity`, `reshare`, `setup` (owner only), `saveSettings`, `resetBinomes` (typed phrase). Reads: `webAccess` (gate), `webState`, `webPulse`.
+Actions, all through `webRun(action, args)`: `sync`, `importTeam` (with replace confirm), `draft` (redraw confirm), `lockCheck` then `lock`, `resolve`, `editApply` / `editRevert` / `editAccept`, `reassign` (move interviewee), `changeMember`, `swapMembers` and `newBinome` (each with a dry-run preview), `addCover` (dry-run preview) and `endCover`, `digest`, `integrity`, `reshare`, `setup` (owner only), `saveSettings`, `resetBinomes` (typed phrase). Reads: `webAccess` (gate), `webState`, `webPulse`.
 
 Gate states: sign in, session expired, no access (domain / no email / read-only / no project), script unreachable. States per status: Waiting, Assigned, Contacted, Scheduled, Interviewed, Withdrew. Alert severities: High, Medium, Info, plus Manual edits.
 

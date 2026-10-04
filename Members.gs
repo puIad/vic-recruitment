@@ -193,6 +193,62 @@ function swapMembersCore_(a) {
   return report_(res);
 }
 
+/**
+ * Pair two unpaired Team members into a new locked binome (next B.NN code, its own sheet, tag as the draft would give it).
+ * a: {emailA, emailB, reason, dryRun}
+ */
+function newBinomeCore_(a) {
+  a = a || {};
+  const res = withLock_(() => {
+    const ctx = loadCtx_();
+    detectEdits_(ctx);
+    const errors = [], free = {};
+    unpairedMembers(teamMembers_(ctx), ctx.binomes).forEach(m => { free[m.email] = m; });
+    const ea = lc_(a.emailA), eb = lc_(a.emailB);
+    if (!ea || !eb) errors.push('Choose two members.');
+    else if (ea === eb) errors.push('Choose two different members.');
+    const members = [ea, eb].filter(Boolean).map(e => {
+      const m = free[e];
+      if (!m) errors.push(e + ' is not an unpaired Team member (already in a locked binome, excluded, or not in the Team tab).');
+      else if (m.draft) errors.push((m.name || e) + ' is in DRAFT row ' + m.draft + ': run Lock, or clear that row first.');
+      return m;
+    });
+    let max = 0; ctx.binomes.forEach(b => { const n = codeNum(b.code); if (n > max) max = n; });
+    const b = { code: 'B.' + pad2(max + 1), tag: errors.length ? '' : pairTag(members[0].pairAs, members[1].pairAs) };
+    if (!errors.length && !tagDepts(b.tag).length) errors.push('No department to receive from (Pair As ' + members.map(m => m.pairAs).join(' / ') + ').');
+    const view = { errors: errors, warnings: [], binome: b.code, tag: b.tag, members: errors.length ? [] : members.map(m => ({ name: m.name, email: m.email })) };
+    if (errors.length || a.dryRun) return view;
+    const file = createBinomeFile_(b, view.members);
+    const B = ctx.bin.I, row = new Array(BIN_H.length).fill('');
+    row[B.Binome] = b.code; row[B.Tag] = b.tag; row[B.Status] = 'ACTIVE'; row[B.Created] = ctx.now;
+    row[B['Member 1']] = members[0].name; row[B['Email 1']] = members[0].email;
+    row[B['Member 2']] = members[1].name; row[B['Email 2']] = members[1].email;
+    row[B.File] = file.getUrl(); row[B['File ID']] = file.getId();
+    try { ctx.bin.sh.getRange(ctx.bin.data.length + 2, 1, 1, BIN_H.length).setValues([row]); }
+    catch (e) {
+      try { DriveApp.getFileById(file.getId()).setTrashed(true); } catch (e2) { console.error('Could not trash ' + file.getId() + ': ' + e2); }
+      throw new Error('Nothing changed: could not write the Binomes tab (' + e.message + ').');
+    }
+    ctx.bin.data.push(row);
+    indexCtx_(ctx);
+    const by = Session.getActiveUser().getEmail(), names = members.map(m => m.name).join(' & ');
+    members.forEach(m => {
+      changesSheet_().appendRow([ctx.now, by, 'PERMANENT', b.code, '', '', m.name, m.email, '', a.reason || 'new binome', 'DONE']);
+      mail_(m.email, '[VIC Recruitment] You are in binome ' + b.code,
+        '<p>Hi ' + esc_(m.name.split(' ')[0]) + ',</p><p>You are now a member of binome <b>' + b.code + '</b> (' + esc_(names) + ').</p>' +
+        '<p><a href="' + file.getUrl() + '">Open the binome sheet</a>. In the interview form, use the binome code <b>' + b.code + '</b>.</p>');
+    });
+    const what = b.code + ' created (' + b.tag + '): ' + names;
+    ctx.alerts.add({ severity: 'INFO', type: 'MEMBER_CHANGED', status: 'AUTO-FIXED', code: '', binome: b.code,
+      msg: what + ' by ' + by + (a.reason ? ' (' + a.reason + ')' : ''), key: '' });
+    ctx.alerts.flush();
+    buildTracker_(ctx);
+    commitBase_(ctx);
+    return { done: [what] };
+  }, 60000);
+  return report_(res);
+}
+
 function report_(res) {
   if (!res) { say_('Busy, try again in a minute.'); return null; }
   if (res.done) say_(res.done.join('\n') + (res.done.some(l => /⚠️/.test(l)) ? '' : ' ✅'));

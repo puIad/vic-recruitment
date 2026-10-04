@@ -568,6 +568,30 @@ assert.strictEqual(run('__triggers.length'), before + 3, 'owner can reinstall');
 run('__props.TRIGGER_OWNER = "helper@g.enp.edu.dz"');
 assert.throws(() => call('webRun', 'setup'), /triggers belong to helper/, 'TRIGGER_OWNER wins over the Master owner');
 run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
+
+// two unpaired members paired into a new locked binome
+{
+  assert.deepStrictEqual([run('pairTag("IT","HR")'), run('pairTag("HR","COMM")'), run('pairTag("HR","HR")'), run('pairTag("IT","ALL")'), run('pairTag("IT","FLER")')],
+    ['IT & HR', 'COMM & HR', 'HR', 'ALL', 'IT & FLER']);
+  run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,2,6).setValues([['Free One','free1@g.enp.edu.dz','IT','IT',false,''],['Free Two','free2@g.enp.edu.dz','HR','HR',false,'']]);})()");
+  call('webRun', 'sync');
+  const n = call('webState').binomes.length, nChanges = run("ss_().getSheetByName('Member Changes').getLastRow()");
+  out = call('webRun', 'newBinome', { emailA: 'free1@g.enp.edu.dz', emailB: 'free1@g.enp.edu.dz', dryRun: true });
+  assert(/two different/.test(out.result.errors[0]), out.result.errors);
+  const placed = call('webState').binomes[0].people[0].email;
+  out = call('webRun', 'newBinome', { emailA: 'free1@g.enp.edu.dz', emailB: placed, dryRun: true });
+  assert(/not an unpaired/.test(out.result.errors[0]), out.result.errors);
+  out = call('webRun', 'newBinome', { emailA: 'free1@g.enp.edu.dz', emailB: 'FREE2@g.enp.edu.dz', dryRun: true });
+  assert.deepStrictEqual([out.result.errors, out.result.tag, call('webState').binomes.length], [[], 'IT & HR', n], 'dry run writes nothing');
+  out = call('webRun', 'newBinome', { emailA: 'free1@g.enp.edu.dz', emailB: 'free2@g.enp.edu.dz' });
+  assert(/created \(IT & HR\): Free One & Free Two/.test(out.messages[0]), out.messages[0]);
+  call('webRun', 'sync');
+  st = call('webState');
+  const nb = st.binomes.find(b => b.code === out.result.done[0].split(' ')[0]);
+  assert.deepStrictEqual([st.binomes.length, nb.status, !!nb.fileUrl, st.unpaired.some(m => /free/.test(m.email))], [n + 1, 'ACTIVE', true, false]);
+  assert.strictEqual(run("ss_().getSheetByName('Member Changes').getLastRow()"), nChanges + 2, 'one history row per member');
+  assert.deepStrictEqual(st.alerts.filter(a => a.type === 'MANUAL_EDIT' || (a.type === 'UNPAIRED_MEMBER' && /free/.test(a.msg))), [], 'not flagged as a hand edit; their unpaired alerts closed');
+}
 run('__as("")');
 assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
 assert.throws(() => call('webState'), /Not allowed/);
