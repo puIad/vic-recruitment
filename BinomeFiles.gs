@@ -242,6 +242,9 @@ function upgradeBinomeSheet_(ctx, b, sh, from) {
   formatBinomeSheet_(sh, b, b.members);
   // inserting the checkboxes unticked every cell: tick back the interviews already done
   if (rows.length) sh.getRange(2, bfCol_('Interview Done'), rows.length, 1).setValues(rows.map(r => [r[BF_H.indexOf('Interview Done')]]));
+  // done: rename the copy first, so if deleting it fails it is never taken for an unfinished rebuild (and edits made
+  // since in the new tab are never overwritten from it)
+  backup.setName(b.code + ' (old layout, upgrade done: safe to delete)');
   book.deleteSheet(backup);
   ctx.upgraded = (ctx.upgraded || 0) + 1;
   console.log('Binome sheet of ' + b.code + ' moved to the current layout (' + rows.length + ' interviewees)');
