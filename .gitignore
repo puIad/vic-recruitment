@@ -1,7 +1,7 @@
 test/data/
 /data/
 /graphify-out/
-.claude/rules/aios
+.claude/
 node_modules/
 .playwright-mcp/
 frontend/dist/
