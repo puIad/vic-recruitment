@@ -182,7 +182,7 @@ function alertBuffer_(ctx) {
     setStatus: function (r, status, at) {
       const k = r[I.Key];
       r[I.Status] = status; r[I['Resolved At']] = at || '';
-      if (k) { delete openKeys[k]; delete held[k]; if (status === 'OPEN') openKeys[k] = true; else held[k] = true; }
+      if (k) { delete openKeys[k]; delete held[k]; if (status === 'OPEN') openKeys[k] = true; else if (HELD_STATUSES.indexOf(status) >= 0) held[k] = true; }
       dirty = true;
     },
     touch: function () { dirty = true; },
