@@ -103,11 +103,11 @@ function processRegistrations_(ctx) {
     const typed = String(get(row, H.typed)).trim();
     const key = responseKey_(ts, collected || typed, r + 1);
     if (ctx.ivKeys[key]) {
-      // rows imported before these columns existed get them once
+      // rows imported before these columns existed (or with one cleared) get the blank ones from the registration
       const x = byKey[key];
-      if (x && REG_EXTRAS.every(h => x[I[h]] === '')) {
+      if (x && REG_EXTRAS.some(h => x[I[h]] === '')) {
         const e = regExtras_(H, data[0], row, normDept(get(row, H.c1)));
-        REG_EXTRAS.forEach(h => { x[I[h]] = e[h]; });
+        REG_EXTRAS.forEach(h => { if (x[I[h]] === '') x[I[h]] = e[h]; });
       }
       continue;
     }
