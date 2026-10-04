@@ -11,8 +11,11 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-- **Script:** web app **@39**, API **@40**, deployed from `fef4bc6` (adds Change members › New binome,
-  [#15](https://github.com/puIad/vic-recruitment-2026/pull/15)). Dashboard: Vercel production at the same commit.
+- **Script:** web app **@45**, API **@46**, deployed from `13cc147` (2026-10-04 night,
+  [#16](https://github.com/puIad/vic-recruitment-2026/pull/16)): binome sheets in the 2025 layout with Hogwarts colours
+  and Montserrat, new gold columns Interview Done / Rating /10 / Final Affectation (synced to Interviewees), more of the
+  registration shown. The 32 old sheets rebuild themselves, 6 per sync. **Run setup again (owner) once** to restyle the
+  Master. Dashboard: Vercel production at `fef4bc6`'s UI (unchanged).
 - **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
 - **Master** (redone on the evening of 2026-10-03 with Reset all binomes, then Import team → Draft → Lock):
   - Team: 63 rows (33 HR, 12 IT, 10 FLER, 8 COMM, no board / ALL rows). The two IT rows that had no email got their
