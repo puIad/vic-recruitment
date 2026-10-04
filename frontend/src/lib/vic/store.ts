@@ -108,6 +108,12 @@ export const useVic = create<VicStore>((set, get) => ({
     const { busy, refreshing, gate, state, modals, pulse } = get()
     if (busy || refreshing || document.hidden || gate.mode !== "ok" || !state || modals > 0) return
     try {
+      // access is rechecked every tick so a revoked account drops to the gate at once instead of keeping the last data on screen
+      const a = await call<Access>("webAccess")
+      if (!a.ok) {
+        set({ gate: { mode: "noaccess", access: a }, access: a, state: null, pulse: null, loading: false })
+        return
+      }
       const p = await call<number>("webPulse")
       // the pulse only advances inside a successful refresh, so a failed one is retried on the next tick
       if (p !== pulse && !get().busy) await get().refresh(true)
