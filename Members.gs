@@ -117,9 +117,9 @@ function applyMemberPlans_(ctx, plans, reason) {
     const fileIssues = [];
     if (b.fileId) {
       try {
-        const file = SpreadsheetApp.openById(b.fileId);
-        file.rename(binomeFileTitle_(b, b.members));
-        file.getSheets()[0].getRange(1, 1).setNote(binomeFileNote_(b, b.members));
+        const sh = binomeSheet_(ctx, b); // a first-layout sheet is rebuilt first, so the banner lands in column A of the new one
+        ctx.books[b.fileId].rename(binomeFileTitle_(b, b.members));
+        setBinomeBanner_(sh, b, b.members);
       } catch (e) { fileIssues.push('title/note not updated (' + e.message + ')'); }
     }
     // Sharing off (TEST_MODE): the script gave nobody access, so there is nothing to add or take back

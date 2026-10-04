@@ -41,8 +41,8 @@ function moveInterviewee_(ctx, code, binomeText) {
     // already there: only puts back a row missing from its sheet (the integrity check reports those)
     const sh = binomeSheet_(ctx, target);
     if (!sh || findFileRow_(sh, code) > 0) throw new Error(code + ' is already in ' + target.code);
-    appendToBinomeFile_(ctx, target, r, { contacted: r[I.Contacted], date: r[I['Interview Date']], time: r[I['Interview Time']], notes: r[I['Binome Notes']],
-      form: r[I['Interview Submitted At']] ? '✅ ' + fmt_(r[I['Interview Submitted At']], 'dd/MM HH:mm') : '' });
+    appendToBinomeFile_(ctx, target, r, Object.assign(ivCarry_(ctx, r), {
+      form: r[I['Interview Submitted At']] ? '✅ ' + fmt_(r[I['Interview Submitted At']], 'dd/MM HH:mm') : '' }));
     return code + ' put back in the sheet of ' + target.code;
   }
   const old = ctx.binByCode[r[I.Binome]], before = { binome: r[I.Binome], at: r[I['Assigned At']] };
@@ -57,6 +57,7 @@ function moveInterviewee_(ctx, code, binomeText) {
     if (lost) {
       // in neither sheet now: keep what the binome had written in the Master, so the row can be rebuilt from it
       r[I.Contacted] = carry.contacted || ''; r[I['Interview Date']] = carry.date || ''; r[I['Interview Time']] = carry.time || ''; r[I['Binome Notes']] = carry.notes || '';
+      r[I['Interview Done']] = carry.done === true; r[I.Rating] = carry.rating === undefined ? '' : carry.rating; r[I['Final Affectation']] = carry.affect || '';
       ctx.ivDirty = true;
       const msg = code + ' is missing from both binome sheets: the sheet of ' + target.code + ' refused it (' + e.message + ') and putting it back in ' + old.code +
         ' failed (' + lost + '). Their Contacted / Date / Notes are kept in the Interviewees tab: Move interviewee ' + code + ' to ' + old.code + ' to rebuild the row.';

@@ -51,9 +51,17 @@ function idx_(headers) { const o = {}; headers.forEach((h, i) => { o[h] = i; });
 /** Load a script-managed tab as {sh, H, I, data} (data = rows below the header). */
 function loadTable_(name, headers) {
   const sh = ss_().getSheetByName(name);
+  addMissingColumns_(sh, headers);
   const n = sh.getLastRow();
   const data = n > 1 ? sh.getRange(2, 1, n - 1, headers.length).getValues() : [];
   return { sh: sh, H: headers, I: idx_(headers), data: data, originalLength: data.length, orig: data.map(r => r.slice()) };
+}
+/** Columns added to a tab's headers in a later version: give the tab room and their header cells, at the end. */
+function addMissingColumns_(sh, headers) {
+  if (sh.getMaxColumns() < headers.length) sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
+  const have = sh.getRange(1, 1, 1, headers.length).getValues()[0];
+  const from = have.findIndex((v, i) => String(v).trim() !== headers[i]);
+  if (from >= 0 && have.slice(from).every(v => v === '')) sh.getRange(1, from + 1, 1, headers.length - from).setValues([headers.slice(from)]);
 }
 function sameVal_(a, b) { return a === b || (a instanceof Date && b instanceof Date && a.getTime() === b.getTime()); }
 /** Write the table back, matching rows by key (Response Key, else the first column) and writing only the cells the script

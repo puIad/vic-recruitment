@@ -40,6 +40,8 @@ MockSheet.prototype = {
   getLastColumn() { let m = 0; this.cells.forEach(row => { if (row) for (let c = row.length; c >= 1; c--) if (row[c - 1] !== '' && row[c - 1] != null) { m = Math.max(m, c); break; } }); return m; },
   getMaxRows() { return Math.max(this.maxRows, this.cells.length); },
   insertRowsAfter(a, n) { this.maxRows += n; return this; },
+  getMaxColumns() { return Math.max(this.maxCols || 26, this.getLastColumn()); }, insertColumnsAfter(a, n) { this.maxCols = this.getMaxColumns() + n; return this; },
+  getBandings() { return []; },
   getRange(a, b, c, d) {
     if (typeof a === 'string') {
       const m = a.match(/^([A-Z]+)(\d+)?(?::([A-Z]+)(\d+)?)?$/);
@@ -58,7 +60,7 @@ MockSheet.prototype = {
   getActiveRangeList() { const s = this; return { getRanges: () => [new MockRange(s, s.activeRow, 1, 1, 1)] }; },
   toString() { return 'Sheet(' + this.name + ')'; },
 };
-['setFrozenRows', 'setFrozenColumns', 'setColumnWidth', 'setConditionalFormatRules', 'hideSheet'].forEach(k => { MockSheet.prototype[k] = function () { return this; }; });
+['setFrozenRows', 'setFrozenColumns', 'setColumnWidth', 'setConditionalFormatRules', 'hideSheet', 'setHiddenGridlines', 'setRowHeight', 'setTabColor'].forEach(k => { MockSheet.prototype[k] = function () { return this; }; });
 
 function MockRange(sh, r, c, nr, nc) { this.sh = sh; this.r = r; this.c = c; this.nr = nr; this.nc = nc; }
 MockRange.prototype = {
@@ -78,7 +80,7 @@ MockRange.prototype = {
   setValues(vals) {
     if (vals.length !== this.nr || vals[0].length !== this.nc) throw new Error('setValues dims ' + vals.length + 'x' + vals[0].length + ' vs ' + this.nr + 'x' + this.nc + ' on ' + this.sh.name);
     for (let i = 0; i < this.nr; i++) {
-      const ri = this.r - 1 + i; if (!this.sh.cells[ri]) this.sh.cells[ri] = [];
+      const ri = this.r - 1 + i; for (let k = 0; k <= ri; k++) if (!this.sh.cells[k]) this.sh.cells[k] = []; // no holes, like a real sheet
       for (let j = 0; j < this.nc; j++) { let v = vals[i][j]; if (v === undefined || v === null) v = ''; if (typeof v === 'string' && v[0] === "'") v = v.slice(1); this.sh.cells[ri][this.c - 1 + j] = v; }
     }
     __touch(this.sh.ss.id); return this;
@@ -88,8 +90,10 @@ MockRange.prototype = {
   setNumberFormat(f) { for (let j = 0; j < this.nc; j++) this.sh.fmt[this.c + j] = f; return this; },
   setNote(n) { this.sh.notes[this.r + ':' + this.c] = n; return this; },
   insertCheckboxes() { return this; },
+  applyRowBanding() { return chain(); },
 };
-['setFontWeight', 'setBackground', 'setFontColor', 'setWrap', 'setDataValidation', 'clearDataValidations', 'clearNote', 'setFontSize'].forEach(k => { MockRange.prototype[k] = function () { return this; }; });
+['setFontWeight', 'setBackground', 'setFontColor', 'setWrap', 'setDataValidation', 'clearDataValidations', 'clearNote', 'setFontSize',
+  'setFontFamily', 'setHorizontalAlignment', 'setVerticalAlignment', 'setBorder', 'merge', 'breakApart', 'setBackgrounds', 'setFontColors'].forEach(k => { MockRange.prototype[k] = function () { return this; }; });
 
 function MockSS(title) {
   this.id = __id('ss'); this.title = title; this.sheets = [new MockSheet(this, 'Sheet1')]; this.active = this.sheets[0];
@@ -115,7 +119,7 @@ var SpreadsheetApp = {
   create(t) { return new MockSS(t); },
   flush() { },
   newDataValidation() { return chain(); }, newConditionalFormatRule() { return chain(); },
-  ProtectionType: { SHEET: 'SHEET', RANGE: 'RANGE' },
+  ProtectionType: { SHEET: 'SHEET', RANGE: 'RANGE' }, BandingTheme: {}, BorderStyle: {}, InterpolationType: {},
   getUi() {
     return {
       alert(a, b) { __uiLog.push('ALERT: ' + a + (typeof b === 'string' ? ' | ' + b : '')); return __uiQueue.length && __uiQueue[0] === 'YES' ? (__uiQueue.shift(), 'YES') : 'YES'; },

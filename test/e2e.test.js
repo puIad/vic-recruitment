@@ -53,7 +53,7 @@ run(`
 var reg = master.getSheetByName('Registration Responses');
 function regRow(ts, collected, first, fam, typed, birth, phone, c1, c2) {
   var r = new Array(REG_H.length).fill('');
-  r[0]=ts; r[1]=collected; r[2]=first; r[3]=fam; r[4]=typed; r[5]=birth; r[6]=phone; r[14]=c1; r[15]=c2; r[16]= c1==='IT'?'I love tech':''; r[19]= c1==='HR'?'People!':''; r[21]='Sunday, Tuesday';
+  r[0]=ts; r[1]=collected; r[2]=first; r[3]=fam; r[4]=typed; r[5]=birth; r[6]=phone; r[14]=c1; r[15]=c2; r[16]= c1==='IT'?'I love tech':''; r[17]= c1==='IT'?'Yes':''; r[12]='To learn'; r[19]= c1==='HR'?'People!':''; r[21]='Sunday, Tuesday';
   return r;
 }
 var old = new Date(Date.now() - 3*24*3600e3);
@@ -79,14 +79,15 @@ ivs.slice(0, 5).forEach(r => { const d = r[14]; const tag = binTags[r[1]]; asser
 const b1 = ivs[0][1];
 const fileId = bins.find(r => r[0] === b1)[8];
 const frows = run(`__files["${fileId}"].obj.sheets[0].getDataRange().getValues()`);
-assert(frows.some(r => r[0] === 'IT.01'), 'IT.01 in binome file');
+const BFI = run('BFI');
+assert(frows.some(r => r[BFI.Code] === 'IT.01'), 'IT.01 in binome file');
 console.log('Mails so far:', run('__outbox.map(m=>m.to+" :: "+m.subject).join("\\n  ")'));
 
 // ---- binome writes contacted + date, then sync (timing alerts) ----
 run(`
 var f = __files["${fileId}"].obj.sheets[0];
 var rows = f.getDataRange().getValues();
-for (var i=1;i<rows.length;i++) if (rows[i][0]==='IT.01') { f.cells[i][15]='Yes'; f.cells[i][16]=new Date(Date.now()-2*24*3600e3); f.cells[i][17]='14:30'; }
+for (var i=1;i<rows.length;i++) if (rows[i][BFI.Code]==='IT.01') { f.cells[i][BFI.Contacted]='Yes'; f.cells[i][BFI['Interview Date']]=new Date(Date.now()-2*24*3600e3); f.cells[i][BFI['Interview Time']]='14:30'; f.cells[i][BFI.Rating]=8; f.cells[i][BFI['Final Affectation']]='IT'; }
 __touch("${fileId}");
 var ivsh0 = master.getSheetByName('Interviewees'); for (var k=1;k<ivsh0.cells.length;k++) if (ivsh0.cells[k][4]) ivsh0.cells[k][4] = old;
 `);
@@ -95,6 +96,10 @@ ivs = run('master.getSheetByName("Interviewees").getDataRange().getValues().slic
 const it01 = ivs.find(r => r[0] === 'IT.01');
 console.log('IT.01 after sync:', it01[2], it01[19], it01[21], it01[22], it01[23]);
 assert.strictEqual(it01[2], 'SCHEDULED');
+const IVX = run('idx_(IV_H)');
+assert.deepStrictEqual([it01[IVX['Why VIC']], it01[IVX['Department Questions']]], ['To learn', 'Do you have any experience with Graphic Design? Yes'], 'registration extras kept');
+assert.strictEqual(frows.find(r => r[BFI.Code] === 'IT.01')[BFI['Department Questions']], 'Do you have any experience with Graphic Design? Yes', 'and shown in the sheet');
+assert.deepStrictEqual([it01[IVX.Rating], it01[IVX['Final Affectation']], it01[IVX['Interview Done']]], [8, 'IT', false], 'rating and affectation read from the sheet');
 let alerts = run('master.getSheetByName("Alerts").getDataRange().getValues().slice(1)');
 console.log('Alerts:\n  ' + alerts.map(a => [a[0], a[2], a[3], a[4], a[5], a[8], '→', a[7]].join(' ')).join('\n  '));
 assert(alerts.some(a => a[3] === 'OVERDUE' && a[4] === 'IT.01'), 'IT.01 overdue (date 2 days ago, no form)');
@@ -135,9 +140,10 @@ const unk = alerts.find(a => a[3] === 'UNKNOWN_INTERVIEWEE');
 assert(unk[7].includes(bHR[2]), 'binome notified of big mistake: ' + unk[7]);
 const mism = alerts.find(a => a[3] === 'BINOME_MISMATCH');
 assert(!mism[7].includes(otherBin[2]), 'mismatch goes to admin only');
-const fileIT01 = run(`__files["${fileId}"].obj.sheets[0].getDataRange().getValues()`).find(r => r[0] === 'IT.01');
-console.log('Binome file "Interview Form" cell for IT.01:', fileIT01[18]);
-assert(fileIT01[18].startsWith('✅'), 'first submission mark kept');
+const fileIT01 = run(`__files["${fileId}"].obj.sheets[0].getDataRange().getValues()`).find(r => r[BFI.Code] === 'IT.01');
+console.log('Binome file "Interview Form" cell for IT.01:', fileIT01[BFI['Interview Form']]);
+assert(fileIT01[BFI['Interview Form']].startsWith('✅'), 'first submission mark kept');
+assert.strictEqual(fileIT01[BFI['Interview Done']], true, 'form ticks Interview Done');
 
 // ---- reassign ----
 const it02 = ivs.find(r => r[0] === 'IT.02');
@@ -148,7 +154,7 @@ console.log(run('__uiLog.slice(-1)[0]'));
 assert.strictEqual(ivs[1][1], target[0]);
 const tFile = run(`__files["${target[8]}"].obj.sheets[0].getDataRange().getValues()`);
 const oFile = run(`__files["${bins.find(r => r[0] === it02[1])[8]}"].obj.sheets[0].getDataRange().getValues()`);
-assert(tFile.some(r => r[0] === 'IT.02') && !oFile.some(r => r[0] === 'IT.02'), 'row moved between binome files');
+assert(tFile.some(r => r[BFI.Code] === 'IT.02') && !oFile.some(r => r[BFI.Code] === 'IT.02'), 'row moved between binome files');
 
 // ---- tracker + digest ----
 const tracker = run('master.getSheetByName("Tracker").getDataRange().getValues()');
@@ -160,4 +166,16 @@ console.log('Digest subject:', digest.subject);
 // the whole run only wrote through the script: no hand edit flagged, and the digest's sheet check found nothing
 const flagged = run('master.getSheetByName("Alerts").getDataRange().getValues().filter(r => /MANUAL_EDIT|INTEGRITY/.test(r[3]))');
 assert.strictEqual(JSON.stringify(flagged), '[]', 'false manual-edit / integrity alerts');
+
+// ---- a sheet still in the first layout is rebuilt in the current one, keeping what the binome typed ----
+const hrB = ivs.find(r => r[0] === 'HR.01')[1], hrFile = bins.find(r => r[0] === hrB)[8];
+run(`(function(){ var sh = __files["${hrFile}"].obj.sheets[0], row = BF_H_V1.map(function(){ return ''; });
+  row[0] = 'HR.01'; row[BF_H_V1.indexOf('Contacted')] = 'Yes'; row[BF_H_V1.indexOf('Notes')] = 'calls after 6pm';
+  sh.cells = [BF_H_V1.slice(), row]; sh.protections = []; })()`);
+run(`(function(){ var c = loadCtx_(); binomeSheet_(c, c.binByCode["${hrB}"]); })()`);
+const up = run(`__files["${hrFile}"].obj.sheets[0].getDataRange().getValues()`);
+assert.strictEqual(up[0].slice(BFI.Code).join('|'), run('BF_HEAD.join("|")'), 'current header');
+const upRow = up.find(r => r[BFI.Code] === 'HR.01');
+assert.deepStrictEqual([upRow[BFI.Contacted], upRow[BFI.Notes], upRow[BFI['First Name']]], ['Yes', 'calls after 6pm', 'Naima'], 'carried over');
+assert.strictEqual(run(`__files["${hrFile}"].obj.sheets[0].getProtections().length`), 1, 'protected again');
 console.log('\nE2E OK');

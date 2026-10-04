@@ -63,18 +63,43 @@ const BIN_H = ['Binome', 'Member 1', 'Email 1', 'Member 2', 'Email 2', 'Tag', 'S
 const IV_H = ['Code', 'Binome', 'Status', 'Registered At', 'Assigned At', 'First Name', 'Family Name', 'Email', 'Typed Email',
   'Phone', 'Facebook', 'Discord', 'Field', 'Year', '1st Choice', '2nd Choice', 'Availability', 'Motivation',
   'Anything to add', 'Contacted', 'Contacted Seen At', 'Interview Date', 'Interview Time', 'Interview At',
-  'Interview Submitted At', 'Interview Log Row', 'Binome Notes', 'Flags', 'Response Key'];
+  'Interview Submitted At', 'Interview Log Row', 'Binome Notes', 'Flags', 'Response Key',
+  // added 2026-10-04: more of the registration (shown in the binome sheets) and what the binome records after the interview
+  'Birth Date', 'Discovered VIC', 'Why VIC', 'Other Clubs', 'Department Questions', 'Interview Done', 'Rating', 'Final Affectation'];
 const LOG_H = ['Submitted At', 'Submitter', 'Typed Binome', 'Typed Interviewee', 'Binome', 'Interviewee',
   'Result', 'Notes', 'Final Dep', 'Response Key'];
 // One row per member change after lock (history; also tells the interview check who used to be in a binome)
 const MC_H = ['At', 'By', 'Type', 'Binome', 'Out Name', 'Out Email', 'In Name', 'In Email', 'Interviewees', 'Reason', 'Status'];
 const ALERT_H = ['ID', 'Created', 'Severity', 'Type', 'Interviewee', 'Binome', 'Message', 'Emailed To',
   'Status', 'Resolved At', 'Key'];
-// Columns of every binome file
-const BF_H = ['Code', 'First Name', 'Family Name', 'Email', 'Phone', 'Facebook', 'Discord', 'Field', 'Year',
+// Columns of every binome file, in order. The code addresses them by these keys; the header row shows BF_LABEL instead.
+// The table starts at column BF_COL: column A is the binome's banner (members, code, house).
+const BF_COL = 2;
+const BF_H = ['Code', 'Registered', 'First Name', 'Family Name', 'Email', 'Birth Date', 'Phone', 'Facebook', 'Discord',
+  'Field', 'Year', 'Discovered VIC', 'Why VIC', 'Other Clubs', '1st Choice', '2nd Choice', 'Why this department',
+  'Department Questions', 'Availability', 'Anything to add',
+  'Contacted', 'Interview Date', 'Interview Time', 'Interview Done', 'Rating', 'Final Affectation', 'Interview Form', 'Notes'];
+const BF_LABEL = { Code: 'Their Code', Registered: 'Registered On', Email: 'E-mail', Field: 'Field of Study', Year: 'Year of Study',
+  'Discovered VIC': 'How They Found VIC', 'Why VIC': 'Why VIC?', 'Why this department': 'Why This Department?',
+  Availability: 'When They Are Free', 'Anything to add': 'Anything to Add', Contacted: 'Contacted?', 'Interview Date': 'Interview Day',
+  'Interview Time': 'Time', Rating: 'Rating /10', Notes: 'Your Notes' };
+const BF_HEAD = BF_H.map(h => BF_LABEL[h] || h);
+const BF_EDITABLE = ['Contacted', 'Interview Date', 'Interview Time', 'Interview Done', 'Rating', 'Final Affectation', 'Notes'];
+// The first layout (until 2026-10-04): table from column A with these headers. binomeSheet_ rebuilds such a sheet once.
+const BF_H_V1 = ['Code', 'First Name', 'Family Name', 'Email', 'Phone', 'Facebook', 'Discord', 'Field', 'Year',
   '1st Choice', '2nd Choice', 'Availability', 'Why this department', 'Anything to add', 'Registered',
   'Contacted', 'Interview Date', 'Interview Time', 'Interview Form', 'Notes'];
-const BF_EDITABLE = ['Contacted', 'Interview Date', 'Interview Time', 'Notes'];
+const AFFECTATION_OPTIONS = ['IT', 'COMM', 'FLER', 'HR', 'Not accepted'];
+// Look of the Master and the binome sheets: Montserrat on parchment, one Hogwarts house per department
+// (a binome sheet wears the house of its non-HR side).
+const THEME = { font: 'Montserrat', ink: '#2B2118', head: '#740001', headInk: '#F3D27A', band1: '#FFFDF7', band2: '#F6EEDB',
+  line: '#E2D3B0', muted: '#8A7A66' };
+const HOUSE = {
+  IT: { name: 'Ravenclaw', main: '#0E1A40', accent: '#B08D57', light: '#DDE3F0' },
+  COMM: { name: 'Gryffindor', main: '#740001', accent: '#D3A625', light: '#F5DCDC' },
+  FLER: { name: 'Hufflepuff', main: '#372E29', accent: '#ECB939', light: '#FBEFC8' },
+  HR: { name: 'Slytherin', main: '#1A472A', accent: '#AAAAAA', light: '#DCEBDF' },
+};
 const CONTACT_OPTIONS = ['Not yet', 'Yes', 'No answer', 'Withdrew'];
 
 const ST = { ASSIGNED: 'ASSIGNED', CONTACTED: 'CONTACTED', SCHEDULED: 'SCHEDULED', INTERVIEWED: 'INTERVIEWED',

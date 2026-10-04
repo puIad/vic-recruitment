@@ -2,7 +2,7 @@
 
 // Drive can take minutes to bump a sheet's "last updated" time, so a sheet it calls unchanged is still re-read once it
 // has not been read for REREAD_MINUTES; at most REREAD_MAX of those per run, the longest unread first.
-const REREAD_MINUTES = 15, REREAD_MAX = 3; // ponytail: fixed knobs; move to Settings if a sheet still lags or runs get slow
+const REREAD_MINUTES = 15, REREAD_MAX = 3, UPGRADE_PER_RUN = 6; // ponytail: fixed knobs; move to Settings if a sheet still lags or runs get slow
 
 function pullBinomeFiles_(ctx, force) {
   const props = PropertiesService.getScriptProperties();
@@ -16,19 +16,23 @@ function pullBinomeFiles_(ctx, force) {
   const files = ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT');
   const unchanged = b => !force && updated[b.fileId] && seen[b.fileId] && updated[b.fileId] <= seen[b.fileId];
   const stale = {};
+  // sheets not yet read in the current layout: opening them rebuilds them (binomeSheet_), a few per run
+  files.filter(b => !seen['v2|' + b.fileId]).slice(0, UPGRADE_PER_RUN).forEach(b => { stale[b.fileId] = true; });
   files.filter(b => unchanged(b) && ctx.now.getTime() - (readAt[b.fileId] || 0) > REREAD_MINUTES * 60000)
     .sort((a, b) => (readAt[a.fileId] || 0) - (readAt[b.fileId] || 0)).slice(0, REREAD_MAX).forEach(b => { stale[b.fileId] = true; });
   files.forEach(b => {
     const lu = updated[b.fileId];
     if (unchanged(b) && !stale[b.fileId]) return;
+    // rebuilding a first-layout sheet takes seconds: at most UPGRADE_PER_RUN per run, the rest wait for the next ones
+    if (!seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
     let sh;
     try { sh = binomeSheet_(ctx, b); } catch (e) {
       ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: b.code, msg: 'Cannot open the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code });
       return;
     }
-    const n = sh.getLastRow();
+    const n = bfLastRow_(sh);
     if (n >= 2) {
-      const rng = sh.getRange(2, 1, n - 1, BF_H.length);
+      const rng = sh.getRange(2, BF_COL, n - 1, BF_H.length);
       const vals = rng.getValues(), disp = rng.getDisplayValues();
       vals.forEach((v, k) => {
         const code = String(v[F.Code]).trim();
@@ -42,10 +46,14 @@ function pullBinomeFiles_(ctx, force) {
         const at = buildInterviewAt(dStr, tStr, offset);
         r[I['Interview At']] = at === null ? '' : at;
         r[I['Binome Notes']] = String(v[F.Notes]);
+        r[I['Interview Done']] = v[F['Interview Done']] === true;
+        r[I.Rating] = typeof v[F.Rating] === 'number' ? v[F.Rating] : String(v[F.Rating]).trim();
+        r[I['Final Affectation']] = String(v[F['Final Affectation']]).trim();
         r[I.Status] = statusOf_(ctx, r);
       });
     }
     seen[b.fileId] = lu || ctx.now.getTime();
+    if (bfLayout_(sh) === 'v2') seen['v2|' + b.fileId] = 1;
     readAt[b.fileId] = ctx.now.getTime();
   });
   props.setProperties({ FILE_SEEN: JSON.stringify(seen), FILE_READ: JSON.stringify(readAt) });
@@ -150,13 +158,20 @@ function buildTracker_(ctx) {
     ['Open alerts', openAlerts.length, 'HIGH ' + openAlerts.filter(r => r[A.Severity] === 'HIGH').length + ' · MEDIUM ' + openAlerts.filter(r => r[A.Severity] === 'MEDIUM').length],
   ];
   sh.clear();
-  sh.getRange(1, 1, summary.length, 3).setValues(summary);
-  sh.getRange(1, 1).setFontSize(14).setFontWeight('bold');
-  sh.getRange(2, 1, summary.length - 1, 1).setFontWeight('bold');
   const top = summary.length + 2;
-  sh.getRange(top, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground('#1f3864').setFontColor('#ffffff').setWrap(true);
+  sh.getRange(1, 1, top + Math.max(rows.length, 1), head.length).setFontFamily(THEME.font).setFontColor(THEME.ink).setVerticalAlignment('middle');
+  sh.setHiddenGridlines(true);
+  sh.getRange(1, 1, summary.length, 3).setValues(summary);
+  sh.getRange(1, 1, 1, head.length).setBackground(THEME.head).setFontColor(THEME.headInk);
+  sh.getRange(1, 1).setFontSize(16).setFontWeight('bold');
+  sh.getRange(2, 1, summary.length - 1, 1).setFontWeight('bold').setFontColor(THEME.head);
+  sh.getRange(2, 2, summary.length - 1, 1).setFontWeight('bold').setFontSize(13).setHorizontalAlignment('left');
+  sh.getRange(top, 1, 1, head.length).setValues([head]).setFontWeight('bold').setBackground(THEME.head).setFontColor(THEME.headInk)
+    .setWrap(true).setHorizontalAlignment('center');
   if (rows.length) {
     sh.getRange(top + 1, 1, rows.length, head.length).setValues(rows);
+    const houses = rows.map(r => houseOf_(r[2]));
+    sh.getRange(top + 1, 1, rows.length, 1).setBackgrounds(houses.map(h => [h.main])).setFontColors(houses.map(h => [h.accent])).setFontWeight('bold');
     sh.getRange(top + 1, 13, rows.length, 1).setNumberFormat('0%');
     const flagCols = sh.getRange(top + 1, 9, rows.length, 4);
     sh.setConditionalFormatRules([

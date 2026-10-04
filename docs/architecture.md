@@ -49,8 +49,16 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | Settings | admins / dashboard | key → value (source of truth) |
 | Registration / Interview Responses | the forms | raw answers |
 
-Binome sheets: protected except the green columns Contacted, Interview Date, Interview Time, Notes; locale fr_FR,
-time zone Africa/Algiers.
+Binome sheets (layout of 2026-10-04, modelled on the 2025 sheets): column A is a banner (members, binome code, house),
+the table starts at column B (`BF_COL`) with the friendly headers of `BF_HEAD`. Protected except the gold columns
+Contacted, Interview Day, Time, Interview Done (checkbox), Rating /10, Final Affectation (IT / COMM / FLER / HR / Not
+accepted) and Your Notes; the sync copies all of them to Interviewees. The sheet also shows birth date, how they found
+VIC, why VIC, other clubs and the department's own questions (kept in Interviewees since 2026-10-04). Montserrat, one
+Hogwarts house per department (`HOUSE` in Config.gs: IT Ravenclaw, COMM Gryffindor, FLER Hufflepuff, HR Slytherin);
+the sheet wears the house of its non-HR side. A sheet still in the first layout (`BF_H_V1`, table from column A) is
+rebuilt the first time the script opens it (`upgradeBinomeSheet_`: keeps what the binome typed, at most
+`UPGRADE_PER_RUN` per sync). Locale fr_FR, time zone Africa/Algiers. The Master gets the same look from Setup
+(`styleMaster_`).
 
 ## The cycle (`runCycle_`, under the script lock)
 

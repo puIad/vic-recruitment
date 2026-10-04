@@ -338,7 +338,7 @@ function applyEdit_(ctx, p, group) {
     const I = ctx.iv.I, code = String(p.row[I.Code]).trim(), b = ctx.binByCode[p.row[I.Binome]];
     const sh = b && binomeSheet_(ctx, b), row = sh ? findFileRow_(sh, code) : -1;
     if (row < 0) throw new Error(code + ' has no row in a binome sheet to copy it to.');
-    sh.getRange(row, idx_(BF_H)['First Name'] + 1, 1, 3).setValues([[p.row[I['First Name']], p.row[I['Family Name']], p.row[I.Email]]]);
+    sh.getRange(row, bfCol_('First Name'), 1, 3).setValues([[p.row[I['First Name']], p.row[I['Family Name']], p.row[I.Email]]]);
     return 'name/email copied to the sheet of ' + b.code + '.';
   }
   throw new Error('there is no tool for this change: use Revert or Accept.');
@@ -436,17 +436,18 @@ function checkBinomeFile_(ctx, b, owed, env) {
   catch (e) { add('HIGH', 'open', 'cannot open its binome sheet (' + e.message + '). Fix its File ID in the Binomes tab or the access to the file.'); return out; }
   const title = String(book.getName()), m = title.match(/^\s*\[([^\]]*)\]/), titled = m && parseBinomeCode(m[1]);
   if (!titled || titled.code !== b.code) add('MEDIUM', 'title', 'its sheet is titled "' + title + '", not [' + b.code + ']: the binome may be filling in the wrong sheet. Rename the file, or fix the File ID in the Binomes tab.');
+  try { binomeSheet_(ctx, b); } catch (e) { /* a first-layout sheet is rebuilt on open; if that fails the checks below say why */ }
   const sheets = book.getSheets(), sh = sheets[0], F = idx_(BF_H);
-  const isOurs = x => x.getRange(1, 1, 1, BF_H.length).getDisplayValues()[0].map(v => String(v).trim()).join('|') === BF_H.join('|');
+  const isOurs = x => bfLayout_(x) === 'v2';
   if (!isOurs(sh)) {
     const real = sheets.slice(1).filter(isOurs)[0];
     add('HIGH', 'layout', real ? 'the tab "' + sh.getName() + '" was put in front of "' + real.getName() + '": the sync only reads the first tab, so nothing the binome writes is seen. Move "' + real.getName() + '" back to the first place.'
-      : 'the header row of its sheet was changed: the sync reads columns by position, so Contacted / Date / Time may be read wrong. Put the headers back as: ' + BF_H.join(', ') + '.');
+      : 'the header row of its sheet was changed: the sync reads columns by position, so Contacted / Date / Time may be read wrong. Put the headers back (from column B) as: ' + BF_HEAD.join(', ') + '.');
     return out; // everything else would be read from the wrong tab
   }
-  if (!sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).length) add('MEDIUM', 'protect', 'its sheet is no longer protected: the binome can overwrite the columns the script fills. Protect the tab again, except Contacted, Interview Date, Interview Time and Notes.');
-  const I = ctx.iv.I, last = sh.getLastRow();
-  const vals = last >= 2 ? sh.getRange(2, 1, last - 1, BF_H.length).getValues() : [];
+  if (!sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).length) add('MEDIUM', 'protect', 'its sheet is no longer protected: the binome can overwrite the columns the script fills. Protect the tab again, except the gold columns (' + BF_EDITABLE.map(k => BF_LABEL[k] || k).join(', ') + ').');
+  const I = ctx.iv.I, last = bfLastRow_(sh);
+  const vals = last >= 2 ? sh.getRange(2, BF_COL, last - 1, BF_H.length).getValues() : [];
   const at = {};
   vals.forEach((v, k) => {
     const code = String(v[F.Code]).trim();
