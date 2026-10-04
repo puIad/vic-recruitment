@@ -26,7 +26,7 @@ npm run dev      # terminal 2: http://localhost:5173/dev-login?as=admin@g.enp.ed
 | `src/lib/vic/` | the data layer: `api.ts` (`POST /api/run`), `store.ts` (state, 15 s live refresh, activity log), `actions.tsx` (every old dashboard action with its preview and confirm), `types.ts` (the `webState` shape) |
 | `src/app/*` | pages: overview, alerts, binomes, interviewees, team, maintenance, settings/*, help (FAQ); placeholders: calendar (Schedule), chat (Binome desk), analytics, settings/history |
 | `src/components/brand/` | the logo traced from the charter vectors, the charter's decorative motifs (ring, arches, outlined word, dots, footer rule) |
-| `src/components/work-panels/` | Change members sheet (replace / swap / cover) and Move interviewee dialog, opened from anywhere through `lib/vic/ui.ts` |
+| `src/components/work-panels/` | Change members sheet (replace / swap / new binome / cover) and Move interviewee dialog, opened from anywhere through `lib/vic/ui.ts` |
 | `src/index.css` | colour tokens (charter palette, light and dark), Gilroy `@font-face`, gradients |
 | `src/assets/fonts/` | Gilroy woff2, converted from `assets/Gilroy` (licensed, club-supplied) |
 | `public/brand/` | standalone logo SVGs (colour, on dark, white, icon, favicon) |

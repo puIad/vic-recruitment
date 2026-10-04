@@ -165,6 +165,15 @@ export interface ChangeCheck {
   plans?: ChangePlan[]
 }
 
+export interface NewBinomeCheck {
+  errors: string[]
+  warnings: string[]
+  done?: string[]
+  binome: string
+  tag: string
+  members: { name: string; email: string }[]
+}
+
 export interface CoverCheck {
   errors: string[]
   warnings: string[]

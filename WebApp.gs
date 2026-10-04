@@ -220,6 +220,7 @@ function webRun(action, args) {
       case 'reassign': reassignCore_(args.code, args.binome); break;
       case 'changeMember': result = changeMemberCore_(args); break;
       case 'swapMembers': result = swapMembersCore_(args); break;
+      case 'newBinome': result = newBinomeCore_(args); break;
       case 'addCover': result = addCoverCore_(args); break;
       case 'endCover': result = endCoverCore_(args); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked resolved'); break;

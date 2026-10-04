@@ -13,7 +13,7 @@ import { useActions } from "@/lib/vic/actions"
 import { typedCodes } from "@/lib/vic/codes"
 import { useVic } from "@/lib/vic/store"
 import { useUi, type ChangeMode, type MemberSheetOpen } from "@/lib/vic/ui"
-import type { Binome, WebState } from "@/lib/vic/types"
+import type { Binome, Unpaired, WebState } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 
 const NOBODY = "__none__"
@@ -66,6 +66,24 @@ function PeopleSelect({ value, onChange, binome, emptySeat, placeholder = "Choos
   )
 }
 
+function UnpairedSelect({ value, onChange, list, other }: { value: string; onChange: (v: string) => void; list: Unpaired[]; other: string }) {
+  return (
+    <Select value={value} onValueChange={onChange} disabled={!list.length}>
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder={list.length ? "Choose…" : "Nobody is unpaired"} />
+      </SelectTrigger>
+      <SelectContent>
+        {list.map((m) => (
+          <SelectItem key={m.email} value={m.email} disabled={m.email === other || !!m.draft}>
+            {(m.name || m.email) + " · " + m.pairAs}
+            {m.draft ? ` (in draft ${m.draft})` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
 function hintFor(mode: ChangeMode, st: WebState) {
   const set = st.settings
   const mails = set.testMode ? "Test mode: the emails only reach admins." : ""
@@ -73,6 +91,10 @@ function hintFor(mode: ChangeMode, st: WebState) {
     return `The Binomes tab is not changed. The cover person counts as a member for these interviews only, gets ${
       set.shareFiles ? "view-only access to the binome sheet" : `no sheet access (${set.testMode ? "test mode" : "sharing is off"})`
     } and is emailed the candidates; the binome is told and keeps filling its sheet. ${mails}`
+  if (mode === "pair")
+    return `A new binome sheet is created in the Binome Sheets folder${
+      set.shareFiles ? " and shared with both" : ` (${set.testMode ? "test mode" : "sharing is off"}: not shared)`
+    }. The tag follows the draft rules. ${mails || "Both are emailed."}`
   return (
     (mode === "swap" ? "Each member moves to the other binome. " : "Interviewees stay with the binome. ") +
     "Leavers lose edit access to the binome sheet; " +
@@ -82,7 +104,7 @@ function hintFor(mode: ChangeMode, st: WebState) {
 }
 
 function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
-  const { changeMember, swapMembers, addCover } = useActions()
+  const { changeMember, swapMembers, newBinome, addCover } = useActions()
   const busy = useVic((s) => s.busy)
   const action = useVic((s) => s.busyAction)
   const close = useUi((s) => s.closeMemberSheet)
@@ -102,6 +124,9 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
   const [swAm, setSwAm] = React.useState("")
   const [swB, setSwB] = React.useState("")
   const [swBm, setSwBm] = React.useState("")
+  // new binome from two unpaired members
+  const [pA, setPA] = React.useState(init.mode === "pair" ? init.inEmail || "" : "")
+  const [pB, setPB] = React.useState("")
   // cover
   const [codes, setCodes] = React.useState(init.codes || "")
   const [cvEmail, setCvEmail] = React.useState("")
@@ -127,7 +152,7 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
   const coverBinome = coverBins.length === 1 ? byCode(coverBins[0]) : undefined
 
   const hint = hintFor(mode, state)
-  const running = busy && ["changeMember", "swapMembers", "addCover"].includes(action || "")
+  const running = busy && ["changeMember", "swapMembers", "newBinome", "addCover"].includes(action || "")
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -135,6 +160,9 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
     if (mode === "cover") {
       if (!codes.trim()) return
       ok = await addCover({ codes, inEmail: cvEmail.trim(), inName: cvName.trim(), outEmail: cvOut, reason: reason.trim() }, hint)
+    } else if (mode === "pair") {
+      if (!(pA && pB)) return
+      ok = await newBinome({ emailA: pA, emailB: pB, reason: reason.trim() }, hint)
     } else if (mode === "swap") {
       if (!(swA && swB)) return
       ok = await swapMembers({ binomeA: swA, emailA: swAm, binomeB: swB, emailB: swBm, reason: reason.trim() }, hint)
@@ -145,21 +173,23 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
     if (ok) close()
   }
 
-  const canSubmit = mode === "cover" ? !!codes.trim() : mode === "swap" ? !!(swA && swB) : !!binome
+  const canSubmit = mode === "cover" ? !!codes.trim() : mode === "swap" ? !!(swA && swB) : mode === "pair" ? !!(pA && pB && pA !== pB) : !!binome
 
   return (
     <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
       <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-5">
         <Tabs value={mode} onValueChange={(v) => setMode(v as ChangeMode)}>
-          <TabsList className="grid w-full grid-cols-3 rounded-full">
+          <TabsList className="grid w-full grid-cols-4 rounded-full">
             <TabsTrigger value="replace" className="rounded-full">Replace</TabsTrigger>
             <TabsTrigger value="swap" className="rounded-full">Swap</TabsTrigger>
+            <TabsTrigger value="pair" className="rounded-full">New binome</TabsTrigger>
             <TabsTrigger value="cover" className="rounded-full">Cover</TabsTrigger>
           </TabsList>
         </Tabs>
         <p className="text-sm text-muted-foreground">
           {mode === "replace" && "A member leaves a binome and someone from the team joins, or the seat is only emptied."}
           {mode === "swap" && "Two members trade binomes in one step. If a write fails, both are rolled back."}
+          {mode === "pair" && "Two unpaired members become a new binome together, without touching the existing ones."}
           {mode === "cover" && "A temporary stand-in for chosen candidates. The Binomes tab does not change."}
         </p>
 
@@ -196,6 +226,17 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
                 <PeopleSelect value={swBm} onChange={setSwBm} binome={byCode(swB)} />
               </Field>
             </div>
+          </div>
+        )}
+
+        {mode === "pair" && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="First member">
+              <UnpairedSelect value={pA} onChange={setPA} list={state.unpaired} other={pB} />
+            </Field>
+            <Field label="Second member">
+              <UnpairedSelect value={pB} onChange={setPB} list={state.unpaired} other={pA} />
+            </Field>
           </div>
         )}
 
@@ -278,7 +319,7 @@ export function ChangeMembersSheet() {
       <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
         <SheetHeader className="p-5 pb-3">
           <SheetTitle className="text-xl font-extrabold text-heading">Change members</SheetTitle>
-          <SheetDescription>Replace, swap or cover. You see exactly what will change before anything is written.</SheetDescription>
+          <SheetDescription>Replace, swap, pair into a new binome, or cover. You see exactly what will change before anything is written.</SheetDescription>
         </SheetHeader>
         {sheet && state && <Form key={sheet.nonce} init={sheet} state={state} />}
       </SheetContent>

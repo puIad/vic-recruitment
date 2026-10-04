@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-export type ChangeMode = "replace" | "swap" | "cover"
+export type ChangeMode = "replace" | "swap" | "pair" | "cover"
 
 export interface MemberSheetOpen {
   mode?: ChangeMode
@@ -13,7 +13,7 @@ export interface MemberSheetOpen {
 interface UiStore {
   customizerOpen: boolean
   setCustomizerOpen: (o: boolean) => void
-  /** Change members sheet (replace / swap / cover): opened from the Binomes page, an unpaired row, a table row */
+  /** Change members sheet (replace / swap / new binome / cover): opened from the Binomes page, an unpaired row, a table row */
   memberSheet: (MemberSheetOpen & { open: boolean; nonce: number }) | null
   openMemberSheet: (o?: MemberSheetOpen) => void
   closeMemberSheet: () => void

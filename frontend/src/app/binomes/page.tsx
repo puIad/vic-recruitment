@@ -11,7 +11,7 @@ import { DataTableFacetedFilter } from "@/components/data-table/data-table-facet
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { useActions } from "@/lib/vic/actions"
@@ -124,6 +124,13 @@ function UnpairedCard({ list }: { list: Unpaired[] }) {
           <UserRoundX className="size-5 text-warning" /> Unpaired members <Badge variant="warning" className="num">{list.length}</Badge>
         </CardTitle>
         <CardDescription>Team members left without a binome after lock. Nobody is paired automatically any more, so place them yourself.</CardDescription>
+        {list.filter((m) => !m.draft).length >= 2 && (
+          <CardAction>
+            <Button size="sm" variant="secondary" onClick={() => openSheet({ mode: "pair" })}>
+              <UsersRound /> Pair two…
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         <ul className="divide-y">

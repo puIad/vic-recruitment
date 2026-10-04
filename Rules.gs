@@ -44,6 +44,15 @@ function draftPairs(members, rnd) {
   return pairs;
 }
 
+/** Tag of a hand-made pair, as the draft gives it: 'ALL' with a board lead, else 'IT & HR', 'HR', 'IT & COMM', 'IT'. */
+function pairTag(a, b) {
+  if (a === 'ALL' || b === 'ALL') return 'ALL';
+  if (a === b) return a;
+  if (b === 'HR') return a + ' & HR';
+  if (a === 'HR') return b + ' & HR';
+  return a + ' & ' + b;
+}
+
 /**
  * Team members who should interview but sit in no ACTIVE/PAUSED binome (after lock nobody is auto-paired again).
  * team: [{name,email,pairAs,exclude}] ; binomes: [{code,status,members:[{email}]}]
