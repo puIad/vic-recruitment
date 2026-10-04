@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-03 (night). Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-04. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
@@ -11,8 +11,8 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-- **Script:** web app **@37**, API **@38**, deployed from `a231845` (includes Reset all binomes). Later commits change
-  comments, tests and docs only, so no deploy is pending.
+- **Script:** web app **@39**, API **@40**, deployed from `fef4bc6` (adds Change members › New binome,
+  [#15](https://github.com/puIad/vic-recruitment-2026/pull/15)). Dashboard: Vercel production at the same commit.
 - **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
 - **Master** (redone on the evening of 2026-10-03 with Reset all binomes, then Import team → Draft → Lock):
   - Team: 63 rows (33 HR, 12 IT, 10 FLER, 8 COMM, no board / ALL rows). **Two IT rows have no email**, so they are in
@@ -31,9 +31,9 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 In order. Each step says where to do it.
 
 1. **Fix the two IT members without an email.** Add their emails at the source the team was imported from (or the
-   Team tab directly). Then place them, either by hand (Binomes › Change members: B.31 has a free seat; the tool keeps
-   the Tag, so change B.31's Tag in the Binomes tab afterwards and Accept that manual edit) or, simpler while nothing is
-   shared and nobody has registered: Maintenance › Danger zone › **Reset all binomes** → Import team → Draft → Lock.
+   Team tab directly). Then place them with Binomes › Unpaired members › **Pair two…** (Change members › New binome):
+   they become their own binome (next code, own sheet, tag IT). Or put one in B.31's free seat with Replace (the tool
+   keeps the Tag: change B.31's Tag in the Binomes tab afterwards and Accept that manual edit).
 2. **Settle the leftovers of the draft** at the same time: B.29 / B.30 (HR + HR) and B.31 (alone). Accept them, or
    move people with Change members. Open question 2 in [decisions.md](docs/decisions.md#open-questions).
 3. **Check the new sheets once:** Maintenance › Check integrity (expect "31 of 31 binome sheets checked", nothing
