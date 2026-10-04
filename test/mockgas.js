@@ -42,6 +42,7 @@ MockSheet.prototype = {
   insertRowsAfter(a, n) { this.maxRows += n; return this; },
   getMaxColumns() { return Math.max(this.maxCols || 26, this.getLastColumn()); }, insertColumnsAfter(a, n) { this.maxCols = this.getMaxColumns() + n; return this; },
   getBandings() { return []; },
+  copyTo(ss) { const c = ss.insertSheet('Copy of ' + this.name); c.cells = this.cells.map(r => (r || []).slice()); return c; },
   getRange(a, b, c, d) {
     if (typeof a === 'string') {
       const m = a.match(/^([A-Z]+)(\d+)?(?::([A-Z]+)(\d+)?)?$/);

@@ -17,7 +17,8 @@ function binomeSheet_(ctx, b) {
 
 /** 'v2' (current), 'v1' (first layout) or '' (header row changed by hand: left alone, the integrity check reports it). */
 function bfLayout_(sh) {
-  const row = sh.getRange(1, 1, 1, BF_COL - 1 + BF_H.length).getDisplayValues()[0].map(v => String(v).trim());
+  const width = Math.min(sh.getMaxColumns(), BF_COL - 1 + BF_H.length); // a narrow first-layout sheet has fewer columns
+  const row = sh.getRange(1, 1, 1, width).getDisplayValues()[0].map(v => String(v).trim());
   if (row.slice(BF_COL - 1).join('|') === BF_HEAD.join('|')) return 'v2';
   if (row.slice(0, BF_H_V1.length).join('|') === BF_H_V1.join('|')) return 'v1';
   return '';
@@ -222,13 +223,18 @@ function upgradeBinomeSheet_(ctx, b, sh) {
   ctx.iv.data.forEach(r => { const c = String(r[I.Code]).trim(); if (c && r[I.Binome] === b.code && order.indexOf(c) < 0) order.push(c); });
   const rows = order.map(c => ctx.ivByCode[c]).filter(r => r && r[I.Binome] === b.code)
     .map(r => ivToFileRow_(ctx, r, carry[String(r[I.Code]).trim()] || ivCarry_(ctx, r)));
+  // a copy of the old tab stays until the new rows are written: if anything below fails, what the binome typed is still there
+  const book = sh.getParent(), backup = sh.copyTo(book).setName(b.code + ' (old layout, kept until the upgrade ends)');
   sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
   const all = sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns());
   all.breakApart().clearDataValidations().clearNote();
   sh.clear();
   sh.setConditionalFormatRules([]);
-  formatBinomeSheet_(sh, b, b.members);
+  if (sh.getMaxColumns() < BF_COL - 1 + BF_H.length) sh.insertColumnsAfter(sh.getMaxColumns(), BF_COL - 1 + BF_H.length - sh.getMaxColumns());
+  sh.getRange(2, bfCol_('Phone'), Math.max(rows.length, 1), 1).setNumberFormat('@'); // keep the leading 0 of the numbers
   if (rows.length) sh.getRange(2, BF_COL, rows.length, BF_H.length).setValues(rows);
+  formatBinomeSheet_(sh, b, b.members);
+  book.deleteSheet(backup);
   ctx.upgraded = (ctx.upgraded || 0) + 1;
   console.log('Binome sheet of ' + b.code + ' moved to the current layout (' + rows.length + ' interviewees)');
 }

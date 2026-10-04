@@ -178,4 +178,5 @@ assert.strictEqual(up[0].slice(BFI.Code).join('|'), run('BF_HEAD.join("|")'), 'c
 const upRow = up.find(r => r[BFI.Code] === 'HR.01');
 assert.deepStrictEqual([upRow[BFI.Contacted], upRow[BFI.Notes], upRow[BFI['First Name']]], ['Yes', 'calls after 6pm', 'Naima'], 'carried over');
 assert.strictEqual(run(`__files["${hrFile}"].obj.sheets[0].getProtections().length`), 1, 'protected again');
+assert.strictEqual(run(`__files["${hrFile}"].obj.getSheets().length`), 1, 'backup tab removed once the rebuild ends');
 console.log('\nE2E OK');

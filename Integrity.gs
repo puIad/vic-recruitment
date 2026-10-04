@@ -436,7 +436,9 @@ function checkBinomeFile_(ctx, b, owed, env) {
   catch (e) { add('HIGH', 'open', 'cannot open its binome sheet (' + e.message + '). Fix its File ID in the Binomes tab or the access to the file.'); return out; }
   const title = String(book.getName()), m = title.match(/^\s*\[([^\]]*)\]/), titled = m && parseBinomeCode(m[1]);
   if (!titled || titled.code !== b.code) add('MEDIUM', 'title', 'its sheet is titled "' + title + '", not [' + b.code + ']: the binome may be filling in the wrong sheet. Rename the file, or fix the File ID in the Binomes tab.');
-  try { binomeSheet_(ctx, b); } catch (e) { /* a first-layout sheet is rebuilt on open; if that fails the checks below say why */ }
+  // a first-layout sheet is rebuilt on open, within the per-run limit; past it, the check waits for a later run
+  if (!ctx.files[b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN && bfLayout_(book.getSheets()[0]) === 'v1') return out;
+  try { binomeSheet_(ctx, b); } catch (e) { /* if the rebuild fails, the checks below say why */ }
   const sheets = book.getSheets(), sh = sheets[0], F = idx_(BF_H);
   const isOurs = x => bfLayout_(x) === 'v2';
   if (!isOurs(sh)) {
