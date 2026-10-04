@@ -29,7 +29,7 @@ function setup() {
   installTriggers_(ss);
   cleanupAndOrder_(ss);
   runCycle_({ pull: false, timing: false, tracker: true });
-  say_('Setup done ✅\n\n' + formNotes.join('\n') +
+  say_('Setup complete.\n\n' + formNotes.join('\n') +
     '\n\nNext steps:\n1. Check the Settings tab (ADMIN_EMAIL etc.).\n2. VIC Recruitment › 1 · Import organizing team (or fill the Team tab).\n' +
     '3. VIC Recruitment › 2 · Draft binomes, review/edit them in the Binomes tab.\n4. VIC Recruitment › 3 · Lock binomes.\n5. Open the registration form.');
 }
@@ -138,7 +138,7 @@ function linkForms_(ss) {
       sheet.setName(name);
       props.setProperty(key, String(sheet.getSheetId()));
       notes.push('• ' + name + ': linked to "' + form.getTitle() + '" → ' + form.getPublishedUrl());
-    } else notes.push('• ' + name + ': ⚠️ could not find the response tab — run setup again.');
+    } else notes.push('• ' + name + ': could not find the response tab. Please run Setup again.');
   });
   return notes;
 }

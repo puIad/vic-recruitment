@@ -65,8 +65,8 @@ function importTeamCore_(text, replace) {
   const count = {}; rows.forEach(r => { count[r[3]] = (count[r[3]] || 0) + 1; });
   const issues = rows.filter(r => r[5]).map(r => '• ' + r[0] + ': ' + r[5]);
   say_('Imported ' + rows.length + ' members from "' + src.getName() + '".\nPair As: ' + Object.keys(count).map(k => k + ' ' + count[k]).join(' · ') +
-    (issues.length ? '\n\n⚠️ Check these rows (see Notes column):\n' + issues.join('\n') : '') +
-    '\n\nReview "Pair As" (HR side / IT, COMM, FLER side / ALL = board lead / SKIP), tick "Exclude" for anyone not interviewing, then run "2 · Draft binomes".');
+    (issues.length ? '\n\nPlease check these rows (see the Notes column):\n' + issues.join('\n') : '') +
+    '\n\nReview "Pair As" (HR side / IT, COMM, FLER side / ALL = board lead / SKIP), tick "Exclude" for anyone not interviewing, then draft the binomes.');
   return { done: true };
 }
 
@@ -130,19 +130,19 @@ function draftBinomes() {
     const tags = {}; fresh.forEach(f => { tags[f.row[B.Tag]] = (tags[f.row[B.Tag]] || 0) + 1; });
     return { n: fresh.length, members: members.length, tags: tags, warnings: fresh.filter(f => f.warning).map(f => f.row[B.Binome] + ': ' + f.warning) };
   });
-  if (!res) return say_('Busy, try again in a minute.');
-  if (res.refused) return say_('Binomes are already locked, so drafting is closed: nobody is paired automatically any more.\n' +
-    'Members left without a binome show up as UNPAIRED_MEMBER alerts. Place them by editing the Binomes tab (or a new DRAFT row + Lock), or tick Exclude in the Team tab.');
+  if (!res) return say_('Another update is already running. Please try again in a minute.');
+  if (res.refused) return say_('Binomes are already locked, so new drafts are closed.\n' +
+    'Members without a binome appear in Alerts. Use Change members to place them, or exclude them in the Team tab.');
   say_('Drafted ' + res.n + ' binomes from ' + res.members + ' available members.\n' +
     Object.keys(res.tags).map(k => k + ': ' + res.tags[k]).join(' · ') +
-    (res.warnings.length ? '\n\n⚠️ To check:\n' + res.warnings.join('\n') : '') +
-    '\n\nEdit the Binomes tab freely (swap people, change tags). Run "Draft binomes" again for a new random draw, or "3 · Lock binomes" when happy.');
+    (res.warnings.length ? '\n\nPlease check:\n' + res.warnings.join('\n') : '') +
+    '\n\nReview them in the Binomes tab. Draft again for a new random draw, or lock them when you are happy.');
 }
 
 function lockBinomes() {
   const ui = SpreadsheetApp.getUi();
   const chk = lockCheck_();
-  if (!chk.drafts) return say_('No DRAFT binomes to lock. Run "2 · Draft binomes" first (or add rows with Status DRAFT).');
+  if (!chk.drafts) return say_('There are no draft binomes to lock. Draft the binomes first.');
   const ok = ui.alert('Lock ' + chk.drafts + ' binomes?',
     'This creates one sheet per binome in "Binome Sheets"' + (chk.share ? ', shares it with both members (they get a Google share email)' : '') +
     ' and starts routing registrants to them.' + (chk.problems.length ? '\n\n⚠️ Problems found:\n' + chk.problems.join('\n') + '\n\nContinue anyway?' : ''), ui.ButtonSet.YES_NO);
@@ -189,8 +189,8 @@ function lockBinomesCore_(budgetMs) {
     }
   }, 60000);
   runCycle_({ pull: false, timing: false, tracker: true, wait: 60000 });
-  say_('Locked ' + created + ' binomes ✅' + (stopped ? '\n\n⏱ Stopped early to avoid the 6-minute limit: run "3 · Lock binomes" again to finish the rest.' : '') +
-    '\nWaiting registrants (if any) have been assigned.');
+  say_('Locked ' + created + ' binomes.' + (stopped ? '\n\nPaused before the time limit: lock again to finish the rest.' : '') +
+    '\nAny waiting registrants have been assigned.');
 }
 
 const RESET_PHRASE = 'I confirm to reset the binomes';
@@ -250,7 +250,7 @@ function resetBinomesCore_(phrase) {
 }
 
 function reshareBinomeFiles() {
-  if (bool_(S_().TEST_MODE)) { say_('TEST_MODE is TRUE in Settings: files are not shared. Set it to FALSE for the real launch.'); return; }
+  if (bool_(S_().TEST_MODE)) { say_('Test mode is on in Settings, so sheets are not shared. Turn it off for the real launch.'); return; }
   const ctx = loadCtx_();
   let n = 0;
   const failed = [];
@@ -260,6 +260,6 @@ function reshareBinomeFiles() {
     catch (e) { failed.push(b.code + ': ' + driveErr_(e)); return; }
     b.members.forEach(m => { if (m.email && current.indexOf(m.email) < 0) { try { f.addEditor(m.email); n++; } catch (e) { console.warn(e); } } });
   });
-  say_('Done: ' + n + ' new share(s). (People removed from a binome keep access until you remove them in Drive.)' +
-    (failed.length ? '\n⚠️ ' + failed.length + ' sheet(s) not reached:\n' + failed.slice(0, 5).join('\n') : ''));
+  say_('Sharing updated: ' + n + ' new share(s). People removed from a binome keep access until you remove them in Drive.' +
+    (failed.length ? '\nNote: ' + failed.length + ' sheet(s) could not be reached:\n' + failed.slice(0, 5).join('\n') : ''));
 }

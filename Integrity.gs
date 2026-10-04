@@ -267,7 +267,7 @@ function editFixCore_(mode, ids) {
     buildTracker_(ctx);
     return lines;
   }, 60000);
-  say_(res ? res.join('\n') : 'Busy, try again in a minute.');
+  say_(res ? res.join('\n') : 'Another update is already running. Please try again in a minute.');
   return res;
 }
 
@@ -388,7 +388,7 @@ function oddValues_(ctx) {
 
 function integrityCheck_(ctx, deadline) {
   const list = activeOrPaused_(ctx).filter(b => b.fileId).sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
-  if (!list.length) return 'Integrity check: no binome sheets yet.';
+  if (!list.length) return 'Sheet check: there are no binome sheets yet.';
   const props = PropertiesService.getScriptProperties(), s = S_(), I = ctx.iv.I;
   // the cursor is the code of the next binome to check, so rows added or removed in between never make it skip one
   const next = String(props.getProperty('INTEG_NEXT') || '');
@@ -414,7 +414,7 @@ function integrityCheck_(ctx, deadline) {
   const KI = ctx.alerts.table.I;
   const listed = {}; list.forEach(b => { listed[b.code] = true; });
   ctx.alerts.resolveWhere(a => a[KI.Type] === 'INTEGRITY' && (checked[a[KI.Binome]] ? !seen[a[KI.Key]] : !listed[a[KI.Binome]]));
-  return 'Integrity check: ' + n + ' of ' + list.length + ' binome sheets checked, ' + problems + ' problem' + (problems === 1 ? '' : 's') + ' found' +
+  return 'Sheet check: ' + n + ' of ' + list.length + ' binome sheets checked, ' + problems + ' problem' + (problems === 1 ? '' : 's') + ' found' +
     (n < list.length ? '. Run it again to check the rest.' : '.');
 }
 

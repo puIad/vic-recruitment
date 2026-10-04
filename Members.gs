@@ -133,7 +133,7 @@ function applyMemberPlans_(ctx, plans, reason) {
     changesSheet_().appendRow([ctx.now, by, 'PERMANENT', b.code, p.out ? p.out.name : '', p.out ? p.out.email : '',
       p.inn ? p.inn.name : '', p.inn ? p.inn.email : '', '', reason || '', fileIssues.length ? 'FILE NOT UPDATED: ' + fileIssues.join('; ') : 'DONE']);
     const what = b.code + ': ' + (p.out ? p.out.name || p.out.email : '(empty seat)') + ' → ' + (p.inn ? p.inn.name : '(nobody)');
-    lines.push(what + (fileIssues.length ? ' ⚠️ binome sheet: ' + fileIssues.join('; ') : ''));
+    lines.push(what + (fileIssues.length ? ' (binome sheet: ' + fileIssues.join('; ') + ')' : ''));
     if (fileIssues.length) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: b.code,
       msg: 'Member change in ' + b.code + ' saved, but the binome sheet was not fully updated: ' + fileIssues.join('; ') + '. Fix access, then Re-share.', key: '' });
     ctx.alerts.add({ severity: 'INFO', type: 'MEMBER_CHANGED', status: 'AUTO-FIXED', code: '', binome: b.code,
@@ -255,14 +255,14 @@ function newBinomeCore_(a) {
     ctx.alerts.flush();
     buildTracker_(ctx);
     commitBase_(ctx);
-    return { done: [what + (issues.length ? ' ⚠️ ' + issues.join('; ') : '')] };
+    return { done: [what + (issues.length ? ' (note: ' + issues.join('; ') + ')' : '')] };
   }, 60000);
   return report_(res);
 }
 
 function report_(res) {
-  if (!res) { say_('Busy, try again in a minute.'); return null; }
-  if (res.done) say_(res.done.join('\n') + (res.done.some(l => /⚠️/.test(l)) ? '' : ' ✅'));
+  if (!res) { say_('Another update is already running. Please try again in a minute.'); return null; }
+  if (res.done) say_(res.done.join('\n'));
   else if (res.errors.length) say_(res.errors.join('\n'));
   return res;
 }
@@ -369,7 +369,7 @@ function addCoverCore_(a) {
       changesSheet_().appendRow([ctx.now, by, 'TEMPORARY', b.code, g.out ? g.out.name : '', g.out ? g.out.email : '',
         p.inn.name, p.inn.email, g.codes.join(', '), a.reason || '', shared ? COVER_SHARED : 'ACTIVE']);
       const what = p.inn.name + ' covers ' + g.codes.join(', ') + ' for ' + b.code + (g.out ? ' (instead of ' + g.out.name + ')' : '');
-      lines.push(what + (issues.length ? ' ⚠️ ' + issues.join('; ') : ''));
+      lines.push(what + (issues.length ? ' (note: ' + issues.join('; ') + ')' : ''));
       ctx.alerts.add({ severity: 'INFO', type: 'COVER_ADDED', status: 'AUTO-FIXED', code: g.codes.join(', '), binome: b.code,
         msg: what + ' · by ' + by + (a.reason ? ' (' + a.reason + ')' : ''), key: '' });
       if (issues.length) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: b.code, key: '',
@@ -451,7 +451,7 @@ function endCoverCore_(a) {
     const problem = endCover_(ctx, c, 'ended by ' + Session.getActiveUser().getEmail());
     ctx.alerts.flush();
     return { done: [c.name + ' no longer covers ' + c.codes.join(', ') + ' (' + c.binome + ')' +
-      (problem ? ' ⚠️ their view access could not be removed yet (' + problem + '): retried at every sync' : '')] };
+      (problem ? ' (their view access could not be removed yet: ' + problem + '. It will be retried automatically.)' : '')] };
   }, 60000);
   return report_(res);
 }

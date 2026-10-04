@@ -67,7 +67,7 @@ assert.deepStrictEqual([st.unpaired.length, st.alerts.some(a => a.type === 'UNPA
   run('var __gf = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("Permission denied while enabling APIs: drive for GCP project 1.") }');
   out = call('webRun', 'changeMember', { binome: b1.code, outEmail: leaving, inName: 'Outside Person', inEmail: 'EXT@g.enp.edu.dz', reason: 'left the club' });
   run('DriveApp.getFileById = __gf');
-  assert(/→ Outside Person ✅/.test(out.messages[0]), out.messages[0]);
+  assert(/→ Outside Person/.test(out.messages[0]), out.messages[0]);
   assert(ppl(b1.code).includes('ext@g.enp.edu.dz') && !ppl(b1.code).includes(leaving));
   assert(/Outside/.test(run('__files["' + fileOf(b1) + '"].obj.title')), 'file renamed');
   assert(/Outside Person/.test(run('__files["' + fileOf(b1) + '"].obj.sheets[0].notes["1:1"]')), 'file note updated');
@@ -117,7 +117,7 @@ st = call('webState');
 
 addRegistrations(12, 3);
 out = call('webRun', 'sync');
-assert.deepStrictEqual(out.messages, ['Full sync done ✅\nIntegrity check: 7 of 7 binome sheets checked, 0 problems found.']);
+assert.deepStrictEqual(out.messages, ['Everything is up to date.\nSheet check: 7 of 7 binome sheets checked, 0 problems found.']);
 assert.deepStrictEqual(call('webState').alerts.filter(a => /MANUAL_EDIT|INTEGRITY/.test(a.type)), [], 'the script never flags its own writes');
 backdateAssignments(3);
 call('webRun', 'sync');
@@ -201,22 +201,22 @@ assert(/Unknown code/.test(out.messages[0]));
 
 const ids = st.alerts.slice(0, 2).map(a => a.id);
 out = call('webRun', 'resolve', { ids });
-assert.deepStrictEqual(out.messages, ['2 alert(s) marked resolved']);
+assert.deepStrictEqual(out.messages, ['2 alert(s) marked as resolved']);
 assert(!call('webState').alerts.some(a => ids.includes(a.id)));
 
 run('__outbox.length = 0');
 out = call('webRun', 'digest');
-assert(/Digest sent to admin@g.enp.edu.dz/.test(out.messages[0]));
+assert(/Daily summary sent to admin@g.enp.edu.dz/.test(out.messages[0]));
 assert(run('__outbox.some(m => /digest/.test(m.subject))'));
 
 assert(run("__outbox.every(m => m.to === 'admin@g.enp.edu.dz')"), 'TEST_MODE: only admins get email');
 assert(run("Object.keys(__files).every(id => (__files[id].editors || []).every(e => e === 'admin@g.enp.edu.dz'))"), 'TEST_MODE: binome files not shared');
 out = call('webRun', 'reshare');
-assert(/TEST_MODE is TRUE/.test(out.messages[0]), out.messages[0]);
+assert(/Test mode is on/.test(out.messages[0]), out.messages[0]);
 assert(call('webState').settings.testMode === true);
 assert(call('webState').settingsAll.length > 10, 'settingsAll listed');
 out = call('webRun', 'saveSettings', { values: { HOURS_NOT_CONTACTED: '30', ASSIGNMENTS_OPEN: false, DIGEST_HOUR: 9 } });
-assert(/HOURS_NOT_CONTACTED/.test(out.messages[0]) && /Run Setup/.test(out.messages[0]), out.messages[0]);
+assert(/HOURS_NOT_CONTACTED/.test(out.messages[0]) && /run Setup/.test(out.messages[0]), out.messages[0]);
 assert(call('webState').settings.assignmentsOpen === false && call('webState').settingsAll.find(s => s.key === 'HOURS_NOT_CONTACTED').value === 30);
 assert.throws(() => call('webRun', 'saveSettings', { values: { BALANCE_BY: 'NOPE' } }));
 call('webRun', 'saveSettings', { values: { ASSIGNMENTS_OPEN: true } });
@@ -228,14 +228,14 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(run('__files["' + id + '"].editors.includes("' + gone + '")'));
   call('webRun', 'changeMember', { binome: b.code, outEmail: gone, inName: 'New Person', inEmail: 'newp@g.enp.edu.dz' });
   assert(run('__files["' + id + '"].editors.includes("newp@g.enp.edu.dz") && !__files["' + id + '"].editors.includes("' + gone + '")'), 'editors follow the change');
-  // Drive API off in the Cloud project: the change is saved, the message names the real fix, no ✅
+  // Drive API off in the Cloud project: the change is saved, the message names the real fix, no warning icon
   run('var __gf = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("Permission denied while enabling APIs: drive for GCP project 1.") }');
   out = call('webRun', 'changeMember', { binome: b.code, outEmail: 'newp@g.enp.edu.dz', inName: 'Other Person', inEmail: 'other@g.enp.edu.dz' });
-  assert(/⚠️ .*Google Drive API is off/.test(out.messages[0]) && !/✅/.test(out.messages[0]), out.messages[0]);
+  assert(/Google Drive API is off/.test(out.messages[0]), out.messages[0]);
   assert(call('webState').alerts.some(a => a.type === 'FILE_ERROR' && /Drive API is off/.test(a.msg)), 'alert names the Drive API');
   const sheets = run("loadCtx_().binomes.filter(x => x.fileId && x.status !== 'DRAFT').length"); // the set reshareBinomeFiles tries
   out = call('webRun', 'reshare');
-  assert(new RegExp(sheets + ' sheet\\(s\\) not reached').test(out.messages[0]) && /Drive API is off/.test(out.messages[0]), 'every sheet tried: ' + out.messages[0]);
+  assert(new RegExp(sheets + ' sheet\\(s\\) could not be reached').test(out.messages[0]) && /Drive API is off/.test(out.messages[0]), 'every sheet tried: ' + out.messages[0]);
   run('DriveApp.getFileById = __gf');
   run('__files["' + id + '"].editors = __files["' + id + '"].editors.filter(e => e !== "newp@g.enp.edu.dz")'); // what the admin would do in Drive
   call('webRun', 'reshare');
@@ -525,7 +525,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert.deepStrictEqual(open(), [], 'baseline intact after the round trip');
 }
 out = call('webRun', 'setup');
-assert(/Setup done/.test(out.messages[0]), 'setup works without an active spreadsheet');
+assert(/Setup complete/.test(out.messages[0]), 'setup works without an active spreadsheet');
 
 assert.throws(() => call('webRun', 'nope'), /Unknown action/);
 assert.strictEqual(run('_webOut'), null, 'buffer reset after a throw');
@@ -599,7 +599,7 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   run("var __sv2 = MockRange.prototype.setValues; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Member Changes') throw new Error('Service unavailable'); return __sv2.call(this, v); }");
   out = call('webRun', 'newBinome', { emailA: 'free3@g.enp.edu.dz', emailB: 'free4@g.enp.edu.dz' });
   run('MockRange.prototype.setValues = __sv2');
-  assert(/created \(HR\).*⚠️ Member Changes history not written/.test(out.messages[0]), out.messages[0]);
+  assert(/created \(HR\).*Member Changes history not written/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   st = call('webState');
   assert.deepStrictEqual([st.binomes.length, st.unpaired.some(m => /free[34]/.test(m.email))], [n + 2, false]);

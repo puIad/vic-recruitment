@@ -18,7 +18,7 @@ function reassignCore_(code, binomeText) {
     const ctx = loadCtx_();
     detectEdits_(ctx);
     let done;
-    try { done = moveInterviewee_(ctx, code, binomeText) + ' ✅'; } catch (e) {
+    try { done = moveInterviewee_(ctx, code, binomeText); } catch (e) {
       if (ctx.ivDirty) { saveTable_(ctx.iv); commitBase_(ctx); ctx.alerts.flush(); } // the row was lost from both sheets: keep its data and the alert
       return e.message;
     }
@@ -29,7 +29,7 @@ function reassignCore_(code, binomeText) {
     buildTracker_(ctx);
     return done;
   }, 60000);
-  say_(msg || 'Busy, try again in a minute.');
+  say_(msg || 'Another update is already running. Please try again in a minute.');
 }
 
 /** Move an interviewee to another binome's sheet, carrying Contacted/Date/Notes. The caller saves. Throws the reason it can't. */
