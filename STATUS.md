@@ -15,8 +15,8 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   [#15](https://github.com/puIad/vic-recruitment-2026/pull/15)). Dashboard: Vercel production at the same commit.
 - **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
 - **Master** (redone on the evening of 2026-10-03 with Reset all binomes, then Import team → Draft → Lock):
-  - Team: 63 rows (33 HR, 12 IT, 10 FLER, 8 COMM, no board / ALL rows). **Two IT rows have no email**, so they are in
-    no binome and raise no alert.
+  - Team: 63 rows (33 HR, 12 IT, 10 FLER, 8 COMM, no board / ALL rows). The two IT rows that had no email got their
+    emails on 2026-10-04 and were paired into a new binome with **Pair two…**.
   - 31 binomes locked, sheets created, **not shared**: B.01–B.28 pair HR with IT / FLER / COMM; B.29 and B.30 are two
     HR members (tag `HR`, so they only get HR candidates); **B.31 is one HR member alone**.
   - No registrations, interviewees, forms or member changes. The ~185 alerts raised by the re-import and reset are all
@@ -30,13 +30,10 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 In order. Each step says where to do it.
 
-1. **Fix the two IT members without an email.** Add their emails at the source the team was imported from (or the
-   Team tab directly). Then place them with Binomes › Unpaired members › **Pair two…** (Change members › New binome):
-   they become their own binome (next code, own sheet, tag IT). Or put one in B.31's free seat with Replace (the tool
-   keeps the Tag: change B.31's Tag in the Binomes tab afterwards and Accept that manual edit).
+1. ~~**Fix the two IT members without an email.**~~ Done 2026-10-04: emails added, paired with Pair two… (#15).
 2. **Settle the leftovers of the draft** at the same time: B.29 / B.30 (HR + HR) and B.31 (alone). Accept them, or
    move people with Change members. Open question 2 in [decisions.md](docs/decisions.md#open-questions).
-3. **Check the new sheets once:** Maintenance › Check integrity (expect "31 of 31 binome sheets checked", nothing
+3. **Check the new sheets once:** Maintenance › Check integrity (expect every binome sheet checked, nothing
    found). Apps Script › Executions should show the 1-minute sync running, and how long today's Lock took (Vercel
    stops a call at 300 s).
 4. **Other-account checks on the new UI** ([vercel.md](docs/vercel.md#still-open)): an editor, a removed ENP account
