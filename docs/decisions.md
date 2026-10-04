@@ -56,9 +56,9 @@ Why the system is built the way it is. Read before changing behaviour; add a row
 
 1. Should the president and other board members interview at all? (Tick Exclude if not.) The team imported on
    2026-10-03 has no Pair As `ALL` rows, so no ALL (board-led) binomes were drafted.
-2. Leftovers of the draft. The 2026-10-03 team has more HR than other-department members (33 vs 30): two binomes are
-   HR + HR (B.29, B.30; tag `HR`, so HR candidates only) and B.31 is one member alone. Accept them, make 3-person
-   binomes, or move people with Change members? (In 2025 the leftover went the other way: one no-HR binome, decided fine.)
+2. ~~Leftovers of the draft~~ **Settled 2026-10-04: kept as they are for now.** B.29 and B.30 are HR + HR (tag
+   `HR`, so they only get HR candidates) and B.31 is one member alone. The Team tab is the live OT list. The owner
+   will adjust these binomes with Change members as the list settles.
 3. Should ALL (board) binomes receive fewer candidates? → `ALL_BINOME_WEIGHT` (1.25 in the live Settings). Only
    matters if ALL binomes come back.
 4. Confirmation email to registrants with their code? (Not built.)

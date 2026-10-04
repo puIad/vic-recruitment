@@ -21,6 +21,7 @@ in `c64f118` (`git show c64f118^:web/index.html` if it is ever needed). How to r
 | Change history was the first placeholder made real (owner, 2026-10-03) | Smallest: the Member Changes tab already logs every tool run |
 | Binome members get a read-only "my binome" view later (owner, 2026-10-03) | Not built; needs a new access rule in WebApp.gs, today access is Master editors only |
 | Reset all binomes asks for a typed phrase, checked again by the script (2026-10-03) | It trashes every binome sheet and empties Team and Member Changes; a misclick must not do that |
+| Schedule and Analytics kept, Binome desk dropped (owner, 2026-10-04) | Plans in [plans.md](plans.md). The binome view grew into an idea: members would use the dashboard instead of their sheet. Kept, not planned |
 
 ## Where things are in the UI
 
@@ -52,16 +53,17 @@ last 300); Settings › Change history shows it with search and a Replaced / Swa
 that tab logs: member replacements, swaps and covers. Interviewee moves and accepted hand edits are not in it (they
 only leave an INFO alert).
 
-| Page | Idea | Needs |
-|---|---|---|
-| Schedule (template calendar) | One calendar of every booked interview, clashes and free days | Interview date and time per candidate in `webState` (already in the binome sheets) |
-| Binome desk (template chat) | A thread per binome with one-click Nudge from an alert | A Messages tab in the Master, `postMessage` action, `messages` in `webState` |
-| Analytics (template dashboard 2) | Registrations per day, time to first contact, interview capacity | Timestamps per registration, assignment and contact in `webState`, series computed in the script |
+| Page | State |
+|---|---|
+| Schedule (template calendar) | Planned: [plans.md › Schedule](plans.md#schedule) |
+| Analytics (template dashboard 2) | Planned: [plans.md › Analytics](plans.md#analytics) |
+| Binome desk (template chat) | Dropped 2026-10-04; remove it in the next UI PR ([plans.md](plans.md)) |
 
 ## Still open
 
-- The three placeholders above.
-- A read-only "my binome" view for binome members (needs an access rule in WebApp.gs).
+- Schedule and Analytics ([plans.md](plans.md)); remove the Binome desk page.
+- Binome view: members see their binome in the dashboard, maybe instead of the sheet. An idea, not planned
+  (needs an access rule in WebApp.gs).
 - Log interviewee moves and accepted hand edits in a history source, then show them in Change history.
 - No automated tests for the UI itself; `test/vercel.test.js` only checks its RPC wrapper and `API_VERSION`. The data
   layer is thin enough to add cases against `webdev.js`.
