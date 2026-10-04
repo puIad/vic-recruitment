@@ -30,6 +30,14 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - Phases A–D, the timing and interview-form cases and the Reset were all tested live on 2026-10-03:
   [docs/history.md](docs/history.md#live-test-2026-10-03).
 
+## In review
+
+- **Alert quick actions** (branch `alert-quick-actions`): a quick fix for every alert type that has one, snooze / mute,
+  emails with an editable preview, links to the exact row or cell, bulk Nudge / Repair / Snooze. Settled with the owner on
+  2026-10-04; how it works: [architecture.md](docs/architecture.md#quick-actions-alerts-page). Ships as usual: merge,
+  `npm run deploy` (new `QuickFix.gs`, no `API_VERSION` bump: the fields are only added), then Vercel. Run Setup once
+  after deploy so the Alerts tab's Status dropdown lists SNOOZED and MUTED.
+
 ## Brief for 2026-10-04 (settled with the owner)
 
 In order. Each step says where to do it.

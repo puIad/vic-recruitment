@@ -100,7 +100,7 @@ function ensureTabs_(ss) {
   // Alerts
   const al = mk(TAB.ALERTS, ALERT_H);
   al.getRange('I2:I').setDataValidation(SpreadsheetApp.newDataValidation()
-    .requireValueInList(['OPEN', 'RESOLVED', 'AUTO-RESOLVED', 'AUTO-FIXED'], true).setAllowInvalid(true).build());
+    .requireValueInList(['OPEN', 'RESOLVED', 'AUTO-RESOLVED', 'AUTO-FIXED', 'SNOOZED', 'MUTED'], true).setAllowInvalid(true).build());
   al.getRange('B2:B').setNumberFormat('dd/mm/yyyy HH:mm'); al.getRange('J2:J').setNumberFormat('dd/mm/yyyy HH:mm');
   al.setColumnWidth(7, 520); al.getRange('G2:G').setWrap(true);
   al.setConditionalFormatRules([

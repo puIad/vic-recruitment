@@ -14,6 +14,14 @@ if (!process.argv.includes('--empty')) {
   s.call('webRun', 'importTeam', { link: '' }); s.call('webRun', 'draft'); s.call('webRun', 'lock');
   s.run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,1,6).setValues([['Late Member','late@g.enp.edu.dz','IT','IT',false,'']]);})()"); // shows the Unpaired card
   s.addRegistrations(40, 3); s.call('webRun', 'sync'); s.backdateAssignments(3); s.call('webRun', 'sync');
+  // registration and interview-form problems, so the Alerts page shows its quick fixes
+  const bs = s.call('webState').binomes.filter(b => b.people.length === 2);
+  s.run(`(function () { var reg = master.getSheetByName('Registration Responses'), ir = master.getSheetByName('Interview Responses'), t = Date.now() - 864e5;
+    reg.cells.push(regRow(new Date(t), 'lina.kaci@g.enp.edu.dz', 'Lina', 'Kaci', 'lina.kaci@g.enp.edu.dz', '01/03/2005', '12345', 'IT', 'HR'));
+    reg.cells.push(regRow(new Date(t + 6e4), 'rayan.ziani@g.enp.edu.dz', 'Rayan', 'Ziani', 'rayan.ziani@g.enp.edu.dz', '01/03/2005', '0555999001', 'Marketing', 'HR'));
+    reg.cells.push(regRow(new Date(t + 12e4), 'amine.belkacem0@g.enp.edu.dz', 'Amine', 'Belkacem', 'amine.belkacem0@g.enp.edu.dz', '01/03/2005', '0555999002', 'IT', 'FLER'));
+    ir.cells.push([new Date(t + 18e4), '${bs[0].people[0].email}', '${bs[0].code}', 'XX.99', 'intro', 'IT', 'IT', '']); })()`);
+  s.call('webRun', 'sync');
   // two hand edits in the Master, so the Manual edits filter has something to show
   s.run("(function(){var iv=ss_().getSheetByName('Interviewees'),bn=ss_().getSheetByName('Binomes');iv.getRange(2,2).setValue(iv.getRange(2,2).getValue()==='B.03'?'B.04':'B.03');" +
     "bn.getRange(3,4,1,2).setValues([['Late Member','late@g.enp.edu.dz']]);})()");

@@ -15,8 +15,8 @@ import { useUi } from "@/lib/vic/ui"
 import type { WebState } from "@/lib/vic/types"
 import { toast } from "sonner"
 
-function Form({ init, state }: { init: { code?: string; binome?: string }; state: WebState }) {
-  const { reassign } = useActions()
+function Form({ init, state }: { init: { code?: string; binome?: string; alertId?: string }; state: WebState }) {
+  const { reassign, resolve } = useActions()
   const busy = useVic((s) => s.busy)
   const action = useVic((s) => s.busyAction)
   const close = useUi((s) => s.closeMoveDialog)
@@ -30,7 +30,9 @@ function Form({ init, state }: { init: { code?: string; binome?: string }; state
     e.preventDefault()
     if (!iv) return toast.error(`Unknown interviewee code “${code.trim().toUpperCase()}”.`)
     if (!binome) return toast.error("Choose the binome to move them to.")
-    if (await reassign(iv.code, iv.name, iv.binome, binome)) close()
+    if (!(await reassign(iv.code, iv.name, iv.binome, binome))) return
+    close()
+    if (init.alertId) await resolve([init.alertId])
   }
 
   return (

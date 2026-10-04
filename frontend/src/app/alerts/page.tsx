@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
-import { CheckCheck, CircleCheck, Search, X } from "lucide-react"
+import { BellOff, CheckCheck, CircleCheck, Search, Send, Wrench, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { RingSlot } from "@/components/brand/motifs"
@@ -14,14 +14,17 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
+import { repairOf, useQuick } from "@/lib/vic/quick"
 import { alertLabel, SEVERITY } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
-import type { Alert } from "@/lib/vic/types"
+import type { Alert, HeldAlert } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { AlertDetail } from "./components/alert-detail"
+import { nudgeable, RowQuickButton, SnoozeMenu, UnmuteButton } from "./components/quick-actions"
 
-type Filter = "ALL" | "HIGH" | "MEDIUM" | "INFO" | "EDITS"
+type Filter = "ALL" | "HIGH" | "MEDIUM" | "INFO" | "EDITS" | "MUTED"
 const NONE: Alert[] = []
+const NO_HELD: HeldAlert[] = []
 
 /**
  * Alerts as an inbox: the template's Mail layout (list left, reading pane right). Same data and same fixes as the
@@ -29,11 +32,13 @@ const NONE: Alert[] = []
  */
 export default function AlertsPage() {
   const alerts = useVic((s) => s.state?.alerts) ?? NONE
+  const muted = useVic((s) => s.state?.muted) ?? NO_HELD
   const counts = useVic((s) => s.state?.alertCounts)
   const loading = useVic((s) => !s.state)
   const busy = useVic((s) => s.busy)
   const action = useVic((s) => s.busyAction)
   const { resolve, editAccept } = useActions()
+  const quick = useQuick()
   const isMobile = useIsMobile()
   const [params, setParams] = useSearchParams()
 
@@ -43,20 +48,26 @@ export default function AlertsPage() {
   const activeId = params.get("id")
 
   const editCount = alerts.filter((a) => a.type === "MANUAL_EDIT").length
-  const shown = React.useMemo(() => {
-    const s = q.trim().toLowerCase()
-    return alerts.filter(
-      (a) =>
-        (filter === "ALL" || (filter === "EDITS" ? a.type === "MANUAL_EDIT" : a.severity === filter)) &&
-        (!s || `${a.id} ${a.type} ${alertLabel(a.type)} ${a.code} ${a.binome} ${a.msg}`.toLowerCase().includes(s))
-    )
-  }, [alerts, filter, q])
+  const matches = React.useCallback(
+    (a: Alert | HeldAlert) => {
+      const s = q.trim().toLowerCase()
+      return !s || `${a.id} ${a.type} ${alertLabel(a.type)} ${a.code} ${a.binome} ${a.msg}`.toLowerCase().includes(s)
+    },
+    [q]
+  )
+  const isMuted = filter === "MUTED"
+  const shown = React.useMemo(
+    () => (isMuted ? NONE : alerts.filter((a) => (filter === "ALL" || (filter === "EDITS" ? a.type === "MANUAL_EDIT" : a.severity === filter)) && matches(a))),
+    [alerts, filter, isMuted, matches]
+  )
+  const shownMuted = React.useMemo(() => (isMuted ? muted.filter(matches) : NO_HELD), [muted, isMuted, matches])
+  const shownIds = isMuted ? shownMuted.map((a) => a.id) : shown.map((a) => a.id)
 
   // keep the selection to alerts that still exist (they leave the screen when resolved)
   React.useEffect(() => {
-    const ids = new Set(alerts.map((a) => a.id))
+    const ids = new Set((isMuted ? muted : alerts).map((a) => a.id))
     setSelected((cur) => (Array.from(cur).every((i) => ids.has(i)) ? cur : new Set(Array.from(cur).filter((i) => ids.has(i)))))
-  }, [alerts])
+  }, [alerts, muted, isMuted])
 
   const active = alerts.find((a) => a.id === activeId) || null
   // a deep link (?id=) or the bell can open an alert that sits far down the list: bring its row into view
@@ -77,9 +88,14 @@ export default function AlertsPage() {
       return n
     })
 
-  const allShown = shown.length > 0 && shown.every((a) => selected.has(a.id))
-  const someShown = shown.some((a) => selected.has(a.id))
-  const selectedEdits = alerts.filter((a) => selected.has(a.id) && a.fix.includes("accept"))
+  const allShown = shownIds.length > 0 && shownIds.every((id) => selected.has(id))
+  const someShown = shownIds.some((id) => selected.has(id))
+  const picked = isMuted ? NONE : alerts.filter((a) => selected.has(a.id))
+  const selectedEdits = picked.filter((a) => a.fix.includes("accept"))
+  // bulk quick actions: only offered when every selected alert takes them
+  const canNudge = picked.length > 0 && picked.every(nudgeable)
+  const canRepair = picked.length > 0 && picked.every((a) => !!repairOf(a))
+  const clear = () => setSelected(new Set())
 
   const list = (
     <div className="flex h-full min-h-0 flex-col">
@@ -92,13 +108,14 @@ export default function AlertsPage() {
               ["MEDIUM", "Medium", counts?.MEDIUM || 0],
               ["INFO", "Info", counts?.INFO || 0],
               ["EDITS", "Manual edits", editCount],
+              ["MUTED", "Muted", muted.length],
             ] as const
-          ).map(([v, label, n]) => (
+          ).filter(([v, , n]) => v !== "MUTED" || n > 0 || filter === "MUTED").map(([v, label, n]) => (
             <button
               key={v}
               type="button"
               aria-pressed={filter === v}
-              onClick={() => setFilter(v)}
+              onClick={() => { setFilter(v); clear() }}
               className={cn(
                 "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors",
                 filter === v ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:bg-accent"
@@ -123,12 +140,27 @@ export default function AlertsPage() {
       <div className="flex items-center gap-3 border-y bg-muted/40 px-4 py-2">
         <Checkbox
           checked={allShown ? true : someShown ? "indeterminate" : false}
-          onCheckedChange={(c) => setSelected((cur) => { const n = new Set(cur); shown.forEach((a) => (c ? n.add(a.id) : n.delete(a.id))); return n })}
+          onCheckedChange={(c) => setSelected((cur) => { const n = new Set(cur); shownIds.forEach((id) => (c ? n.add(id) : n.delete(id))); return n })}
           aria-label="Select all shown"
         />
-        <span className="text-sm text-muted-foreground">{selected.size ? `${selected.size} selected` : `${shown.length} shown`}</span>
-        <div className="ml-auto flex items-center gap-1.5">
-          {editCount > 0 && (
+        <span className="whitespace-nowrap text-sm text-muted-foreground">{selected.size ? `${selected.size} selected` : `${shownIds.length} shown`}</span>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+          {isMuted ? (
+            <UnmuteButton ids={Array.from(selected)} onDone={clear} />
+          ) : (
+            <>
+          {canNudge && (
+            <Button size="sm" variant="outline" disabled={busy} onClick={async () => { if (await quick.mail(picked.map((a) => a.id), "binome")) clear() }} title="One email per binome, listing its selected alerts">
+              <Send /> Nudge
+            </Button>
+          )}
+          {canRepair && (
+            <Button size="sm" variant="outline" disabled={busy} onClick={async () => { if (await quick.repair(picked)) clear() }} title="Let the script repair every selected sheet problem">
+              <Wrench /> Repair
+            </Button>
+          )}
+          {picked.length > 0 && <SnoozeMenu alerts={picked} onDone={clear} />}
+          {editCount > 0 && (!picked.length || selectedEdits.length > 0) && (
             <Button size="sm" variant="outline" disabled={busy || !selectedEdits.length} onClick={async () => { if (await editAccept(selectedEdits.map((a) => a.id))) setSelected(new Set()) }} title="Take the selected manual edits as they are now">
               {busy && action === "editAccept" ? <Spinner /> : <CheckCheck />} Accept edits
             </Button>
@@ -136,6 +168,8 @@ export default function AlertsPage() {
           <Button size="sm" disabled={busy || !selected.size} onClick={async () => { if (await resolve(Array.from(selected))) setSelected(new Set()) }}>
             {busy && action === "resolve" ? <Spinner /> : <CircleCheck />} Mark resolved
           </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -144,6 +178,29 @@ export default function AlertsPage() {
           <div className="space-y-3 p-4">
             {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
           </div>
+        ) : isMuted ? (
+          shownMuted.length === 0 ? (
+            <p className="p-8 text-center text-sm text-muted-foreground">{muted.length ? "Nothing fits this search." : "Nothing is snoozed or muted."}</p>
+          ) : (
+            <ul className="divide-y">
+              {shownMuted.map((a) => (
+                <li key={a.id} className={cn("flex gap-3 px-4 py-3", selected.has(a.id) && "bg-accent/40")}>
+                  <Checkbox className="mt-1" checked={selected.has(a.id)} onCheckedChange={() => toggle(a.id)} aria-label={`Select ${alertLabel(a.type)} ${a.code || a.binome}`} />
+                  <div className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                        <BellOff className="size-3" /> {a.status === "MUTED" ? "Muted" : `Until ${a.until}`}
+                      </span>
+                      <span className="truncate text-sm font-bold">{alertLabel(a.type)}</span>
+                      <span className="num ml-auto shrink-0 text-xs text-muted-foreground">{a.created}</span>
+                    </span>
+                    <span className="mt-1 line-clamp-2 block text-sm text-muted-foreground">{a.msg}</span>
+                  </div>
+                  <UnmuteButton ids={[a.id]} />
+                </li>
+              ))}
+            </ul>
+          )
         ) : shown.length === 0 ? (
           <div className="relative flex min-h-64 flex-col items-center justify-center gap-2 overflow-hidden p-8 text-center">
             <RingSlot tone="soft" className="absolute -bottom-32 -right-24 w-72" />
@@ -175,6 +232,7 @@ export default function AlertsPage() {
                       </span>
                     )}
                   </button>
+                  <RowQuickButton alert={a} onOpen={() => open(a.id)} />
                 </li>
               )
             })}

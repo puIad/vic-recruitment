@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { Check, Inbox, RotateCcw, Wrench, ExternalLink, UserSearch, Users } from "lucide-react"
+import { Check, Inbox, RotateCcw, Wrench, UserSearch, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Spinner } from "@/lib/vic/confirm"
@@ -8,6 +8,7 @@ import { alertLabel, SEVERITY } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import type { Alert, FixMode } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { QuickActions, SnoozeMenu } from "./quick-actions"
 
 const FIX_ICON: Record<FixMode, typeof Wrench> = { apply: Wrench, revert: RotateCcw, accept: Check }
 
@@ -70,13 +71,6 @@ export function AlertDetail({ alert }: { alert: Alert | null }) {
       <Separator />
       <div className="flex-1 space-y-4 p-5">
         <p className="max-w-prose whitespace-pre-line text-[0.95rem] leading-relaxed">{alert.msg}</p>
-        {binome?.fileUrl && (
-          <Button asChild variant="outline" size="sm">
-            <a href={binome.fileUrl} target="_blank" rel="noopener noreferrer">
-              Open the {binome.code} sheet <ExternalLink />
-            </a>
-          </Button>
-        )}
         {isEdit && alert.fix.length > 0 && (
           <div className="border-t pt-5">
             <p className="font-bold">Someone changed the Master by hand</p>
@@ -97,13 +91,17 @@ export function AlertDetail({ alert }: { alert: Alert | null }) {
             </ul>
           </div>
         )}
+        <QuickActions key={alert.id} alert={alert} />
       </div>
       <Separator />
       <div className="flex flex-wrap items-center justify-between gap-2 p-4">
-        <p className="text-xs text-muted-foreground">Alerts close themselves when the problem goes away. Resolve one to hide it now.</p>
-        <Button variant="secondary" size="sm" disabled={busy} onClick={() => resolve([alert.id])}>
-          {busy && action === "resolve" ? <Spinner /> : <Check />} Mark resolved
-        </Button>
+        <p className="max-w-xs text-xs text-muted-foreground">Alerts close themselves when the problem goes away. Resolve one to hide it now, or snooze it.</p>
+        <div className="flex items-center gap-2">
+          {!isEdit && <SnoozeMenu alerts={[alert]} />}
+          <Button variant="secondary" size="sm" disabled={busy} onClick={() => resolve([alert.id])}>
+            {busy && action === "resolve" ? <Spinner /> : <Check />} Mark resolved
+          </Button>
+        </div>
       </div>
     </div>
   )
