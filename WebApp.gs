@@ -62,6 +62,7 @@ function webAccess() {
 
 /** Cheap change detector for the dashboard's live refresh: when the Master was last edited (by anyone, the script included). */
 function webPulse() {
+  if (!access_().ok) throw new Error('Not allowed');
   return DriveApp.getFileById(ss_().getId()).getLastUpdated().getTime();
 }
 
