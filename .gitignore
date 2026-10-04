@@ -8,3 +8,4 @@ frontend/dist/
 .impeccable/review/
 .impeccable/build/
 web/dist/
+.mcp.json
