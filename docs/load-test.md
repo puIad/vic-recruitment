@@ -99,8 +99,8 @@ guess. ([Appendix › The real sync](#the-real-sync))
 - **What a line holds.** One per attempted run, all times in ms: `kind` (`trigger`, `form`, `sync-now`, `integrity`,
   `dashboard`, `digest`, `setup`, `post-lock`), `outcome` (`ok`, `busy` when the lock was refused, `error` when a phase
   threw: then the phases after it stay 0), `total` (includes `lockWait`), the phases, `opened` (binome code → `changed` /
-  `reread` / `upgrade` / `forced`) and `mailsSent` (calls of `mail_()`, TEST_MODE skips included). `total` is not the sum
-  of the phases: the lock wait and the Drive folder listing (inside `pull`) are separate or inside one phase.
+  `reread` / `upgrade` / `forced`) and `mailsSent` (calls of `mail_()`, TEST_MODE skips included). `total` is `lockWait` plus
+  the phases (give or take a few ms); the Drive folder listing is inside `pull`.
   The daily digest logs a second line, `{"at":"digest","mailsSent":n}`, for its own mails.
 - **Phases:** `load` = the four tabs, alerts, covers; `regs` = registrations + assigning; `pull` = Drive listing + opening
   the sheets; `statuses` = status loop + ending covers; `timing` = timing alerts + odd values; `integrity` = only when asked;
