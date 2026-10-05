@@ -11,7 +11,7 @@ the task itself and the files it lists.
 | # | Task | Size | Depends on | Done |
 |---|---|---|---|---|
 | 1 | [Time each step of the sync](#task-1--time-each-step-of-the-sync) | S | — | ☑ [#18](https://github.com/puIad/vic-recruitment-2026/pull/18), code and deploy; the reading in Notes is still open |
-| 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☑ [#19](https://github.com/puIad/vic-recruitment-2026/pull/19), code; deploy after merge |
+| 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☑ [#19](https://github.com/puIad/vic-recruitment-2026/pull/19), code and deploy; the live check in Notes is still open |
 | 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☐ |
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☐ |
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☐ |
@@ -148,7 +148,7 @@ the tabs before/after). `test/vercel.test.js`: the proxy maps it to `code: 'BUSY
 
 **Notes.**
 
-- **Shipped:** [#19](https://github.com/puIad/vic-recruitment-2026/pull/19). `busy_()` is in Sheets.gs; the menu's `syncAllForce` and
+- **Shipped 2026-10-05:** [#19](https://github.com/puIad/vic-recruitment-2026/pull/19), deployed from `07e8b35` (web app @51, API @52; 18 files pushed); Vercel built the page from the same merge. `busy_()` is in Sheets.gs; the menu's `syncAllForce` and
   `integrityCheck` (Sync.gs) keep their own "Busy" text since they never run from the dashboard.
 - **Also fixed:** `lockBinomesCore_` ignored a refused lock and answered "Locked 0 binomes"; it now stops with `busy_()`.
 - **Not covered, by design:** actions that never take the script lock (`resolve`, `saveSettings`, `digest`, `reshare`,

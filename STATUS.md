@@ -11,7 +11,11 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-- **Script, latest:** web app **@49**, API **@50**, deployed from `7fd7ca5` (2026-10-05,
+- **Script, latest:** web app **@51**, API **@52**, deployed from `07e8b35` (2026-10-05,
+  [#19](https://github.com/puIad/vic-recruitment-2026/pull/19)): a refused action (script lock busy) is a `BUSY` error the page
+  shows as an error with Try again, never a green toast (load-test plan, task 2). Live check still to do: hold the lock with
+  Sync now and press a quick action.
+- **Script, before that:** web app **@49**, API **@50**, from `7fd7ca5` (
   [#18](https://github.com/puIad/vic-recruitment-2026/pull/18)): each sync logs one `cycle` line with the time of every phase
   (load-test plan, task 1). The owner reads ~20 `syncAll` runs in Apps Script › Executions and copies them into
   [docs/load-test.md](docs/load-test.md#task-1--time-each-step-of-the-sync) › Notes.
@@ -51,8 +55,8 @@ and form paths. The fix is planned as **10 tasks, one per session**, in [docs/lo
 members read and edit their own binome from the dashboard (written into their binome sheet, never the Master),
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
-Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is in
-[#19](https://github.com/puIad/vic-recruitment-2026/pull/19), to deploy after merge (script first, then the page). Next: task 9, then 3 and 4.
+Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is deployed
+([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Next: task 9, then 3 and 4.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
