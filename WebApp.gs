@@ -203,9 +203,9 @@ function webRun(action, args) {
     let result = null;
     switch (action) {
       // budgetMs: the full sheet check stops in time to end before the Vercel function limit (300s); the next run carries on
-      case 'sync': { const c = runCycle_({ pull: true, force: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 150000 });
+      case 'sync': { const c = runCycle_({ kind: 'dashboard', pull: true, force: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 150000 });
         _webOut.push(c ? 'Everything is up to date.\n' + c.integrityMsg : 'Another update is already running. Please try again in a minute.'); break; }
-      case 'integrity': { const c = runCycle_({ pull: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 200000 });
+      case 'integrity': { const c = runCycle_({ kind: 'dashboard', pull: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 200000 });
         _webOut.push(c ? c.integrityMsg : 'Another update is already running. Please try again in a minute.'); break; }
       case 'editApply': result = editFixCore_('apply', args.ids); break;
       case 'editRevert': result = editFixCore_('revert', args.ids); break;

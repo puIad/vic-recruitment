@@ -12,6 +12,7 @@ Everything runs on an in-memory mock of the Apps Script services (`test/mockgas.
 | `test/vercel.test.js` | the Vercel functions against a mocked Google (`test/googlemock.js`): session, proxy, refusals; the UI calls only `/api/run` and its `API_VERSION` matches the script |
 | `test/reset.test.js` | Reset all binomes: the typed phrase, what is wiped and what stays, then a new team drafted and locked |
 | `test/quick.test.js` | the Alerts page's quick actions: fixes in Master + binome sheet with no manual edit flagged, duplicates, snooze / expiry / mute / unmute, odd values, exclude, interview forms, links, every sheet repair (dry run first), sharing, the email preview and send |
+| `test/load.js` | not in `npm test`: 100 editors at once through the real proxy, against a calibrated Apps Script stand-in or (read-only) production: [load-test.md](load-test.md) |
 | `test/realdata.js` | not in `npm test`: replays the 2025 data; needs `test/data/` exports (personal data, git-ignored, not on disk) |
 
 The mock can't catch Apps Script quirks (protections, validations, locale parsing, trigger auth): live checks below.

@@ -91,9 +91,36 @@ for (var i=1;i<rows.length;i++) if (rows[i][BFI.Code]==='IT.01') { f.cells[i][BF
 __touch("${fileId}");
 var ivsh0 = master.getSheetByName('Interviewees'); for (var k=1;k<ivsh0.cells.length;k++) if (ivsh0.cells[k][4]) ivsh0.cells[k][4] = old;
 `);
-run('syncAll()');
+const syncCycles = () => { const logged = [], realLog = console.log; console.log = (...x) => { logged.push(x.join(' ')); };
+  try { run('syncAll()'); } finally { console.log = realLog; }
+  return logged.filter(l => l.startsWith('{"at":"cycle"')).map(JSON.parse); };
+const cyc = syncCycles();
 ivs = run('master.getSheetByName("Interviewees").getDataRange().getValues().slice(1)');
 const it01 = ivs.find(r => r[0] === 'IT.01');
+// one `cycle` line per run, every phase timed; the edited sheet is opened ('upgrade': first read in the current layout)
+assert.strictEqual(cyc.length, 1, 'one cycle line per sync');
+['total', 'lockWait', 'load', 'edits', 'regs', 'forms', 'pull', 'statuses', 'timing', 'integrity', 'save', 'base', 'alerts', 'mails', 'tracker', 'mailsSent']
+  .forEach(k => assert(cyc[0][k] >= 0, 'cycle.' + k));
+assert.strictEqual(cyc[0].kind, 'trigger');
+assert.strictEqual(cyc[0].outcome, 'ok');
+// a run that can't get the lock, or that throws, still logs its line
+const cycleLine = fn => { const logged = [], realLog = console.log; console.log = (...x) => { logged.push(x.join(' ')); };
+  try { fn(); } catch (e) { /* the throw is the point */ } finally { console.log = realLog; }
+  return logged.filter(l => l.startsWith('{"at":"cycle"')).map(JSON.parse); };
+run('var __gl = LockService.getScriptLock; LockService.getScriptLock = () => ({ tryLock: () => false, releaseLock() {} });');
+const busy = cycleLine(() => run('syncAll()'));
+run('LockService.getScriptLock = __gl;');
+assert(busy.length === 1 && busy[0].outcome === 'busy' && busy[0].total >= 0 && busy[0].load === 0, 'busy run logs its line');
+run('var __pb = pullBinomeFiles_; pullBinomeFiles_ = (c) => { __pb(c, true); throw new Error("boom"); };'); // opens every sheet, then fails
+const thrown = cycleLine(() => run('syncAll()'));
+run('pullBinomeFiles_ = __pb;');
+assert(thrown.length === 1 && thrown[0].outcome === 'error' && thrown[0].load >= 0, 'throwing run logs its line');
+assert(Object.keys(thrown[0].opened).length > 0, 'a failed run keeps the sheets it opened');
+const bin01 = it01[run('idx_(IV_H)').Binome];
+assert.strictEqual(cyc[0].opened[bin01], 'upgrade');
+// edited again: Drive's "last updated" moved, so the next sync opens it as 'changed'
+run(`__files["${fileId}"].obj.sheets[0].cells[1][BFI.Notes] = 'edited again'; __touch("${fileId}");`);
+assert.strictEqual(syncCycles()[0].opened[bin01], 'changed', 'edited sheet opened as changed');
 console.log('IT.01 after sync:', it01[2], it01[19], it01[21], it01[22], it01[23]);
 assert.strictEqual(it01[2], 'SCHEDULED');
 const IVX = run('idx_(IV_H)');

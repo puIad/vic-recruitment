@@ -88,9 +88,12 @@ function saveTable_(t) {
   if (all.length) t.sh.getRange(2, 1, all.length, t.H.length).setValues(all);
 }
 
+let _lockWait = 0; // ms the last withLock_ waited for the lock (runCycle_ logs it)
 function withLock_(fn, waitMs) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(waitMs || 30000)) { console.warn('Busy: another run holds the lock'); return null; }
+  const lock = LockService.getScriptLock(), t0 = Date.now();
+  const got = lock.tryLock(waitMs || 30000);
+  _lockWait = Date.now() - t0;
+  if (!got) { console.warn('Busy: another run holds the lock (waited ' + _lockWait + ' ms)'); return null; }
   try { return fn(); } finally { lock.releaseLock(); }
 }
 
@@ -226,7 +229,9 @@ function alertBuffer_(ctx) {
   };
 }
 
+let _mailsSent = 0; // calls of mail_() since runCycle_ reset it (TEST_MODE skips count too)
 function mail_(to, subject, html) {
+  _mailsSent++;
   if (bool_(S_().TEST_MODE) && adminEmails_().map(e => e.toLowerCase()).indexOf(String(to).trim().toLowerCase()) < 0) {
     console.log('TEST_MODE: email to ' + to + ' not sent: ' + subject);
     return;

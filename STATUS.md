@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-04. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-05. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
@@ -37,6 +37,16 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   2026-10-04; how it works: [architecture.md](docs/architecture.md#quick-actions-alerts-page). Ships as usual: merge,
   `npm run deploy` (new `QuickFix.gs`, no `API_VERSION` bump: the fields are only added), then Vercel. Run Setup once
   after deploy so the Alerts tab's Status dropdown lists SNOOZED and MUTED.
+
+## Next: members on the dashboard (plan of 2026-10-05)
+
+The load test (100 people at once, model + a live run on production) says the dashboard isn't ready for the binomes
+yet: every refresh takes 8–11 s, a refused action shows as a green toast, the owner's trigger time is 89 % used
+(`syncAll` 13.4 s on average) and Google limits requests per account per minute. Nothing is lost silently in the sheet
+and form paths. The fix is planned as **10 tasks, one per session**, in [docs/load-test.md](docs/load-test.md):
+members read and edit their own binome from the dashboard (written into their binome sheet, never the Master),
+cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
+refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
