@@ -41,6 +41,7 @@ interface VicStore {
   setModals: (delta: number) => void
 }
 
+let polling = false
 let activityId = 0
 const hhmm = () => {
   const t = new Date()
@@ -106,7 +107,8 @@ export const useVic = create<VicStore>((set, get) => ({
   // Live refresh: poll the Master's last-edit time (one cheap Drive call) and reload only when it moved.
   async checkPulse() {
     const { busy, refreshing, gate, state, modals, pulse } = get()
-    if (busy || refreshing || document.hidden || gate.mode !== "ok" || !state || modals > 0) return
+    if (busy || refreshing || polling || document.hidden || gate.mode !== "ok" || !state || modals > 0) return
+    polling = true // at a 2 s tick a slow Apps Script call would otherwise stack up
     try {
       // access is rechecked every tick so a revoked account drops to the gate at once instead of keeping the last data on screen
       const a = await call<Access>("webAccess")
@@ -119,6 +121,8 @@ export const useVic = create<VicStore>((set, get) => ({
       if (p !== pulse && !get().busy) await get().refresh(true)
     } catch {
       /* stay quiet: the next tick or the refresh button retries */
+    } finally {
+      polling = false
     }
   },
 

@@ -80,6 +80,21 @@ export default function AlertsPage() {
     else next.delete("id")
     setParams(next, { replace: true })
   }
+  // with an alert open, up/down walk the list instead of scrolling it (typing fields and menus keep their arrows)
+  React.useEffect(() => {
+    if (!activeId || isMuted) return
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+      if ((e.target as HTMLElement | null)?.closest("input, textarea, select, [contenteditable], [role=menu], [role=listbox], [role=combobox]")) return
+      const i = shown.findIndex((a) => a.id === activeId)
+      const next = shown[i + (e.key === "ArrowDown" ? 1 : -1)]
+      if (i < 0) return
+      e.preventDefault()
+      if (next) open(next.id)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  })
   const toggle = (id: string) =>
     setSelected((cur) => {
       const n = new Set(cur)

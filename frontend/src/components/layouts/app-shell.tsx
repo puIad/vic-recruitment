@@ -13,7 +13,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 
-const PULSE_MS = 15000
+const PULSE_MS = 2000
 
 /** Persistent frame: sidebar, header and footer stay mounted while pages change inside the Outlet. */
 export function AppShell() {
