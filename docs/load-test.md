@@ -11,7 +11,7 @@ the task itself and the files it lists.
 | # | Task | Size | Depends on | Done |
 |---|---|---|---|---|
 | 1 | [Time each step of the sync](#task-1--time-each-step-of-the-sync) | S | — | ☑ [#18](https://github.com/puIad/vic-recruitment-2026/pull/18), code and deploy; the reading in Notes is still open |
-| 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☐ |
+| 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☑ [#19](https://github.com/puIad/vic-recruitment-2026/pull/19), code; deploy after merge |
 | 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☐ |
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☐ |
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☐ |
@@ -147,6 +147,15 @@ the tabs before/after). `test/vercel.test.js`: the proxy maps it to `code: 'BUSY
 **Done when.** No path can show a refused action as a success.
 
 **Notes.**
+
+- **Shipped:** [#19](https://github.com/puIad/vic-recruitment-2026/pull/19). `busy_()` is in Sheets.gs; the menu's `syncAllForce` and
+  `integrityCheck` (Sync.gs) keep their own "Busy" text since they never run from the dashboard.
+- **Also fixed:** `lockBinomesCore_` ignored a refused lock and answered "Locked 0 binomes"; it now stops with `busy_()`.
+- **Not covered, by design:** actions that never take the script lock (`resolve`, `saveSettings`, `digest`, `reshare`,
+  `setup`, `importTeam`) cannot be refused. Task 8's `memberSet` has to use `BUSY` the same way if it falls back to the script lock.
+- **Quick retry** lives in `store.run` (action `quick`), not in `quick.tsx`: one place, same effect.
+- **Live check after deploy (TEST_MODE):** hold the lock (run Sync now from the menu in the sheet) and press a quick action
+  in the dashboard: after ~3 s it shows "not done" with Try again, never a green toast.
 
 ---
 

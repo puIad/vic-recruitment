@@ -51,7 +51,8 @@ and form paths. The fix is planned as **10 tasks, one per session**, in [docs/lo
 members read and edit their own binome from the dashboard (written into their binome sheet, never the Master),
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
-Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is the next step, then tasks 2 and 9.
+Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is in
+[#19](https://github.com/puIad/vic-recruitment-2026/pull/19), to deploy after merge (script first, then the page). Next: task 9, then 3 and 4.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
