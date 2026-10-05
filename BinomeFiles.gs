@@ -201,8 +201,8 @@ function protectBinomeSheet_(sh) {
   const keepLc = keep.filter(Boolean).map(lc_);
   // prune first: a new protection starts open to every editor of the file, so if an add below throws, the sheet is left closed, not open
   p.removeEditors(p.getEditors().filter(u => keepLc.indexOf(lc_(u.getEmail())) < 0));
-  keepLc.forEach(e => p.addEditor(e));
   if (p.canDomainEdit()) p.setDomainEdit(false);
+  keepLc.forEach(e => p.addEditor(e));
 }
 
 function createBinomeFile_(b, members) {
