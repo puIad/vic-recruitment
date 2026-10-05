@@ -210,13 +210,13 @@ function sendNewIntervieweeMails_(ctx) {
 function runCycle_(opts) {
   const t0 = Date.now(); // the integrity budget counts from here, so the wait for the lock is included
   const T = { total: 0, lockWait: 0, load: 0, edits: 0, regs: 0, forms: 0, pull: 0, statuses: 0, timing: 0, integrity: 0, save: 0, base: 0, alerts: 0, mails: 0, tracker: 0 };
-  let ctx = null, outcome = 'error'; // 'error' stays if fn throws
+  let ctx = null, loaded = null, outcome = 'error'; // 'error' stays if fn throws; loaded = the context so far, for the line of a failed run
   try { ctx = withLock_(() => {
     let last = Date.now();
     const lap = k => { const n = Date.now(); T[k] += n - last; last = n; }; // ms since the previous lap
     _mailsSent = 0;
     _settings = null;
-    const ctx = loadCtx_(); lap('load');
+    const ctx = loaded = loadCtx_(); lap('load');
     detectEdits_(ctx); lap('edits');
     processRegistrations_(ctx);
     assignUnassigned_(ctx); lap('regs');
@@ -234,7 +234,7 @@ function runCycle_(opts) {
     return ctx;
   }, opts.wait || 30000); outcome = ctx ? 'ok' : 'busy'; } finally {
     console.log(JSON.stringify(Object.assign({ at: 'cycle', kind: opts.kind || 'other', outcome: outcome }, T,
-      { total: Date.now() - t0, lockWait: _lockWait, opened: (ctx && ctx.opened) || {}, mailsSent: _mailsSent })));
+      { total: Date.now() - t0, lockWait: _lockWait, opened: (loaded && loaded.opened) || {}, mailsSent: _mailsSent })));
   }
   return ctx;
 }
