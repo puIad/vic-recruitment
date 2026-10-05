@@ -284,6 +284,15 @@ function print(r) {
     base = String(LIVE).replace(/\/$/, '');
     cookies = fs.readFileSync(opt('cookies', 'cookies.txt'), 'utf8').split(/\r?\n/).map(s => s.trim().replace(/^vic_s=/, '')).filter(Boolean);
     accounts = cookies.length;
+    // One cheap call per cookie first: is the session alive, and when does it end (X-Session-Expires)? Never prints the cookie.
+    for (const [i, c] of cookies.entries()) {
+      const r = await fetch(base + '/api/run', { method: 'POST', body: '{"fn":"webAccess","args":[]}',
+        headers: { 'Content-Type': 'application/json', 'X-VIC': '1', Origin: base, Cookie: 'vic_s=' + c } });
+      const j = await r.json().catch(() => ({})), exp = Number(r.headers.get('X-Session-Expires'));
+      if (r.status === 401) { console.error(`cookie ${i + 1}: session ended (${j.code || j.error}). Sign in again and replace it.`); process.exitCode = 1; return; }
+      console.log(`cookie ${i + 1}: ${j.value && j.value.email || '?'}, ${j.value && j.value.ok ? 'admin' : 'no access'}, session ends ${exp ? new Date(exp).toISOString() : '?'}`);
+    }
+    if (opt("check", false)) return;
     cookies = Array.from({ length: USERS }, (_, i) => decodeURIComponent(cookies[i % cookies.length]));
     if (USERS / accounts > 25) console.warn(`! ${USERS} editors on ${accounts} account(s): over Google's 30 simultaneous runs per account, expect "too many scripts" errors.`);
   } else {

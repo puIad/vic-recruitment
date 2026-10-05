@@ -549,7 +549,7 @@ node test/load.js --scale 5 --write-every 3000 --sync-hold 10 # F
 node test/load.js --scale 5 --write-every 3000 --sync-hold 8 --pulse-ms 15000 --no-access-tick --state-ms 800  # H
 ```
 
-Options: `--users`, `--accounts`, `--minutes`, `--pulse-ms`, `--write-every` (s per editor), `--write-hold`,
+Options: `--check` (live only), `--users`, `--accounts`, `--minutes`, `--pulse-ms`, `--write-every` (s per editor), `--write-hold`,
 `--sync-hold`, `--sync-every`, `--state-ms`, `--no-access-tick`, `--out file.json`. A run that says "this machine
 stalled" (sleep, power saving) inflated the calls in flight: run it again.
 
@@ -558,3 +558,6 @@ at the repo root (git-ignored; delete it after), then
 `node test/load.js --live https://vic-recruitment.vercel.app --cookies cookies.txt --users 25 --minutes 3`.
 At most ~25 editors per account (Google's per-account request limit); for more, several people run it at once with
 their own cookie.
+`--check` makes one read-only call per cookie and prints whose session it is and when it ends (sessions last 48 h
+from sign-in and are never extended); it never prints the cookie. A live run checks the same first and stops on an
+ended session.
