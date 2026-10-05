@@ -199,8 +199,9 @@ function protectBinomeSheet_(sh) {
   const keep = [Session.getEffectiveUser().getEmail(), PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER')];
   try { keep.push(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
   const keepLc = keep.filter(Boolean).map(lc_);
-  keepLc.forEach(e => p.addEditor(e)); // throws before the pruning below, so a failed add never leaves the sheet without its script editors
+  // prune first: a new protection starts open to every editor of the file, so if an add below throws, the sheet is left closed, not open
   p.removeEditors(p.getEditors().filter(u => keepLc.indexOf(lc_(u.getEmail())) < 0));
+  keepLc.forEach(e => p.addEditor(e));
   if (p.canDomainEdit()) p.setDomainEdit(false);
 }
 
