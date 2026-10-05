@@ -130,5 +130,7 @@ function sendDailyDigest() {
       esc_(r[A.Severity]) + '</b></td><td>' + esc_(r[A.Type]) + '</td><td>' + esc_(r[A.Binome]) + '</td><td>' + esc_(r[A.Message]) + '</td></tr>').join('') +
       '</table>' + (open.length > 60 ? '<p>…and ' + (open.length - 60) + ' more.</p>' : '') : '<p>Nothing open 🎉</p>') +
     '<p><a href="' + ss_().getUrl() + '">Open the master sheet</a></p></div>';
+  _mailsSent = 0; // the cycle line above was logged before these mails: count them in their own line
   adminEmails_().forEach(e => mail_(e, '[VIC Recruitment] Daily digest: ' + open.length + ' open alert' + (open.length === 1 ? '' : 's'), html));
+  console.log(JSON.stringify({ at: 'digest', mailsSent: _mailsSent }));
 }

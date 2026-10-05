@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-04. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-05. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per

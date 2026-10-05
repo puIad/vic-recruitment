@@ -440,14 +440,15 @@ Then the owner decides to open the dashboard to the binomes (STATUS.md, launch s
 
 | Area | Result at 100 people | Rating |
 |---|---|---|
-| Requests going through, each on their own account | 22,641 of 22,641 succeeded (model, realistic mix F); live: 25 at once on one account, only Google's per-account rate limit refused any | **Pass** |
+| Requests going through, each on their own account | 22,641 of 22,641 succeeded (model, realistic mix F) | **Pass** (model only; not yet measured live with separate accounts) |
+| Requests going through, 25 people on one account (live) | 1,818 of 1,878 succeeded; 59 refused by Google's per-account rate limit, 1 network error | **Fails** for shared accounts (task 3 backs off; not a problem with one account each) |
 | Waiting | opening 13 s p50 / 15 s p95; every refresh 9–11 s (live: 8.3 / 10.8 s) | **Not suitable** |
 | Binome-sheet results on the dashboard | p50 54 s / p95 81 s | **OK** |
 | Everyone acting through the Master lock (1 action / 2 min each) | 274–289 of ~375 refused | **Not suitable** (hence task 8 writes the sheets, not the Master) |
 | How a refused action looks | a green success toast | **Not suitable** (task 2) |
 | 100 people on one account | 70 of 100 never got a dashboard | **Never** |
 | Owner's trigger time | sync 13.4 s average = 5.4 of 6 h/day | **At risk** (tasks 1, 4, 9) |
-| Vercel Hobby | 2 s polls: ~270k calls/day for 100 people × 2 h | **Not as is**; fits at 15 s member polls |
+| Vercel Hobby | 2 s polls: ~270k calls/day for 100 people × 2 h (model F: 37.7 calls/s × 7,200 s; a poll takes ~1.3 s, so a person makes ~0.4 calls/s, not 1) | **Not as is**; fits at 15 s member polls |
 
 ### Live run on production
 

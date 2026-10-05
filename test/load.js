@@ -21,11 +21,13 @@ const http = require('http'), crypto = require('crypto'), fs = require('fs');
 const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf('--' + k); return i < 0 ? d : (argv[i + 1] === undefined || argv[i + 1].startsWith('--') ? true : argv[i + 1]); };
 const LIVE = opt('live', null);
-const USERS = +opt('users', 100), ACCOUNTS = +opt('accounts', USERS), MINUTES = +opt('minutes', LIVE ? 3 : 10);
-const SCALE = LIVE ? 1 : +opt('scale', 10); // the model runs SCALE× faster than real time; reported times are scaled back
-const PULSE_MS = +opt('pulse-ms', 2000), ACCESS_TICK = !opt('no-access-tick', false);
-const WRITE_EVERY = +opt('write-every', 120), WRITE_HOLD = +opt('write-hold', 6) * 1000;
-const SYNC_HOLD = +opt('sync-hold', 20) * 1000, SYNC_EVERY = +opt('sync-every', 60) * 1000, SHEET_EDIT_EVERY = +opt('sheet-edit-every', 60);
+// a numeric option: absent -> default; present without a number, or negative -> stop, instead of a run that looks valid
+const num = (k, d) => { const v = opt(k, d), n = +v; if (v === true || !Number.isFinite(n) || n < 0) { console.error(`--${k}: expected a non-negative number, got ${v === true ? 'nothing' : v}`); process.exit(2); } return n; };
+const USERS = num('users', 100), ACCOUNTS = num('accounts', USERS), MINUTES = num('minutes', LIVE ? 3 : 10);
+const SCALE = LIVE ? 1 : num('scale', 10); // the model runs SCALE× faster than real time; reported times are scaled back
+const PULSE_MS = num('pulse-ms', 2000), ACCESS_TICK = !opt('no-access-tick', false);
+const WRITE_EVERY = num('write-every', 120), WRITE_HOLD = num('write-hold', 6) * 1000;
+const SYNC_HOLD = num('sync-hold', 20) * 1000, SYNC_EVERY = num('sync-every', 60) * 1000, SHEET_EDIT_EVERY = num('sheet-edit-every', 60);
 const LOCK_WAIT = 30000, PER_USER = 30, PER_SCRIPT = 1000;
 
 // Production, ms per call as logged by web/api/run.js (2026-10-05 19:06–19:10 UTC).

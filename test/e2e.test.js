@@ -102,6 +102,19 @@ assert.strictEqual(cyc.length, 1, 'one cycle line per sync');
 ['total', 'lockWait', 'load', 'edits', 'regs', 'forms', 'pull', 'statuses', 'timing', 'integrity', 'save', 'base', 'alerts', 'mails', 'tracker', 'mailsSent']
   .forEach(k => assert(cyc[0][k] >= 0, 'cycle.' + k));
 assert.strictEqual(cyc[0].kind, 'trigger');
+assert.strictEqual(cyc[0].outcome, 'ok');
+// a run that can't get the lock, or that throws, still logs its line
+const cycleLine = fn => { const logged = [], realLog = console.log; console.log = (...x) => { logged.push(x.join(' ')); };
+  try { fn(); } catch (e) { /* the throw is the point */ } finally { console.log = realLog; }
+  return logged.filter(l => l.startsWith('{"at":"cycle"')).map(JSON.parse); };
+run('var __gl = LockService.getScriptLock; LockService.getScriptLock = () => ({ tryLock: () => false, releaseLock() {} });');
+const busy = cycleLine(() => run('syncAll()'));
+run('LockService.getScriptLock = __gl;');
+assert(busy.length === 1 && busy[0].outcome === 'busy' && busy[0].total >= 0 && busy[0].load === 0, 'busy run logs its line');
+run('var __pb = pullBinomeFiles_; pullBinomeFiles_ = () => { throw new Error("boom"); };');
+const thrown = cycleLine(() => run('syncAll()'));
+run('pullBinomeFiles_ = __pb;');
+assert(thrown.length === 1 && thrown[0].outcome === 'error' && thrown[0].load >= 0, 'throwing run logs its line');
 const bin01 = it01[run('idx_(IV_H)').Binome];
 assert.strictEqual(cyc[0].opened[bin01], 'upgrade');
 // edited again: Drive's "last updated" moved, so the next sync opens it as 'changed'
