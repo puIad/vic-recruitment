@@ -159,7 +159,7 @@ function quickCore_(op, a) {
     buildTracker_(ctx);
     return { lines: lines, done: done };
   }, 60000);
-  if (!res) { say_('Another update is already running. Please try again in a minute.'); return null; }
+  if (!res) { busy_(); return null; }
   const text = (ids.length === 1 ? res.lines.map(l => l.replace(/^A-\d+: /, '')) : res.lines).join('\n');
   if (!res.done.length && op !== 'send') throw new Error(text); // nothing done: the page shows it as a failure
   if (!a.dryRun) say_(text.charAt(0).toUpperCase() + text.slice(1));

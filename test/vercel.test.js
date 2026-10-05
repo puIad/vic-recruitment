@@ -127,6 +127,10 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   assert.strictEqual(r.json.value.reason, 'READ_ONLY', 'a non-editor gets the no-access view, decided by the script');
   r = await rpc(helper, 'webState');
   assert.deepStrictEqual([r.status, r.json.error], [200, 'Not allowed'], 'script errors come back as {error}');
+  seed.run('__lockBusy = true');
+  r = await rpc(admin, 'webRun', 'sync');
+  seed.run('__lockBusy = false');
+  assert.deepStrictEqual([r.status, r.json.code, /^Another update is running\. Nothing was changed/.test(r.json.error)], [200, 'BUSY', true], 'a refused lock reaches the page as code BUSY, without the prefix');
   seed.run('ss_().addEditor("helper@g.enp.edu.dz")');
   r = await rpc(helper, 'webRun', 'setup');
   assert(/Only the owner/.test(r.json.error), 'editor cannot run setup through the proxy');

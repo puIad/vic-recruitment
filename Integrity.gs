@@ -267,7 +267,7 @@ function editFixCore_(mode, ids) {
     buildTracker_(ctx);
     return lines;
   }, 60000);
-  say_(res ? res.join('\n') : 'Another update is already running. Please try again in a minute.');
+  if (res) say_(res.join('\n')); else busy_();
   return res;
 }
 
