@@ -38,15 +38,15 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   `npm run deploy` (new `QuickFix.gs`, no `API_VERSION` bump: the fields are only added), then Vercel. Run Setup once
   after deploy so the Alerts tab's Status dropdown lists SNOOZED and MUTED.
 
-## Load test (2026-10-05): not ready for 100 people yet
+## Next: members on the dashboard (plan of 2026-10-05)
 
-100 editors at once through the real proxy ([load-test.md](docs/load-test.md)): every call answered when each person
-uses their own account, nothing lost silently in the sheet and form paths, but every refresh takes 9–11 s, a refused
-action shows as a green toast, and the owner's trigger time and Vercel Hobby run out. `syncAll` measured at 13.4 s
-on average (5.4 of the 6 h daily trigger time). Phase 1 of its plan, settled with the owner the same day: members
-read and write their own binome from the dashboard (written into their binome sheet, never the Master), per-binome
-cached state rebuilt only where something was edited, writes only of what changed, one poll call that still drops a
-revoked member at once, BUSY as an error, Hobby kept. Do it before the binomes get access; then re-run it live.
+The load test (100 people at once, model + a live run on production) says the dashboard isn't ready for the binomes
+yet: every refresh takes 8–11 s, a refused action shows as a green toast, the owner's trigger time is 89 % used
+(`syncAll` 13.4 s on average) and Google limits requests per account per minute. Nothing is lost silently in the sheet
+and form paths. The fix is planned as **10 tasks, one per session**, in [docs/load-test.md](docs/load-test.md):
+members read and edit their own binome from the dashboard (written into their binome sheet, never the Master),
+cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
+refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
