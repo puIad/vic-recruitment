@@ -18,8 +18,8 @@ and should land before the binomes get access.
 | Dashboard actions when everyone acts | 1 action / 2 min / person: **289 of 383 refused** ("Another update is already running") | **Not suitable** for members writing through the dashboard |
 | How a refused action looks | a **green success toast** with the refusal text; nothing is applied | **Not suitable** (reads as saved) |
 | 100 people on one Google account | 70 of 100 never got a dashboard; 254 calls refused by Google's 30-runs-per-account limit | **Not suitable**, never do this |
-| Owner's trigger time (6 h/day) | 1-min sync of 20 s → 800–840 min/day; of 10 s → 262–482 min/day depending on lock waits | **At risk**: measure the real sync length |
-| Vercel Hobby (1,000,000 invocations / month) | 100 open dashboards = 38 calls/s = ~270k calls for 2 h of use by everyone | **Not suitable**: one allowance lasts ~4 days |
+| Owner's trigger time (6 h/day) | measured sync: 13.4 s on average → **5.4 h/day, 89 % of the quota**; lock waits come on top | **At risk** |
+| Vercel Hobby (1,000,000 invocations / month) | today's 2 s polling: 100 people × 2 h = ~270k calls a day | **Not suitable as is**; fits with 15 s member polls (plan item 6) |
 
 ## How it was tested
 
@@ -91,12 +91,12 @@ tick. Raw output: rerun the commands [below](#how-to-run-it).
    happens if they shared one account: 70 % of people never get a dashboard. What *does* run on the owner's account:
    the triggers (1-minute sync, form submit, daily digest), so the **6 h/day trigger time** and the **1,500 mails/day**
    that the triggers send. A sync averaging over 15 s (lock waits included) exhausts the 6 h and Google stops the
-   triggers for the rest of the day. The 1-minute sync stopping at 20:10 during the 273-row feed on 2026-10-04
-   ([STATUS](../STATUS.md)) is worth checking against this in Apps Script › Executions.
-6. **Vercel Hobby can't carry it.** Every poll is a function invocation. Hobby includes 1,000,000 a month
-   ([Vercel fair use](https://vercel.com/docs/limits/fair-use-guidelines)); 100 people using the dashboard 2 h a day
-   spend ~270k a day today (~110k with the plan's polling). [decisions.md](decisions.md) says the project is on Hobby;
-   check Vercel › Usage.
+   triggers for the rest of the day. Measured on 2026-10-05: **13.4 s on average** ([the real sync](#the-real-sync-2026-10-05)),
+   so 89 % of it is already spent. The 1-minute sync stopping at 20:10 during the 273-row feed on 2026-10-04
+   ([STATUS](../STATUS.md)) may be this; Executions would show "too much computer time" if so.
+6. **Vercel Hobby can't carry today's polling.** Every poll is a function invocation. Hobby includes 1,000,000 a
+   month ([Vercel fair use](https://vercel.com/docs/limits/fair-use-guidelines)); 100 people using the dashboard 2 h a
+   day spend ~270k a day with 2 s polls. With 15 s member polls it fits for ~1.5 h a day each (plan item 6).
 
 ### Can data be lost?
 
@@ -116,23 +116,56 @@ Reviewed in the code, separately from the load numbers:
 In order. Phase 1 is what the binomes need before they get access; it keeps the stack (Apps Script + Sheets +
 Vercel) and is a few small PRs.
 
-**Phase 1: before giving members access**
+**Phase 1: before giving members access** (settled with the owner on 2026-10-05)
 
-1. **Members read, they don't edit the Master.** Add a `member` role to `access_()`: an email in a locked binome may
-   read, and `webState` returns only that binome. Members keep writing in their binome sheet: Google Sheets'
-   own multi-user editing is the most reliable write path available (no script lock, no quota of ours), and it is
-   the path that came out loss-free. Do not make 100 people editors of the Master.
-2. **Serve reads from a snapshot.** The sync, which already holds the whole context once a minute, saves the dashboard
-   state to `CacheService.getScriptCache()` (shared by all users; split into 100 KB chunks) with a version number.
-   `webState` returns the snapshot (target < 1 s, scenarios G/H) and filters it for a member; `webPulse` returns the
-   version. If the cache is empty, build it live as today.
-3. **Stop moving the Master when nothing changed.** `saveTable_` and `buildTracker_` write only when a value differs.
-   This ends the every-minute reload of all 100 screens and shortens each sync (trigger time).
-4. **Poll less.** Drop the per-tick `webAccess` (handle `webPulse`'s "Not allowed" as revoked: same guarantee, half
-   the calls); 15 s for members, whose data changes at most once a minute; keep 2–5 s for admins if wanted.
+0. **Time each step of the sync.** `runCycle_` logs one line per run: lock wait, load, sheets opened (and which),
+   save, mails sent, tracker. Apps Script › Executions then shows what turns a 9 s run into a 26 s one
+   ([measured runs](#the-real-sync-2026-10-05)), so it gets fixed rather than guessed.
+1. **Members work from the dashboard, on their own binome only.** A `member` role: an email that is a member (or a
+   live cover) of a locked binome. It never needs the Master:
+   - *Who is in which binome* lives in a script property (`MEMBER_MAP`: email → binome code + sheet id), shared by
+     every user of the script, persistent, rewritten only by runs that change membership (Lock, Change / Swap /
+     New binome, covers, Reset) and checked by the sync.
+   - *Reading*: the member's slice of the snapshot (item 2); if the cache is empty, the script reads the member's own
+     binome sheet directly, which their Drive access already allows.
+   - *Writing*: `webRun('memberSet', {code, field, value, seen})` runs as the member and writes the one cell in
+     **their binome sheet**, the same gold columns they can type in today (Contacted, Interview Day, Time, Interview
+     Done, Rating, Final Affectation, Notes). Google's own sheet protection still applies, so the dashboard can't do
+     more than the member could by hand. No Master, no script lock, so 100 members never queue behind each other.
+   - *No lost or silently overwritten edit*: the page sends the value it showed (`seen`); if the cell changed
+     meanwhile (the partner typed in the sheet), the write is refused with "changed by someone else: here is the new
+     value" instead of overwriting it. Every write answers applied or refused, never a green toast for nothing.
+   - The sync carries the sheet into the Master exactly as today (that path came out loss-free), so the Master,
+     alerts and timing checks stay right whichever way the member typed.
+2. **Only redo what was edited; keep the rest cached.** Google has no API for a cell's edit history ("Show edit
+   history" is UI-only), and edit triggers are capped at 20 per script per account (we have 32 sheets). So the
+   script keeps its own edit log instead:
+   - every dashboard write adds its binome to a *dirty* set (script cache); the next sync re-reads exactly those
+     sheets at once, without waiting for Drive's "last updated" (which can lag minutes);
+   - edits typed straight in a sheet are found as today: Drive's "last updated", plus the 15-min re-read as a safety net;
+   - after each run the sync builds the dashboard state once, per binome and for the admins, hashes each part and
+     rewrites only the parts whose hash changed (`CacheService.getScriptCache()`, shared by all users, 100 KB per
+     key, chunked). Unedited binomes stay cached as they are. Each part's hash is its version: the page reloads only
+     when its own part changed. If the cache was evicted (Google allows it), the part is rebuilt live.
+3. **Write only what changed, and be sure of it.** Inside the lock, right before writing, the script reads the tab as
+   it is *now* and compares each cell to what it is about to write (`saveTable_` already does this read). A cell is
+   skipped only when the sheet already holds exactly that value; any doubt (types, formats, dates) counts as
+   changed and is written, so an error can cost a useless write but can never leave a changed value unwritten. The
+   Tracker is compared the same way. Tests: a sync with nothing new writes nothing; each kind of change (new
+   registration, sheet edit, status, alert, a value typed by hand meanwhile) is written; and the existing baseline
+   check (`detectEdits_`) still compares against the sheet, not against the cache.
+4. **One call per tick, revocation still immediate.** Per-tick `webAccess` goes; `webPulse` does the same check
+   and returns the version: for an admin the live `access_()` (Master editors, as today), for a member the
+   `MEMBER_MAP` lookup. Any change of membership rewrites `MEMBER_MAP` in the same run, so a removed member gets
+   "Not allowed" on the next tick (within one poll) and the page wipes what it had on screen (the existing no-access
+   path). Same guarantee as the fix of 69024a1, half the calls. Poll 15 s for members (their data changes at most
+   once a minute), keep 2 s for admins.
 5. **Busy is an error.** When the lock isn't free, `webRun` throws a `BUSY` error; the page shows a red toast with
-   "Try again", and quick actions retry once on their own (safe: a refused action did nothing, the lock is taken before any change).
-6. **Vercel Pro for the recruitment weeks** (October–November) or confirm the usage fits Hobby after item 4.
+   "Try again", and quick actions retry once on their own (safe: a refused action did nothing, the lock is taken
+   before any change).
+6. **Vercel stays on Hobby** (the owner's call: a 300-person event with registrations and payments fit it). For
+   scale: at 15 s polls a member costs ~4 invocations a minute, so 1,000,000 a month is ~100 members × 1.5 h a day.
+   Check Vercel › Usage after the first week of interviews; if it runs high, members poll every 30 s.
 
 **Phase 2: spread what runs on one account (your suggestion)**
 
@@ -140,15 +173,15 @@ Vercel) and is a few small PRs.
    `vic.rh@g.enp.edu.dz` (`TRIGGER_OWNER`): its own 6 h/day of trigger time and 1,500 mails/day, and the handover
    needs it anyway ([vercel.md](vercel.md#still-open)). If the sync is still long, a second club account can own the
    digest and mail trigger. Dashboard calls need no change: they already run as each person.
-8. **Measure the real sync now.** Apps Script › Executions, `syncAll`, with 273 interviewees and 32 sheets. Over 15 s
-   on average → trim it, or sync every 5 min (`SYNC_EVERY_MINUTES` allows 1 / 5 / 10 / 15 / 30), at the cost of
-   slower results on screen.
+8. **Keep the sync under ~10 s on average** (items 0, 2, 3). Measured: 13.4 s, i.e. 89 % of the 6 h
+   ([below](#the-real-sync-2026-10-05)). If it can't get there, sync every 5 min (`SYNC_EVERY_MINUTES` allows
+   1 / 5 / 10 / 15 / 30): dashboard writes don't wait for it (item 2's dirty set is read at the next run).
 
-**Phase 3: only if members must write through the dashboard**
+**Phase 3: only if admin actions pile up**
 
-9. **An action queue.** The page writes the action with an id into a queue (a short lock, no full Master load); one
-   worker applies the queue in order; the page shows pending → done. No action is ever refused. Not needed while
-   members write in their sheets.
+9. **An action queue for admin actions.** Only if admins ever act often enough to queue on the lock (scenario A):
+   the page writes the action with an id into a queue, one worker applies it in order, the page shows pending →
+   done. Members don't need it: item 1 writes their binome sheet without the lock.
 
 **Later (next year):** keep the records in a real database (e.g. Postgres) with Sheets as an export, if the club
 wants the dashboard to be the only place people work.
@@ -160,6 +193,25 @@ wants the dashboard to be the only place people work.
 - Binome-sheet edit → dashboards p95 ≤ 2 min.
 - `syncAll` ≤ 4 h/day of trigger time in Executions (headroom under 6 h).
 - Vercel invocations for 100 people × 2 h/day within the plan.
+
+## The real sync (2026-10-05)
+
+Ten `syncAll` runs read from Apps Script › Executions by the owner: 21, 9, 17, 12, 9, 13, 26, 9, 9, 9 s. Half are
+exactly 9 s; average 13.4 s, median 10.5 s. At one run a minute that is **5.4 h of the 6 h daily trigger time**: one
+busy afternoon, or dashboard actions holding the lock, and Google stops the triggers until the next day.
+
+The owner's theory: a clean run takes 9 s, and something holds the others back. The code agrees on the floor and
+points at what varies, so the extra is probably work rather than a fault; plan item 0's timing line will tell:
+
+- **Fixed, every run (the 9 s):** load Interviewees / Log / Binomes / Team / alerts / covers; list the Binome Sheets
+  folder (32 "last updated"); open ~2–3 sheets anyway (the 15-min re-read: 32 sheets / 15 min ≈ 2 a minute,
+  `REREAD_MAX` 3); write Interviewees back in full; rebuild the Tracker in full.
+- **Varies:** each binome sheet edited since the last run is opened and read (~1–2 s each; the sheets were being
+  filled during these runs); mails (each alert or new-interviewee mail is one `MailApp` call); new registrations or
+  interview forms; and **waiting for the lock** behind a Sync now, Check integrity or dashboard action, which counts
+  as trigger time too.
+- Items 2 and 3 shrink both: no full rewrite of Interviewees and the Tracker when nothing changed, and edited sheets
+  are known instead of found.
 
 ## How to run it
 
