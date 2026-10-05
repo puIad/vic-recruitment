@@ -576,10 +576,11 @@ run('delete __props.TRIGGER_OWNER; __as("vic.rh@g.enp.edu.dz"); installTriggers_
 assert.strictEqual(run('__props.TRIGGER_OWNER'), 'vic.rh@g.enp.edu.dz', 'an editor who is not the Master owner takes the triggers when the property is unset');
 run('__as("admin@g.enp.edu.dz")');
 run('var __et = ensureTabs_, __etn = 0; ensureTabs_ = function (ss) { __etn++; return __et(ss); }');
-const trig0 = run('__triggers.length');
+const trig0 = run('__triggers.length'), masterId0 = run('__props.MASTER_ID');
+run('var __ssPinned = ss_(), __ssReal = ss_; ss_ = function () { return __ssPinned; }; __props.MASTER_ID = "sentinel"'); // setup() rewrites MASTER_ID: a rejected one must not
 assert.throws(() => run('setup()'), /triggers belong to vic.rh/, 'Setup from another account stops before changing anything');
-assert.deepStrictEqual([run('__etn'), run('__triggers.length')], [0, trig0], 'rejected before the first setup step ran, no trigger touched');
-run('ensureTabs_ = __et');
+assert.deepStrictEqual([run('__etn'), run('__triggers.length'), run('__props.MASTER_ID')], [0, trig0, 'sentinel'], 'rejected before the first setup step ran, no trigger touched, MASTER_ID kept');
+run('ensureTabs_ = __et; ss_ = __ssReal'); run('__props.MASTER_ID = ' + JSON.stringify(masterId0));
 run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
 
 // two unpaired members paired into a new locked binome
