@@ -10,7 +10,7 @@ the task itself and the files it lists.
 
 | # | Task | Size | Depends on | Done |
 |---|---|---|---|---|
-| 1 | [Time each step of the sync](#task-1--time-each-step-of-the-sync) | S | — | ☐ |
+| 1 | [Time each step of the sync](#task-1--time-each-step-of-the-sync) | S | — | ☑ [#18](https://github.com/puIad/vic-recruitment-2026/pull/18), code and deploy; the reading in Notes is still open |
 | 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☐ |
 | 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☐ |
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☐ |
@@ -93,6 +93,26 @@ guess. ([Appendix › The real sync](#the-real-sync))
 **Done when.** The slow runs are explained by named phases, written in Notes, and tasks 4–5 know which steps to cut.
 
 **Notes.**
+
+- **Shipped 2026-10-05:** [#18](https://github.com/puIad/vic-recruitment-2026/pull/18), deployed from `7fd7ca5` (web app @49, API @50).
+  The lines appear in Apps Script › Executions › a run › Cloud logs, from the first `syncAll` after the deploy.
+- **What a line holds.** One per attempted run, all times in ms: `kind` (`trigger`, `form`, `sync-now`, `integrity`,
+  `dashboard`, `digest`, `setup`, `post-lock`), `outcome` (`ok`, `busy` when the lock was refused, `error` when a phase
+  threw: then the phases after it stay 0), `total` (includes `lockWait`), the phases, `opened` (binome code → `changed` /
+  `reread` / `upgrade` / `forced`) and `mailsSent` (calls of `mail_()`, TEST_MODE skips included). `total` is not the sum
+  of the phases: the lock wait and the Drive folder listing (inside `pull`) are separate or inside one phase.
+  The daily digest logs a second line, `{"at":"digest","mailsSent":n}`, for its own mails.
+- **Phases:** `load` = the four tabs, alerts, covers; `regs` = registrations + assigning; `pull` = Drive listing + opening
+  the sheets; `statuses` = status loop + ending covers; `timing` = timing alerts + odd values; `integrity` = only when asked;
+  `save` = Interviewees write; `base` = baseline; `alerts` = Alerts write + their mails; `mails` = new-interviewee mails;
+  `tracker` = the full Tracker rebuild.
+- **To read (owner, ~20 `syncAll` runs):** copy the `cycle` lines here. Questions for tasks 4–5: do the 21–26 s runs have a
+  big `lockWait` (something held the lock), a long `pull` with several `opened` entries (sheets edited or `upgrade`),
+  many `mailsSent`, or a long `tracker` / `save`? And what is the floor of a clean run, phase by phase? If `save` +
+  `tracker` + `load` are most of the 9 s, task 4 is the fix; if `pull` dominates, the 15-min re-read and the folder listing
+  are what to look at.
+- **Local runs** (the mock, so not representative of Google's speed) log `kind`, `outcome` and `opened` correctly; the
+  numbers there are only a format check.
 
 ---
 

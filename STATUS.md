@@ -11,7 +11,11 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-- **Script:** web app **@45**, API **@46**, deployed from `13cc147` (2026-10-04 night,
+- **Script, latest:** web app **@49**, API **@50**, deployed from `7fd7ca5` (2026-10-05,
+  [#18](https://github.com/puIad/vic-recruitment-2026/pull/18)): each sync logs one `cycle` line with the time of every phase
+  (load-test plan, task 1). The owner reads ~20 `syncAll` runs in Apps Script › Executions and copies them into
+  [docs/load-test.md](docs/load-test.md#task-1--time-each-step-of-the-sync) › Notes.
+- **Script, before that:** web app **@45**, API **@46**, deployed from `13cc147` (2026-10-04 night,
   [#16](https://github.com/puIad/vic-recruitment-2026/pull/16)): binome sheets in the 2025 layout with Hogwarts colours
   and Montserrat, new gold columns Interview Done / Rating /10 / Final Affectation (synced to Interviewees), more of the
   registration shown. The 32 old sheets rebuild themselves, 6 per sync. **Run setup again (owner) once** to restyle the
@@ -47,6 +51,7 @@ and form paths. The fix is planned as **10 tasks, one per session**, in [docs/lo
 members read and edit their own binome from the dashboard (written into their binome sheet, never the Master),
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
+Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is the next step, then tasks 2 and 9.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
