@@ -188,7 +188,7 @@ function lockBinomesCore_(budgetMs) {
       created++;
     }
   }, 60000);
-  runCycle_({ pull: false, timing: false, tracker: true, wait: 60000 });
+  runCycle_({ kind: 'lock', pull: false, timing: false, tracker: true, wait: 60000 });
   say_('Locked ' + created + ' binomes.' + (stopped ? '\n\nPaused before the time limit: lock again to finish the rest.' : '') +
     '\nAny waiting registrants have been assigned.');
 }

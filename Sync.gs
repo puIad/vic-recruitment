@@ -15,16 +15,18 @@ function pullBinomeFiles_(ctx, force) {
   const I = ctx.iv.I, F = idx_(BF_H), offset = tzOffset_();
   const files = ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT');
   const unchanged = b => !force && updated[b.fileId] && seen[b.fileId] && updated[b.fileId] <= seen[b.fileId];
-  const stale = {};
+  const upgrade = {}, reread = {};
   // sheets not yet read in the current layout: opening them rebuilds them (binomeSheet_), a few per run
-  files.filter(b => !seen['v2|' + b.fileId]).slice(0, UPGRADE_PER_RUN).forEach(b => { stale[b.fileId] = true; });
+  files.filter(b => !seen['v2|' + b.fileId]).slice(0, UPGRADE_PER_RUN).forEach(b => { upgrade[b.fileId] = true; });
   files.filter(b => unchanged(b) && ctx.now.getTime() - (readAt[b.fileId] || 0) > REREAD_MINUTES * 60000)
-    .sort((a, b) => (readAt[a.fileId] || 0) - (readAt[b.fileId] || 0)).slice(0, REREAD_MAX).forEach(b => { stale[b.fileId] = true; });
+    .sort((a, b) => (readAt[a.fileId] || 0) - (readAt[b.fileId] || 0)).slice(0, REREAD_MAX).forEach(b => { reread[b.fileId] = true; });
+  ctx.opened = {}; // binome code -> why its sheet was opened this run (logged by runCycle_)
   files.forEach(b => {
     const lu = updated[b.fileId];
-    if (unchanged(b) && !stale[b.fileId]) return;
+    if (unchanged(b) && !upgrade[b.fileId] && !reread[b.fileId]) return;
     // rebuilding a first-layout sheet takes seconds: at most UPGRADE_PER_RUN per run, the rest wait for the next ones
     if (!seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
+    ctx.opened[b.code] = force ? 'forced' : upgrade[b.fileId] ? 'upgrade' : reread[b.fileId] ? 'reread' : 'changed';
     let sh;
     try { sh = binomeSheet_(ctx, b); } catch (e) {
       ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: b.code, msg: 'Cannot open the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code });
@@ -207,32 +209,39 @@ function sendNewIntervieweeMails_(ctx) {
 
 function runCycle_(opts) {
   const t0 = Date.now(); // the integrity budget counts from here, so the wait for the lock is included
-  return withLock_(() => {
+  const T = { total: 0, lockWait: 0, load: 0, edits: 0, regs: 0, forms: 0, pull: 0, statuses: 0, timing: 0, integrity: 0, save: 0, base: 0, alerts: 0, mails: 0, tracker: 0 };
+  const ctx = withLock_(() => {
+    let last = Date.now();
+    const lap = k => { const n = Date.now(); T[k] += n - last; last = n; }; // ms since the previous lap
+    _mailsSent = 0;
     _settings = null;
-    const ctx = loadCtx_();
-    detectEdits_(ctx);
+    const ctx = loadCtx_(); lap('load');
+    detectEdits_(ctx); lap('edits');
     processRegistrations_(ctx);
-    assignUnassigned_(ctx);
-    processInterviews_(ctx);
-    if (opts.pull) pullBinomeFiles_(ctx, opts.force);
+    assignUnassigned_(ctx); lap('regs');
+    processInterviews_(ctx); lap('forms');
+    if (opts.pull) pullBinomeFiles_(ctx, opts.force); lap('pull');
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });
-    endFinishedCovers_(ctx);
-    if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); }
-    if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity);
-    saveTable_(ctx.iv);
-    commitBase_(ctx); // before the mails: if they fail, the tabs and the baseline still agree
-    ctx.alerts.flush();
-    sendNewIntervieweeMails_(ctx);
-    if (opts.tracker) buildTracker_(ctx);
+    endFinishedCovers_(ctx); lap('statuses');
+    if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); } lap('timing');
+    if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity); lap('integrity');
+    saveTable_(ctx.iv); lap('save');
+    commitBase_(ctx); lap('base'); // before the mails: if they fail, the tabs and the baseline still agree
+    ctx.alerts.flush(); lap('alerts');
+    sendNewIntervieweeMails_(ctx); lap('mails');
+    if (opts.tracker) buildTracker_(ctx); lap('tracker');
     return ctx;
   }, opts.wait || 30000);
+  if (ctx) console.log(JSON.stringify(Object.assign({ at: 'cycle', kind: opts.kind || 'other' }, T,
+    { total: Date.now() - t0, lockWait: _lockWait, opened: ctx.opened || {}, mailsSent: _mailsSent })));
+  return ctx;
 }
 
 /** Trigger: any form linked to the master was submitted. */
-function onFormSubmitHandler(e) { runCycle_({ pull: false, timing: false, tracker: true, wait: 120000 }); }
+function onFormSubmitHandler(e) { runCycle_({ kind: 'form', pull: false, timing: false, tracker: true, wait: 120000 }); }
 
 /** Trigger: every N minutes. Also available from the menu. */
-function syncAll() { runCycle_({ pull: true, timing: true, tracker: true }); }
-function syncAllForce() { const c = runCycle_({ pull: true, force: true, timing: true, tracker: true, integrity: 180000 }); toast_(c ? 'Everything is up to date. ' + c.integrityMsg : 'Busy, try again in a minute.'); }
+function syncAll() { runCycle_({ kind: 'trigger', pull: true, timing: true, tracker: true }); }
+function syncAllForce() { const c = runCycle_({ kind: 'sync-now', pull: true, force: true, timing: true, tracker: true, integrity: 180000 }); toast_(c ? 'Everything is up to date. ' + c.integrityMsg : 'Busy, try again in a minute.'); }
 /** Menu: a sync plus the full check of every binome sheet. Budgets leave ~2 min of the 6-min limit for the writes after the check. */
-function integrityCheck() { const c = runCycle_({ pull: true, timing: true, tracker: true, integrity: 200000 }); say_(c ? c.integrityMsg : 'Busy, try again in a minute.'); }
+function integrityCheck() { const c = runCycle_({ kind: 'integrity', pull: true, timing: true, tracker: true, integrity: 200000 }); say_(c ? c.integrityMsg : 'Busy, try again in a minute.'); }

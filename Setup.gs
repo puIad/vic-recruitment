@@ -29,7 +29,7 @@ function setup() {
   installTriggers_(ss);
   cleanupAndOrder_(ss);
   styleMaster_(ss);
-  runCycle_({ pull: false, timing: false, tracker: true });
+  runCycle_({ kind: 'setup', pull: false, timing: false, tracker: true });
   say_('Setup complete.\n\n' + formNotes.join('\n') +
     '\n\nNext steps:\n1. Check the Settings tab (ADMIN_EMAIL etc.).\n2. VIC Recruitment › 1 · Import organizing team (or fill the Team tab).\n' +
     '3. VIC Recruitment › 2 · Draft binomes, review/edit them in the Binomes tab.\n4. VIC Recruitment › 3 · Lock binomes.\n5. Open the registration form.');

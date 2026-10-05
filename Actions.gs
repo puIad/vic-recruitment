@@ -107,7 +107,7 @@ function resolveAlertRows_(sh, rows) {
 /* ---------- daily digest ---------- */
 
 function sendDailyDigest() {
-  const ctx = runCycle_({ pull: true, timing: true, tracker: true, wait: 120000, integrity: 200000 }) || loadCtx_();
+  const ctx = runCycle_({ kind: 'digest', pull: true, timing: true, tracker: true, wait: 120000, integrity: 200000 }) || loadCtx_();
   const I = ctx.iv.I, A = ctx.alerts.table.I;
   const count = {}; ctx.iv.data.forEach(r => { count[r[I.Status]] = (count[r[I.Status]] || 0) + 1; });
   const open = ctx.alerts.table.data.filter(r => r[A.Status] === 'OPEN')
