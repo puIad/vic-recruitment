@@ -12,6 +12,7 @@ work on the project). Open these only when the task needs them:
 | [plans.md](plans.md) | building Schedule or Analytics (the owner's plan of 2026-10-04); Binome desk dropped; the binome-view idea |
 | [vercel.md](vercel.md) | touching `web/` (sign-in, the `/api/run` proxy, sessions), the Vercel project settings or the Google Cloud project |
 | [testing.md](testing.md) | testing: automated suites, local previews, the manual test plan on the live Master |
+| [load-test.md](load-test.md) | the 100-editor load test of 2026-10-05: results, ratings, the plan before binomes get access, how to re-run it |
 | [history.md](history.md) | background: the 2025 analysis, the simulation, the timeline, the 2026-10-03 live test and its findings, incidents |
 
 Also at the root: [PRODUCT.md](../PRODUCT.md) (who the dashboard is for, product principles) and

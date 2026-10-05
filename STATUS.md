@@ -38,6 +38,14 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   `npm run deploy` (new `QuickFix.gs`, no `API_VERSION` bump: the fields are only added), then Vercel. Run Setup once
   after deploy so the Alerts tab's Status dropdown lists SNOOZED and MUTED.
 
+## Load test (2026-10-05): not ready for 100 people yet
+
+100 editors at once through the real proxy ([load-test.md](docs/load-test.md)): every call answered when each person
+uses their own account, nothing lost silently in the sheet and form paths, but every refresh takes 9–11 s, a refused
+action shows as a green toast, and the owner's trigger time and Vercel Hobby run out. Do Phase 1 of its plan (member
+role, snapshot reads, no rewrite when nothing changed, slower polling, BUSY as an error) before the binomes get
+access; then re-run it live. Measure `syncAll` in Apps Script › Executions now.
+
 ## Brief for 2026-10-04 (settled with the owner)
 
 In order. Each step says where to do it.
