@@ -72,8 +72,8 @@ Rollback (seconds, no git).
 - Optional: rotate the OAuth client secret (it was pasted in the build chat) → Cloud Console › Credentials, then update
   `GOOGLE_CLIENT_SECRET` in Vercel and redeploy.
 - After recruitment (handover): add `vic.rh@g.enp.edu.dz` as Cloud project owner, Vercel team member, consider
-  transferring the Master. The triggers already move to `vic.rh` in the load-test plan's task 9
-  ([load-test.md](load-test.md#task-9--triggers-on-the-club-account)); the same steps hand them to any later account.
+  transferring the Master. The load-test plan's task 9 ([load-test.md](load-test.md#task-9--triggers-on-the-club-account)) moves the triggers
+  to `vic.rh` once the owner has done its steps (pending); the same steps hand them to any later account.
 
 ## Rebuilding the Google Cloud side (if ever needed)
 

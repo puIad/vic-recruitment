@@ -199,7 +199,7 @@ function protectBinomeSheet_(sh) {
   const keep = [Session.getEffectiveUser().getEmail(), PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER')];
   try { keep.push(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
   const keepLc = keep.filter(Boolean).map(lc_);
-  keepLc.forEach(e => { try { p.addEditor(e); } catch (err) { console.warn('Protection editor ' + e + ': ' + err); } });
+  keepLc.forEach(e => p.addEditor(e)); // throws before the pruning below, so a failed add never leaves the sheet without its script editors
   p.removeEditors(p.getEditors().filter(u => keepLc.indexOf(lc_(u.getEmail())) < 0));
   if (p.canDomainEdit()) p.setDomainEdit(false);
 }
