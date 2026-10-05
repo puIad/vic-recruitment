@@ -204,9 +204,11 @@ function webRun(action, args) {
     switch (action) {
       // budgetMs: the full sheet check stops in time to end before the Vercel function limit (300s); the next run carries on
       case 'sync': { const c = runCycle_({ kind: 'dashboard', pull: true, force: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 150000 });
-        _webOut.push(c ? 'Everything is up to date.\n' + c.integrityMsg : 'Another update is already running. Please try again in a minute.'); break; }
+        if (!c) busy_();
+        _webOut.push('Everything is up to date.\n' + c.integrityMsg); break; }
       case 'integrity': { const c = runCycle_({ kind: 'dashboard', pull: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 200000 });
-        _webOut.push(c ? c.integrityMsg : 'Another update is already running. Please try again in a minute.'); break; }
+        if (!c) busy_();
+        _webOut.push(c.integrityMsg); break; }
       case 'editApply': result = editFixCore_('apply', args.ids); break;
       case 'editRevert': result = editFixCore_('revert', args.ids); break;
       case 'editAccept': result = editFixCore_('accept', args.ids); break;
@@ -216,7 +218,8 @@ function webRun(action, args) {
       case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;
       case 'resetBinomes': { result = resetBinomesCore_(args.phrase);
-        _webOut.push(!result ? 'Another update is already running. Please try again in a minute.' : 'Binomes reset. ' + result.binomes + ' binomes removed, ' + result.trashed + ' sheets moved to the trash, ' +
+        if (!result) busy_();
+        _webOut.push('Binomes reset. ' + result.binomes + ' binomes removed, ' + result.trashed + ' sheets moved to the trash, ' +
           result.interviewees + ' interviewees back to Unassigned, the team list was cleared.\nImport the new team to start again.' +
           (result.failed.length ? '\nNote: ' + result.failed.length + ' sheet(s) could not be removed. Please delete them from the Binome Sheets folder:\n' + result.failed.slice(0, 5).join('\n') : '')); break; }
       case 'digest': sendDailyDigest(); _webOut.push('Daily summary sent to ' + (adminEmails_().join(', ') || 'nobody yet: add an admin email in Settings')); break;

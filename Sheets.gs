@@ -100,6 +100,12 @@ function withLock_(fn, waitMs) {
 let _webOut = null; // set by the web dashboard: messages are collected and returned to the page instead of shown in a dialog
 function ui_() { try { return SpreadsheetApp.getUi(); } catch (e) { return null; } }
 function say_(msg) { if (_webOut) { _webOut.push(msg); return; } const u = ui_(); if (u) u.alert(msg); else console.log(msg); }
+/** A refused lock (withLock_ returned null; nothing was changed). From the dashboard it is an error the page shows as one: the
+ *  proxy turns the BUSY: prefix into code 'BUSY'. From the menu it stays a dialog. */
+function busy_() {
+  if (_webOut) throw new Error('BUSY: Another update is running. Nothing was changed: try again in a minute.');
+  say_('Another update is already running. Please try again in a minute.');
+}
 function toast_(msg) { if (_webOut) { _webOut.push(msg); return; } try { ss_().toast(msg, 'VIC Recruitment', 6); } catch (e) { console.log(msg); } }
 
 /* ---------- context: everything a run needs, loaded once ---------- */

@@ -29,7 +29,7 @@ function reassignCore_(code, binomeText) {
     buildTracker_(ctx);
     return done;
   }, 60000);
-  say_(msg || 'Another update is already running. Please try again in a minute.');
+  if (msg) say_(msg); else busy_();
 }
 
 /** Move an interviewee to another binome's sheet, carrying Contacted/Date/Notes. The caller saves. Throws the reason it can't. */

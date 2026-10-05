@@ -606,6 +606,23 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   assert(st.alerts.some(a => a.type === 'FILE_ERROR' && /history not written/.test(a.msg)), 'MEDIUM alert for the missing history');
   assert(!st.alerts.some(a => a.type === 'MANUAL_EDIT'), 'baseline still saved');
 }
+// a refused lock is an error on the dashboard, never a message; nothing is changed
+{
+  const tabs = () => run('JSON.stringify(master.sheets.map(s => s.cells)) + __outbox.length');
+  const before = tabs();
+  const phrase = run('RESET_PHRASE');
+  run('__lockBusy = true');
+  [['sync'], ['integrity'], ['editApply', { ids: ['A-1'] }], ['editRevert', { ids: ['A-1'] }], ['editAccept', { ids: ['A-1'] }], ['draft'], ['lock'],
+    ['resetBinomes', { phrase }], ['reassign', { code: 'IT.1', binome: 'B.01' }],
+    ['changeMember', { binome: 'B.01', outEmail: 'a@x.dz', inEmail: 'b@x.dz' }], ['swapMembers', { binomeA: 'B.01', emailA: 'a@x.dz', binomeB: 'B.02', emailB: 'b@x.dz' }],
+    ['newBinome', { emailA: 'a@x.dz', emailB: 'b@x.dz' }], ['addCover', { codes: ['IT.1'], inEmail: 'a@x.dz' }], ['endCover', { row: 2 }],
+    ['quick', { op: 'snooze', ids: ['A-1'], for: '4h' }]].forEach(([action, args]) =>
+    assert.throws(() => call('webRun', action, args), /^Error: BUSY: Another update is running\. Nothing was changed/, action + ' must fail with BUSY'));
+  run('__lockBusy = false');
+  assert.strictEqual(tabs(), before, 'a refused action changes nothing');
+  run('__lockBusy = true; busy_(); __lockBusy = false'); // the menu keeps its dialog (here: the console)
+  assert(/Everything is up to date/.test(call('webRun', 'sync').messages[0]), 'the same action works once the lock is free');
+}
 run('__as("")');
 assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
 assert.throws(() => call('webState'), /Not allowed/);

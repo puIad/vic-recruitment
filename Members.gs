@@ -261,7 +261,7 @@ function newBinomeCore_(a) {
 }
 
 function report_(res) {
-  if (!res) { say_('Another update is already running. Please try again in a minute.'); return null; }
+  if (!res) { busy_(); return null; }
   if (res.done) say_(res.done.join('\n'));
   else if (res.errors.length) say_(res.errors.join('\n'));
   return res;

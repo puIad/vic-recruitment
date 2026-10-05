@@ -132,7 +132,13 @@ export const useVic = create<VicStore>((set, get) => ({
     const log = (text: string, error = false) =>
       set((cur) => ({ activity: [{ id: ++activityId, time: hhmm(), text, error }, ...cur.activity].slice(0, 40) }))
     try {
-      const out = await call<RunOut<R>>("webRun", action, args)
+      const send = () => call<RunOut<R>>("webRun", action, args)
+      // A refused action changed nothing (the script lock is taken before any change), so a quick action may quietly try once more.
+      const out = await send().catch(async (e) => {
+        if (action !== "quick" || !(e instanceof ApiError) || e.code !== "BUSY") throw e
+        await new Promise((r) => setTimeout(r, 3000))
+        return send()
+      })
       const msg = (out.messages || []).join("\n\n")
       if (msg) {
         const [head, ...rest] = msg.split("\n").filter((l) => l.trim())
@@ -144,7 +150,12 @@ export const useVic = create<VicStore>((set, get) => ({
       return out
     } catch (e) {
       const m = e instanceof ApiError || e instanceof Error ? e.message : String(e)
-      toast.error(`${name} failed`, { description: m, duration: 15000 })
+      const busy = e instanceof ApiError && e.code === "BUSY"
+      toast.error(busy ? `${name} was not done` : `${name} failed`, {
+        description: m,
+        duration: 15000,
+        action: busy ? { label: "Try again", onClick: () => void get().run(action, args, label) } : undefined,
+      })
       log(`${name} failed: ${m}`, true)
       return null
     } finally {

@@ -69,7 +69,9 @@ module.exports = async (req, res) => {
   }
   if (j.error) { // the script threw: details[0].errorMessage is our own Error message
     const d = (j.error.details || [])[0] || {};
-    return done(200, { error: String(d.errorMessage || j.error.message || 'Script error').slice(0, 500) }, false);
+    const msg = String(d.errorMessage || j.error.message || 'Script error').slice(0, 500);
+    const busy = /^(?:Error: )?BUSY: ([\s\S]*)/.exec(msg); // the script's refused lock (busy_ in Sheets.gs): nothing was changed
+    return done(200, busy ? { error: busy[1], code: 'BUSY' } : { error: msg }, false);
   }
   done(200, { value: j.response ? j.response.result : null }, true);
 };

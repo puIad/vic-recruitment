@@ -161,7 +161,8 @@ var FormApp = { DestinationType: { SPREADSHEET: 'SS' }, openById(id) { return __
 
 var PropertiesService = { getScriptProperties() { return { getProperty: k => (k in __props ? __props[k] : null), setProperty: (k, v) => { __props[k] = String(v); },
   getProperties: () => Object.assign({}, __props), setProperties: o => { Object.keys(o).forEach(k => { __props[k] = String(o[k]); }); }, deleteProperty: k => { delete __props[k]; } }; } };
-var LockService = { getScriptLock() { return { tryLock: () => true, waitLock: () => true, releaseLock: () => { } }; } };
+var __lockBusy = false; // a test sets it to make the script lock refuse
+var LockService = { getScriptLock() { return { tryLock: () => !__lockBusy, waitLock: () => true, releaseLock: () => { } }; } };
 var MailApp = { sendEmail(o) { __outbox.push(o); } };
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };
 var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { } };

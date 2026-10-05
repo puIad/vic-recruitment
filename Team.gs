@@ -130,7 +130,7 @@ function draftBinomes() {
     const tags = {}; fresh.forEach(f => { tags[f.row[B.Tag]] = (tags[f.row[B.Tag]] || 0) + 1; });
     return { n: fresh.length, members: members.length, tags: tags, warnings: fresh.filter(f => f.warning).map(f => f.row[B.Binome] + ': ' + f.warning) };
   });
-  if (!res) return say_('Another update is already running. Please try again in a minute.');
+  if (!res) return busy_();
   if (res.refused) return say_('Binomes are already locked, so new drafts are closed.\n' +
     'Members without a binome appear in Alerts. Use Change members to place them, or exclude them in the Team tab.');
   say_('Drafted ' + res.n + ' binomes from ' + res.members + ' available members.\n' +
@@ -170,7 +170,7 @@ function lockCheck_() {
 function lockBinomesCore_(budgetMs) {
   const t0 = Date.now(), budget = Math.max(30000, Math.min(270000, Number(budgetMs) || 270000));
   let created = 0, stopped = false;
-  withLock_(() => {
+  const held = withLock_(() => {
     const ctx = loadCtx_();
     const BI = ctx.bin.I;
     for (let i = 0; i < ctx.bin.data.length; i++) {
@@ -187,7 +187,9 @@ function lockBinomesCore_(budgetMs) {
       ctx.bin.sh.getRange(i + 2, 1, 1, BIN_H.length).setValues([r]);
       created++;
     }
+    return true;
   }, 60000);
+  if (!held) return busy_();
   runCycle_({ kind: 'post-lock', pull: false, timing: false, tracker: true, wait: 60000 }); // the sync after the sheets are created: creating them is not in its total
   say_('Locked ' + created + ' binomes.' + (stopped ? '\n\nPaused before the time limit: lock again to finish the rest.' : '') +
     '\nAny waiting registrants have been assigned.');
