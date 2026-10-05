@@ -190,14 +190,17 @@ function formatBinomeSheet_(sh, b, members) {
   return F;
 }
 
-/** Protect everything except the binome's own columns. */
+/** Protect everything except the binome's own columns. The script's editors keep access: whoever runs this, the trigger
+ *  account (it writes these sheets every sync, and doesn't own the old ones) and the Master's owner. */
 function protectBinomeSheet_(sh) {
   sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
   const p = sh.protect().setDescription('Filled by the recruitment script');
   p.setUnprotectedRanges(BF_EDITABLE.map(k => sh.getRange(2, bfCol_(k), BF_ROWS - 1, 1)));
-  const me = Session.getEffectiveUser();
-  p.addEditor(me);
-  p.removeEditors(p.getEditors().filter(u => u.getEmail() !== me.getEmail()));
+  const keep = [Session.getEffectiveUser().getEmail(), PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER')];
+  try { keep.push(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
+  const keepLc = keep.filter(Boolean).map(lc_);
+  keepLc.forEach(e => { try { p.addEditor(e); } catch (err) { console.warn('Protection editor ' + e + ': ' + err); } });
+  p.removeEditors(p.getEditors().filter(u => keepLc.indexOf(lc_(u.getEmail())) < 0));
   if (p.canDomainEdit()) p.setDomainEdit(false);
 }
 

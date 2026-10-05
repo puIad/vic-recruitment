@@ -571,6 +571,12 @@ assert.strictEqual(run('__triggers.length'), before + 3, 'owner can reinstall');
 run('__props.TRIGGER_OWNER = "helper@g.enp.edu.dz"');
 assert.throws(() => call('webRun', 'setup'), /triggers belong to helper/, 'TRIGGER_OWNER wins over the Master owner');
 run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
+// handover: property deleted, the club account (not the Master's owner) runs Setup and takes the triggers
+run('delete __props.TRIGGER_OWNER; __as("vic.rh@g.enp.edu.dz"); installTriggers_(ss_())');
+assert.strictEqual(run('__props.TRIGGER_OWNER'), 'vic.rh@g.enp.edu.dz', 'an editor who is not the Master owner takes the triggers when the property is unset');
+run('__as("admin@g.enp.edu.dz")');
+assert.throws(() => run('setup()'), /triggers belong to vic.rh/, 'Setup from another account stops before changing anything');
+run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
 
 // two unpaired members paired into a new locked binome
 {

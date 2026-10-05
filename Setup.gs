@@ -21,6 +21,7 @@ function onOpen() {
 
 function setup() {
   const ss = ss_();
+  triggerOwner_(); // refuse before touching anything: a half-run Setup from the wrong account would leave the Master half-built
   PropertiesService.getScriptProperties().setProperty('MASTER_ID', ss.getId());
   ensureTabs_(ss);
   _settings = null;
@@ -148,16 +149,20 @@ function linkForms_(ss) {
 /**
  * Installable triggers belong to whoever installs them, and getProjectTriggers() only lists the caller's own, so a
  * second account running Setup would silently double every sync and digest. Only the trigger owner may (re)install:
- * script property TRIGGER_OWNER, or the Master's owner until that is set. Handover: delete the property.
+ * script property TRIGGER_OWNER. Unset (first Setup, or a handover), the account running Setup takes it, so it need not
+ * own the Master. Handover: delete the owner's three triggers and the property, then run Setup from the new account.
  */
-function installTriggers_(ss) {
+function triggerOwner_() {
   const me = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
   const props = PropertiesService.getScriptProperties();
-  let owner = props.getProperty('TRIGGER_OWNER');
-  if (!owner) { try { owner = ss.getOwner().getEmail(); } catch (e) { owner = me; } }
-  owner = String(owner || me).toLowerCase();
+  const owner = String(props.getProperty('TRIGGER_OWNER') || me).toLowerCase();
   if (owner !== me) throw new Error('The triggers belong to ' + owner + ': run Setup from that account (to hand them over, delete the TRIGGER_OWNER script property, then run Setup).');
   props.setProperty('TRIGGER_OWNER', me);
+  return me;
+}
+
+function installTriggers_(ss) {
+  triggerOwner_();
   const s = S_();
   const mine = ['onFormSubmitHandler', 'syncAll', 'sendDailyDigest'];
   ScriptApp.getProjectTriggers().forEach(t => { if (mine.indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t); });

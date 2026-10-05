@@ -47,7 +47,7 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | `REG_SHEET_ID`, `INT_SHEET_ID` | Sheet IDs of the two form-response tabs |
 | `FILE_SEEN` | Per binome file, last change already read (the sync skips unchanged files) |
 | `FILE_READ` | Per binome file, when it was last read (a sheet not read for 15 min is re-read even if Drive says unchanged) |
-| `TRIGGER_OWNER` | Account whose triggers run the sync/digest; only it may re-run Setup. Handover: delete it, then Setup from the new account |
+| `TRIGGER_OWNER` | Account whose triggers run the sync/digest; only it may re-run Setup (from the Master's menu: the dashboard's Setup is for the Master's owner, who is refused once the triggers belong to someone else). Unset, the account running Setup takes it, whether or not it owns the Master. Handover: the old account deletes its three triggers and this property, then Setup from the new account. Binome sheet protections always keep this account and the Master's owner as editors. Today: `vic.rh@g.enp.edu.dz` once task 9's owner steps are done |
 | `BASELINE_N`, `BASELINE_0…` | What the script last wrote in Binomes/Interviewees, JSON split in 4000-char chunks (manual-edit detection). Deleting them = next run re-takes it silently |
 | `INTEG_NEXT` | Binome code where the next full sheet check resumes |
 

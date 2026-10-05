@@ -18,7 +18,7 @@ the task itself and the files it lists.
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☐ |
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☐ |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☐ |
-| 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ☐ |
+| 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check done (PR below); the owner's steps are still to do |
 | 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9 | ☐ |
 
 Tasks 1, 2 and 9 can go in any order; 9 is mostly steps for the owner.
@@ -434,6 +434,24 @@ editor of the protections; make sure the Master's owner stays able to edit the p
 **Done when.** The triggers run as `vic.rh`, and the docs say so.
 
 **Notes.**
+
+- **Code check, two bugs found (2026-10-05).** Both would have broken the move:
+  1. `installTriggers_` fell back to the **Master's owner** when `TRIGGER_OWNER` was unset, so after step 2 `vic.rh`
+     (an editor, not the owner) was refused with "The triggers belong to <owner>". Now an unset property means the
+     account running Setup takes it (`triggerOwner_()` in Setup.gs). `setup()` also checks this first, so a Setup from
+     the wrong account stops before changing anything instead of half-building the Master.
+  2. `protectBinomeSheet_` removed every protection editor except the account running it. The 32 existing sheets are
+     owned by the owner's personal account, so the first protection rewrite by anyone else (Change members, Apply,
+     a quick fix) would have locked `vic.rh` out of the cells the sync writes. It now always keeps the running
+     account, `TRIGGER_OWNER` and the Master's owner.
+- **Side effect to know:** once the triggers belong to `vic.rh`, the owner's Setup button on the dashboard is refused
+  (clear message). Re-run Setup from the Master's menu as `vic.rh`.
+- Tests: `web.test.js` covers the handover (property deleted, `vic.rh` runs Setup and takes it; another account is
+  stopped before anything is touched). `reference.md` and `vercel.md` updated. The protection editors are not
+  observable in the mock: the real check is the next point.
+- **Live check after step 3** (owner): in a binome sheet, Share › the protected-range editors should list `vic.rh` and
+  the owner's account; type in a gold column, wait for the next `syncAll`, and check the value reaches the Master and Executions shows
+  no permission errors.
 
 ---
 
