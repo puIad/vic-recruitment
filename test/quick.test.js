@@ -209,6 +209,24 @@ let oddCode;
   call('webRun', 'integrity');
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired');
   assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes(__props.TRIGGER_OWNER)`), 'trigger account is an editor again');
+  // the menu action rewrites a stale protection directly, and leaves a good one alone
+  run(`(function () { var sh = __files["${f1}"].obj.sheets[0]; sh.protections = []; var p = sh.protect(); p.removeEditors([__props.TRIGGER_OWNER]); p.addEditor('old.owner@g.enp.edu.dz'); })()`);
+  run('reprotectBinomeSheets()');
+  assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes(__props.TRIGGER_OWNER)`), 'menu: trigger account listed');
+  // refused: not the Master's owner, no trigger owner set, lock busy; each leaves a stale protection as it was
+  const stale = () => run(`(function () { var sh = __files["${f1}"].obj.sheets[0]; sh.protections = []; var p = sh.protect(); p.removeEditors([__props.TRIGGER_OWNER]); p.addEditor('old.owner@g.enp.edu.dz'); })()`);
+  const fixed = () => run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes("admin@g.enp.edu.dz")`);
+  stale(); run('var __asq = e => { Session = { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }; __asq("helper@g.enp.edu.dz"); reprotectBinomeSheets(); __asq("admin@g.enp.edu.dz")');
+  assert.strictEqual(fixed(), false, 'a non-owner is refused');
+  stale(); run('var __t = __props.TRIGGER_OWNER; delete __props.TRIGGER_OWNER; reprotectBinomeSheets(); __props.TRIGGER_OWNER = __t');
+  assert.strictEqual(fixed(), false, 'no trigger owner: nothing rewritten');
+  stale(); run('__lockBusy = true; reprotectBinomeSheets(); __lockBusy = false');
+  assert.strictEqual(fixed(), false, 'lock busy: nothing rewritten');
+  run('reprotectBinomeSheets()');
+  assert.strictEqual(fixed(), true, 'the owner, with the lock free, rewrites it');
+  run(`__files["${f1}"].obj.sheets[0].protections[0].__id = 'kept'`);
+  run('reprotectBinomeSheets()');
+  assert.strictEqual(run(`__files["${f1}"].obj.sheets[0].protections[0].__id`), 'kept', 'a sheet already fine is not touched');
   // a protection whose editors the account cannot read is flagged too, not taken for fine
   run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors = function () { throw new Error('You do not have permission'); }`);
   call('webRun', 'integrity');

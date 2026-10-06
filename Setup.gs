@@ -13,6 +13,7 @@ function onOpen() {
     .addItem('Reassign selected interviewee…', 'reassignSelected')
     .addItem('Mark selected alerts as resolved', 'resolveSelectedAlerts')
     .addItem('Re-share binome sheets with current members', 'reshareBinomeFiles')
+    .addItem('Re-protect binome sheets (owner only)', 'reprotectBinomeSheets')
     .addItem('Send me the digest now', 'sendDailyDigest')
     .addSeparator()
     .addItem('Run setup again (safe)', 'setup')
