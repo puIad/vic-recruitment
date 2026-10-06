@@ -207,6 +207,10 @@ quiet pause, not an error storm.
 - **Checked on the local mock** (switches for grant/revoke, touch, 429, hang): 1 `webPulse` per idle tick and 0 `webAccess`.
   An edit triggers 1 `webState`. On 429: 1 refused call, nothing for 30 s, no toast. A hung poll is dropped at 20 s.
   On revoke: 1 `webPulse` + 1 `webAccess`, then the no-access screen.
+- **Live check (owner's tab, 2026-10-06 14:19–14:25 UTC, production `a6e11b8`):** ~75 calls, all ok. Idle ticks are
+  `webPulse` only, about 2 s apart. `webAccess` appears only at load (2 page loads), each followed by `webPulse` + `webState`.
+  One `webPulse` hung 100 s at Google (14:21:12). The old page called `webPulse` again at 14:21:38, before reloading, so
+  the 20 s timeout had released the guard. Without the timeout the tab would have waited until 14:22:53.
 
 ---
 
