@@ -7,11 +7,12 @@ var __idc = 0;
 var __props = {};
 var __triggers = [];
 var __clock = null;   // optional fixed "now" (ms)
-var __writes = {};    // tab name -> writes (setValues/setValue/clear/clearContent) since a test reset it
+var __writes = {};    // tab name -> writes since a test reset it: values (setValues/setValue/clear/clearContent) and formatting
 var __RealDate = Date;
 
 function __id(p) { __idc++; return (p || 'id') + '_' + __idc; }
-function __wrote(sh) { __writes[sh.name] = (__writes[sh.name] || 0) + 1; __touch(sh.ss.id); }
+function __counted(sh) { __writes[sh.name] = (__writes[sh.name] || 0) + 1; }
+function __wrote(sh) { __counted(sh); __touch(sh.ss.id); }
 function __touch(ssId) { if (__files[ssId]) __files[ssId].lastUpdated = new Date(__files[ssId].lastUpdated.getTime() + 1000); }
 
 function chain(extra) {
@@ -70,7 +71,7 @@ MockSheet.prototype = {
   getActiveRangeList() { const s = this; return { getRanges: () => [new MockRange(s, s.activeRow, 1, 1, 1)] }; },
   toString() { return 'Sheet(' + this.name + ')'; },
 };
-['setFrozenRows', 'setFrozenColumns', 'setColumnWidth', 'setConditionalFormatRules', 'hideSheet', 'setHiddenGridlines', 'setRowHeight', 'setTabColor'].forEach(k => { MockSheet.prototype[k] = function () { return this; }; });
+['setFrozenRows', 'setFrozenColumns', 'setColumnWidth', 'setConditionalFormatRules', 'hideSheet', 'setHiddenGridlines', 'setRowHeight', 'setTabColor'].forEach(k => { MockSheet.prototype[k] = function () { __counted(this); return this; }; });
 
 function MockRange(sh, r, c, nr, nc) { this.sh = sh; this.r = r; this.c = c; this.nr = nr; this.nc = nc; }
 MockRange.prototype = {
@@ -97,13 +98,13 @@ MockRange.prototype = {
   },
   setValue(v) { return this.setValues([[v]]); },
   clearContent() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = ''; } __wrote(this.sh); return this; },
-  setNumberFormat(f) { for (let j = 0; j < this.nc; j++) this.sh.fmt[this.c + j] = f; return this; },
+  setNumberFormat(f) { for (let j = 0; j < this.nc; j++) this.sh.fmt[this.c + j] = f; __counted(this.sh); return this; },
   setNote(n) { this.sh.notes[this.r + ':' + this.c] = n; return this; },
   insertCheckboxes() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = false; } return this; }, // like Apps Script: every box unticked
   applyRowBanding() { return chain(); },
 };
 ['setFontWeight', 'setBackground', 'setFontColor', 'setWrap', 'setDataValidation', 'clearDataValidations', 'clearNote', 'setFontSize',
-  'setFontFamily', 'setHorizontalAlignment', 'setVerticalAlignment', 'setBorder', 'merge', 'breakApart', 'setBackgrounds', 'setFontColors'].forEach(k => { MockRange.prototype[k] = function () { return this; }; });
+  'setFontFamily', 'setHorizontalAlignment', 'setVerticalAlignment', 'setBorder', 'merge', 'breakApart', 'setBackgrounds', 'setFontColors'].forEach(k => { MockRange.prototype[k] = function () { __counted(this.sh); return this; }; });
 
 function MockSS(title) {
   this.id = __id('ss'); this.title = title; this.sheets = [new MockSheet(this, 'Sheet1')]; this.active = this.sheets[0];
