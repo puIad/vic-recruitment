@@ -208,14 +208,22 @@ function protectBinomeSheet_(sh) {
 /** Menu, run as the sheets' owner (only a protection's owner can rewrite it): protect again every binome sheet whose protection
  *  does not list the trigger account, so the sync can write the columns it fills. Safe to repeat: sheets already fine are skipped. */
 function reprotectBinomeSheets() {
-  const ctx = loadCtx_(), t0 = Date.now(), trig = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
+  const me = lc_(Session.getEffectiveUser().getEmail()), trig = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
+  let owner = ''; try { owner = lc_(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
+  if (me !== owner) return say_('Only the owner of the Master (' + (owner || 'unknown') + ') can re-protect the binome sheets.');
+  if (!trig) return say_('TRIGGER_OWNER is not set: run Setup from the account that runs the triggers first, so it is kept as an editor.');
   const listed = sh => sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).some(p => { try { return p.getEditors().some(u => lc_(u.getEmail()) === trig); } catch (e) { return false; } });
-  const errs = []; let done = 0, fine = 0;
-  ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {
-    if (Date.now() - t0 > 240000) { errs.push(b.code + ': out of time, run it again'); return; }
-    try { const sh = binomeSheet_(ctx, b); if (trig && listed(sh)) fine++; else { protectBinomeSheet_(sh); done++; } } catch (e) { errs.push(b.code + ': ' + e.message); }
+  // under the script lock: a sync running between the old editors going and the trigger account coming back would fail on a permission error
+  const msg = withLock_(() => {
+    const ctx = loadCtx_(), t0 = Date.now(), errs = []; let done = 0, fine = 0;
+    ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {
+      if (Date.now() - t0 > 240000) { errs.push(b.code + ': out of time, run it again'); return; }
+      try { const sh = binomeSheet_(ctx, b); if (listed(sh)) fine++; else { protectBinomeSheet_(sh); done++; } } catch (e) { errs.push(b.code + ': ' + e.message); }
+    });
+    return 'Protection rewritten on ' + done + ' binome sheet(s); ' + fine + ' already listed ' + trig + '.' + (errs.length ? '\n\nNot done:\n' + errs.join('\n') : '');
   });
-  say_('Protection rewritten on ' + done + ' binome sheet(s); ' + fine + ' already listed ' + trig + '.' + (errs.length ? '\n\nNot done:\n' + errs.join('\n') : ''));
+  if (msg === null) return busy_();
+  say_(msg);
 }
 
 function createBinomeFile_(b, members) {
