@@ -11,6 +11,8 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
+  Latest UI: `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
+  poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
 - **Script, latest:** web app **@53**, API **@54**, deployed from `2264a74` (2026-10-06,
   [#20](https://github.com/puIad/vic-recruitment-2026/pull/20)): the triggers can move to `vic.rh` (load-test plan, task 9: an unset
   `TRIGGER_OWNER` is taken by whoever runs Setup; binome sheet protections keep the trigger account and the Master's owner). **Owner steps still to
@@ -60,7 +62,7 @@ members read and edit their own binome from the dashboard (written into their bi
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
 Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is deployed
-([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 3 (one poll call per tick, 20 s timeout, rate-limit pause) is in [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only: Vercel ships it on merge. Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-up [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) is **merged but not deployed**: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, and the owner repairs them in bulk from Alerts (`npm run deploy` first). Next: 4.
+([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 3 (one poll call per tick, 20 s timeout, rate-limit pause) is live ([#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, Vercel production from `963144d`). Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-up [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) is **merged but not deployed**: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, and the owner repairs them in bulk from Alerts (`npm run deploy` first). Next: 4.
 
 ## Brief for 2026-10-04 (settled with the owner)
 

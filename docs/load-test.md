@@ -12,7 +12,7 @@ the task itself and the files it lists.
 |---|---|---|---|---|
 | 1 | [Time each step of the sync](#task-1--time-each-step-of-the-sync) | S | — | ☑ [#18](https://github.com/puIad/vic-recruitment-2026/pull/18), code and deploy; the reading in Notes is still open |
 | 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☑ [#19](https://github.com/puIad/vic-recruitment-2026/pull/19), code and deploy; the live check in Notes is still open |
-| 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☑ [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only (Vercel builds it on merge) |
+| 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☑ [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, live on Vercel from `963144d` |
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☐ |
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☐ |
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☐ |
@@ -194,7 +194,8 @@ quiet pause, not an error storm.
 
 **Notes.**
 
-- **Shipped:** [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI and `web/` only (no script deploy, no `API_VERSION` bump).
+- **Shipped 2026-10-06:** [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI and `web/` only (no script deploy, no `API_VERSION` bump).
+  Vercel production built from the merge `963144d` (real `npm ci` + `tsc -b && vite build` in the log).
 - **How it works:** `call(fn, args = [], timeoutMs?)`. The array signature replaces the old rest args; only `store.ts` calls it.
   `POLL_TIMEOUT_MS = 20000` (store.ts) is used for `webPulse` and `webAccess`, `boot` included. A timeout is
   `ApiError` code `TIMEOUT`. `api.ts` sets the 30 s pause whenever any reply has `RATE_LIMIT`, and `rateLimited()`
