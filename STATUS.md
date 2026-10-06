@@ -60,7 +60,7 @@ members read and edit their own binome from the dashboard (written into their bi
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
 Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is deployed
-([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 9's code is deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); its owner steps are open. Next: 3 and 4.
+([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-up [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) is **merged but not deployed**: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, and the owner repairs them in bulk from Alerts (`npm run deploy` first). Next: 3 and 4.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
