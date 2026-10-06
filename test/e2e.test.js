@@ -179,6 +179,12 @@ const wrote = q => JSON.parse(q.w);
 const ivOf = code => run('master.getSheetByName("Interviewees").getDataRange().getValues()').find(r => r[0] === code);
 let q = quietSync();
 assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'a sync with nothing new wrote ' + q.w);
+// a Tracker still carrying the old "Last update:" label is rewritten once, then left alone
+run('master.getSheetByName("Tracker").cells[0][2] = "Last update: 01/10/2026 10:00"');
+q = quietSync();
+assert(wrote(q).Tracker && /^Last change: /.test(run('master.getSheetByName("Tracker").getRange(1, 3).getValue()')), 'old label replaced: ' + q.w);
+q = quietSync();
+assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'nothing new after the label, yet wrote ' + q.w);
 // a binome-sheet edit: the row is written, the status moves, NOT_CONTACTED closes, the Tracker follows
 const comm = ivOf('COMM.01'), commFile = bins.find(r => r[0] === comm[1])[8];
 const notContacted = () => run('master.getSheetByName("Alerts").getDataRange().getValues()').find(a => a[3] === 'NOT_CONTACTED' && a[4] === 'COMM.01');
