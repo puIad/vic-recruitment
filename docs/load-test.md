@@ -18,7 +18,7 @@ the task itself and the files it lists.
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☐ |
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☐ |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☐ |
-| 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check done (PR below); the owner's steps are still to do |
+| 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
 | 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9 | ☐ |
 
 Tasks 1, 2 and 9 can go in any order; 9 is mostly steps for the owner.
@@ -435,6 +435,7 @@ editor of the protections; make sure the Master's owner stays able to edit the p
 
 **Notes.**
 
+- **Shipped 2026-10-06:** [#20](https://github.com/puIad/vic-recruitment-2026/pull/20), deployed from `2264a74` (web app @53, API @54). The owner's steps 1–4 above are still to do.
 - **Code check, two bugs found (2026-10-05).** Both would have broken the move:
   1. `installTriggers_` fell back to the **Master's owner** when `TRIGGER_OWNER` was unset, so after step 2 `vic.rh`
      (an editor, not the owner) was refused with "The triggers belong to <owner>". Now an unset property means the
