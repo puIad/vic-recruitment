@@ -450,6 +450,11 @@ editor of the protections; make sure the Master's owner stays able to edit the p
 - Tests: `web.test.js` covers the handover (property deleted, `vic.rh` runs Setup and takes it; another account is
   stopped before anything is touched). `reference.md` and `vercel.md` updated. The protection editors are not
   observable in the mock: the real check is the next point.
+- **Found live, 2026-10-06:** after the owner's steps the 32 existing binome sheets still listed only the owner as protection editor
+  (a protection is only rewritten by a rebuild or a repair), so `vic.rh`'s sync could not write the columns it fills. Fix: Check integrity
+  now flags a protection that does not list `TRIGGER_OWNER` (an INTEGRITY alert with the `protect` repair). **The owner** then opens
+  Alerts, selects those alerts and presses Repair (signed in as the owner: only a protection's owner can rewrite it).
+  Then re-run Check integrity: no alert left.
 - **Live check after step 3** (owner): in a binome sheet, Share › the protected-range editors should list `vic.rh` and
   the owner's account; type in a gold column, wait for the next `syncAll`, and check the value reaches the Master and Executions shows
   no permission errors.

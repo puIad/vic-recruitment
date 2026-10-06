@@ -56,7 +56,14 @@ MockSheet.prototype = {
   clear() { this.cells = []; return this; },
   appendRow(v) { this.getRange(this.getLastRow() + 1, 1, 1, v.length).setValues([v]); return this; },
   getProtections() { return this.protections.slice(); },
-  protect() { const p = chain({ getEditors: () => [], canDomainEdit: () => false, remove: () => { this.protections = this.protections.filter(x => x !== p); } }); this.protections.push(p); return p; },
+  protect() {
+    const eds = [Session.getEffectiveUser().getEmail()], em = e => String(e && e.getEmail ? e.getEmail() : e).toLowerCase();
+    const p = chain({ getEditors: () => eds.map(e => ({ getEmail: () => e })), canDomainEdit: () => false,
+      addEditor: e => { if (eds.indexOf(em(e)) < 0) eds.push(em(e)); return p; },
+      removeEditors: l => { l.map(em).forEach(e => { const i = eds.indexOf(e); if (i >= 0) eds.splice(i, 1); }); return p; },
+      remove: () => { this.protections = this.protections.filter(x => x !== p); } });
+    this.protections.push(p); return p;
+  },
   getActiveRange() { return new MockRange(this, this.activeRow, 1, 1, 1); },
   getActiveRangeList() { const s = this; return { getRanges: () => [new MockRange(s, s.activeRow, 1, 1, 1)] }; },
   toString() { return 'Sheet(' + this.name + ')'; },

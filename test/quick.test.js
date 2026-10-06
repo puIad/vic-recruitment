@@ -200,6 +200,24 @@ let oddCode;
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'all repaired');
   assert(run(`__files["${f2}"].obj.sheets[0].getDataRange().getValues()`).some(r => r[BFI.Code] === other.code), 'the other binome keeps its row');
 
+  // a protection made before the triggers moved lists only its old editor: flagged, and Repair puts the trigger account back
+  run(`(function () { var sh = __files["${f1}"].obj.sheets[0]; sh.protections = []; var p = sh.protect(); p.removeEditors([__props.TRIGGER_OWNER]); p.addEditor('old.owner@g.enp.edu.dz'); })()`);
+  call('webRun', 'integrity');
+  const lock = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
+  assert(lock.length === 1 && lock[0].q.repair === 'protect' && /does not list admin@g\.enp\.edu\.dz/.test(lock[0].msg), JSON.stringify(lock.map(a => a.msg)));
+  quick('repair', lock[0].id);
+  call('webRun', 'integrity');
+  assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired');
+  assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes(__props.TRIGGER_OWNER)`), 'trigger account is an editor again');
+  // a protection whose editors the account cannot read is flagged too, not taken for fine
+  run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors = function () { throw new Error('You do not have permission'); }`);
+  call('webRun', 'integrity');
+  const unreadable = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
+  assert(unreadable.length === 1 && /cannot be read/.test(unreadable[0].msg), JSON.stringify(unreadable.map(a => a.msg)));
+  quick('repair', unreadable[0].id);
+  call('webRun', 'integrity');
+  assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired again');
+
   // a sheet that could not be opened: retried
   run(`var __ob = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id === "${f2}") throw new Error("Service unavailable"); return __ob.call(SpreadsheetApp, id); }`);
   call('webRun', 'sync');
