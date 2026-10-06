@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { toast } from "sonner"
 import { API_VERSION, type Access, type Alert, type RunOut, type WebState } from "./types"
-import { ApiError, call, hooks } from "./api"
+import { ApiError, call, hooks, rateLimited } from "./api"
 
 export type Gate =
   | { mode: "booting" }
@@ -42,6 +42,8 @@ interface VicStore {
 }
 
 let polling = false
+/** a poll stuck at Google ends after this, so the `polling` guard is released and the next tick runs */
+const POLL_TIMEOUT_MS = 20000
 let activityId = 0
 const hhmm = () => {
   const t = new Date()
@@ -66,7 +68,7 @@ export const useVic = create<VicStore>((set, get) => ({
   async boot() {
     let a: Access
     try {
-      a = await call<Access>("webAccess")
+      a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS)
     } catch (e) {
       if (get().gate.mode === "booting") set({ gate: { mode: "error", message: (e as Error).message }, loading: false })
       return
@@ -87,7 +89,7 @@ export const useVic = create<VicStore>((set, get) => ({
   async refresh(quiet) {
     if (!quiet) set({ refreshing: true })
     try {
-      const p = await call<number>("webPulse").catch(() => null) // read before the state, so an edit in between still shows as a change
+      const p = await call<number>("webPulse", [], POLL_TIMEOUT_MS).catch(() => null) // read before the state, so an edit in between still shows as a change
       const s = await call<WebState>("webState")
       set((cur) => ({
         state: s,
@@ -97,7 +99,9 @@ export const useVic = create<VicStore>((set, get) => ({
         tick: cur.tick + (quiet && cur.state ? 1 : 0),
       }))
     } catch (e) {
-      if (get().gate.mode === "ok") toast.error("Could not load the dashboard", { description: (e as Error).message })
+      // a live refresh hitting Google's rate limit is a quiet pause (rateLimited), not an error toast every tick
+      const limited = quiet && e instanceof ApiError && e.code === "RATE_LIMIT"
+      if (get().gate.mode === "ok" && !limited) toast.error("Could not load the dashboard", { description: (e as Error).message })
       set({ loading: false })
     } finally {
       set({ refreshing: false })
@@ -108,19 +112,20 @@ export const useVic = create<VicStore>((set, get) => ({
   async checkPulse() {
     const { busy, refreshing, gate, state, modals, pulse } = get()
     if (busy || refreshing || polling || document.hidden || gate.mode !== "ok" || !state || modals > 0) return
+    if (rateLimited()) return // Google is limiting this account: pause quietly instead of adding to it
     polling = true // at a 2 s tick a slow Apps Script call would otherwise stack up
     try {
-      // access is rechecked every tick so a revoked account drops to the gate at once instead of keeping the last data on screen
-      const a = await call<Access>("webAccess")
-      if (!a.ok) {
-        set({ gate: { mode: "noaccess", access: a }, access: a, state: null, pulse: null, loading: false })
-        return
-      }
-      const p = await call<number>("webPulse")
+      // webPulse rechecks access itself, so a revoked account drops to the gate at the next tick (69024a1) in one call
+      const p = await call<number>("webPulse", [], POLL_TIMEOUT_MS)
       // the pulse only advances inside a successful refresh, so a failed one is retried on the next tick
       if (p !== pulse && !get().busy) await get().refresh(true)
-    } catch {
-      /* stay quiet: the next tick or the refresh button retries */
+    } catch (e) {
+      // "Not allowed": ask webAccess (it never throws) only for the email and reason the gate shows
+      if (e instanceof ApiError && /^(?:Error: )?Not allowed$/.test(e.message)) {
+        const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => undefined)
+        if (!a?.ok) set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, pulse: null, loading: false })
+      }
+      /* anything else stays quiet: the next tick or the refresh button retries */
     } finally {
       polling = false
     }
@@ -132,7 +137,7 @@ export const useVic = create<VicStore>((set, get) => ({
     const log = (text: string, error = false) =>
       set((cur) => ({ activity: [{ id: ++activityId, time: hhmm(), text, error }, ...cur.activity].slice(0, 40) }))
     try {
-      const send = () => call<RunOut<R>>("webRun", action, args)
+      const send = () => call<RunOut<R>>("webRun", [action, args])
       // A refused action changed nothing (the script lock is taken before any change), so a quick action may quietly try once more.
       const out = await send().catch(async (e) => {
         if (action !== "quick" || !(e instanceof ApiError) || e.code !== "BUSY") throw e

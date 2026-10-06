@@ -65,6 +65,8 @@ module.exports = async (req, res) => {
   if (!r.ok) {
     const st = (j.error && j.error.status) || r.status;
     console.warn(JSON.stringify({ at: 'run', status: r.status, gstatus: st, msg: String(j.error && j.error.message || '').slice(0, 200) }));
+    if (r.status === 429 || st === 'RESOURCE_EXHAUSTED') // per-account "Execution requests per minute" quota: the page pauses its polls
+      return done(429, { error: 'Google is limiting requests from this account for a minute. Nothing was changed.', code: 'RATE_LIMIT' }, false);
     return done(502, { error: 'Google Apps Script refused the call (' + st + ').' }, false);
   }
   if (j.error) { // the script threw: details[0].errorMessage is our own Error message

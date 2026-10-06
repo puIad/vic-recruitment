@@ -17,7 +17,12 @@ export const hooks: {
   onSession: (endsAt: number) => void
 } = { onAuthLost: () => {}, onSession: () => {} }
 
-export async function call<T = unknown>(fn: string, ...args: unknown[]): Promise<T> {
+/** Until when Google is rate-limiting this account (ms timestamp): live refresh skips its ticks till then. */
+let limitedUntil = 0
+export const rateLimited = () => Date.now() < limitedUntil
+
+/** timeoutMs: give up on a call stuck at Google (the polls use it; webState and webRun can be long and keep none). */
+export async function call<T = unknown>(fn: string, args: unknown[] = [], timeoutMs?: number): Promise<T> {
   let r: Response
   try {
     r = await fetch("/api/run", {
@@ -25,8 +30,10 @@ export async function call<T = unknown>(fn: string, ...args: unknown[]): Promise
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", "X-VIC": "1" },
       body: JSON.stringify({ fn, args }),
+      signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
     })
-  } catch {
+  } catch (e) {
+    if ((e as Error).name === "TimeoutError") throw new ApiError("Google took too long to answer.", "TIMEOUT")
     throw new ApiError("Network error: check your connection and try again.", "NETWORK")
   }
   const exp = Number(r.headers.get("X-Session-Expires"))
@@ -40,6 +47,7 @@ export async function call<T = unknown>(fn: string, ...args: unknown[]): Promise
     hooks.onAuthLost(j.code === "EXPIRED" ? "expired" : "signin", j.error || "Signed out")
     throw new ApiError(j.error || "Signed out", j.code, 401)
   }
+  if (j.code === "RATE_LIMIT") limitedUntil = Date.now() + 30000
   if (j.error) throw new ApiError(j.error, j.code, r.status)
   return j.value as T
 }

@@ -161,6 +161,9 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   g.opts.scriptStatus = 403;
   r = await rpc(admin, 'webAccess');
   assert.strictEqual(r.status, 502); assert(!/secret details/.test(r.body), 'Google error messages are summarized, not echoed');
+  g.opts.scriptStatus = 429;
+  r = await rpc(admin, 'webPulse');
+  assert.deepStrictEqual([r.status, r.json.code, /limiting requests.*Nothing was changed/.test(r.json.error)], [429, 'RATE_LIMIT', true], "Google's rate limit reaches the page as code RATE_LIMIT");
   g.opts.scriptStatus = 401;
   r = await rpc(admin, 'webAccess');
   assert.deepStrictEqual([r.status, r.json.code], [401, 'SIGNED_OUT']);

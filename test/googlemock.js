@@ -22,7 +22,7 @@ module.exports = function googleMock(seed) {
     const m = url.match(/^https:\/\/script\.googleapis\.com\/v1\/scripts\/([^:]+):run$/);
     if (m) {
       if (opts.timeout) { const e = new Error('timed out'); e.name = 'TimeoutError'; throw e; }
-      if (opts.scriptStatus !== 200) return json(opts.scriptStatus, { error: { code: opts.scriptStatus, status: 'PERMISSION_DENIED', message: 'secret details' } });
+      if (opts.scriptStatus !== 200) return json(opts.scriptStatus, { error: { code: opts.scriptStatus, status: opts.scriptStatus === 429 ? 'RESOURCE_EXHAUSTED' : 'PERMISSION_DENIED', message: 'secret details' } });
       const email = String(init.headers.Authorization).replace(/^Bearer at:/, '');
       const b = JSON.parse(init.body);
       log.runs.push({ fn: b.function, email });
