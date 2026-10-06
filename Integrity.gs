@@ -447,7 +447,11 @@ function checkBinomeFile_(ctx, b, owed, env) {
       : 'the header row of its sheet was changed: the sync reads columns by position, so Contacted / Date / Time may be read wrong. Put the headers back (from column B) as: ' + BF_HEAD.join(', ') + '.');
     return out; // everything else would be read from the wrong tab
   }
-  if (!sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).length) add('MEDIUM', 'protect', 'its sheet is no longer protected: the binome can overwrite the columns the script fills. Protect the tab again, except the gold columns (' + BF_EDITABLE.map(k => BF_LABEL[k] || k).join(', ') + ').');
+  const prot = sh.getProtections(SpreadsheetApp.ProtectionType.SHEET), trig = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
+  if (!prot.length) add('MEDIUM', 'protect', 'its sheet is no longer protected: the binome can overwrite the columns the script fills. Protect the tab again, except the gold columns (' + BF_EDITABLE.map(k => BF_LABEL[k] || k).join(', ') + ').');
+  // a protection made before the triggers moved lists only its old editor: the sync account is locked out of the columns it fills
+  else if (trig && !prot.some(p => { try { return p.getEditors().some(u => lc_(u.getEmail()) === trig); } catch (e) { return true; /* can't read it: say nothing */ } }))
+    add('MEDIUM', 'protect', 'the protection of its sheet does not list ' + trig + ', the account that runs the sync, so the sync cannot write the columns it fills. Only the sheet\'s owner can protect the tab again: Repair, signed in as the owner.');
   const I = ctx.iv.I, last = bfLastRow_(sh);
   const vals = last >= 2 ? sh.getRange(2, BF_COL, last - 1, BF_H.length).getValues() : [];
   const at = {};
