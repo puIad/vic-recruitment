@@ -138,7 +138,7 @@ function webState() {
         assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open };
     }),
     alertCounts: alertCounts,
-    alerts: open.sort((a, b) => (SEV_RANK[b[A.Severity]] || 0) - (SEV_RANK[a[A.Severity]] || 0)).slice(0, 300).map(r => ({
+    alerts: open.sort((a, b) => (SEV_RANK[b[A.Severity]] || 0) - (SEV_RANK[a[A.Severity]] || 0) || (+new Date(b[A.Created]) || 0) - (+new Date(a[A.Created]) || 0)).slice(0, 300).map(r => ({
       id: String(r[A.ID]), created: fmt_(r[A.Created], 'dd/MM HH:mm'), severity: r[A.Severity], type: r[A.Type],
       code: String(r[A.Interviewee]), binome: String(r[A.Binome]), msg: String(r[A.Message]),
       fix: r[A.Type] === 'MANUAL_EDIT' ? editFixes_(String(r[A.Key]), base) : [], q: quickInfo_(ctx, r, look) })),
