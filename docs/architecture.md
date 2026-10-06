@@ -40,7 +40,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 
 | Tab | Who writes | Content |
 |---|---|---|
-| Tracker | script | per-binome progress, rebuilt each sync |
+| Tracker | script | per-binome progress, rebuilt by a sync only when a value in it changed |
 | Alerts | script (+ admins resolve) | ID, severity, type, status OPEN / RESOLVED / AUTO-RESOLVED / AUTO-FIXED / SNOOZED / MUTED, key (dedup) |
 | Interviewees | script (warning-protected) | one row per registration: code, binome, status, contact data, what the binome wrote |
 | Binomes | admins before Lock, then the tools | code, 2 members, tag, status DRAFT / ACTIVE / PAUSED, sheet link |

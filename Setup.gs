@@ -208,7 +208,7 @@ function styleTab_(sh, nCols) {
   if (TAB_COLOR[sh.getName()]) sh.setTabColor(TAB_COLOR[sh.getName()]);
 }
 
-/** Every tab of the Master except the Tracker (rebuilt in the theme by buildTracker_ every run). */
+/** Every tab of the Master except the Tracker (rebuilt in the theme by buildTracker_ whenever it changes). */
 function styleMaster_(ss) {
   const widths = { [TAB.IV]: IV_H.length, [TAB.BINOMES]: BIN_H.length, [TAB.TEAM]: TEAM_H.length, [TAB.LOG]: LOG_H.length,
     [TAB.ALERTS]: ALERT_H.length, [TAB.CHANGES]: MC_H.length, [TAB.SETTINGS]: 3 };

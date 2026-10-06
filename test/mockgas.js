@@ -7,9 +7,11 @@ var __idc = 0;
 var __props = {};
 var __triggers = [];
 var __clock = null;   // optional fixed "now" (ms)
+var __writes = {};    // tab name -> writes (setValues/setValue/clear/clearContent) since a test reset it
 var __RealDate = Date;
 
 function __id(p) { __idc++; return (p || 'id') + '_' + __idc; }
+function __wrote(sh) { __writes[sh.name] = (__writes[sh.name] || 0) + 1; __touch(sh.ss.id); }
 function __touch(ssId) { if (__files[ssId]) __files[ssId].lastUpdated = new Date(__files[ssId].lastUpdated.getTime() + 1000); }
 
 function chain(extra) {
@@ -53,7 +55,7 @@ MockSheet.prototype = {
   },
   getDataRange() { return new MockRange(this, 1, 1, Math.max(1, this.getLastRow()), Math.max(1, this.getLastColumn())); },
   deleteRow(r) { this.cells.splice(r - 1, 1); __touch(this.ss.id); return this; },
-  clear() { this.cells = []; return this; },
+  clear() { this.cells = []; __wrote(this); return this; },
   appendRow(v) { this.getRange(this.getLastRow() + 1, 1, 1, v.length).setValues([v]); return this; },
   getProtections() { return this.protections.slice(); },
   protect() {
@@ -91,10 +93,10 @@ MockRange.prototype = {
       const ri = this.r - 1 + i; for (let k = 0; k <= ri; k++) if (!this.sh.cells[k]) this.sh.cells[k] = []; // no holes, like a real sheet
       for (let j = 0; j < this.nc; j++) { let v = vals[i][j]; if (v === undefined || v === null) v = ''; if (typeof v === 'string' && v[0] === "'") v = v.slice(1); this.sh.cells[ri][this.c - 1 + j] = v; }
     }
-    __touch(this.sh.ss.id); return this;
+    __wrote(this.sh); return this;
   },
   setValue(v) { return this.setValues([[v]]); },
-  clearContent() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = ''; } return this; },
+  clearContent() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = ''; } __wrote(this.sh); return this; },
   setNumberFormat(f) { for (let j = 0; j < this.nc; j++) this.sh.fmt[this.c + j] = f; return this; },
   setNote(n) { this.sh.notes[this.r + ':' + this.c] = n; return this; },
   insertCheckboxes() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = false; } return this; }, // like Apps Script: every box unticked

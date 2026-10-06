@@ -172,6 +172,56 @@ console.log('Binome file "Interview Form" cell for IT.01:', fileIT01[BFI['Interv
 assert(fileIT01[BFI['Interview Form']].startsWith('✅'), 'first submission mark kept');
 assert.strictEqual(fileIT01[BFI['Interview Done']], true, 'form ticks Interview Done');
 
+// ---- a sync with nothing new writes nothing to the Master; each kind of change is written (load-test task 4) ----
+const quietSync = fn => { run('__writes = {}'); const lu = run('__files[master.id].lastUpdated.getTime()'); run(fn || 'syncAll()');
+  return { w: run('JSON.stringify(__writes)'), moved: run('__files[master.id].lastUpdated.getTime()') !== lu }; };
+const wrote = q => JSON.parse(q.w);
+const ivOf = code => run('master.getSheetByName("Interviewees").getDataRange().getValues()').find(r => r[0] === code);
+let q = quietSync();
+assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'a sync with nothing new wrote ' + q.w);
+// a binome-sheet edit: the row is written, the status moves, NOT_CONTACTED closes, the Tracker follows
+const comm = ivOf('COMM.01'), commFile = bins.find(r => r[0] === comm[1])[8];
+const notContacted = () => run('master.getSheetByName("Alerts").getDataRange().getValues()').find(a => a[3] === 'NOT_CONTACTED' && a[4] === 'COMM.01');
+assert.strictEqual(notContacted()[8], 'OPEN');
+run(`(function(){ var f = __files["${commFile}"].obj.sheets[0];
+  f.cells.forEach(function(r){ if (r[BFI.Code] !== 'COMM.01') return;
+    r[BFI.Contacted] = 'Yes'; r[BFI['Interview Date']] = new Date(Date.now() + 24 * 3600e3); r[BFI['Interview Time']] = '10:00';
+    r[BFI['Interview Done']] = true; r[BFI.Rating] = 7; r[BFI['Final Affectation']] = 'COMM'; r[BFI.Notes] = 'very motivated'; });
+  __touch("${commFile}"); })()`);
+q = quietSync();
+assert(wrote(q).Interviewees && wrote(q).Alerts && wrote(q).Tracker && q.moved, 'binome edit written: ' + q.w);
+let c1 = ivOf('COMM.01');
+assert.deepStrictEqual([c1[IVX.Status], c1[IVX.Contacted], c1[IVX['Interview Time']], c1[IVX['Interview Done']], c1[IVX.Rating], c1[IVX['Final Affectation']], c1[IVX['Binome Notes']]],
+  ['SCHEDULED', 'Yes', '10:00', true, 7, 'COMM', 'very motivated'], 'binome edit visible');
+assert(c1[IVX['Interview At']] instanceof run('Date') && c1[IVX['Interview Date']], 'date read');
+assert.strictEqual(notContacted()[8], 'AUTO-RESOLVED', 'alert resolved and written');
+q = quietSync();
+assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'nothing new after the edit, yet wrote ' + q.w);
+// an interview form: INTERVIEWED, and the Tracker counts it
+const bComm = bins.find(r => r[0] === comm[1]);
+run(`master.getSheetByName('Interview Responses').cells.push([new Date(), '${bComm[2]}', '${bComm[0]}', 'COMM.01', 'intro', 'COMM', 'COMM', '']);`);
+const interviewedBefore = run('master.getSheetByName("Tracker").getRange(3, 3).getValue()');
+q = quietSync('onFormSubmitHandler({})');
+assert(wrote(q)['Interview Log'] && wrote(q).Interviewees && wrote(q).Tracker, 'form written: ' + q.w);
+assert.strictEqual(ivOf('COMM.01')[IVX.Status], 'INTERVIEWED');
+assert.notStrictEqual(run('master.getSheetByName("Tracker").getRange(3, 3).getValue()'), interviewedBefore, 'Tracker counts the interview');
+// a new registration (bad birth date: an alert raised): appended, assigned, alerted, counted
+run(`reg.cells.push(regRow(new Date(), 'new1@g.enp.edu.dz', 'Nadia', 'Nouvelle', 'new1@g.enp.edu.dz', '27/10/2025', '0555000111', 'HR', 'IT'))`);
+q = quietSync();
+const nadia = run('master.getSheetByName("Interviewees").getDataRange().getValues()').find(r => r[IVX['First Name']] === 'Nadia');
+assert(nadia && nadia[0] && nadia[1] && wrote(q).Interviewees && wrote(q).Tracker, 'new registration written: ' + q.w);
+assert(run('master.getSheetByName("Alerts").getDataRange().getValues()').some(a => a[3] === 'BAD_BIRTHDATE' && a[4] === nadia[0]), 'alert raised and written');
+q = quietSync();
+assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'nothing new after the registration, yet wrote ' + q.w);
+// rows the script left alone are not rewritten: one changed row = one row written
+run(`var __sv = MockRange.prototype.setValues, __rows = 0; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Interviewees') __rows += v.length; return __sv.call(this, v); };`);
+run(`__files["${commFile}"].obj.sheets[0].cells.forEach(function(r){ if (r[BFI.Code] === 'COMM.01') r[BFI.Notes] = 'notes changed'; }); __touch("${commFile}");`);
+run('syncAll()');
+run('MockRange.prototype.setValues = __sv');
+assert.deepStrictEqual([run('__rows'), ivOf('COMM.01')[IVX['Binome Notes']]], [1, 'notes changed'], 'only the edited row written');
+// equal only when sure: forced text matches its read-back; a number never matches the same number as text
+assert(run(`sameCell_("'0555", '0555') && sameCell_(new Date(5), new Date(5)) && !sameCell_(7, '7') && !sameCell_('7', 7) && !sameCell_("'0555", 555) && !sameCell_('', 0)`));
+
 // ---- reassign ----
 const it02 = ivs.find(r => r[0] === 'IT.02');
 const target = bins.find(r => r[0] !== it02[1] && (r[5] === 'ALL' || r[5].includes('IT')));
