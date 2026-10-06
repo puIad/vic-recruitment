@@ -12,7 +12,7 @@ the task itself and the files it lists.
 |---|---|---|---|---|
 | 1 | [Time each step of the sync](#task-1--time-each-step-of-the-sync) | S | — | ☑ [#18](https://github.com/puIad/vic-recruitment-2026/pull/18), code and deploy; the reading in Notes is still open |
 | 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☑ [#19](https://github.com/puIad/vic-recruitment-2026/pull/19), code and deploy; the live check in Notes is still open |
-| 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☐ |
+| 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☑ [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only (Vercel builds it on merge) |
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☐ |
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☐ |
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☐ |
@@ -193,6 +193,19 @@ account lose access in the mock).
 quiet pause, not an error storm.
 
 **Notes.**
+
+- **Shipped:** [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI and `web/` only (no script deploy, no `API_VERSION` bump).
+- **How it works:** `call(fn, args = [], timeoutMs?)`. The array signature replaces the old rest args; only `store.ts` calls it.
+  `POLL_TIMEOUT_MS = 20000` (store.ts) is used for `webPulse` and `webAccess`, `boot` included. A timeout is
+  `ApiError` code `TIMEOUT`. `api.ts` sets the 30 s pause whenever any reply has `RATE_LIMIT`, and `rateLimited()`
+  reads it. So an action that hits the limit also pauses polling.
+- **On "Not allowed"** the page wipes the state even if `webAccess` then fails. The gate shows without the email in that
+  case: the script's refusal decides, not the follow-up call. If `webAccess` says ok again, nothing changes.
+- **Task 7:** member polling at 15 s goes through the same `checkPulse`, so it gets the timeout and the pause for free.
+  The only change it needs is `PULSE_MS` (app-shell.tsx).
+- **Checked on the local mock** (switches for grant/revoke, touch, 429, hang): 1 `webPulse` per idle tick and 0 `webAccess`.
+  An edit triggers 1 `webState`. On 429: 1 refused call, nothing for 30 s, no toast. A hung poll is dropped at 20 s.
+  On revoke: 1 `webPulse` + 1 `webAccess`, then the no-access screen.
 
 ---
 
