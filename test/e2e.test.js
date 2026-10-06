@@ -213,12 +213,15 @@ assert(nadia && nadia[0] && nadia[1] && wrote(q).Interviewees && wrote(q).Tracke
 assert(run('master.getSheetByName("Alerts").getDataRange().getValues()').some(a => a[3] === 'BAD_BIRTHDATE' && a[4] === nadia[0]), 'alert raised and written');
 q = quietSync();
 assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'nothing new after the registration, yet wrote ' + q.w);
-// rows the script left alone are not rewritten: one changed row = one row written
-run(`var __sv = MockRange.prototype.setValues, __rows = 0; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Interviewees') __rows += v.length; return __sv.call(this, v); };`);
-run(`__files["${commFile}"].obj.sheets[0].cells.forEach(function(r){ if (r[BFI.Code] === 'COMM.01') r[BFI.Notes] = 'notes changed'; }); __touch("${commFile}");`);
+// rows the script left alone are not rewritten: two edited rows apart = two one-row blocks, at their own rows
+run(`var __sv = MockRange.prototype.setValues, __blocks = []; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Interviewees') __blocks.push([this.r, v.length]); return __sv.call(this, v); };`);
+[[commFile, 'COMM.01'], [fileId, 'IT.01']].forEach(([f, code]) => run(`__files["${f}"].obj.sheets[0].cells.forEach(function(r){ if (r[BFI.Code] === '${code}') r[BFI.Notes] = 'notes changed'; }); __touch("${f}");`));
+const rowOf = code => run('master.getSheetByName("Interviewees").getDataRange().getValues()').findIndex(r => r[0] === code) + 1;
 run('syncAll()');
 run('MockRange.prototype.setValues = __sv');
-assert.deepStrictEqual([run('__rows'), ivOf('COMM.01')[IVX['Binome Notes']]], [1, 'notes changed'], 'only the edited row written');
+assert(rowOf('COMM.01') - rowOf('IT.01') > 1, 'the two rows are apart');
+assert.deepStrictEqual([JSON.stringify(run("__blocks")), ivOf('COMM.01')[IVX['Binome Notes']], ivOf('IT.01')[IVX['Binome Notes']]],
+  [JSON.stringify([[rowOf('IT.01'), 1], [rowOf('COMM.01'), 1]]), 'notes changed', 'notes changed'], 'only the edited rows written');
 // equal only when sure: forced text matches its read-back; a number never matches the same number as text
 assert(run(`sameCell_("'0555", '0555') && sameCell_(new Date(5), new Date(5)) && !sameCell_(7, '7') && !sameCell_('7', 7) && !sameCell_("'0555", 555) && !sameCell_('', 0)`));
 
