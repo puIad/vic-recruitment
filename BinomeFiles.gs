@@ -205,6 +205,19 @@ function protectBinomeSheet_(sh) {
   keepLc.forEach(e => p.addEditor(e));
 }
 
+/** Menu, run as the sheets' owner (only a protection's owner can rewrite it): protect again every binome sheet whose protection
+ *  does not list the trigger account, so the sync can write the columns it fills. Safe to repeat: sheets already fine are skipped. */
+function reprotectBinomeSheets() {
+  const ctx = loadCtx_(), t0 = Date.now(), trig = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
+  const listed = sh => sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).some(p => { try { return p.getEditors().some(u => lc_(u.getEmail()) === trig); } catch (e) { return false; } });
+  const errs = []; let done = 0, fine = 0;
+  ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {
+    if (Date.now() - t0 > 240000) { errs.push(b.code + ': out of time, run it again'); return; }
+    try { const sh = binomeSheet_(ctx, b); if (trig && listed(sh)) fine++; else { protectBinomeSheet_(sh); done++; } } catch (e) { errs.push(b.code + ': ' + e.message); }
+  });
+  say_('Protection rewritten on ' + done + ' binome sheet(s); ' + fine + ' already listed ' + trig + '.' + (errs.length ? '\n\nNot done:\n' + errs.join('\n') : ''));
+}
+
 function createBinomeFile_(b, members) {
   const s = S_();
   const file = SpreadsheetApp.create(binomeFileTitle_(b, members));

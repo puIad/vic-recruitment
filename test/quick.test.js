@@ -209,6 +209,13 @@ let oddCode;
   call('webRun', 'integrity');
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired');
   assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes(__props.TRIGGER_OWNER)`), 'trigger account is an editor again');
+  // the menu action rewrites a stale protection directly, and leaves a good one alone
+  run(`(function () { var sh = __files["${f1}"].obj.sheets[0]; sh.protections = []; var p = sh.protect(); p.removeEditors([__props.TRIGGER_OWNER]); p.addEditor('old.owner@g.enp.edu.dz'); })()`);
+  run('reprotectBinomeSheets()');
+  assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes(__props.TRIGGER_OWNER)`), 'menu: trigger account listed');
+  run(`__files["${f1}"].obj.sheets[0].protections[0].__id = 'kept'`);
+  run('reprotectBinomeSheets()');
+  assert.strictEqual(run(`__files["${f1}"].obj.sheets[0].protections[0].__id`), 'kept', 'a sheet already fine is not touched');
   // a protection whose editors the account cannot read is flagged too, not taken for fine
   run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors = function () { throw new Error('You do not have permission'); }`);
   call('webRun', 'integrity');
