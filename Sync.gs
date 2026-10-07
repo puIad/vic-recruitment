@@ -237,6 +237,7 @@ function runCycle_(opts) {
     ctx.alerts.flush(); lap('alerts');
     sendNewIntervieweeMails_(ctx); lap('mails');
     if (opts.tracker) buildTracker_(ctx); lap('tracker');
+    saveMemberMap_(ctx); // covers ended above, hand edits of the Binomes tab
     // the dashboard's snapshot; a failure must not fail the sync, and must not leave a snapshot that misses this run
     try { publishState_(ctx); } catch (e) { console.warn('Snapshot not published: ' + e); dropSnap_(); } lap('snap');
     return ctx;

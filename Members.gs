@@ -109,6 +109,7 @@ function applyMemberPlans_(ctx, plans, reason) {
     throw new Error('Nothing changed: could not write the Binomes tab (' + e.message + ').');
   }
   indexCtx_(ctx);
+  saveMemberMap_(ctx);
   const share = bool_(s.SHARE_FILES_WITH_BINOME) && !bool_(s.TEST_MODE);
   const I = ctx.iv.I, lines = [];
   plans.forEach(p => {
@@ -232,6 +233,7 @@ function newBinomeCore_(a) {
     }
     ctx.bin.data.push(row);
     indexCtx_(ctx);
+    saveMemberMap_(ctx);
     const by = Session.getActiveUser().getEmail(), names = members.map(m => m.name).join(' & ');
     // The binome exists from here on: a failed history write or email is reported, never thrown (a retry would refuse the pair)
     const issues = [];
@@ -390,6 +392,8 @@ function addCoverCore_(a) {
           '. You stay responsible for the binome sheet: keep Contacted / Date / Time up to date for them.</p>');
       });
     });
+    ctx.covers = loadCovers_(); ctx.coverMap = coverMap_(ctx);
+    saveMemberMap_(ctx);
     ctx.alerts.flush();
     return { done: lines };
   }, 60000);
@@ -449,6 +453,7 @@ function endCoverCore_(a) {
     const c = (ctx.covers || []).filter(x => x.row === Number(a && a.row))[0];
     if (!c) return { errors: ['This cover is not active any more (refresh the page).'], warnings: [] };
     const problem = endCover_(ctx, c, 'ended by ' + Session.getActiveUser().getEmail());
+    saveMemberMap_(ctx);
     ctx.alerts.flush();
     return { done: [c.name + ' no longer covers ' + c.codes.join(', ') + ' (' + c.binome + ')' +
       (problem ? ' (their view access could not be removed yet: ' + problem + '. It will be retried automatically.)' : '')] };

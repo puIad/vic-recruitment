@@ -4,13 +4,14 @@
  * Deployed (appsscript.json) as: Execute as the user accessing the web app ·
  * Who has access: anyone in the domain. Google asks each visitor for permission
  * once, then everything runs with *their* Drive access: an account that can edit
- * the Master sheet gets the dashboard, any other account gets NoAccess.html
- * with a switch-account button. One deployment serves every admin.
+ * the Master sheet is an admin and gets the dashboard; a member of a locked binome
+ * (or a live cover) gets only their binome (MEMBER_MAP, through the Vercel front);
+ * any other account gets NoAccess.html with a switch-account button.
  ******************************************************************************/
 
 function doGet() {
   const a = access_();
-  if (!a.ok) {
+  if (a.role !== 'admin') { // the old dashboard is the admins' only
     const t = HtmlService.createTemplateFromFile('NoAccess');
     t.email = a.email; t.reason = a.reason; t.switchUrl = switchUrl_(); t.appUrl = appUrl_();
     return t.evaluate()
@@ -27,54 +28,158 @@ function appUrl_() { try { return ScriptApp.getService().getUrl(); } catch (e) {
 function switchUrl_() { return 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(appUrl_()); }
 
 /** Bumped when webAccess/webState/webRun change shape; the Vercel front (frontend/src/lib/vic/types.ts) checks it. */
-const API_VERSION = 2;
+const API_VERSION = 3;
 const DOMAIN = 'g.enp.edu.dz';
 
 /**
- * Can the signed-in account edit the Master? {ok, email, reason, owner}. The script runs as that account,
- * so opening the sheet is the real test: DOMAIN = not an @g.enp.edu.dz account, NO_PROJECT = can't open it,
- * READ_ONLY = can open, can't edit. owner = this account owns the Master (only the owner may run Setup).
+ * Who is the signed-in account? {ok, role, email, reason, owner} (+ binome, cover, m for a member). The script runs as that
+ * account, so opening the sheet is the real test: an editor of the Master is an admin (role 'admin'; owner = owns the
+ * Master, only the owner may run Setup). Otherwise an email in MEMBER_MAP is a member (role 'member': their binome only;
+ * cover = a live cover, who sees only the codes they cover). Else DOMAIN = not an @g.enp.edu.dz account, NO_PROJECT =
+ * can't open the Master, READ_ONLY = can open it, can't edit it. Admin entry points check role === 'admin', never ok.
  */
 function access_() {
   const email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
-  if (!email) return { ok: false, email: '', reason: 'NO_EMAIL', owner: false };
-  if (email.split('@')[1] !== DOMAIN) return { ok: false, email: email, reason: 'DOMAIN', owner: false };
+  if (!email) return { ok: false, role: '', email: '', reason: 'NO_EMAIL', owner: false };
+  if (email.split('@')[1] !== DOMAIN) return { ok: false, role: '', email: email, reason: 'DOMAIN', owner: false };
   let ss = null;
   try { ss = ss_(); } catch (e) { /* this account can't open the Master */ }
-  if (!ss) return { ok: false, email: email, reason: 'NO_PROJECT', owner: false };
-  try {
-    const owner = ss.getOwner();
-    const ownerEmail = owner ? String(owner.getEmail()).toLowerCase() : '';
-    const editors = ss.getEditors().map(u => String(u.getEmail()).toLowerCase()).concat(ownerEmail ? [ownerEmail] : []);
-    if (editors.indexOf(email) >= 0) return { ok: true, email: email, owner: email === ownerEmail };
-  } catch (e) { /* viewers can't list the editors */ }
+  if (ss) {
+    try {
+      const owner = ss.getOwner();
+      const ownerEmail = owner ? String(owner.getEmail()).toLowerCase() : '';
+      const editors = ss.getEditors().map(u => String(u.getEmail()).toLowerCase()).concat(ownerEmail ? [ownerEmail] : []);
+      if (editors.indexOf(email) >= 0) return { ok: true, role: 'admin', email: email, owner: email === ownerEmail };
+    } catch (e) { /* viewers can't list the editors */ }
+  }
+  const m = savedMemberMap_()[email];
+  if (m) return { ok: true, role: 'member', email: email, owner: false, binome: m.b, cover: !!m.cover, m: m };
+  if (!ss) return { ok: false, role: '', email: email, reason: 'NO_PROJECT', owner: false };
   // The bound script hands back its Master even to an account with no access at all: ask Drive whether it can see it.
-  try { DriveApp.getFileById(ss.getId()); } catch (e) { return { ok: false, email: email, reason: 'NO_PROJECT', owner: false }; }
-  return { ok: false, email: email, reason: 'READ_ONLY', owner: false };
+  try { DriveApp.getFileById(ss.getId()); } catch (e) { return { ok: false, role: '', email: email, reason: 'NO_PROJECT', owner: false }; }
+  return { ok: false, role: '', email: email, reason: 'READ_ONLY', owner: false };
 }
-function isAdmin_() { return access_().ok; }
+function isAdmin_() { return access_().role === 'admin'; }
 
 /** First call of the Vercel front: never throws, so it can show the no-access view. */
 function webAccess() {
   const a = access_();
-  return { ok: a.ok, email: a.email, reason: a.reason || '', owner: !!a.owner, v: API_VERSION };
+  return { ok: a.ok, role: a.role || '', email: a.email, reason: a.reason || '', owner: !!a.owner,
+    binome: a.binome || '', cover: !!a.cover, v: API_VERSION };
 }
 
-/** Cheap change detector for the dashboard's live refresh: the version of the cached dashboard (SNAP_VER), which goes up only
- *  when what the dashboard shows changed (publishState_). A hand edit in the Master shows after the next sync. */
+/** Cheap change detector for the dashboard's live refresh. Admins: the version of the cached dashboard (SNAP_VER), which goes
+ *  up only when what the dashboard shows changed (publishState_); a hand edit in the Master shows after the next sync.
+ *  Members: their binome's version (SNAP_BIN). Someone no longer in MEMBER_MAP gets "Not allowed" at the next poll. */
 function webPulse() {
-  if (!access_().ok) throw new Error('Not allowed');
-  return Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
+  const a = access_();
+  if (a.role === 'admin') return Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
+  if (a.role === 'member') { const b = binMeta_()[a.binome]; return b ? b.v : 0; }
+  throw new Error('Not allowed');
 }
 
 /** Everything the dashboard shows, read-only: the cached snapshot plus who is asking. Dates are pre-formatted
  *  (google.script.run can't return Date). The cache may lose entries at any time: then it is built live, and published
- *  when the lock is free (otherwise whoever holds it publishes, or the next sync does). */
+ *  when the lock is free (otherwise whoever holds it publishes, or the next sync does). A member gets their binome only. */
 function webState() {
   const a = access_();
-  if (!a.ok) throw new Error('Not allowed');
+  if (a.role === 'member') return memberState_(a);
+  if (a.role !== 'admin') throw new Error('Not allowed');
   const st = readSnap_() || withLock_(() => publishState_(freshCtx_()), 1) || liveState_(freshCtx_());
   return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, switchUrl: switchUrl_() });
+}
+
+/* ---------- members: MEMBER_MAP (who may see which binome) and their slice of the snapshot ---------- */
+
+/** email -> {b: binome code, f: sheet id} for every member of a locked binome (ACTIVE or PAUSED), plus each live cover as
+ *  {b, f, cover: true, codes: [the codes still covered]}. A member's own binome wins over a cover. */
+function memberMap_(ctx) {
+  const map = {};
+  (ctx.covers || []).forEach(c => {
+    const b = ctx.binByCode[c.binome], codes = coverLive_(ctx, c), had = map[c.email];
+    if (!c.email || !b || !codes.length) return;
+    // ponytail: one binome per cover; someone covering in two binomes sees the first until it ends (per-binome entries if it happens)
+    if (!had) map[c.email] = { b: b.code, f: b.fileId, cover: true, codes: codes };
+    else if (had.b === b.code) codes.forEach(k => { if (had.codes.indexOf(k) < 0) had.codes.push(k); });
+  });
+  activeOrPaused_(ctx).forEach(b => b.members.forEach(m => { if (m.email) map[m.email] = { b: b.code, f: b.fileId }; }));
+  return map;
+}
+/** Rewrite MEMBER_MAP from ctx (indexed, covers current) when it differs. Every run that changes who is in a binome calls it in
+ *  the same run, inside its lock: the sync, Lock, change / swap members, new binome, add / end cover, reset (empties it). */
+function saveMemberMap_(ctx) {
+  const s = JSON.stringify(memberMap_(ctx));
+  if (s !== loadPropChunks_('MEMBER_MAP')) savePropChunks_('MEMBER_MAP', s);
+}
+function savedMemberMap_() { try { return JSON.parse(loadPropChunks_('MEMBER_MAP') || '{}'); } catch (e) { return {}; } }
+
+// The alerts the script mails to a binome (notifyBinome: timing and odd values); every other type is for the admins only.
+const MEMBER_ALERTS = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'ODD_VALUE'];
+/** A sheet cell as the dashboard shows it (scripts.run can't return a Date). */
+function cell_(v, k) { return v instanceof Date ? fmt_(v, k === 'Interview Time' ? 'HH:mm' : k === 'Registered' ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy') : v; }
+/** One candidate of a binome: its binome-sheet fields (BF_H keys) and its status. */
+function candidate_(row, status) { const c = { Status: status || '' }; BF_H.forEach((k, i) => { c[k] = cell_(row[i], k); }); return c; }
+
+/** code -> what a member of that binome sees: its candidates, its open MEMBER_ALERTS, its members' names. */
+function binSlices_(ctx) {
+  const I = ctx.iv.I, A = ctx.alerts.table.I, out = {};
+  activeOrPaused_(ctx).forEach(b => {
+    out[b.code] = { v: API_VERSION, binome: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl,
+      members: b.members.map(m => m.name || m.email), candidates: [], alerts: [], fromSheet: false };
+  });
+  ctx.iv.data.forEach(r => {
+    const s = out[String(r[I.Binome]).trim()];
+    if (s && r[I.Code] && r[I.Status] !== ST.DUPLICATE) s.candidates.push(candidate_(ivToFileRow_(ctx, r, ivCarry_(ctx, r)), r[I.Status]));
+  });
+  ctx.alerts.table.data.forEach(r => {
+    const s = out[String(r[A.Binome]).trim()];
+    if (s && r[A.Status] === 'OPEN' && MEMBER_ALERTS.indexOf(r[A.Type]) >= 0) s.alerts.push({ id: String(r[A.ID]),
+      created: fmt_(r[A.Created], 'dd/MM HH:mm'), severity: r[A.Severity], type: r[A.Type], code: String(r[A.Interviewee]), msg: String(r[A.Message]) });
+  });
+  return out;
+}
+function binMeta_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('SNAP_BIN') || '{}'); } catch (e) { return {}; } }
+/** Cache the slices that changed or went missing (snap:bin:<code>). Returns {meta: the SNAP_BIN to save, code -> {h, v},
+ *  changed}; v goes up only when that slice's hash moved. A slice the cache refuses (over 100 KB) is left out: that member
+ *  reads their sheet instead. */
+function publishBins_(ctx) {
+  const old = binMeta_(), slices = binSlices_(ctx), codes = Object.keys(slices), cache = CacheService.getScriptCache();
+  const have = cache.getAll(codes.map(c => 'snap:bin:' + c)), meta = {};
+  let changed = Object.keys(old).length !== codes.length;
+  codes.forEach(c => {
+    const json = JSON.stringify(slices[c]), h = hash_(json), o = old[c];
+    meta[c] = { h: h, v: !o ? 1 : o.h === h ? o.v : o.v + 1 };
+    if (!o || o.h !== h) changed = true;
+    if (have['snap:bin:' + c] === json) return;
+    try { cache.put('snap:bin:' + c, json, 21600); } catch (e) { console.warn('Slice of ' + c + ' not cached: ' + e); cache.remove('snap:bin:' + c); }
+  });
+  return { meta: meta, changed: changed };
+}
+
+/** A member's webState: their binome's slice from the cache (a cover: only the codes they cover). Not cached → read from their
+ *  binome sheet, which their own sharing lets them open (then no statuses and no alerts: those live in the Master). */
+function memberState_(a) {
+  const m = a.m, meta = binMeta_()[m.b];
+  let sl = null;
+  if (meta && meta.h) {
+    const json = CacheService.getScriptCache().get('snap:bin:' + m.b);
+    if (typeof json === 'string' && hash_(json) === meta.h) { sl = JSON.parse(json); if (sl.v !== API_VERSION) sl = null; }
+  }
+  if (!sl) sl = sliceFromSheet_(m);
+  if (m.cover) {
+    sl.candidates = sl.candidates.filter(c => m.codes.indexOf(String(c.Code)) >= 0);
+    sl.alerts = sl.alerts.filter(x => m.codes.indexOf(x.code) >= 0);
+  }
+  return Object.assign(sl, { role: 'member', cover: !!m.cover, user: Session.getActiveUser().getEmail(), switchUrl: switchUrl_() });
+}
+function sliceFromSheet_(m) {
+  let book = null;
+  try { book = m.f ? SpreadsheetApp.openById(m.f) : null; } catch (e) { /* not shared with this account (TEST_MODE shares nothing) */ }
+  if (!book) throw new Error("Your binome sheet isn't shared with you yet.");
+  const sh = book.getSheets()[0], n = bfLastRow_(sh);
+  const rows = n < 2 ? [] : sh.getRange(2, BF_COL, n - 1, BF_H.length).getValues().filter(r => String(r[0]).trim());
+  return { v: API_VERSION, binome: m.b, tag: '', status: '', fileUrl: book.getUrl(), members: [], alerts: [], fromSheet: true,
+    candidates: rows.map(r => candidate_(r, '')) };
 }
 
 function freshCtx_() { _settings = null; return loadCtx_(); }
@@ -104,8 +209,8 @@ function readSnap_() {
  *  the write that dropped it. Returns the state. */
 function publishState_(ctx) {
   const st = buildState_(ctx), json = JSON.stringify(st), h = hash_(json), meta = snapMeta_();
-  const same = !!meta && meta.h === h;
-  if (same && readSnap_()) return Object.assign(st, { updated: meta.at });
+  const same = !!meta && meta.h === h, cached = same && !!readSnap_(), bins = publishBins_(ctx);
+  if (cached && !bins.changed) return Object.assign(st, { updated: meta.at });
   const at = same ? meta.at : fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), chunks = {};
   let n = 0;
   for (let i = 0; i < json.length; n++) {
@@ -114,18 +219,20 @@ function publishState_(ctx) {
     if (j < json.length && c >= 0xd800 && c <= 0xdbff) j--; // never split a surrogate pair
     chunks['snap:admin:' + n] = json.slice(i, j); i = j;
   }
-  CacheService.getScriptCache().putAll(chunks, 21600);
+  if (!cached) CacheService.getScriptCache().putAll(chunks, 21600);
   const props = PropertiesService.getScriptProperties(), ver = Number(props.getProperty('SNAP_VER') || 0);
   // ponytail: check then set, not atomic; a drop in the few ms between them is lost until the next change is published
   if (ver !== ctx.snapVer) return Object.assign(st, { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm') });
-  props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at }), SNAP_VER: String(same ? ver : ver + 1) });
+  props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at }), SNAP_VER: String(same ? ver : ver + 1), SNAP_BIN: JSON.stringify(bins.meta) });
   return Object.assign(st, { updated: at });
 }
-/** The cache can no longer be trusted (a publish failed or could not run): the next webState builds live, every screen reloads. */
+/** The cache can no longer be trusted (a publish failed or could not run): the next webState builds live (a member's from
+ *  their sheet), every screen reloads. */
 function dropSnap_() {
-  const props = PropertiesService.getScriptProperties();
+  const props = PropertiesService.getScriptProperties(), bins = binMeta_();
+  Object.keys(bins).forEach(c => { bins[c] = { h: '', v: bins[c].v + 1 }; });
   props.deleteProperty('SNAP_HASH');
-  props.setProperty('SNAP_VER', String(Number(props.getProperty('SNAP_VER') || 0) + 1));
+  props.setProperties({ SNAP_VER: String(Number(props.getProperty('SNAP_VER') || 0) + 1), SNAP_BIN: JSON.stringify(bins) });
 }
 /** After a dashboard action that wrote: publish from a fresh read (the action's own context is not re-indexed after its writes).
  *  It waits for the lock rather than dropping at once: a sync that loaded before a lock-free write (resolve, saveSettings…)
@@ -268,7 +375,7 @@ function saveSettings_(values) {
  *  ~200s so the run ends before its 300s function limit; the old dashboard and the menu keep 270s. */
 function webRun(action, args) {
   const a = access_();
-  if (!a.ok) throw new Error('Not allowed');
+  if (a.role !== 'admin') throw new Error('Not allowed');
   if (action === 'setup' && !a.owner) throw new Error('Only the owner of the master sheet can run Setup');
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle

@@ -43,6 +43,24 @@ function hash_(s) {
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   return (h >>> 0).toString(16) + '.' + s.length;
 }
+const PROP_CHUNK = 4000; // characters per script property: a value holds 9 KB and accented letters take 2 bytes
+/** A long string kept in script properties <name>_0..n-1, with <name>_N = n (the baseline, the member map). */
+function savePropChunks_(name, s) {
+  const p = PropertiesService.getScriptProperties();
+  const oldN = Number(p.getProperty(name + '_N') || 0), n = Math.max(1, Math.ceil(s.length / PROP_CHUNK));
+  const vals = {}; vals[name + '_N'] = String(n);
+  for (let i = 0; i < n; i++) vals[name + '_' + i] = s.slice(i * PROP_CHUNK, (i + 1) * PROP_CHUNK);
+  p.setProperties(vals);
+  for (let i = n; i < oldN; i++) p.deleteProperty(name + '_' + i);
+}
+/** The string savePropChunks_ kept, or null when there is none. */
+function loadPropChunks_(name) {
+  const all = PropertiesService.getScriptProperties().getProperties(), n = Number(all[name + '_N'] || 0);
+  if (!n) return null;
+  let s = '';
+  for (let i = 0; i < n; i++) s += all[name + '_' + i] || '';
+  return s;
+}
 function txt_(v) { const s = String(v == null ? '' : v); return s === '' ? '' : "'" + s; } // force plain text
 /** A Drive error, readable. "enabling APIs" = the Drive API is off in the script's Cloud project: no sharing fix helps. */
 function driveErr_(e) {

@@ -1,6 +1,6 @@
 // Shapes returned by the Apps Script web API (WebApp.gs: webAccess / webState / webRun / webPulse).
 // API_VERSION must match the script; bump together with WebApp.gs (test/vercel.test.js checks they match).
-export const API_VERSION = 2
+export const API_VERSION = 3
 
 export type Severity = "HIGH" | "MEDIUM" | "INFO"
 export type Status = "UNASSIGNED" | "ASSIGNED" | "CONTACTED" | "SCHEDULED" | "INTERVIEWED" | "WITHDRAWN" | "DUPLICATE"
@@ -10,9 +10,13 @@ export type Dept = "IT" | "COMM" | "FLER" | "HR"
 
 export interface Access {
   ok: boolean
+  /** "member": their binome only (task 7 gives them a page; until then they get the no-access screen) */
+  role: "" | "admin" | "member"
   email: string
   reason: "" | "NO_EMAIL" | "DOMAIN" | "NO_PROJECT" | "READ_ONLY"
   owner: boolean
+  binome: string
+  cover: boolean
   v: number
 }
 

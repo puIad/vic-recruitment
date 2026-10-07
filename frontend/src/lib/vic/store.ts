@@ -78,7 +78,8 @@ export const useVic = create<VicStore>((set, get) => ({
         description: `Page ${API_VERSION}, script ${a.v}. Reload the page; if this stays, tell the admin.`,
       })
     }
-    if (!a.ok) {
+    // members get My binome in task 7; until then the gate ("member", not "!== admin": a script without roles is all admins)
+    if (!a.ok || a.role === "member") {
       set({ gate: { mode: "noaccess", access: a }, access: a, loading: false })
       return
     }
