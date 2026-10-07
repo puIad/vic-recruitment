@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { toast } from "sonner"
-import { API_VERSION, type Access, type Alert, type MemberState, type RunOut, type WebState } from "./types"
+import { API_VERSION, type Access, type Alert, type GoldKey, type MemberSetOut, type MemberState, type RunOut, type WebState } from "./types"
 import { ApiError, call, hooks, rateLimited } from "./api"
 
 export type Gate =
@@ -44,8 +44,15 @@ interface VicStore {
   checkPulse: () => Promise<void>
   run: <R = unknown>(action: string, args?: Record<string, unknown>, label?: string) => Promise<RunOut<R> | null>
   dropAlerts: (ids: string[]) => void
+  /** A member sets one of their binome's columns. Never optimistic: the slice changes only with the value the script wrote.
+   *  seen = what the screen showed when the edit started; the partner changed it meanwhile → conflict, with the value now. */
+  memberSet: (code: string, field: GoldKey, value: unknown, seen: unknown) => Promise<MemberSetResult>
+  /** Put a value the script reported into the member's slice (a save, or "Keep theirs" after a conflict). */
+  patchMember: (code: string, field: GoldKey, value: string | number | boolean) => void
   setModals: (delta: number) => void
 }
+
+export type MemberSetResult = { ok: true; value: string | number | boolean } | { conflict: string } | { error: string; busy?: boolean }
 
 let polling = false
 /** a poll stuck at Google ends after this, so the `polling` guard is released and the next tick runs */
@@ -203,6 +210,25 @@ export const useVic = create<VicStore>((set, get) => ({
       })
       return { state: { ...cur.state, alerts: cur.state.alerts.filter((a) => !gone.has(a.id)), alertCounts: counts } }
     })
+  },
+
+  async memberSet(code, field, value, seen) {
+    try {
+      const out = await call<RunOut<MemberSetOut>>("webRun", ["memberSet", { code, field, value, seen }])
+      get().patchMember(code, field, out.result.value)
+      return { ok: true, value: out.result.value }
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "CONFLICT") return { conflict: e.message }
+      return { error: (e as Error).message, busy: e instanceof ApiError && e.code === "BUSY" }
+    }
+  },
+
+  patchMember(code, field, value) {
+    set((cur) =>
+      cur.member
+        ? { member: { ...cur.member, candidates: cur.member.candidates.map((c) => (String(c.Code) === code ? { ...c, [field]: value } : c)) } }
+        : cur
+    )
   },
 
   setModals: (delta) => set((cur) => ({ modals: Math.max(0, cur.modals + delta) })),

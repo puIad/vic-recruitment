@@ -82,6 +82,7 @@ MockRange.prototype = {
     return out;
   },
   getValue() { return this.getValues()[0][0]; },
+  getDisplayValue() { return this.getDisplayValues()[0][0]; },
   getDisplayValues() {
     return this.getValues().map(row => row.map((v, j) => {
       if (v instanceof Date) { const f = this.sh.fmt[this.c + j] || 'dd/MM/yyyy HH:mm'; return fmtDate(v, f.replace('dd/mm/yyyy', 'dd/MM/yyyy')); }
@@ -184,7 +185,9 @@ var CacheService = { getScriptCache() { return {
   put: (k, v) => __cachePut(k, v), putAll: o => Object.keys(o).forEach(k => __cachePut(k, o[k])),
   remove: k => { delete __cache[k]; }, removeAll: ks => ks.forEach(k => { delete __cache[k]; }) }; } };
 var __lockBusy = false; // a test sets it to make the script lock refuse
-var LockService = { getScriptLock() { return { tryLock: () => !__lockBusy, waitLock: () => true, releaseLock: () => { } }; } };
+var __docLockBusy = false; // the same for the document lock (members' edits)
+var LockService = { getScriptLock() { return { tryLock: () => !__lockBusy, waitLock: () => true, releaseLock: () => { } }; },
+  getDocumentLock() { return { tryLock: () => !__docLockBusy, waitLock: () => true, releaseLock: () => { } }; } };
 var MailApp = { sendEmail(o) { __outbox.push(o); } };
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };
 var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { } };

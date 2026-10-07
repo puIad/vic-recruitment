@@ -131,6 +131,10 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   r = await rpc(admin, 'webRun', 'sync');
   seed.run('__lockBusy = false');
   assert.deepStrictEqual([r.status, r.json.code, /^Another update is running\. Nothing was changed/.test(r.json.error)], [200, 'BUSY', true], 'a refused lock reaches the page as code BUSY, without the prefix');
+  seed.run('var __wr = webRun; webRun = () => { throw new Error("CONFLICT: No answer"); }');
+  r = await rpc(admin, 'webRun', 'memberSet');
+  seed.run('webRun = __wr');
+  assert.deepStrictEqual([r.status, r.json.code, r.json.error], [200, 'CONFLICT', 'No answer'], 'a conflict reaches the page as code CONFLICT, with the value now in the cell');
   seed.run('ss_().addEditor("helper@g.enp.edu.dz")');
   r = await rpc(helper, 'webRun', 'setup');
   assert(/Only the owner/.test(r.json.error), 'editor cannot run setup through the proxy');

@@ -660,11 +660,99 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   m.run('__cacheClear()');
   assert.deepStrictEqual(m.call('webState').candidates.map(c => c.Code), [ivOf(b2.code)[0]], 'from the sheet too');
 
+  // members edit their own sheet (load-test task 8)
+  {
+    const fid = fileOf(b1.code), code2 = ivOf(b1.code)[1];
+    const cell = (code, k) => m.run(`(function(){var sh=__files[${J(fid)}].obj.sheets[0], r=sh.getRange(findFileRow_(sh, ${J(code)}), bfCol_(${J(k)}));
+      var v=r.getValue(); return JSON.stringify([v instanceof Date ? 'Date' : v, r.getDisplayValue()]);})()`);
+    const sheet = () => m.run(`JSON.stringify(__files[${J(fid)}].obj.sheets[0].cells)`);
+    const set = (code, field, value, seen) => m.call('webRun', 'memberSet', { code, field, value, seen });
+    as('admin@g.enp.edu.dz'); m.call('webRun', 'sync'); // a warm slice, published by a sync
+    as(mem);
+    const c0 = m.call('webState').candidates.find(c => c.Code === code2), pv0 = m.call('webPulse');
+    assert.strictEqual(m.call('webState').fromSheet, false);
+    assert.deepStrictEqual(set(code2, 'Contacted', 'Yes', c0.Contacted), { messages: [], result: { code: code2, field: 'Contacted', value: 'Yes' } });
+    assert.deepStrictEqual(JSON.parse(cell(code2, 'Contacted')), ['Yes', 'Yes'], 'written into their sheet');
+    // the partner's next poll: a new version, and the cached slice already holds the value
+    as(partner);
+    assert.strictEqual(m.call('webPulse'), pv0 + 1);
+    st = m.call('webState');
+    assert.deepStrictEqual([st.fromSheet, st.candidates.find(c => c.Code === code2).Contacted], [false, 'Yes'], 'patched slice, not a sheet read');
+
+    // every kind of field, typed the way a person would
+    assert.deepStrictEqual(set(code2, 'Interview Date', '15/10/2026', c0['Interview Date']).result.value, '15/10/2026');
+    assert.deepStrictEqual(JSON.parse(cell(code2, 'Interview Date')), ['Date', '15/10/2026'], 'a real date, not text');
+    assert.strictEqual(set(code2, 'Interview Time', '14:30', '').result.value, '14:30');
+    assert.strictEqual(set(code2, 'Interview Done', true, false).result.value, true);
+    assert.strictEqual(set(code2, 'Rating', '7,5', '').result.value, 7.5);
+    assert.strictEqual(set(code2, 'Rating', 8, 7.5).result.value, 8, 'seen as the slice holds it (a number)');
+    assert.strictEqual(set(code2, 'Final Affectation', 'IT', '').result.value, 'IT');
+    assert.strictEqual(set(code2, 'Notes', '=1+1, called twice', c0.Notes).result.value, '=1+1, called twice');
+    assert.deepStrictEqual(JSON.parse(cell(code2, 'Notes')), ['=1+1, called twice', '=1+1, called twice'], 'notes stay text');
+    assert.strictEqual(set(code2, 'Interview Date', '', '15/10/2026').result.value, '', 'a date can be cleared');
+    set(code2, 'Interview Date', '15/10/2026', '');
+
+    // refused, and nothing written
+    const before = sheet();
+    [['Contacted', 'Maybe', /Contacted must be one of/], ['Final Affectation', 'MATH', /Final Affectation must be/], ['Rating', 11, /from 0 to 10/],
+      ['Rating', 'abc', /from 0 to 10/], ['Interview Done', 'yes', /ticked or not/], ['Interview Date', '31/02/2026', /real date/],
+      ['Interview Date', '2026-10-15', /real date/], ['Interview Time', '25:00', /HH:mm/], ['Interview Time', '9:30', /HH:mm/],
+      ['Notes', 'x'.repeat(2001), /2,000 characters/], ['Email', 'a@b.dz', /^Error: Not allowed$/], ['Status', 'INTERVIEWED', /^Error: Not allowed$/]]
+      .forEach(([field, value, re]) => assert.throws(() => set(code2, field, value, ''), re, field + ' ' + String(value).slice(0, 20)));
+    assert.throws(() => set(ivOf(b2.code)[0], 'Contacted', 'Yes', 'Not yet'), /no longer in your binome/, 'a code of another binome');
+    // the partner changed the cell meanwhile: CONFLICT with its value, nothing written; Use mine resends with that value as seen
+    assert.throws(() => set(code2, 'Contacted', 'No answer', 'Not yet'), /^Error: CONFLICT: Yes$/);
+    assert.throws(() => set(code2, 'Rating', 3, 7.5), /^Error: CONFLICT: 8$/);
+    assert.throws(() => set(code2, 'Interview Done', false, false), /^Error: CONFLICT: true$/);
+    as('stand.in@g.enp.edu.dz');
+    assert.throws(() => set(ivOf(b2.code)[0], 'Contacted', 'Yes', 'Not yet'), /^Error: Not allowed$/, 'a cover is read-only');
+    as('admin@g.enp.edu.dz');
+    assert.throws(() => set(code2, 'Contacted', 'Yes', 'Yes'), /^Error: Not allowed$/, 'admins edit the Master, not through memberSet');
+    as('nobody@g.enp.edu.dz');
+    assert.throws(() => set(code2, 'Contacted', 'Yes', 'Yes'), /^Error: Not allowed$/);
+    as(partner);
+    m.run('__docLockBusy = true');
+    assert.throws(() => set(code2, 'Contacted', 'No answer', 'Yes'), /^Error: BUSY: /);
+    m.run('__docLockBusy = false');
+    m.run('var __sobi = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id !== __props.MASTER_ID) throw new Error("You do not have permission"); return __sobi.call(SpreadsheetApp, id); }');
+    assert.throws(() => set(code2, 'Contacted', 'No answer', 'Yes'), /isn't shared with you yet/);
+    m.run('SpreadsheetApp.openById = __sobi');
+    assert.strictEqual(sheet(), before, 'nothing written by any refused edit');
+    assert.strictEqual(set(code2, 'Contacted', 'No answer', 'Yes').result.value, 'No answer', 'Use mine');
+    m.run('var __gdl = LockService.getDocumentLock; LockService.getDocumentLock = () => null');
+    assert.strictEqual(set(code2, 'Contacted', 'Yes', 'No answer').result.value, 'Yes', 'no document lock: the script lock');
+    m.run('LockService.getDocumentLock = __gdl');
+
+    // the next sync reads a dirty sheet even when Drive's "last updated" didn't move, and only then drops the mark
+    const ivVal = k => m.run(`(function(){var sh=ss_().getSheetByName('Interviewees'), I=idx_(IV_H); for (var i=1;i<sh.cells.length;i++) if (sh.cells[i][I.Code]===${J(code2)}) return String(sh.cells[i][I[${J(k)}]]);})()`);
+    const lag = () => m.run(`(function(){var s=JSON.parse(__props.FILE_SEEN), r=JSON.parse(__props.FILE_READ); s[${J(fid)}]=__files[${J(fid)}].lastUpdated.getTime(); r[${J(fid)}]=Date.now();
+      __props.FILE_SEEN=JSON.stringify(s); __props.FILE_READ=JSON.stringify(r);})()`);
+    const dirtyAt = m.run(`__cache['dirty:${b1.code}']`), binV = () => JSON.parse(m.run('__props.SNAP_BIN'))[b1.code].v, vw = binV();
+    assert(dirtyAt, 'the write marked the binome');
+    lag(); m.run(`delete __cache['dirty:${b1.code}']`); m.run('syncAll()');
+    assert.deepStrictEqual([ivVal('Contacted'), ivVal('Rating')], ['Not yet', ''], 'control: without the mark, a lagging Drive hides the edit');
+    lag(); m.run(`__cache['dirty:${b1.code}'] = ${J(dirtyAt)}`); m.run('syncAll()');
+    assert.deepStrictEqual([ivVal('Contacted'), ivVal('Interview Date'), ivVal('Interview Time'), ivVal('Interview Done'), ivVal('Rating'), ivVal('Final Affectation'), ivVal('Binome Notes'), ivVal('Status')],
+      ['Yes', '15/10/2026', '14:30', 'true', '8', 'IT', '=1+1, called twice', 'SCHEDULED'], 'the Master has every edit');
+    assert.strictEqual(m.run(`'dirty:${b1.code}' in __cache`), false, 'read: the mark goes');
+    assert(binV() > vw, 'the slice version went up');
+    as(mem);
+    assert.strictEqual(m.call('webState').candidates.find(c => c.Code === code2).Status, 'SCHEDULED');
+    // a write landing after the read started stays dirty, and its patched slice is kept until a sync reads it
+    lag(); m.run(`__cache['dirty:${b1.code}'] = String(Date.now() + 60000)`);
+    const meta = m.run('__props.SNAP_BIN');
+    m.run('syncAll()');
+    assert.strictEqual(m.run(`'dirty:${b1.code}' in __cache`), true, 'a write during the read stays dirty');
+    assert.deepStrictEqual(JSON.parse(m.run('__props.SNAP_BIN'))[b1.code], JSON.parse(meta)[b1.code], 'its slice is not republished from an older read');
+    m.run(`delete __cache['dirty:${b1.code}']`);
+  }
+
   // removed with Change members: the next poll says Not allowed; Reset all binomes empties the map
   as('admin@g.enp.edu.dz');
   m.call('webRun', 'changeMember', { binome: b1.code, outEmail: mem, inName: 'New Comer', inEmail: 'new.comer@g.enp.edu.dz' });
   as(mem);
   assert.throws(() => m.call('webPulse'), /Not allowed/);
+  assert.throws(() => m.call('webRun', 'memberSet', { code: ivOf(b1.code)[0], field: 'Contacted', value: 'Yes', seen: 'Not yet' }), /^Error: Not allowed$/, 'a removed member edits nothing');
   as('new.comer@g.enp.edu.dz');
   assert.strictEqual(m.call('webState').binome, b1.code, 'the newcomer gets in at once');
   as('admin@g.enp.edu.dz');

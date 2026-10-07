@@ -73,7 +73,9 @@ module.exports = async (req, res) => {
     const d = (j.error.details || [])[0] || {};
     const msg = String(d.errorMessage || j.error.message || 'Script error').slice(0, 500);
     const busy = /^(?:Error: )?BUSY: ([\s\S]*)/.exec(msg); // the script's refused lock (busy_ in Sheets.gs): nothing was changed
-    return done(200, busy ? { error: busy[1], code: 'BUSY' } : { error: msg }, false);
+    if (busy) return done(200, { error: busy[1], code: 'BUSY' }, false);
+    const conflict = /^(?:Error: )?CONFLICT: ([\s\S]*)/.exec(msg); // memberSet: the partner changed that cell; error = its value now
+    return done(200, conflict ? { error: conflict[1], code: 'CONFLICT' } : { error: msg }, false);
   }
   done(200, { value: j.response ? j.response.result : null }, true);
 };

@@ -221,6 +221,20 @@ export const SHEET_KEYS = [
 ] as const
 export type SheetKey = (typeof SHEET_KEYS)[number]
 
+/** The binome's own columns (Config.gs BF_EDITABLE): a member (not a cover) edits them from My binome (webRun memberSet). */
+export const GOLD_KEYS = ["Contacted", "Interview Date", "Interview Time", "Interview Done", "Rating", "Final Affectation", "Notes"] as const
+export type GoldKey = (typeof GOLD_KEYS)[number]
+/** The sheet's own validations (Config.gs CONTACT_OPTIONS, AFFECTATION_OPTIONS). */
+export const CONTACT_OPTIONS = ["Not yet", "Yes", "No answer", "Withdrew"] as const
+export const AFFECTATION_OPTIONS = ["IT", "COMM", "FLER", "HR", "Not accepted"] as const
+
+/** What memberSet saved, in the slice's own form (Done a boolean, Rating a number or "", the rest text as the sheet shows it). */
+export interface MemberSetOut {
+  code: string
+  field: GoldKey
+  value: string | number | boolean
+}
+
 /** An open alert of the member's binome (only the types the script mails to binomes). */
 export interface MemberAlert {
   id: string
