@@ -270,7 +270,12 @@ every screen stops even before task 5.
   Notes "12", a Tag "1"). Those cells then compare different every run and their row is written each time: safe, but it
   would keep the pulse moving. If the Master's "last edited" still moves every minute after the deploy, find the column
   by comparing `saveTable_`'s rows with `now` on that run (or set that column to `@` like Interview Date / Time).
-- **Still to do:** `npm run deploy` from `main` after merge, then ~20 `cycle` lines and the new average here.
+- **Shipped 2026-10-07:** [#24](https://github.com/puIad/vic-recruitment-2026/pull/24), deployed from `a2e09db` (web app
+  @61, API @62; 18 files pushed, the live files checked equal to `main` after). Only Setup.gs, Sheets.gs and Sync.gs
+  differed from what was live: #21 and #22 were already on Apps Script. @59/@60 are the same old code re-cut by a
+  `npm run deploy` whose push was skipped (HANDOFF › How changes ship, 2).
+- **Still to do (live):** ~20 `cycle` lines and the new average here; check the Master's "last edited" stops moving
+  every minute when nothing happens (if it doesn't, see "What the mock can't show" above).
 
 ---
 
