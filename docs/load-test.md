@@ -17,7 +17,7 @@ the task itself and the files it lists.
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☑ [#26](https://github.com/puIad/vic-recruitment-2026/pull/26), code and deploy; the live `webState` times in Notes are still open |
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☑ [#27](https://github.com/puIad/vic-recruitment-2026/pull/27), code and deploy (@65/@66); a real member sign-in is checked with task 7 |
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☑ [#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, live on Vercel from `b9f84c0`; a real member sign-in is still open |
-| 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☑ [#29](https://github.com/puIad/vic-recruitment-2026/pull/29), code and deploy (@67/@68); the live check in Notes is still open |
+| 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☑ [#29](https://github.com/puIad/vic-recruitment-2026/pull/29) (@67/@68) and the access follow-up [#30](https://github.com/puIad/vic-recruitment-2026/pull/30) (@69/@70); the live check of #30 in Notes is still open |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
 | 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9 | ☐ |
 
@@ -616,7 +616,7 @@ partner's is stopped and shown.
 - **Shipped 2026-10-07:** merged as `9f20f26`, `npm run deploy` (all suites green; web app @67, API @68; 18 files pushed, and
   the live project pulled back afterwards: all 18 equal to `main`). Vercel production built from `9f20f26` (the real build:
   `npm install` 316 packages, `tsc -b && vite build`, 47 s; "Deployment completed").
-- **Follow-up (owner, after the live check, 2026-10-07, branch `p1-8b-binome-access`):** a hand-shared sheet let the
+- **Follow-up (owner, after the live check, 2026-10-07, [#30](https://github.com/puIad/vic-recruitment-2026/pull/30), merged):** a hand-shared sheet let the
   member in without the owner meaning to open the dashboard yet (task 6's access rule was only "in `MEMBER_MAP`"). Now the
   dashboard follows the sheet: `access_()` makes someone in `MEMBER_MAP` a member only while Drive lets them open their binome
   sheet (`sheetAccess_`: `Drive.Files.get` with `capabilities(canEdit)` as the member, one call per request), else reason
@@ -647,7 +647,15 @@ partner's is stopped and shown.
     `sheetRoles_` reads every permissions page; the level is recorded only when every member got it; with sharing off a
     leaver loses their sheet access however they got it (also a hand share in a binome never opened from here); the
     details sheet's link is always "Open my binome sheet"; the live test script lists `edit` and `binomeAccess`. Each has a
-    test, mutation-checked.
+    test, mutation-checked. Second round: a removal Drive refuses when a member leaves is reported (`fileIssues`: FILE_ERROR
+    alert, "FILE NOT UPDATED" history row), not swallowed; the member header and Account say "read-only" or "you can edit"
+    by access (they still said read-only from task 7), a cover's Account says read-only; A2 of the live test script checks View
+    and Edit.
+  - **Shipped 2026-10-07:** merged as `6b690e5`, `npm run deploy` (all suites green; web app @69, API @70; 18 files pushed, the
+    live project pulled back afterwards: all 18 equal to `main`, the manifest with the Drive advanced service included).
+    Vercel production built from `6b690e5` (the real build: `npm install` 316 packages, `tsc -b && vite build`; "Deployment
+    completed"). **The member the owner shared B.__'s sheet with by hand still opens their sheet, so still gets the dashboard:**
+    set that binome to No access (Binomes › ⋯ › Sheet & dashboard access…) or remove the share in Drive.
   - **Live check still to do:** open one binome with View, then Edit, then No access, from the dashboard; check the sheet's
     sharing in Drive, that no email arrived, and the member's page at each step ([member-access-tests.md](member-access-tests.md),
     Before you start).
