@@ -16,7 +16,7 @@ the task itself and the files it lists.
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☑ [#24](https://github.com/puIad/vic-recruitment-2026/pull/24), code and deploy (@61/@62); the `cycle` reading in Notes is still open |
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☑ [#26](https://github.com/puIad/vic-recruitment-2026/pull/26), code and deploy; the live `webState` times in Notes are still open |
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☑ [#27](https://github.com/puIad/vic-recruitment-2026/pull/27), code and deploy (@65/@66); a real member sign-in is checked with task 7 |
-| 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☐ |
+| 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☑ [#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, live on Vercel from `b9f84c0`; a real member sign-in is still open |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☐ |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
 | 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9 | ☐ |
@@ -511,6 +511,10 @@ after being removed, they land on the no-access screen within 15 s. Screenshots 
   Appearance; one `webPulse` per 15 s tick (calls at 7.3 s and 22.3 s); after an admin's Change members removed them, the
   next tick gave `webPulse` "Not allowed" + one `webAccess` and the no-access screen, 6.9 s after the removal. Admins
   unchanged (Overview, full nav, Sync now). `npm run typecheck`, `npm test` green.
+- **CodeRabbit on #28:** the details sheet kept a closing candidate in state after they left the slice (moved, cover
+  ended); it now keeps them only while their code is still in the member's candidates.
+- **Shipped 2026-10-07:** merged as `b9f84c0`, UI only (no `.gs` changed, no `npm run deploy`, no `API_VERSION` bump).
+  Vercel production built from `b9f84c0` (the real build: frontend `npm ci`, `tsc -b && vite build`, 31 s; "Deployment completed").
 - **Not checkable on the mock, for the live check:** a real member signing in through `scripts.run` (task 6's open item),
   the cold-cache read from their sheet, and the "isn't shared with you yet" screen (TEST_MODE shares nothing, so on the live
   Master today every member should see that screen).
