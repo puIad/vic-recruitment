@@ -25,9 +25,9 @@ Repo: https://github.com/puIad/vic-recruitment-2026 (its own repo, not the AI-OS
    edits go straight to `main`.
 2. Script changes, after merge: `npm run deploy` from `main` = tests → `clasp push` → update **both** deployments
    (web app + API) in place. Never `clasp create-deployment` (new URL). Check the "Pushed N files" list:
-   `.claspignore` allows `*.gs`, `*.html` and `appsscript.json` at the root, nothing else. Deploy pushes with `--force`:
-   `appsscript.json` in git overwrites the live manifest, so a manifest edit made in the Apps Script editor is lost
-   unless it is in git first. (Without it, a live manifest that differs, even by line endings, made clasp print
+   `.claspignore` allows `*.gs`, `*.html` and `appsscript.json` at the root, nothing else. The push replaces the whole live project
+   with git (`--force` lets it overwrite the manifest too): any edit made in the Apps Script editor, `.gs`, `.html` or
+   `appsscript.json`, is lost unless it is in git first. (Without `--force`, a live manifest that differs, even by line endings, made clasp print
    "Skipping push." and the deploy re-cut the old code: 2026-10-07.)
 3. Dashboard changes: Vercel builds and deploys `main` by itself. A green Vercel check is not proof; open the build log
    and look for the `npm --prefix ../frontend ci` and Vite lines (tens of seconds, not under a second). Before pushing
