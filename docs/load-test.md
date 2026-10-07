@@ -319,6 +319,37 @@ and write them under Notes. Target: p50 under 1.5 s, including the ~1 s that `sc
 
 **Notes.**
 
+- **Code (2026-10-07, branch `p1-5-cached-snapshot`):** `buildState_(ctx)` is the shared part (no `user` / `owner` /
+  `switchUrl`, and no clock, so its hash moves only with the data). `publishState_(ctx)` caches it in 25,000-char values
+  `snap:admin:<i>` (6 h) and keeps `SNAP_HASH` = `{h, n, at}` in script properties, `at` being when it last changed (the
+  page's "Master read"); `SNAP_VER` +1 only when `h` changed. A cache that lost values is refilled without a new
+  version. `readSnap_()` trusts the cache only if every value is there, the joined JSON hashes to `h`, and `v` is this
+  `API_VERSION` (a deploy that bumps it never serves an old shape). `hash_` (Sheets.gs) is FNV-1a + the length.
+- **Where it is published (one deviation from the plan).** `runCycle_` publishes its own context at the end, inside its
+  lock (new `snap` phase in the `cycle` line). Dashboard actions do **not** reuse their context: after their writes it
+  is not re-indexed (`ctx.binomes`, covers, history), so a snapshot built from it could show the action as not done.
+  Instead `webRun` calls `publishFresh_()` once, after any action that may have written (everything except `sync`,
+  `integrity`, `digest` (they publish in their cycle), `lockCheck`, quick `locate` / `draft`, dry runs, and a `BUSY`
+  refusal): a fresh `loadCtx_()` + build under the lock. If the lock is taken by then, it **drops** the snapshot
+  (`SNAP_HASH` deleted, `SNAP_VER` +1) rather than wait: the next `webState` builds live and republishes. So an action
+  costs one extra load + build in its own call, and every screen then refreshes from the cache. This also covers
+  `resolve` and `saveSettings`, which never take the lock.
+- **`webState` on a miss** builds live, and publishes only if it gets the lock at once (`tryLock(1)`); otherwise it
+  returns the live build without publishing (whoever holds the lock publishes). Every publisher holds the lock, so an
+  older build can never overwrite a newer one.
+- **`webPulse`** returns `SNAP_VER`, still a number, so the page is unchanged (only a comment in `store.ts`). Not moved:
+  a hand edit in the Master, and menu actions (Change members etc. from the sheet's menu): both show after the next sync.
+- **Form URLs** are kept in script property `FORM_URLS` by form ID after the first lookup.
+- **Mock:** `CacheService.getScriptCache()` (`get`, `getAll`, `put`, `putAll`, `remove`, `removeAll`, 100 KB per value
+  enforced), `__cacheClear()` empties it. `web.test.js` › "cached snapshot": cache = live build; a quiet sync keeps the
+  version; a new registration shows only after the sync, +1; a dry run publishes nothing; `saveSettings` publishes in its
+  call; cache emptied → live and republished with no new version; cache emptied + lock taken → live, not published;
+  `publishFresh_` with the lock taken drops it; 900 registrations (> 100 KB, several values) round-trip. The refusal of a
+  non-admin is the existing access test.
+- **To watch live:** the sync now builds the snapshot every run; its cost is the `snap` phase of the `cycle` lines.
+  `buildState_` re-reads Member Changes and looks for the team source tab (`findTeamSource_` reads row 1 of every extra
+  tab): if `snap` is more than ~1 s, those two are the first to cache.
+
 ---
 
 ## Task 6 — Member role in the script (read side, security)

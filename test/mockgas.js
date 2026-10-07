@@ -171,6 +171,18 @@ var FormApp = { DestinationType: { SPREADSHEET: 'SS' }, openById(id) { return __
 
 var PropertiesService = { getScriptProperties() { return { getProperty: k => (k in __props ? __props[k] : null), setProperty: (k, v) => { __props[k] = String(v); },
   getProperties: () => Object.assign({}, __props), setProperties: o => { Object.keys(o).forEach(k => { __props[k] = String(o[k]); }); }, deleteProperty: k => { delete __props[k]; } }; } };
+var __cache = {}; // the script cache: key -> string; no expiry here, a test empties it with __cacheClear() (Google may, any time)
+function __cacheClear() { __cache = {}; }
+function __cachePut(k, v) {
+  v = String(v);
+  if (unescape(encodeURIComponent(v)).length > 100 * 1024) throw new Error('Argument too large: value'); // Google's 100 KB per value
+  __cache[k] = v;
+}
+var CacheService = { getScriptCache() { return {
+  get: k => (k in __cache ? __cache[k] : null),
+  getAll: ks => { const o = {}; ks.forEach(k => { if (k in __cache) o[k] = __cache[k]; }); return o; },
+  put: (k, v) => __cachePut(k, v), putAll: o => Object.keys(o).forEach(k => __cachePut(k, o[k])),
+  remove: k => { delete __cache[k]; }, removeAll: ks => ks.forEach(k => { delete __cache[k]; }) }; } };
 var __lockBusy = false; // a test sets it to make the script lock refuse
 var LockService = { getScriptLock() { return { tryLock: () => !__lockBusy, waitLock: () => true, releaseLock: () => { } }; } };
 var MailApp = { sendEmail(o) { __outbox.push(o); } };

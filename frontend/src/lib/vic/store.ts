@@ -108,7 +108,7 @@ export const useVic = create<VicStore>((set, get) => ({
     }
   },
 
-  // Live refresh: poll the Master's last-edit time (one cheap Drive call) and reload only when it moved.
+  // Live refresh: poll the version of the dashboard's snapshot (it moves only when the data changed) and reload when it moved.
   async checkPulse() {
     const { busy, refreshing, gate, state, modals, pulse } = get()
     if (busy || refreshing || polling || document.hidden || gate.mode !== "ok" || !state || modals > 0) return

@@ -215,7 +215,7 @@ function sendNewIntervieweeMails_(ctx) {
 
 function runCycle_(opts) {
   const t0 = Date.now(); // the integrity budget counts from here, so the wait for the lock is included
-  const T = { total: 0, lockWait: 0, load: 0, edits: 0, regs: 0, forms: 0, pull: 0, statuses: 0, timing: 0, integrity: 0, save: 0, base: 0, alerts: 0, mails: 0, tracker: 0 };
+  const T = { total: 0, lockWait: 0, load: 0, edits: 0, regs: 0, forms: 0, pull: 0, statuses: 0, timing: 0, integrity: 0, save: 0, base: 0, alerts: 0, mails: 0, tracker: 0, snap: 0 };
   let ctx = null, loaded = null, outcome = 'error'; // 'error' stays if fn throws; loaded = the context so far, for the line of a failed run
   try { ctx = withLock_(() => {
     let last = Date.now();
@@ -237,6 +237,8 @@ function runCycle_(opts) {
     ctx.alerts.flush(); lap('alerts');
     sendNewIntervieweeMails_(ctx); lap('mails');
     if (opts.tracker) buildTracker_(ctx); lap('tracker');
+    // the dashboard's snapshot; a failure must not fail the sync, and must not leave a snapshot that misses this run
+    try { publishState_(ctx); } catch (e) { console.warn('Snapshot not published: ' + e); dropSnap_(); } lap('snap');
     return ctx;
   }, opts.wait || 30000); outcome = ctx ? 'ok' : 'busy'; } finally {
     console.log(JSON.stringify(Object.assign({ at: 'cycle', kind: opts.kind || 'other', outcome: outcome }, T,
