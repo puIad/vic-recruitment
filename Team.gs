@@ -187,6 +187,8 @@ function lockBinomesCore_(budgetMs) {
       ctx.bin.sh.getRange(i + 2, 1, 1, BIN_H.length).setValues([r]);
       created++;
     }
+    indexCtx_(ctx);
+    saveMemberMap_(ctx);
     return true;
   }, 60000);
   if (!held) return busy_();
@@ -246,6 +248,7 @@ function resetBinomesCore_(phrase) {
     fresh.base = { bin: {}, iv: {} };
     Object.keys((old && old.iv) || {}).forEach(k => { if (old.iv[k] === 0) fresh.base.iv[k] = 0; });
     saveBaseline_(editSnapshot_(fresh));
+    saveMemberMap_(fresh); // nobody left: empty
     buildTracker_(fresh);
     return { trashed: trashed, failed: failed, binomes: nBinomes, team: nTeam, interviewees: nIv, alerts: nAlerts };
   }, 60000);

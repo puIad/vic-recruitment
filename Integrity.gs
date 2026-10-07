@@ -5,7 +5,6 @@
 // baseline until someone acts on it, so Revert always has something to go back to. The run then saves the new baseline
 // in the same lock, so the script never flags its own writes. No baseline yet (first run after deploy): taken silently.
 
-const BASE_CHUNK = 4000; // characters per script property: a value holds 9 KB and accented letters take 2 bytes
 // Columns compared together (one alert per group). An alert on group '*' = the whole row was deleted.
 const EDIT_GROUPS = {
   bin: { Binome: ['Binome'], seat1: ['Member 1', 'Email 1'], seat2: ['Member 2', 'Email 2'], Tag: ['Tag'], Status: ['Status'], File: ['File', 'File ID'] },
@@ -18,11 +17,8 @@ const BASE_F = { bin: [].concat.apply([], Object.keys(EDIT_GROUPS.bin).map(g => 
 
 /** {bin: {code: entry}, iv: {responseKey: entry | 0}} (0 = a row deleted on purpose: its registration is not re-imported), or null. */
 function loadBaseline_() {
-  const all = PropertiesService.getScriptProperties().getProperties();
-  const n = Number(all.BASELINE_N || 0);
-  if (!n) return null;
-  let s = '';
-  for (let i = 0; i < n; i++) s += all['BASELINE_' + i] || '';
+  const s = loadPropChunks_('BASELINE');
+  if (s === null) return null;
   try {
     const raw = JSON.parse(s), out = { bin: {}, iv: {} };
     ['bin', 'iv'].forEach(kind => Object.keys(raw[kind] || {}).forEach(id => {
@@ -41,12 +37,7 @@ function saveBaseline_(base) {
     const e = base[kind][id];
     raw[kind][id] = e === 0 ? 0 : BASE_F[kind].map(f => e[f]);
   }));
-  const p = PropertiesService.getScriptProperties(), s = JSON.stringify(raw);
-  const oldN = Number(p.getProperty('BASELINE_N') || 0), n = Math.max(1, Math.ceil(s.length / BASE_CHUNK));
-  const vals = { BASELINE_N: String(n) };
-  for (let i = 0; i < n; i++) vals['BASELINE_' + i] = s.slice(i * BASE_CHUNK, (i + 1) * BASE_CHUNK);
-  p.setProperties(vals);
-  for (let i = n; i < oldN; i++) p.deleteProperty('BASELINE_' + i);
+  savePropChunks_('BASELINE', JSON.stringify(raw));
 }
 
 /** The compared values of one row, trimmed (emails lower-case, binome Status upper-case). */

@@ -75,7 +75,7 @@ async function execute(user, fn, args) {
   G.running[user] = (G.running[user] || 0) + 1; G.script++;
   G.peakUser = Math.max(G.peakUser, G.running[user]); G.peakScript = Math.max(G.peakScript, G.script);
   try {
-    if (fn === 'webAccess') { await sleep(pick(SAMPLES.webAccess)); return { ok: true, v: 2 }; }
+    if (fn === 'webAccess') { await sleep(pick(SAMPLES.webAccess)); return { ok: true, role: 'admin', v: 3 }; }
     if (fn === 'webPulse') { await sleep(pick(SAMPLES.webPulse)); return G.master; }
     if (fn === 'webState') { const snap = simNow(); await sleep(pick(SAMPLES.webState)); return { snap }; }
     if (fn === 'webRun') { // access_() outside the lock, then withLock_ (tryLock 30 s) around loadCtx_ + the change + save

@@ -78,7 +78,8 @@ export const useVic = create<VicStore>((set, get) => ({
         description: `Page ${API_VERSION}, script ${a.v}. Reload the page; if this stays, tell the admin.`,
       })
     }
-    if (!a.ok) {
+    // members get My binome in task 7; until then the gate ("member", not "!== admin": a script without roles is all admins)
+    if (!a.ok || a.role === "member") {
       set({ gate: { mode: "noaccess", access: a }, access: a, loading: false })
       return
     }
@@ -91,6 +92,12 @@ export const useVic = create<VicStore>((set, get) => ({
     try {
       const p = await call<number>("webPulse", [], POLL_TIMEOUT_MS).catch(() => null) // read before the state, so an edit in between still shows as a change
       const s = await call<WebState>("webState")
+      // an admin who lost edit access but is in a binome now gets a member slice: the gate, not admin pages on the wrong shape
+      if ((s as unknown as { role?: string }).role === "member") {
+        const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => undefined)
+        set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, pulse: null, loading: false })
+        return
+      }
       set((cur) => ({
         state: s,
         pulse: p,

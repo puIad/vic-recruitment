@@ -581,6 +581,99 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert.deepStrictEqual(shared(big.call('webState')), liveOf(big.run), 'round trip through the chunks');
 }
 
+// ---- members: their binome only (load-test task 6). Own project, so nothing above leaks in ----
+{
+  const m = require('./seed')(), J = JSON.stringify;
+  ['importTeam', 'draft', 'lock'].forEach(a => m.call('webRun', a, { link: '' }));
+  m.addRegistrations(30, 3);
+  m.call('webRun', 'sync');
+  m.backdateAssignments(3);
+  m.call('webRun', 'sync');
+  m.run('var __admin = Session; var __as = e => { Session = e === "admin@g.enp.edu.dz" ? __admin : { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }');
+  const as = e => m.run('__as(' + J(e) + ')');
+  const admin = m.call('webState');
+  const ivOf = code => admin.interviewees.filter(i => i.binome === code).map(i => i.code).sort();
+  const b1 = admin.binomes.find(b => b.people.length === 2 && ivOf(b.code).length >= 2 && admin.alerts.some(a => a.binome === b.code));
+  const b2 = admin.binomes.find(b => b.code !== b1.code && ivOf(b.code).length >= 2);
+  assert(b1 && b2, 'two binomes with candidates, one with alerts');
+  const mem = b1.people[0].email, partner = b1.people[1].email;
+  const tabs = () => m.run('JSON.stringify(master.sheets.map(s => s.cells)) + __outbox.length');
+
+  // a member: their binome, nothing else
+  as(mem);
+  assert.deepStrictEqual(m.call('webAccess'), { ok: true, role: 'member', email: mem, reason: '', owner: false, binome: b1.code, cover: false, v: 3 });
+  let st = m.call('webState');
+  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'fileUrl', 'fromSheet', 'members', 'role', 'status', 'switchUrl', 'tag', 'user', 'v'],
+    'no settings, team, history, other binomes or admin lists');
+  assert.deepStrictEqual([st.binome, st.role, st.fromSheet, st.candidates.map(c => c.Code).sort()], [b1.code, 'member', false, ivOf(b1.code)]);
+  assert(st.candidates.every(c => c.Status && 'Notes' in c && 'Phone' in c && /^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(c.Registered)), J(st.candidates[0]));
+  assert(st.alerts.length && st.alerts.every(a => ivOf(b1.code).includes(a.code) && ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'ODD_VALUE'].includes(a.type)), J(st.alerts));
+  ivOf(b2.code).forEach(c => assert(!J(st).includes('"' + c + '"'), 'nothing of ' + b2.code + ': ' + c));
+  assert.strictEqual(typeof m.call('webPulse'), 'number');
+  assert.deepStrictEqual([m.run('isAdmin_()'), m.run('doGet()._file')], [false, 'NoAccess'], 'the old dashboard is for admins only');
+
+  // every admin action: Not allowed, and nothing written
+  const before = tabs(), props0 = m.run('JSON.stringify(__props)');
+  [['sync'], ['integrity'], ['editApply', { ids: ['A-0001'] }], ['editRevert', { ids: ['A-0001'] }], ['editAccept', { ids: ['A-0001'] }],
+    ['importTeam', { link: '', replace: true }], ['draft'], ['lockCheck'], ['lock'], ['reshare'], ['resetBinomes', { phrase: m.run('RESET_PHRASE') }], ['digest'],
+    ['reassign', { code: ivOf(b1.code)[0], binome: b2.code }], ['changeMember', { binome: b1.code, outEmail: partner, inName: 'X', inEmail: 'x@g.enp.edu.dz' }],
+    ['swapMembers', { binomeA: b1.code, emailA: partner, binomeB: b2.code, emailB: b2.people[0].email }], ['newBinome', { emailA: 'a@g.enp.edu.dz', emailB: 'b@g.enp.edu.dz' }],
+    ['addCover', { codes: ivOf(b2.code)[0], inEmail: mem }], ['endCover', { row: 2 }], ['quick', { op: 'snooze', ids: ['A-0001'], for: '4h' }],
+    ['resolve', { ids: st.alerts.map(a => a.id) }], ['saveSettings', { values: { TEST_MODE: false } }], ['setup']].forEach(([action, args]) =>
+    assert.throws(() => m.call('webRun', action, args), /^Error: Not allowed$/, action + ' must be refused'));
+  assert.deepStrictEqual([tabs(), m.run('JSON.stringify(__props)')], [before, props0], 'a member changed nothing');
+
+  // an ENP account in no binome; an admin who is also a member
+  as('nobody@g.enp.edu.dz');
+  assert.deepStrictEqual([m.call('webAccess').ok, m.call('webAccess').role], [false, '']);
+  assert.throws(() => m.call('webState'), /Not allowed/);
+  assert.throws(() => m.call('webPulse'), /Not allowed/);
+  m.run('master.addEditor(' + J(partner) + ')'); as(partner);
+  assert.deepStrictEqual([m.call('webAccess').role, !!m.call('webState').settings], ['admin', true], 'an editor of the Master is an admin, member or not');
+  m.run('__files[master.id].editors = __files[master.id].editors.filter(e => e !== ' + J(partner) + ')');
+
+  // only the binome whose slice changed gets a new version; a quiet sync rewrites nothing
+  as('admin@g.enp.edu.dz');
+  const vers = () => JSON.parse(m.run('__props.SNAP_BIN'));
+  const v0 = vers(), fileOf = code => admin.binomes.find(b => b.code === code).fileUrl.split('/d/')[1], code1 = ivOf(b1.code)[0];
+  m.run(`(function(){var c=__files[${J(fileOf(b1.code))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code1)}) c[i][BFI.Notes]='called twice'; __touch(${J(fileOf(b1.code))});})()`);
+  m.run('var __mm = 0, __spc = savePropChunks_; savePropChunks_ = function (n, s) { if (n === "MEMBER_MAP") __mm++; return __spc(n, s); }');
+  m.call('webRun', 'sync');
+  const v1 = vers();
+  assert.deepStrictEqual([v1[b1.code].v, v1[b2.code].v, m.run('__mm')], [v0[b1.code].v + 1, v0[b2.code].v, 0], 'B1 +1, B2 kept, MEMBER_MAP not rewritten');
+  as(mem);
+  assert.deepStrictEqual([m.call('webPulse'), m.call('webState').candidates.find(c => c.Code === code1).Notes], [v1[b1.code].v, 'called twice']);
+
+  // cache empty: rebuilt from their own sheet; not shared: a clear error
+  m.run('__cacheClear()');
+  st = m.call('webState');
+  assert.deepStrictEqual([st.fromSheet, st.candidates.map(c => c.Code).sort(), st.candidates.find(c => c.Code === code1).Notes, st.alerts], [true, ivOf(b1.code), 'called twice', []]);
+  m.run('var __obi = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id !== __props.MASTER_ID) throw new Error("You do not have permission"); return __obi.call(SpreadsheetApp, id); }');
+  assert.throws(() => m.call('webState'), /Your binome sheet isn't shared with you yet\./);
+  m.run('SpreadsheetApp.openById = __obi');
+
+  // a cover sees only the codes they cover
+  as('admin@g.enp.edu.dz');
+  m.call('webRun', 'addCover', { codes: ivOf(b2.code)[0], inEmail: 'stand.in@g.enp.edu.dz', inName: 'Stand In' });
+  as('stand.in@g.enp.edu.dz');
+  assert.deepStrictEqual([m.call('webAccess').cover, m.call('webState').candidates.map(c => c.Code)], [true, [ivOf(b2.code)[0]]]);
+  m.run('__cacheClear()');
+  assert.deepStrictEqual(m.call('webState').candidates.map(c => c.Code), [ivOf(b2.code)[0]], 'from the sheet too');
+
+  // removed with Change members: the next poll says Not allowed; Reset all binomes empties the map
+  as('admin@g.enp.edu.dz');
+  m.call('webRun', 'changeMember', { binome: b1.code, outEmail: mem, inName: 'New Comer', inEmail: 'new.comer@g.enp.edu.dz' });
+  as(mem);
+  assert.throws(() => m.call('webPulse'), /Not allowed/);
+  as('new.comer@g.enp.edu.dz');
+  assert.strictEqual(m.call('webState').binome, b1.code, 'the newcomer gets in at once');
+  as('admin@g.enp.edu.dz');
+  m.call('webRun', 'resetBinomes', { phrase: m.run('RESET_PHRASE') });
+  assert.strictEqual(m.run('JSON.stringify(savedMemberMap_())'), '{}');
+  as(partner);
+  assert.throws(() => m.call('webPulse'), /Not allowed/);
+}
+
 out = call('webRun', 'setup');
 assert(/Setup complete/.test(out.messages[0]), 'setup works without an active spreadsheet');
 
@@ -593,7 +686,7 @@ assert(/AccountChooser\?continue=https%3A%2F%2Fscript.google.com/.test(call('web
 run('var __realSession = Session; var __as = e => { Session = { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }; __as("stranger@g.enp.edu.dz")');
 assert.throws(() => call('webState'), /Not allowed/);
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
-assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY', owner: false }));
+assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, role: '', email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY', owner: false }));
 let page = run('doGet()');
 assert.deepStrictEqual([page._file, page._vars.email, page._vars.reason], ['NoAccess', 'stranger@g.enp.edu.dz', 'READ_ONLY'], 'no-access screen');
 run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { throw new Error("You do not have permission to access the requested document.") }');
@@ -608,19 +701,19 @@ assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of 
 assert.strictEqual(run('doGet()._file'), 'Index');
 
 // Vercel front (scripts.run): webAccess never throws, domain + owner rules, setup owner-only, trigger owner guard
-assert.deepStrictEqual(call('webAccess'), { ok: true, email: 'helper@g.enp.edu.dz', reason: '', owner: false, v: 2 });
+assert.deepStrictEqual(call('webAccess'), { ok: true, role: 'admin', email: 'helper@g.enp.edu.dz', reason: '', owner: false, binome: '', cover: false, v: 3 });
 assert.strictEqual(call('webState').owner, false);
 assert.throws(() => call('webRun', 'setup'), /Only the owner/, 'an editor cannot run Setup');
 assert.throws(() => run('installTriggers_(ss_())'), /triggers belong to admin@g.enp.edu.dz/, 'menu path: a second account cannot double the triggers');
 run('ss_().addEditor("someone@gmail.com"); __as("someone@gmail.com")');
-assert.deepStrictEqual(call('webAccess'), { ok: false, email: 'someone@gmail.com', reason: 'DOMAIN', owner: false, v: 2 }, 'non-ENP editor refused');
+assert.deepStrictEqual(call('webAccess'), { ok: false, role: '', email: 'someone@gmail.com', reason: 'DOMAIN', owner: false, binome: '', cover: false, v: 3 }, 'non-ENP editor refused');
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
 {
   run('__as("stranger@g.enp.edu.dz")');
   assert.strictEqual(call('webAccess').reason, 'READ_ONLY');
 }
 run('__as("admin@g.enp.edu.dz")');
-assert.deepStrictEqual([call('webAccess').owner, call('webState').owner, call('webState').v], [true, true, 2]);
+assert.deepStrictEqual([call('webAccess').owner, call('webState').owner, call('webState').v], [true, true, 3]);
 assert.strictEqual(run('__props.TRIGGER_OWNER'), 'admin@g.enp.edu.dz', 'setup records the trigger owner');
 const before = run('__triggers.length');
 call('webRun', 'setup');

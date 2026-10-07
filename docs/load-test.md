@@ -417,6 +417,44 @@ the same PR so the page and the script agree.
 
 **Notes.**
 
+- **Code (2026-10-07, branch `p1-6-member-role`).** `access_()` returns `role`: `'admin'` (an editor of the Master, as
+  before), else `'member'` when the email is in `MEMBER_MAP` (`{binome, cover, m}`), else the old refusals with `role: ''`.
+  Every admin entry point checks `role === 'admin'`: `webRun`, the admin part of `webState`, `webPulse`, `doGet`,
+  `isAdmin_` (no caller left; kept for the menu). `webAccess` adds `role`, `binome`, `cover`; `API_VERSION` 3.
+- **`MEMBER_MAP`** is kept with the baseline's chunking, now shared: `savePropChunks_` / `loadPropChunks_` (Sheets.gs),
+  4,000 characters per property (`MEMBER_MAP_N` + `MEMBER_MAP_0..n`). `memberMap_(ctx)`: members of ACTIVE / PAUSED
+  binomes `{b, f}`, live covers `{b, f, cover: true, codes}` (only the codes `coverLive_` still counts); a member's own
+  binome wins over a cover; someone covering in two binomes sees the first one until it ends (`ponytail:` note).
+  `saveMemberMap_(ctx)` writes only when it differs, called inside the lock by: `runCycle_` (after the tracker),
+  `lockBinomesCore_`, `applyMemberPlans_` (change and swap, also from the menu), `newBinomeCore_`, `addCoverCore_`,
+  `endCoverCore_`, `resetBinomesCore_` (empty). A hand edit of the Binomes tab reaches the map at the next sync.
+- **Slices.** `publishState_` also calls `publishBins_(ctx)`: one `snap:bin:<code>` per locked binome (`v`, `binome`,
+  `tag`, `status`, `fileUrl`, `members` (names), `candidates`, `alerts`, `fromSheet: false`). A candidate is an object of
+  the `BF_H` keys + `Status`, built from the Master row with `ivToFileRow_` (Dates as `dd/MM/yyyy`, `HH:mm` for
+  Interview Time, `dd/MM/yyyy HH:mm` for Registered). Alerts: OPEN ones of that binome whose type is in `MEMBER_ALERTS`
+  (`NOT_CONTACTED`, `NO_DATE`, `OVERDUE`, `BAD_DATE`, `ODD_VALUE`: the ones the script mails binomes); the rest
+  (manual edits, file errors, registration checks, interview-form mismatches that name other binomes) stay the admins'.
+  `SNAP_BIN` = code → `{h, v}`, saved with `SNAP_HASH` / `SNAP_VER` (same drop guard); `v` +1 only when that slice's
+  hash moves; a slice is re-put only when the cached value differs. `dropSnap_` blanks every `h` and bumps every `v`.
+  A slice over 100 KB is not cached: that member reads their sheet.
+- **Member `webState`**: the cached slice when its hash matches `SNAP_BIN`, else read from their binome sheet with their
+  own access (`fromSheet: true`; no statuses, alerts or names, those live in the Master), else "Your binome sheet isn't
+  shared with you yet.". A cover gets only their codes (candidates and alerts). Per-request: `role`, `cover`, `user`,
+  `switchUrl`. Member `webPulse`: their binome's `v` (gone from the map → "Not allowed").
+- **UI:** only `types.ts` (version 3, `Access.role` / `binome` / `cover`) and the gate in `store.ts`: a member gets the
+  no-access screen until task 7. The gate tests `role === "member"`, not `!== "admin"`, so the page Vercel serves right
+  after the merge still lets admins in while the script is on the old version.
+- **Tests** (`web.test.js` › "members: their binome only", own seeded project): the slice's exact keys and only its
+  candidates / member alerts, no other binome's codes anywhere; all 22 `webRun` actions "Not allowed" with the tabs and
+  the script properties unchanged; `isAdmin_` false and `doGet` NoAccess; an ENP account in no binome refused; an admin
+  who is also a member is an admin; a sheet edit in one binome moves only that binome's `v`, a quiet sync rewrites no
+  `MEMBER_MAP`; cache emptied → from the sheet, sheet not shared → the clear error; a cover sees one code (cache and
+  sheet); Change members → the old member's next `webPulse` is "Not allowed", the newcomer gets in; Reset → map `{}`.
+  Checked that the matrix fails when `webRun` goes back to `ok`.
+- **Live, not checkable on the mock:** a non-editor running the script through `scripts.run` (that `ss_()` / the editor
+  list fail quietly for them and script properties and cache are readable), and the sheet fallback under real sharing.
+  Needs a member account signing in, so it lands with task 7's page.
+
 ---
 
 ## Task 7 — My binome page (read-only) and member polling
