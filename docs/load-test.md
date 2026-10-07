@@ -15,7 +15,7 @@ the task itself and the files it lists.
 | 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☑ [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, live on Vercel from `963144d` |
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☑ [#24](https://github.com/puIad/vic-recruitment-2026/pull/24), code and deploy (@61/@62); the `cycle` reading in Notes is still open |
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☑ [#26](https://github.com/puIad/vic-recruitment-2026/pull/26), code and deploy; the live `webState` times in Notes are still open |
-| 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☐ |
+| 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☑ [#27](https://github.com/puIad/vic-recruitment-2026/pull/27), code and deploy (@65/@66); a real member sign-in is checked with task 7 |
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☐ |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☐ |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
@@ -454,6 +454,15 @@ the same PR so the page and the script agree.
 - **Live, not checkable on the mock:** a non-editor running the script through `scripts.run` (that `ss_()` / the editor
   list fail quietly for them and script properties and cache are readable), and the sheet fallback under real sharing.
   Needs a member account signing in, so it lands with task 7's page.
+- **CodeRabbit on #27:** `refresh` in `store.ts` also sends a member slice to the gate (an admin in a binome who loses
+  edit access mid-session would otherwise get admin pages fed a member slice). Task 7 replaces both gates with the member mode.
+- **Shipped 2026-10-07:** merged as `6f3cbc3`, `npm run deploy` (all suites green; web app @65, API @66; 18 files pushed,
+  and the live project pulled back afterwards: all 18 equal to `main`). Vercel production built from `6f3cbc3` (the real
+  build: frontend `npm ci`, `tsc -b && vite build`, 37 s).
+- **For task 7:** the member state is `{v, binome, tag, status, fileUrl, members[], candidates[], alerts[], fromSheet, role,
+  cover, user, switchUrl}`; a candidate is the `BF_H` keys + `Status` (all `''` when `fromSheet`); an alert is
+  `{id, created, severity, type, code, msg}`. `webPulse` for a member is their binome's version (a number). Remove the two
+  member gates in `store.ts` when the member mode lands.
 
 ---
 

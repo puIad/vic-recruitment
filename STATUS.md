@@ -11,9 +11,16 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
+  Latest UI: `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3; members
+  get the no-access screen until task 7. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@63**, API **@64**, deployed from `47aee3f` (2026-10-07,
+- **Script, latest:** web app **@65**, API **@66**, deployed from `6f3cbc3` (2026-10-07,
+  [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): a member role (load-test plan, task 6). Admins are the
+  Master's editors exactly as before and every admin entry point now checks the role; anyone in `MEMBER_MAP` (members of
+  locked binomes, live covers) gets only their binome's slice of the snapshot, read-only. `API_VERSION` 3, with the UI of
+  the same merge (Vercel production from `6f3cbc3`), which still shows members the no-access screen until task 7 gives
+  them the My binome page. Nothing changes for admins.
+- **Script, before that:** web app **@63**, API **@64**, deployed from `47aee3f` (2026-10-07,
   [#26](https://github.com/puIad/vic-recruitment-2026/pull/26)): the admin dashboard is served from a cached snapshot
   (script cache), republished by every sync and every dashboard action that writes; the pulse is now the snapshot's
   version, so screens reload only when what they show changed. A hand edit in the Master shows after the next sync
@@ -74,7 +81,7 @@ members read and edit their own binome from the dashboard (written into their bi
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
 Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is deployed
-([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 3 (one poll call per tick, 20 s timeout, rate-limit pause) is live ([#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, Vercel production from `963144d`). Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-ups [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) and [#22](https://github.com/puIad/vic-recruitment-2026/pull/22) are live: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, the owner repairs them in bulk from Alerts or with the menu's Re-protect binome sheets. Task 4 (write only what changed) is deployed ([#24](https://github.com/puIad/vic-recruitment-2026/pull/24), @61/@62); its ~20 `cycle` lines are open. Next: 5.
+([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 3 (one poll call per tick, 20 s timeout, rate-limit pause) is live ([#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, Vercel production from `963144d`). Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-ups [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) and [#22](https://github.com/puIad/vic-recruitment-2026/pull/22) are live: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, the owner repairs them in bulk from Alerts or with the menu's Re-protect binome sheets. Task 4 (write only what changed) is deployed ([#24](https://github.com/puIad/vic-recruitment-2026/pull/24), @61/@62); its ~20 `cycle` lines are open. Task 5 (cached admin snapshot) is deployed ([#26](https://github.com/puIad/vic-recruitment-2026/pull/26), @63/@64); its live `webState` times are open. Task 6 (member role, read side) is deployed ([#27](https://github.com/puIad/vic-recruitment-2026/pull/27), @65/@66). Next: 7 (the My binome page).
 
 ## Brief for 2026-10-04 (settled with the owner)
 
