@@ -17,7 +17,7 @@ the task itself and the files it lists.
 | 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☑ [#26](https://github.com/puIad/vic-recruitment-2026/pull/26), code and deploy; the live `webState` times in Notes are still open |
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☑ [#27](https://github.com/puIad/vic-recruitment-2026/pull/27), code and deploy (@65/@66); a real member sign-in is checked with task 7 |
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☑ [#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, live on Vercel from `b9f84c0`; a real member sign-in is still open |
-| 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☐ |
+| 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☑ [#29](https://github.com/puIad/vic-recruitment-2026/pull/29), code and deploy (@67/@68); the live check in Notes is still open |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
 | 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9 | ☐ |
 
@@ -611,6 +611,15 @@ partner's is stopped and shown.
 - **Checked on the mock (playwright-chrome, 1440 and 390 wide, light and dark):** select, notes, checkbox and rating saved;
   rating 12 refused inline; a write behind the page's back gave the conflict box, Use mine saved 7.5; `webState` afterwards
   returned the saved values from the cached slice.
+- **CodeRabbit on #29:** its walkthrough ran but the review never posted ("GitHub unavailable during review post"), so no
+  findings were addressed; merged on the owner's word. Re-run it (`@coderabbitai review` on #29) if a review is wanted.
+- **Shipped 2026-10-07:** merged as `9f20f26`, `npm run deploy` (all suites green; web app @67, API @68; 18 files pushed, and
+  the live project pulled back afterwards: all 18 equal to `main`). Vercel production built from `9f20f26` (the real build:
+  `npm install` 316 packages, `tsc -b && vite build`, 47 s; "Deployment completed").
+- **Still open, the live check** (above, TEST_MODE on): a second ENP account in a test binome with its sheet shared by hand
+  edits each kind of field; check the date and time land as real date / time in the fr_FR sheet, the Master after the next
+  sync, a conflict, and in Apps Script › Executions whether `memberSet` ran under the document lock (no `BUSY` while a sync
+  runs). Put everything back after. Same session as task 7's real member sign-in ([member-access-tests.md](member-access-tests.md)).
 
 ---
 

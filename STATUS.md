@@ -11,11 +11,21 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `b9f84c0` (2026-10-07, [#28](https://github.com/puIad/vic-recruitment-2026/pull/28)): members get **My binome**
+  Latest UI: `9f20f26` (2026-10-07, [#29](https://github.com/puIad/vic-recruitment-2026/pull/29)): members fill in their
+  binome's columns (Contacted, day, time, done, rating, affectation, notes) from My binome's details panel, written into their
+  binome sheet; a partner's change in between is caught and shown (Keep theirs / Use mine); covers stay read-only (load-test
+  plan, task 8). Before that `b9f84c0` (2026-10-07, [#28](https://github.com/puIad/vic-recruitment-2026/pull/28)): members get **My binome**
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@65**, API **@66**, deployed from `6f3cbc3` (2026-10-07,
+- **Script, latest:** web app **@67**, API **@68**, deployed from `9f20f26` (2026-10-07,
+  [#29](https://github.com/puIad/vic-recruitment-2026/pull/29)): `webRun('memberSet')` (load-test plan, task 8). A member writes
+  one of their binome's columns into their own sheet under the document lock (not the sync's script lock), checked like the
+  sheet's validations, refused with the cell's value when the partner changed it; the binome is marked dirty so the next sync
+  reads its sheet even when Drive lags, and its cached slice is patched for the partner's next poll. Nothing changes for admins;
+  no `API_VERSION` bump. Live check still to do (task 8's Notes): a second account editing every field, the fr_FR date / time,
+  whether the document lock is available under `scripts.run`.
+- **Script, before that:** web app **@65**, API **@66**, deployed from `6f3cbc3` (2026-10-07,
   [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): a member role (load-test plan, task 6). Admins are the
   Master's editors exactly as before and every admin entry point now checks the role; anyone in `MEMBER_MAP` (members of
   locked binomes, live covers) gets only their binome's slice of the snapshot, read-only. `API_VERSION` 3, with the UI of
@@ -81,7 +91,7 @@ members read and edit their own binome from the dashboard (written into their bi
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
 Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is deployed
-([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 3 (one poll call per tick, 20 s timeout, rate-limit pause) is live ([#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, Vercel production from `963144d`). Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-ups [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) and [#22](https://github.com/puIad/vic-recruitment-2026/pull/22) are live: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, the owner repairs them in bulk from Alerts or with the menu's Re-protect binome sheets. Task 4 (write only what changed) is deployed ([#24](https://github.com/puIad/vic-recruitment-2026/pull/24), @61/@62); its ~20 `cycle` lines are open. Task 5 (cached admin snapshot) is deployed ([#26](https://github.com/puIad/vic-recruitment-2026/pull/26), @63/@64); its live `webState` times are open. Task 6 (member role, read side) is deployed ([#27](https://github.com/puIad/vic-recruitment-2026/pull/27), @65/@66). Task 7 (My binome page, 15 s member polling) is live ([#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, Vercel production from `b9f84c0`); a real member sign-in on the live site is still to check (with TEST_MODE on, nothing is shared, so expect "Your binome sheet isn't shared with you yet"). Next: 8 (members edit their binome).
+([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 3 (one poll call per tick, 20 s timeout, rate-limit pause) is live ([#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, Vercel production from `963144d`). Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-ups [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) and [#22](https://github.com/puIad/vic-recruitment-2026/pull/22) are live: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, the owner repairs them in bulk from Alerts or with the menu's Re-protect binome sheets. Task 4 (write only what changed) is deployed ([#24](https://github.com/puIad/vic-recruitment-2026/pull/24), @61/@62); its ~20 `cycle` lines are open. Task 5 (cached admin snapshot) is deployed ([#26](https://github.com/puIad/vic-recruitment-2026/pull/26), @63/@64); its live `webState` times are open. Task 6 (member role, read side) is deployed ([#27](https://github.com/puIad/vic-recruitment-2026/pull/27), @65/@66). Task 7 (My binome page, 15 s member polling) is live ([#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, Vercel production from `b9f84c0`); a real member sign-in on the live site is still to check (with TEST_MODE on, nothing is shared, so expect "Your binome sheet isn't shared with you yet"). Task 8 (members edit their binome) is deployed ([#29](https://github.com/puIad/vic-recruitment-2026/pull/29), @67/@68, Vercel production from `9f20f26`); its live check with a second account is open. Next: 10 (load test again, then sign off), once task 9's owner steps are confirmed.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
