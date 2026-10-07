@@ -33,6 +33,13 @@ function copyFor(gate: Gate): Copy {
       const r = gate.access?.reason
       if (r === "DOMAIN") return { icon: Lock, tone: "lock", title: "Use your ENP account", lead: "Only @g.enp.edu.dz accounts can open the dashboard." }
       if (r === "NO_EMAIL") return { icon: Lock, tone: "lock", title: "We couldn't tell which account you're using", lead: "Google didn't share your email with the script, so it can't check your access." }
+      if (r === "NOT_SHARED")
+        return {
+          icon: Lock,
+          tone: "lock",
+          title: `Binome ${gate.access?.binome || ""} isn't open yet`.replace("  ", " "),
+          lead: "You're in this binome, but the admins haven't opened its sheet and dashboard to you yet. Once they do, press Try again.",
+        }
       if (r === "READ_ONLY") return { icon: Eye, tone: "eye", title: "This account can only view the project", lead: "It can open the VIC Recruitment 2026 master sheet but isn't an editor, and it isn't in a binome either." }
       return { icon: Lock, tone: "lock", title: "This account doesn't have access to the project", lead: "It can't open the VIC Recruitment 2026 master sheet, so there's no dashboard to show." }
     }
@@ -97,7 +104,11 @@ export function GateScreen() {
             <li className="flex gap-3">
               <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">2</span>
               <span>
-                Or ask a recruitment admin to add you to a <b>binome</b> or as an <b>editor</b> of the master sheet, then try again.
+                {access?.reason === "NOT_SHARED" ? (
+                  <>Or ask a recruitment admin to <b>open your binome</b> to you, then try again.</>
+                ) : (
+                  <>Or ask a recruitment admin to add you to a <b>binome</b> or as an <b>editor</b> of the master sheet, then try again.</>
+                )}
               </span>
             </li>
           </ol>

@@ -16,6 +16,11 @@ Tick each box and write what you saw next to anything that fails.
 - [ ] As admin, press **Sync now** once. The sync publishes each binome's slice to the cache (`MEMBER_MAP` and `SNAP_BIN`).
       Without it a member reads their sheet directly, and with Test mode on nothing is shared, so they'd only see
       "Your binome sheet isn't shared with you yet". That's correct, but it tests less.
+- [ ] **Open the binome to them** (since the follow-up to task 8): a member gets the dashboard only while they can open
+      their binome sheet. Before this step, signing in as the member shows "Binome B.__ isn't open yet". As admin: Binomes ›
+      the binome's ⋯ menu › **Sheet & dashboard access…** › View (read-only page) or Edit (fills in from My binome). No email
+      is sent, even in Test mode. Check in Drive that the sheet's sharing lists both members, and that no email arrived.
+      Close it again at the end (No access): the member drops to the gate at their next poll (~15 s).
 - [ ] Note the Master's state so you can compare it at the end: the Interviewees count, the open alerts count, the Settings
       values, the Binomes tab (or keep the Master open in the admin window).
 

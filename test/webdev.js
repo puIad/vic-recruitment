@@ -2,7 +2,8 @@
 //   node test/webdev.js [port]  (or `npm run mock` in frontend/), then `npm run dev` in frontend/ and open
 //   http://localhost:5173/dev-login?as=admin@g.enp.edu.dz (Vite proxies /api and /dev-login here).
 //   ?as=helper@g.enp.edu.dz → no-access view; /dev-login?as=  → signed-out view. --empty = before team import.
-//   /dev-login?as=member → a member of the busiest binome (My binome only; the start-up line names them).
+//   /dev-login?as=member → a member of the busiest binome (opened with edit: My binome only; the start-up line names them).
+//   /dev-login?as=closed → a member of a binome not opened yet (the "isn't open yet" gate).
 const http = require('http'), crypto = require('crypto');
 const port = +process.argv.find(a => /^\d+$/.test(a)) || 3000;
 process.env.SESSION_KEY = crypto.randomBytes(32).toString('base64');
@@ -35,6 +36,10 @@ if (!process.argv.includes('--empty')) {
 // a binome member who is not an editor of the Master: the member view (task 7)
 const busiest = process.argv.includes('--empty') ? null : s.call('webState').binomes.filter(b => b.people.length).sort((a, b) => b.assigned - a.assigned)[0];
 const memberEmail = busiest ? busiest.people[busiest.people.length - 1].email : '';
+// members get the dashboard only while they can open their binome sheet: the busiest binome is opened (edit), the others not
+const closed = busiest ? s.call('webState').binomes.find(b => b.code !== busiest.code && b.status !== 'DRAFT' && b.people.length) : null;
+const closedEmail = closed ? closed.people[0].email : '';
+if (busiest) { s.run('__acl = true'); s.call('webRun', 'binomeAccess', { binome: busiest.code, level: 'edit' }); }
 const api = { run: require('../web/api/run'), logout: require('../web/api/logout') };
 http.createServer((req, res) => {
   // plain http locally: drop "Secure" so every browser keeps the cookie (production is https)
@@ -42,7 +47,7 @@ http.createServer((req, res) => {
   res.setHeader = (k, v) => set(k, /^set-cookie$/i.test(k) ? [].concat(v).map(c => c.replace('; Secure', '')) : v);
   const path = req.url.split('?')[0];
   if (path === '/dev-login') {
-    const as = new URL(req.url, 'http://x').searchParams.get('as'), email = as === 'member' ? memberEmail : as;
+    const as = new URL(req.url, 'http://x').searchParams.get('as'), email = as === 'member' ? memberEmail : as === 'closed' ? closedEmail : as;
     res.setHeader('Set-Cookie', email ? S.sessionCookie({ email, rt: 'rt:' + email, at: 'at:' + email, ate: Date.now() + 3600e3, iat: Date.now() }) : S.clearSession());
     return S.redirect(res, '/');
   }
@@ -52,4 +57,5 @@ http.createServer((req, res) => {
   res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Mock API only. The UI: npm run dev in frontend/, then http://localhost:5173/dev-login?as=admin@g.enp.edu.dz\n');
 }).listen(port, () => console.log('Mock API on http://localhost:' + port + '. UI: npm run dev in frontend/, then http://localhost:5173/dev-login?as=admin@g.enp.edu.dz' +
-  (memberEmail ? '\nMember of ' + busiest.code + ': http://localhost:5173/dev-login?as=member (' + memberEmail + ')' : '')));
+  (memberEmail ? '\nMember of ' + busiest.code + ' (opened, edit): http://localhost:5173/dev-login?as=member (' + memberEmail + ')' +
+    '\nMember of ' + closed.code + ' (not opened yet): http://localhost:5173/dev-login?as=closed (' + closedEmail + ')' : '')));

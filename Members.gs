@@ -123,7 +123,16 @@ function applyMemberPlans_(ctx, plans, reason) {
         setBinomeBanner_(sh, b, b.members);
       } catch (e) { fileIssues.push('title/note not updated (' + e.message + ')'); }
     }
-    // Sharing off (TEST_MODE): the script gave nobody access, so there is nothing to add or take back
+    // Sharing off (TEST_MODE): nothing was shared with Drive's email. A binome opened from the dashboard (BIN_ACCESS) keeps its
+    // level: the newcomer gets it and the member who leaves loses it, silently, like the dashboard's own control
+    const opened = !share && !same && b.fileId && binAccess_()[b.code];
+    if (opened && opened.level !== 'none') {
+      try {
+        const roles = sheetRoles_(b.fileId);
+        if (p.out && p.out.email) setSheetAccess_(b.fileId, p.out.email, 'none', roles);
+        if (p.inn) setSheetAccess_(b.fileId, p.inn.email, opened.level, roles);
+      } catch (e) { fileIssues.push('access not carried over (' + driveErr_(e) + ')'); }
+    }
     if (b.fileId && share && !same) {
       let f = null;
       try { f = DriveApp.getFileById(b.fileId); } catch (e) { fileIssues.push('sharing not updated (' + driveErr_(e) + ')'); }

@@ -243,7 +243,7 @@ function resetBinomesCore_(phrase) {
     });
     // forget the old binomes; registrations deleted on purpose (iv entry 0) stay remembered so they are not re-imported
     const props = PropertiesService.getScriptProperties();
-    ['FILE_SEEN', 'FILE_READ', 'INTEG_NEXT'].forEach(k => props.deleteProperty(k));
+    ['FILE_SEEN', 'FILE_READ', 'INTEG_NEXT', 'BIN_ACCESS'].forEach(k => props.deleteProperty(k));
     const old = loadBaseline_(), fresh = loadCtx_();
     fresh.base = { bin: {}, iv: {} };
     Object.keys((old && old.iv) || {}).forEach(k => { if (old.iv[k] === 0) fresh.base.iv[k] = 0; });
