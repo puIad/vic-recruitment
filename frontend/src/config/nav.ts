@@ -14,6 +14,7 @@ import {
   Share2,
   Timer,
   UserCircle,
+  UserRoundCheck,
   Users,
   UsersRound,
   Wrench,
@@ -77,6 +78,18 @@ export const navGroups: NavGroup[] = [
         ],
       },
       { title: "Help", url: "/help", icon: CircleHelp },
+    ],
+  },
+]
+
+/** A binome member's sidebar: their binome, then their own settings. */
+export const memberNavGroups: NavGroup[] = [
+  { label: "Your binome", items: [{ title: "My binome", url: "/", icon: UserRoundCheck }] },
+  {
+    label: "You",
+    items: [
+      { title: "Account", url: "/settings/account", icon: UserCircle },
+      { title: "Appearance", url: "/settings/appearance", icon: Palette },
     ],
   },
 ]

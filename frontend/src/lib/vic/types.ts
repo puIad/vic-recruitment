@@ -10,7 +10,7 @@ export type Dept = "IT" | "COMM" | "FLER" | "HR"
 
 export interface Access {
   ok: boolean
-  /** "member": their binome only (task 7 gives them a page; until then they get the no-access screen) */
+  /** "member": their binome only, read-only (the My binome page); "admin": an editor of the Master */
   role: "" | "admin" | "member"
   email: string
   reason: "" | "NO_EMAIL" | "DOMAIN" | "NO_PROJECT" | "READ_ONLY"
@@ -206,6 +206,47 @@ export interface WebState {
   /** snoozed and muted alerts; absent on an older script */
   muted?: HeldAlert[]
   interviewees: Interviewee[]
+}
+
+/** A candidate as their binome sheet holds it (WebApp.gs candidate_: the BF_H keys, plus Status from the Master;
+ *  dates as dd/MM/yyyy, Interview Time HH:mm, Registered dd/MM/yyyy HH:mm). */
+export type Candidate = Record<SheetKey, string | number | boolean> & { Status: Status | "" }
+
+/** The binome sheet's columns, in its order (Config.gs BF_H); the sheet's own header labels are in SHEET_LABEL. */
+export const SHEET_KEYS = [
+  "Code", "Registered", "First Name", "Family Name", "Email", "Birth Date", "Phone", "Facebook", "Discord",
+  "Field", "Year", "Discovered VIC", "Why VIC", "Other Clubs", "1st Choice", "2nd Choice", "Why this department",
+  "Department Questions", "Availability", "Anything to add",
+  "Contacted", "Interview Date", "Interview Time", "Interview Done", "Rating", "Final Affectation", "Interview Form", "Notes",
+] as const
+export type SheetKey = (typeof SHEET_KEYS)[number]
+
+/** An open alert of the member's binome (only the types the script mails to binomes). */
+export interface MemberAlert {
+  id: string
+  created: string
+  severity: Severity
+  type: string
+  code: string
+  msg: string
+}
+
+/** webState for a member: their binome's slice. fromSheet = the cache was cold and it was read from their sheet
+ *  (then no statuses, alerts, tag or member names: those live in the Master). A cover gets only the codes they cover. */
+export interface MemberState {
+  role: "member"
+  v: number
+  binome: string
+  tag: string
+  status: BinomeStatus | ""
+  fileUrl: string
+  members: string[]
+  candidates: Candidate[]
+  alerts: MemberAlert[]
+  fromSheet: boolean
+  cover: boolean
+  user: string
+  switchUrl: string
 }
 
 /** What webRun returns: messages for the activity log and toast, plus an action-specific result. */

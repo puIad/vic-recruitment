@@ -23,7 +23,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { navGroups } from "@/config/nav"
+import { memberNavGroups, navGroups } from "@/config/nav"
 import { useVic } from "@/lib/vic/store"
 
 /** The Google files the old sidebar linked to (Master, both forms, the binome folder): one collapsed row, four links inside. */
@@ -71,25 +71,47 @@ function GoogleFiles() {
   )
 }
 
+/** A member's one Google file: their binome sheet, where they type (the dashboard is read-only for now). */
+function BinomeSheetLink() {
+  const url = useVic((s) => s.member?.fileUrl)
+  if (!url) return null
+  return (
+    <SidebarGroup>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton asChild tooltip="My binome sheet">
+            <a href={url} target="_blank" rel="noopener noreferrer">
+              <FileSpreadsheet />
+              <span>My binome sheet</span>
+              <ExternalLink className="ml-auto size-3.5 opacity-70" />
+            </a>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarGroup>
+  )
+}
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const member = useVic((s) => s.gate.mode === "member")
   return (
     <Sidebar {...props}>
       <SidebarHeader className="px-4 pt-5 pb-3">
         <SidebarMenu>
           <SidebarMenuItem>
-            <Link to="/" aria-label="VIC Recruitment 2026: Overview" className="block rounded-lg outline-offset-4">
+            <Link to="/" aria-label={member ? "VIC Recruitment 2026: My binome" : "VIC Recruitment 2026: Overview"} className="block rounded-lg outline-offset-4">
               <VicLogo tone="ondark" className="h-12 w-auto group-data-[collapsible=icon]:hidden" />
               <VicLogo variant="icon" className="mx-auto hidden h-8 w-auto group-data-[collapsible=icon]:block" />
             </Link>
-            <p className="mt-3 text-xs font-normal text-sidebar-foreground/75 group-data-[collapsible=icon]:hidden">Recruitment 2026 · Control room</p>
+            <p className="mt-3 text-xs font-normal text-sidebar-foreground/75 group-data-[collapsible=icon]:hidden">Recruitment 2026 · {member ? "My binome" : "Control room"}</p>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {navGroups.map((group) => (
+        {(member ? memberNavGroups : navGroups).map((group) => (
           <NavMain key={group.label} label={group.label} items={group.items} />
         ))}
-        <GoogleFiles />
+        {member ? <BinomeSheetLink /> : <GoogleFiles />}
       </SidebarContent>
       <SidebarFooter className="relative overflow-hidden">
         {/* the charter's ring-and-iris, bleeding off the corner behind the account area */}

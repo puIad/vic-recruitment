@@ -13,7 +13,8 @@ const SESSION_MS = 48 * 3600e3
 
 export default function AccountSettings() {
   const access = useVic((s) => s.access)
-  const email = useVic((s) => s.state?.user) || access?.email || ""
+  const email = useVic((s) => s.state?.user || s.member?.user) || access?.email || ""
+  const member = access?.role === "member"
   const ends = useVic((s) => s.sessionEnds)
   const [now, setNow] = React.useState(() => Date.now())
   React.useEffect(() => {
@@ -42,9 +43,22 @@ export default function AccountSettings() {
                 <p className="truncate text-muted-foreground">{email}</p>
               </div>
               <Badge variant={access?.owner ? "success" : "info"} className="ml-auto self-start">
-                {access?.owner ? "Owner" : "Editor"}
+                {member ? (access?.cover ? "Cover" : "Member") : access?.owner ? "Owner" : "Editor"}
               </Badge>
             </div>
+            {member ? (
+              <ul className="space-y-2 text-sm">
+                <li className="flex items-start gap-2">
+                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />
+                  {access?.cover
+                    ? `An ENP account covering for binome ${access.binome}: you see the candidates you cover, read-only.`
+                    : `An ENP account in binome ${access?.binome}: you see its candidates and alerts, read-only.`}
+                </li>
+                <li className="flex items-start gap-2">
+                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> You keep typing in your binome sheet; the rest of the recruitment stays with the admins.
+                </li>
+              </ul>
+            ) : (
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> An ENP account that can edit the VIC Recruitment 2026 master sheet.
@@ -53,6 +67,7 @@ export default function AccountSettings() {
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> {access?.owner ? "You own the Master: you may also run Setup." : "Setup is reserved for the owner of the Master."}
               </li>
             </ul>
+            )}
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => signOut(signInUrl)}>
                 <Repeat /> Switch account

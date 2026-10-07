@@ -24,7 +24,7 @@ function copyFor(gate: Gate): Copy {
     case "booting":
       return { icon: KeyRound, tone: "key", title: "Checking your access…", lead: "Hold on while we confirm your account can open the dashboard." }
     case "signin":
-      return { icon: KeyRound, tone: "key", title: "Sign in to the control room", lead: "The dashboard is for the recruitment team: anyone who can edit the VIC Recruitment 2026 master sheet." }
+      return { icon: KeyRound, tone: "key", title: "Sign in to the control room", lead: "The dashboard is for the recruitment team: the editors of the VIC Recruitment 2026 master sheet, and every binome member for their own binome." }
     case "expired":
       return { icon: KeyRound, tone: "key", title: "Your sign-in has expired", lead: "Sign-ins last 48 hours. Sign in again to keep working." }
     case "error":
@@ -33,7 +33,7 @@ function copyFor(gate: Gate): Copy {
       const r = gate.access?.reason
       if (r === "DOMAIN") return { icon: Lock, tone: "lock", title: "Use your ENP account", lead: "Only @g.enp.edu.dz accounts can open the dashboard." }
       if (r === "NO_EMAIL") return { icon: Lock, tone: "lock", title: "We couldn't tell which account you're using", lead: "Google didn't share your email with the script, so it can't check your access." }
-      if (r === "READ_ONLY") return { icon: Eye, tone: "eye", title: "This account can only view the project", lead: "It can open the VIC Recruitment 2026 master sheet but isn't an editor. The dashboard needs edit access." }
+      if (r === "READ_ONLY") return { icon: Eye, tone: "eye", title: "This account can only view the project", lead: "It can open the VIC Recruitment 2026 master sheet but isn't an editor, and it isn't in a binome either." }
       return { icon: Lock, tone: "lock", title: "This account doesn't have access to the project", lead: "It can't open the VIC Recruitment 2026 master sheet, so there's no dashboard to show." }
     }
     default:
@@ -97,7 +97,7 @@ export function GateScreen() {
             <li className="flex gap-3">
               <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">2</span>
               <span>
-                Or ask a recruitment admin to add you as an <b>editor</b> of the master sheet, then try again.
+                Or ask a recruitment admin to add you to a <b>binome</b> or as an <b>editor</b> of the master sheet, then try again.
               </span>
             </li>
           </ol>
@@ -142,6 +142,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     boot()
   }, [boot])
-  if (mode === "ok") return <>{children}</>
+  if (mode === "ok" || mode === "member") return <>{children}</>
   return <GateScreen />
 }
