@@ -59,7 +59,12 @@ export default function AccountSettings() {
                 </li>
                 <li className="flex items-start gap-2">
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />{" "}
-                  {canEdit ? "Your edits go into your binome sheet" : "Editing opens when an admin gives your binome edit access"}; the rest of the recruitment stays with the admins.
+                  {access?.cover
+                    ? "A cover stays read-only: the binome's own members fill in its sheet"
+                    : canEdit
+                      ? "Your edits go into your binome sheet"
+                      : "Editing opens when an admin gives your binome edit access"}
+                  ; the rest of the recruitment stays with the admins.
                 </li>
               </ul>
             ) : (
