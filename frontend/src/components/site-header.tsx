@@ -141,6 +141,7 @@ function SyncButton() {
 /** A member's header: no search, alerts bell or Sync (admin tools); live status, palette and theme stay. */
 function MemberHeader() {
   const binome = useVic((s) => s.member?.binome)
+  const edit = useVic((s) => !!s.member?.edit)
   return (
     <header className="sticky top-0 z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 backdrop-blur-sm">
       <div className="flex w-full items-center gap-1 px-4 py-3 lg:gap-2 lg:px-6">
@@ -148,7 +149,7 @@ function MemberHeader() {
         <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
         {binome && (
           <p className="truncate text-sm font-medium text-muted-foreground">
-            Binome <b className="font-bold text-foreground">{binome}</b> · read-only
+            Binome <b className="font-bold text-foreground">{binome}</b> · {edit ? "you can edit" : "read-only"}
           </p>
         )}
         <div className="ml-auto flex items-center gap-1.5">

@@ -13,6 +13,7 @@ const SESSION_MS = 48 * 3600e3
 
 export default function AccountSettings() {
   const access = useVic((s) => s.access)
+  const canEdit = useVic((s) => !!s.member?.edit)
   const email = useVic((s) => s.state?.user || s.member?.user) || access?.email || ""
   const member = access?.role === "member"
   const ends = useVic((s) => s.sessionEnds)
@@ -52,10 +53,13 @@ export default function AccountSettings() {
                   <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />
                   {access?.cover
                     ? `An ENP account covering for binome ${access.binome}: you see the candidates you cover, read-only.`
-                    : `An ENP account in binome ${access?.binome}: you see its candidates and alerts, read-only.`}
+                    : canEdit
+                      ? `An ENP account in binome ${access?.binome}: you see its candidates and alerts, and fill in your columns.`
+                      : `An ENP account in binome ${access?.binome}: you see its candidates and alerts, read-only.`}
                 </li>
                 <li className="flex items-start gap-2">
-                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> You keep typing in your binome sheet; the rest of the recruitment stays with the admins.
+                  <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" />{" "}
+                  {canEdit ? "Your edits go into your binome sheet" : "Editing opens when an admin gives your binome edit access"}; the rest of the recruitment stays with the admins.
                 </li>
               </ul>
             ) : (

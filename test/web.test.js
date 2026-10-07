@@ -811,6 +811,13 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     m.run(`__files[${J(fileOf(b2.code))}].editors.push(${J(out2)})`);
     m.call('webRun', 'changeMember', { binome: b2.code, outEmail: out2, inName: 'Other Comer', inEmail: 'other.comer@g.enp.edu.dz' });
     assert.deepStrictEqual([roleOn(b2.code, out2), roleOn(b2.code, 'other.comer@g.enp.edu.dz'), m.run('__notified.length')], ['', '', 0]);
+    // a removal Drive refuses is reported (a FILE_ERROR alert and the history row), never swallowed
+    m.run(`__files[${J(fileOf(b2.code))}].editors.push('other.comer@g.enp.edu.dz')`);
+    m.run('var __pr = Drive.Permissions.remove; Drive.Permissions.remove = () => { throw new Error("Drive refused"); }');
+    const ch = m.call('webRun', 'changeMember', { binome: b2.code, outEmail: 'other.comer@g.enp.edu.dz', inName: 'Third Comer', inEmail: 'third.comer@g.enp.edu.dz' });
+    m.run('Drive.Permissions.remove = __pr');
+    assert(/could not remove other\.comer@g\.enp\.edu\.dz from the sheet/.test(ch.messages.join(' ')), ch.messages.join(' '));
+    assert(m.call('webState').alerts.some(a => a.type === 'FILE_ERROR' && a.binome === b2.code && /could not remove other\.comer/.test(a.msg)), 'FILE_ERROR alert');
   }
 
   // removed with Change members: the next poll says Not allowed; Reset all binomes empties the map

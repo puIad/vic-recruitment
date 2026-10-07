@@ -4,7 +4,7 @@ Manual checks on the live dashboard (https://vic-recruitment.vercel.app) for the
 and 7). The mock can't check these because they depend on Google: a non-editor running the script through `scripts.run`, real sharing and the real cache.
 Tick each box and write what you saw next to anything that fails.
 
-**Expected everywhere:** a member sees their own binome, read-only, and nothing else. Every admin entry point answers
+**Expected everywhere:** a member sees their own binome and nothing else (read-only, unless the binome is opened with Edit: then only its own columns, written into its sheet). Every admin entry point answers
 `Not allowed` and the Master stays unchanged.
 
 ## Before you start
@@ -29,7 +29,7 @@ Tick each box and write what you saw next to anything that fails.
 | # | Do | Expect | ✓ |
 |---|---|---|---|
 | A1 | Sign in with the member account | Google's consent screen lists the same permissions as for admins (Sheets, Drive, Forms, mail, triggers). That's expected, because `scripts.run` needs every scope the script uses | ☐ |
-| A2 | After sign-in | The **Binome B.__** page. The sidebar shows only My binome, Account, Appearance and My binome sheet. The header shows "Binome B.__ · read-only", Live status, palette and theme, but **no** search, alerts bell or Sync now | ☐ |
+| A2 | After sign-in | The **Binome B.__** page. The sidebar shows only My binome, Account, Appearance and My binome sheet. The header shows Live status, palette and theme, but **no** search, alerts bell or Sync now. Opened with **View**: the header says "Binome B.__ · read-only", a blue note says you can view for now, and a candidate's panel has no fields to fill. Opened with **Edit**: the header says "· you can edit" and the panel's "Your interview" block has fields that save to the sheet. Check both: start with View, switch the binome to Edit, and the page follows at the next poll (~15 s) | ☐ |
 | A3 | Look at the page | Only your binome's candidates, members and open alerts (only these types: Not contacted in time, No interview date, Interview overdue, Date looks wrong, Odd value in a sheet). The counts match the binome's sheet | ☐ |
 | A4 | Click a candidate's code | The details panel shows every column of the binome sheet. "Open my binome sheet" opens **your** sheet | ☐ |
 | A5 | Sidebar account row, then Settings › Account | "Member of B.__". The Account card says Member, not Editor or Owner | ☐ |

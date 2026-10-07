@@ -131,8 +131,9 @@ function applyMemberPlans_(ctx, plans, reason) {
       try {
         const roles = sheetRoles_(b.fileId);
         if (p.out && p.out.email) {
-          // an access the sheet inherits (the Binome Sheets folder) can't be removed here: that stays, quietly
-          try { setSheetAccess_(b.fileId, p.out.email, 'none', roles); } catch (e) { console.warn('Sheet access of ' + p.out.email + ' not removed: ' + e); }
+          // reported, not swallowed: they would keep their binome's candidates (an access the sheet inherits from the Binome Sheets
+          // folder can't be removed here either: then the admin takes them off the folder)
+          try { setSheetAccess_(b.fileId, p.out.email, 'none', roles); } catch (e) { fileIssues.push('could not remove ' + p.out.email + ' from the sheet (' + driveErr_(e) + ')'); }
         }
         if (p.inn && level && level !== 'none') setSheetAccess_(b.fileId, p.inn.email, level, roles);
       } catch (e) { fileIssues.push('access not carried over (' + driveErr_(e) + ')'); }
