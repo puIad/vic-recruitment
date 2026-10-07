@@ -92,6 +92,12 @@ export const useVic = create<VicStore>((set, get) => ({
     try {
       const p = await call<number>("webPulse", [], POLL_TIMEOUT_MS).catch(() => null) // read before the state, so an edit in between still shows as a change
       const s = await call<WebState>("webState")
+      // an admin who lost edit access but is in a binome now gets a member slice: the gate, not admin pages on the wrong shape
+      if ((s as unknown as { role?: string }).role === "member") {
+        const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => undefined)
+        set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, pulse: null, loading: false })
+        return
+      }
       set((cur) => ({
         state: s,
         pulse: p,
