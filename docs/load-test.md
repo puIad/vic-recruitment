@@ -330,10 +330,12 @@ and write them under Notes. Target: p50 under 1.5 s, including the ~1 s that `sc
   is not re-indexed (`ctx.binomes`, covers, history), so a snapshot built from it could show the action as not done.
   Instead `webRun` calls `publishFresh_()` once, after any action that may have written (everything except `sync`,
   `integrity`, `digest` (they publish in their cycle), `lockCheck`, quick `locate` / `draft`, dry runs, and a `BUSY`
-  refusal): a fresh `loadCtx_()` + build under the lock. If the lock is taken by then, it **drops** the snapshot
-  (`SNAP_HASH` deleted, `SNAP_VER` +1) rather than wait: the next `webState` builds live and republishes. So an action
-  costs one extra load + build in its own call, and every screen then refreshes from the cache. This also covers
-  `resolve` and `saveSettings`, which never take the lock.
+  refusal): a fresh `loadCtx_()` + build under the lock. It **waits** for the lock (30 s), because `resolve`,
+  `saveSettings`, `importTeam`, `reshare` and `setup` write without it: a sync that loaded before such a write publishes
+  its older view, and only a publish after that sync can replace it (CodeRabbit on #26). Still taken after 30 s → it
+  drops the snapshot (`SNAP_HASH` deleted, `SNAP_VER` +1): the next `webState` builds live and republishes. So an action
+  costs one extra load + build in its own call (plus the rest of a running sync), and every screen then refreshes from
+  the cache.
 - **`webState` on a miss** builds live, and publishes only if it gets the lock at once (`tryLock(1)`); otherwise it
   returns the live build without publishing (whoever holds the lock publishes). Every publisher holds the lock, so an
   older build can never overwrite a newer one.

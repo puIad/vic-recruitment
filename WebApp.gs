@@ -124,9 +124,11 @@ function dropSnap_() {
   props.setProperty('SNAP_VER', String(Number(props.getProperty('SNAP_VER') || 0) + 1));
 }
 /** After a dashboard action that wrote: publish from a fresh read (the action's own context is not re-indexed after its writes).
- *  The lock is taken meanwhile → drop the snapshot instead, never serve one that misses the action. Never throws. */
+ *  It waits for the lock rather than dropping at once: a sync that loaded before a lock-free write (resolve, saveSettings…)
+ *  publishes its older view, and only a publish after it can overwrite that. Still taken after 30 s → drop the snapshot
+ *  (the next sync's fresh read republishes it). Never throws. */
 function publishFresh_() {
-  try { if (!withLock_(() => publishState_(freshCtx_()), 1)) dropSnap_(); }
+  try { if (!withLock_(() => publishState_(freshCtx_()), 30000)) dropSnap_(); }
   catch (e) { console.warn('Snapshot not published: ' + e); try { dropSnap_(); } catch (e2) { /* the next sync publishes */ } }
 }
 
