@@ -792,6 +792,27 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     m.run(`delete __cache['dirty:${b1.code}']`);
   }
 
+  // review of #30: a quota 403 isn't a revoke; every permissions page is read; a partial failure records nothing; a leaver loses a hand share
+  {
+    as(partner);
+    m.run('var __dfg = Drive.Files.get; Drive.Files.get = () => { throw new Error("API call to drive.files.get failed with error: User Rate Limit Exceeded (403)"); }');
+    assert.throws(() => m.call('webPulse'), /User Rate Limit Exceeded/, 'thrown (the page retries quietly), not read as no access');
+    m.run('Drive.Files.get = __dfg');
+    as('admin@g.enp.edu.dz');
+    m.run('__permPage = 1');
+    assert.deepStrictEqual(m.call('webRun', 'binomeAccess', { binome: b1.code }).result.members.map(x => x.now), ['edit', 'edit'], 'members on later pages are found');
+    m.run('var __pu = Drive.Permissions.update; Drive.Permissions.update = (p, id, pid) => { if (pid.indexOf(' + J(partner) + ') >= 0) throw new Error("Drive refused"); return __pu(p, id, pid); }');
+    const bad = m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'view' });
+    m.run('Drive.Permissions.update = __pu; __permPage = 0');
+    assert.deepStrictEqual([bad.result.errors.length, bad.result.level, /Not done for/.test(bad.messages[0])], [1, 'edit', true], 'the recorded level stays on a partial failure');
+    m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'edit' });
+    // a binome never opened from here: its leaver still loses a sheet shared by hand, the newcomer gets nothing
+    const out2 = b2.people[0].email;
+    m.run(`__files[${J(fileOf(b2.code))}].editors.push(${J(out2)})`);
+    m.call('webRun', 'changeMember', { binome: b2.code, outEmail: out2, inName: 'Other Comer', inEmail: 'other.comer@g.enp.edu.dz' });
+    assert.deepStrictEqual([roleOn(b2.code, out2), roleOn(b2.code, 'other.comer@g.enp.edu.dz'), m.run('__notified.length')], ['', '', 0]);
+  }
+
   // removed with Change members: the next poll says Not allowed; Reset all binomes empties the map
   as('admin@g.enp.edu.dz');
   m.call('webRun', 'changeMember', { binome: b1.code, outEmail: mem, inName: 'New Comer', inEmail: 'new.comer@g.enp.edu.dz' });

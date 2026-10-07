@@ -162,6 +162,7 @@ var DriveApp = {
 
 // Per-user access, off unless a test turns it on (__acl = true): the owner is admin@, then a file's editors and viewers.
 var __acl = false;
+var __permPage = 0;
 var __silent = [], __notified = []; // Drive.Permissions.create calls without / with Drive's email
 function __roleOf(id, who) {
   const f = __files[id], e = String(who || Session.getActiveUser().getEmail() || '').toLowerCase();
@@ -181,10 +182,13 @@ var Drive = {
     return { capabilities: { canEdit: !__acl || r === 'owner' || r === 'writer' } };
   } },
   Permissions: {
-    list(id) {
+    list(id, o) { // __permPage > 0: that many per page, with nextPageToken, like Drive's paging
       const f = __files[id]; if (!f) throw new Error('File not found: ' + id);
-      return { permissions: [{ id: 'p:owner', emailAddress: 'admin@g.enp.edu.dz', role: 'owner', type: 'user' }]
-        .concat(f.editors.map(e => ({ id: 'p:' + e, emailAddress: e, role: 'writer', type: 'user' })), (f.viewers || []).map(e => ({ id: 'p:' + e, emailAddress: e, role: 'reader', type: 'user' }))) };
+      const all = [{ id: 'p:owner', emailAddress: 'admin@g.enp.edu.dz', role: 'owner', type: 'user' }]
+        .concat(f.editors.map(e => ({ id: 'p:' + e, emailAddress: e, role: 'writer', type: 'user' })), (f.viewers || []).map(e => ({ id: 'p:' + e, emailAddress: e, role: 'reader', type: 'user' })));
+      if (!__permPage) return { permissions: all };
+      const at = Number((o && o.pageToken) || 0), next = at + __permPage;
+      return Object.assign({ permissions: all.slice(at, next) }, next < all.length ? { nextPageToken: String(next) } : {});
     },
     create(p, id, o) { (o && o.sendNotificationEmail === false ? __silent : __notified).push(p.emailAddress); __share(__files[id], String(p.emailAddress).toLowerCase(), p.role); return p; },
     update(p, id, pid) { __share(__files[id], pid.slice(2).toLowerCase(), p.role); return p; },

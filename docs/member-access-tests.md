@@ -31,7 +31,7 @@ Tick each box and write what you saw next to anything that fails.
 | A1 | Sign in with the member account | Google's consent screen lists the same permissions as for admins (Sheets, Drive, Forms, mail, triggers). That's expected, because `scripts.run` needs every scope the script uses | ☐ |
 | A2 | After sign-in | The **Binome B.__** page. The sidebar shows only My binome, Account, Appearance and My binome sheet. The header shows "Binome B.__ · read-only", Live status, palette and theme, but **no** search, alerts bell or Sync now | ☐ |
 | A3 | Look at the page | Only your binome's candidates, members and open alerts (only these types: Not contacted in time, No interview date, Interview overdue, Date looks wrong, Odd value in a sheet). The counts match the binome's sheet | ☐ |
-| A4 | Click a candidate's code | The details panel shows every column of the binome sheet. "Edit in my binome sheet" opens **your** sheet | ☐ |
+| A4 | Click a candidate's code | The details panel shows every column of the binome sheet. "Open my binome sheet" opens **your** sheet | ☐ |
 | A5 | Sidebar account row, then Settings › Account | "Member of B.__". The Account card says Member, not Editor or Owner | ☐ |
 | A6 | DevTools › Network, filter `api/run`, wait 1 minute without touching anything | One `webPulse` call every ~15 s and nothing else (no `webAccess`, no `webState`, unless the binome changed) | ☐ |
 | A7 | As admin, edit something for this binome (e.g. type in its sheet), then Sync now | Within ~15 s of the sync finishing, the member page updates by itself (the header's ring turns once) | ☐ |
@@ -77,7 +77,7 @@ if (who?.role !== "member") throw new Error("STOP: this account is not a member 
 const st = await rpc("webState")
 const s = st.value
 console.log("webState keys", Object.keys(s || {}).sort().join(", "), st.error || "")
-const allowed = ["alerts", "binome", "candidates", "cover", "fileUrl", "fromSheet", "members", "role", "status", "switchUrl", "tag", "user", "v"]
+const allowed = ["alerts", "binome", "candidates", "cover", "edit", "fileUrl", "fromSheet", "members", "role", "status", "switchUrl", "tag", "user", "v"]
 const extra = Object.keys(s || {}).filter((k) => !allowed.includes(k))
 const codes = new Set((s?.candidates || []).map((c) => String(c.Code)))
 const strayAlerts = (s?.alerts || []).filter((a) => a.code && !codes.has(a.code))
@@ -101,6 +101,7 @@ const actions = {
   resetBinomes: { phrase: "this is not the phrase" }, setup: {}, saveSettings: { values: {} },
   reassign: { dryRun: true }, changeMember: { dryRun: true }, swapMembers: { dryRun: true },
   newBinome: { dryRun: true }, addCover: { dryRun: true }, endCover: { dryRun: true }, quick: { op: "locate" },
+  binomeAccess: { binome: "B.00" },
 }
 const out = []
 for (const [a, args] of Object.entries(actions)) {
@@ -108,12 +109,12 @@ for (const [a, args] of Object.entries(actions)) {
   out.push({ action: a, refused: /Not allowed/.test(r.error || ""), answer: r.error || JSON.stringify(r.value).slice(0, 80) })
 }
 console.table(out)
-console.log(out.every((x) => x.refused) ? "PASS: all 22 refused" : "FAIL: see the rows with refused=false")
+console.log(out.every((x) => x.refused) ? "PASS: all 23 refused" : "FAIL: see the rows with refused=false")
 ```
 
 | Expect | ✓ |
 |---|---|
-| All 22 rows `refused: true` with `Not allowed`, and the log says **PASS** | ☐ |
+| All 23 rows `refused: true` with `Not allowed`, and the log says **PASS** | ☐ |
 
 **C3. Functions the proxy doesn't expose:**
 

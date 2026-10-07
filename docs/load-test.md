@@ -643,6 +643,11 @@ partner's is stopped and shown.
     member's state has `edit`; View → read-only and `memberSet` refused; None → the next pulse is Not allowed; reopened → a new
     version; a cover needs view access too; Change members carries the level (leaver loses it, newcomer gets edit); Reset clears
     `BIN_ACCESS`; members can't call `binomeAccess`. Mutation-checked: the Drive check in `access_`, the silent flag, the edit guard.
+  - **CodeRabbit on #30:** a Drive rate-limit / quota 403 is rethrown (`DRIVE_BUSY_RE`), not read as no access;
+    `sheetRoles_` reads every permissions page; the level is recorded only when every member got it; with sharing off a
+    leaver loses their sheet access however they got it (also a hand share in a binome never opened from here); the
+    details sheet's link is always "Open my binome sheet"; the live test script lists `edit` and `binomeAccess`. Each has a
+    test, mutation-checked.
   - **Live check still to do:** open one binome with View, then Edit, then No access, from the dashboard; check the sheet's
     sharing in Drive, that no email arrived, and the member's page at each step ([member-access-tests.md](member-access-tests.md),
     Before you start).

@@ -209,8 +209,8 @@ function binomeAccessCore_(code, level, by) {
   if (level) {
     emails.forEach(e => { try { setSheetAccess_(f, e, level, roles); } catch (x) { errs.push(e + ': ' + driveErr_(x)); } });
     const props = PropertiesService.getScriptProperties(), all = binAccess_();
-    all[code] = { level: level, at: fmt_(new Date(), 'dd/MM/yyyy HH:mm'), by: by };
-    props.setProperty('BIN_ACCESS', JSON.stringify(all));
+    // recorded only when every member got it: the badge and a later member change rely on it (on a failure the old level stays)
+    if (!errs.length) { all[code] = { level: level, at: fmt_(new Date(), 'dd/MM/yyyy HH:mm'), by: by }; props.setProperty('BIN_ACCESS', JSON.stringify(all)); }
     const bins = binMeta_(); // the members' pages reload at their next poll and pick up view / edit
     if (bins[code]) { bins[code].v++; props.setProperty('SNAP_BIN', JSON.stringify(bins)); }
     say_(code + ': ' + (level === 'none' ? 'closed. Its members no longer open their sheet or the dashboard.' :

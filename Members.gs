@@ -123,14 +123,18 @@ function applyMemberPlans_(ctx, plans, reason) {
         setBinomeBanner_(sh, b, b.members);
       } catch (e) { fileIssues.push('title/note not updated (' + e.message + ')'); }
     }
-    // Sharing off (TEST_MODE): nothing was shared with Drive's email. A binome opened from the dashboard (BIN_ACCESS) keeps its
-    // level: the newcomer gets it and the member who leaves loses it, silently, like the dashboard's own control
-    const opened = !share && !same && b.fileId && binAccess_()[b.code];
-    if (opened && opened.level !== 'none') {
+    // Sharing off (TEST_MODE): nothing was shared with Drive's email. Silently, like the dashboard's own control: the member who
+    // leaves loses the sheet however they got it (opened from the dashboard or shared by hand), and the newcomer gets the level
+    // the binome was opened at (BIN_ACCESS), if any
+    if (!share && !same && b.fileId) {
+      const level = (binAccess_()[b.code] || {}).level;
       try {
         const roles = sheetRoles_(b.fileId);
-        if (p.out && p.out.email) setSheetAccess_(b.fileId, p.out.email, 'none', roles);
-        if (p.inn) setSheetAccess_(b.fileId, p.inn.email, opened.level, roles);
+        if (p.out && p.out.email) {
+          // an access the sheet inherits (the Binome Sheets folder) can't be removed here: that stays, quietly
+          try { setSheetAccess_(b.fileId, p.out.email, 'none', roles); } catch (e) { console.warn('Sheet access of ' + p.out.email + ' not removed: ' + e); }
+        }
+        if (p.inn && level && level !== 'none') setSheetAccess_(b.fileId, p.inn.email, level, roles);
       } catch (e) { fileIssues.push('access not carried over (' + driveErr_(e) + ')'); }
     }
     if (b.fileId && share && !same) {

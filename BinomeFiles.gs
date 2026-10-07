@@ -229,24 +229,33 @@ function reprotectBinomeSheets() {
 /* ---------- who can open a binome sheet (Drive advanced service): the dashboard follows the sheet ---------- */
 
 const SHEET_ROLE = { view: 'reader', edit: 'writer' };
+// Drive answers "no access" with 404 / 403, but its rate and quota limits are 403s too: those are checked first and rethrown
 const NO_ACCESS_RE = /not ?found|404|403|insufficient|permission|forbidden/i;
+const DRIVE_BUSY_RE = /rate ?limit|quota|backend ?error|internal error|try again/i;
 /** What the signed-in account can do in a sheet: 'edit', 'view', or '' (Drive says it can't open it). Another Drive error
- *  (a timeout, the API off) is thrown, so a hiccup never reads as a revoked member. */
+ *  (a rate limit, a timeout, the API off) is thrown, so a hiccup never reads as a revoked member. */
 function sheetAccess_(fileId) {
   if (!fileId) return '';
   try {
     const f = Drive.Files.get(fileId, { fields: 'capabilities(canEdit)', supportsAllDrives: true });
     return f.capabilities && f.capabilities.canEdit ? 'edit' : 'view';
   } catch (e) {
-    if (NO_ACCESS_RE.test(String(e && e.message))) return '';
+    const msg = String(e && e.message);
+    if (!DRIVE_BUSY_RE.test(msg) && NO_ACCESS_RE.test(msg)) return '';
     throw e;
   }
 }
 /** email (lower case) -> {id, level: 'edit' | 'view' | 'owner'} for every person a sheet is shared with. */
 function sheetRoles_(fileId) {
   const out = {};
-  (Drive.Permissions.list(fileId, { fields: 'permissions(id,emailAddress,role,type)', supportsAllDrives: true }).permissions || [])
-    .forEach(p => { if (p.type === 'user' && p.emailAddress) out[lc_(p.emailAddress)] = { id: p.id, level: p.role === 'owner' ? 'owner' : p.role === 'writer' ? 'edit' : 'view' }; });
+  let token = '';
+  do { // every page: a member missed on page 2 could not be found, nor removed
+    const opt = { fields: 'nextPageToken,permissions(id,emailAddress,role,type)', supportsAllDrives: true };
+    if (token) opt.pageToken = token;
+    const page = Drive.Permissions.list(fileId, opt);
+    (page.permissions || []).forEach(p => { if (p.type === 'user' && p.emailAddress) out[lc_(p.emailAddress)] = { id: p.id, level: p.role === 'owner' ? 'owner' : p.role === 'writer' ? 'edit' : 'view' }; });
+    token = page.nextPageToken || '';
+  } while (token);
   return out;
 }
 /** Give one person exactly `level` ('none' | 'view' | 'edit') on a sheet, without Drive's email. The owner is never touched.
