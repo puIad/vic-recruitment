@@ -294,7 +294,7 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
               <SheetFooter className="border-t p-6">
                 <Button asChild variant="outline">
                   <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                    {editable ? "Open my binome sheet" : "Edit in my binome sheet"} <ArrowUpRight />
+                    Open my binome sheet <ArrowUpRight />
                   </a>
                 </Button>
               </SheetFooter>

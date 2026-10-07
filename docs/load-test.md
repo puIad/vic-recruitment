@@ -616,6 +616,41 @@ partner's is stopped and shown.
 - **Shipped 2026-10-07:** merged as `9f20f26`, `npm run deploy` (all suites green; web app @67, API @68; 18 files pushed, and
   the live project pulled back afterwards: all 18 equal to `main`). Vercel production built from `9f20f26` (the real build:
   `npm install` 316 packages, `tsc -b && vite build`, 47 s; "Deployment completed").
+- **Follow-up (owner, after the live check, 2026-10-07, branch `p1-8b-binome-access`):** a hand-shared sheet let the
+  member in without the owner meaning to open the dashboard yet (task 6's access rule was only "in `MEMBER_MAP`"). Now the
+  dashboard follows the sheet: `access_()` makes someone in `MEMBER_MAP` a member only while Drive lets them open their binome
+  sheet (`sheetAccess_`: `Drive.Files.get` with `capabilities(canEdit)` as the member, one call per request), else reason
+  `NOT_SHARED` (gate: "Binome B.xx isn't open yet"). A Drive error other than "no access" is thrown, so a hiccup never reads
+  as a revoke. `edit` (= `canEdit`) rides on the member state: a view-only member gets My binome read-only, and `memberSet`
+  refuses ("You can view your binome sheet but not edit it"); the sheet's own permission would refuse the write anyway.
+  - **`webRun('binomeAccess', {binome, level?})`** (admins): without `level`, each member's access read live from Drive; with
+    `none` / `view` / `edit`, both members get exactly that, through the Drive advanced service with
+    `sendNotificationEmail: false` (`setSheetAccess_`), **also in TEST_MODE** (owner's choice: a deliberate click per binome).
+    The owner of the sheet is never touched; covers keep the view access their cover gave them. The level is recorded in
+    `BIN_ACCESS` (code -> `{level, at, by}`, shown as a badge in Binomes, cleared by Reset), and the binome's `SNAP_BIN` `v` is
+    bumped so its members' pages reload with the new edit flag.
+  - **Change members / swap with sharing off:** a binome opened from here keeps its level: the newcomer gets it and the member
+    who leaves loses it, silently. With sharing on (after launch) nothing changed: `addEditor` / `removeEditor` with Drive's
+    email, as before. The bulk Re-share and every other automatic share keep their email and their TEST_MODE gate (owner's choice).
+  - **Manifest:** `enabledAdvancedServices` Drive v3 (same `drive` scope: no new consent). The Drive API is already on in the
+    Cloud project (HANDOFF › Gotchas).
+  - **UI:** Binomes › ⋯ › Sheet & dashboard access… (dialog: each member's access now, No access / View / Edit for both, Apply);
+    "Open · view" / "Open · edit" badge in the Status column; the gate's NOT_SHARED copy; My binome read-only with a note when
+    view-only. Mock: `/dev-login?as=member` is in an opened binome (edit), `/dev-login?as=closed` in one not opened yet.
+  - **Tests:** the mock gained the Drive advanced service and per-user access (`__acl`, off unless a test turns it on: Drive
+    `Files.get`, `openById` of a binome sheet and writes check the active user). In the members block: not shared →
+    NOT_SHARED, no state, no pulse; a read changes nothing; Edit for both, no Drive email (`__notified` empty), no mail; a
+    member's state has `edit`; View → read-only and `memberSet` refused; None → the next pulse is Not allowed; reopened → a new
+    version; a cover needs view access too; Change members carries the level (leaver loses it, newcomer gets edit); Reset clears
+    `BIN_ACCESS`; members can't call `binomeAccess`. Mutation-checked: the Drive check in `access_`, the silent flag, the edit guard.
+  - **CodeRabbit on #30:** a Drive rate-limit / quota 403 is rethrown (`DRIVE_BUSY_RE`), not read as no access;
+    `sheetRoles_` reads every permissions page; the level is recorded only when every member got it; with sharing off a
+    leaver loses their sheet access however they got it (also a hand share in a binome never opened from here); the
+    details sheet's link is always "Open my binome sheet"; the live test script lists `edit` and `binomeAccess`. Each has a
+    test, mutation-checked.
+  - **Live check still to do:** open one binome with View, then Edit, then No access, from the dashboard; check the sheet's
+    sharing in Drive, that no email arrived, and the member's page at each step ([member-access-tests.md](member-access-tests.md),
+    Before you start).
 - **Still open, the live check** (above, TEST_MODE on): a second ENP account in a test binome with its sheet shared by hand
   edits each kind of field; check the date and time land as real date / time in the fr_FR sheet, the Master after the next
   sync, a conflict, and in Apps Script › Executions whether `memberSet` ran under the document lock (no `BUSY` while a sync

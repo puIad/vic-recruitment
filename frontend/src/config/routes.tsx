@@ -56,7 +56,7 @@ export const shellRoutes: RouteConfig[] = [
   { path: "*", element: <NotFound /> },
 ]
 
-/** A binome member's whole dashboard: their binome, read-only, and their own account and appearance. */
+/** A binome member's whole dashboard: their binome (editable with edit access to its sheet), and their own account and appearance. */
 export const memberRoutes: RouteConfig[] = [
   { path: "/", element: <MyBinome /> },
   { path: "/settings/account", element: <SettingsAccount /> },

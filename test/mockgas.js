@@ -90,6 +90,7 @@ MockRange.prototype = {
     }));
   },
   setValues(vals) {
+    if (__acl && __roleOf(this.sh.ss.id) !== 'owner' && __roleOf(this.sh.ss.id) !== 'writer') throw new Error('You do not have permission to edit this range.');
     if (vals.length !== this.nr || vals[0].length !== this.nc) throw new Error('setValues dims ' + vals.length + 'x' + vals[0].length + ' vs ' + this.nr + 'x' + this.nc + ' on ' + this.sh.name);
     for (let i = 0; i < this.nr; i++) {
       const ri = this.r - 1 + i; for (let k = 0; k <= ri; k++) if (!this.sh.cells[k]) this.sh.cells[k] = []; // no holes, like a real sheet
@@ -128,7 +129,8 @@ MockSS.prototype = {
 var SpreadsheetApp = {
   _active: null,
   getActive() { return this._active; }, getActiveSpreadsheet() { return this._active; },
-  openById(id) { if (!__files[id]) throw new Error('No file ' + id); return __files[id].obj; },
+  // the bound Master is handed back to anyone (as in Apps Script); other files need access when the ACL is on
+  openById(id) { if (!__files[id] || (__acl && id !== __props.MASTER_ID && !__roleOf(id))) throw new Error('No file ' + id); return __files[id].obj; },
   create(t) { return new MockSS(t); },
   flush() { },
   newDataValidation() { return chain(); }, newConditionalFormatRule() { return chain(); },
@@ -155,6 +157,42 @@ var DriveApp = {
   getFolderById(fid) {
     return { id: fid, getEditors() { return []; }, getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getFiles() { const ids = Object.keys(__files).filter(k => __files[k].parent === fid); let i = 0;
       return { hasNext: () => i < ids.length, next: () => { const id = ids[i++]; return { getId: () => id, getLastUpdated: () => __files[id].lastUpdated }; } }; } };
+  },
+};
+
+// Per-user access, off unless a test turns it on (__acl = true): the owner is admin@, then a file's editors and viewers.
+var __acl = false;
+var __permPage = 0;
+var __silent = [], __notified = []; // Drive.Permissions.create calls without / with Drive's email
+function __roleOf(id, who) {
+  const f = __files[id], e = String(who || Session.getActiveUser().getEmail() || '').toLowerCase();
+  if (!f) return '';
+  if (e === 'admin@g.enp.edu.dz') return 'owner';
+  if ((f.editors || []).map(x => String(x).toLowerCase()).indexOf(e) >= 0) return 'writer';
+  if ((f.viewers || []).map(x => String(x).toLowerCase()).indexOf(e) >= 0) return 'reader';
+  return '';
+}
+function __unshare(f, e) { f.editors = f.editors.filter(x => String(x).toLowerCase() !== e); f.viewers = (f.viewers || []).filter(x => String(x).toLowerCase() !== e); }
+function __share(f, e, role) { __unshare(f, e); if (role === 'writer') f.editors.push(e); else (f.viewers = f.viewers || []).push(e); }
+// The Drive advanced service (v3): the calls the script makes, on the same editors / viewers lists
+var Drive = {
+  Files: { get(id) {
+    const r = __roleOf(id);
+    if (!__files[id] || (__acl && !r)) throw new Error('API call to drive.files.get failed with error: File not found: ' + id + '.');
+    return { capabilities: { canEdit: !__acl || r === 'owner' || r === 'writer' } };
+  } },
+  Permissions: {
+    list(id, o) { // __permPage > 0: that many per page, with nextPageToken, like Drive's paging
+      const f = __files[id]; if (!f) throw new Error('File not found: ' + id);
+      const all = [{ id: 'p:owner', emailAddress: 'admin@g.enp.edu.dz', role: 'owner', type: 'user' }]
+        .concat(f.editors.map(e => ({ id: 'p:' + e, emailAddress: e, role: 'writer', type: 'user' })), (f.viewers || []).map(e => ({ id: 'p:' + e, emailAddress: e, role: 'reader', type: 'user' })));
+      if (!__permPage) return { permissions: all };
+      const at = Number((o && o.pageToken) || 0), next = at + __permPage;
+      return Object.assign({ permissions: all.slice(at, next) }, next < all.length ? { nextPageToken: String(next) } : {});
+    },
+    create(p, id, o) { (o && o.sendNotificationEmail === false ? __silent : __notified).push(p.emailAddress); __share(__files[id], String(p.emailAddress).toLowerCase(), p.role); return p; },
+    update(p, id, pid) { __share(__files[id], pid.slice(2).toLowerCase(), p.role); return p; },
+    remove(id, pid) { __unshare(__files[id], pid.slice(2).toLowerCase()); },
   },
 };
 

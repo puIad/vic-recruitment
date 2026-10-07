@@ -5,7 +5,8 @@
  * Who has access: anyone in the domain. Google asks each visitor for permission
  * once, then everything runs with *their* Drive access: an account that can edit
  * the Master sheet is an admin and gets the dashboard; a member of a locked binome
- * (or a live cover) gets only their binome (MEMBER_MAP, through the Vercel front);
+ * (or a live cover) who can at least view their binome sheet gets only their binome
+ * (MEMBER_MAP + Drive, through the Vercel front);
  * any other account gets NoAccess.html with a switch-account button.
  ******************************************************************************/
 
@@ -32,11 +33,13 @@ const API_VERSION = 3;
 const DOMAIN = 'g.enp.edu.dz';
 
 /**
- * Who is the signed-in account? {ok, role, email, reason, owner} (+ binome, cover, m for a member). The script runs as that
- * account, so opening the sheet is the real test: an editor of the Master is an admin (role 'admin'; owner = owns the
- * Master, only the owner may run Setup). Otherwise an email in MEMBER_MAP is a member (role 'member': their binome only;
- * cover = a live cover, who sees only the codes they cover). Else DOMAIN = not an @g.enp.edu.dz account, NO_PROJECT =
- * can't open the Master, READ_ONLY = can open it, can't edit it. Admin entry points check role === 'admin', never ok.
+ * Who is the signed-in account? {ok, role, email, reason, owner} (+ binome, cover, m, edit for a member). The script runs as
+ * that account, so opening the sheet is the real test: an editor of the Master is an admin (role 'admin'; owner = owns the
+ * Master, only the owner may run Setup). Otherwise an email in MEMBER_MAP whose binome sheet Drive lets them open is a member
+ * (role 'member': their binome only; edit = they can edit that sheet; cover = a live cover, who sees only the codes they
+ * cover); in MEMBER_MAP but not shared yet = NOT_SHARED (an admin opens a binome with binomeAccess). Else DOMAIN = not an
+ * @g.enp.edu.dz account, NO_PROJECT = can't open the Master, READ_ONLY = can open it, can't edit it. Admin entry points check
+ * role === 'admin', never ok. Throws only when Drive fails for another reason than "no access" (the page retries).
  */
 function access_() {
   const email = String(Session.getActiveUser().getEmail() || '').toLowerCase();
@@ -53,7 +56,11 @@ function access_() {
     } catch (e) { /* viewers can't list the editors */ }
   }
   const m = savedMemberMap_()[email];
-  if (m) return { ok: true, role: 'member', email: email, owner: false, binome: m.b, cover: !!m.cover, m: m };
+  if (m) {
+    const can = sheetAccess_(m.f); // the dashboard follows the sheet: no access to it, no dashboard
+    if (can) return { ok: true, role: 'member', email: email, owner: false, binome: m.b, cover: !!m.cover, m: m, edit: can === 'edit' };
+    return { ok: false, role: '', email: email, reason: 'NOT_SHARED', owner: false, binome: m.b, cover: !!m.cover };
+  }
   if (!ss) return { ok: false, role: '', email: email, reason: 'NO_PROJECT', owner: false };
   // The bound script hands back its Master even to an account with no access at all: ask Drive whether it can see it.
   try { DriveApp.getFileById(ss.getId()); } catch (e) { return { ok: false, role: '', email: email, reason: 'NO_PROJECT', owner: false }; }
@@ -61,7 +68,7 @@ function access_() {
 }
 function isAdmin_() { return access_().role === 'admin'; }
 
-/** First call of the Vercel front: never throws, so it can show the no-access view. */
+/** First call of the Vercel front: shows the no-access view rather than throwing (a Drive hiccup on a member's sheet throws). */
 function webAccess() {
   const a = access_();
   return { ok: a.ok, role: a.role || '', email: a.email, reason: a.reason || '', owner: !!a.owner,
@@ -172,7 +179,7 @@ function memberState_(a) {
     sl.candidates = sl.candidates.filter(c => m.codes.indexOf(String(c.Code)) >= 0);
     sl.alerts = sl.alerts.filter(x => m.codes.indexOf(x.code) >= 0);
   }
-  return Object.assign(sl, { role: 'member', cover: !!m.cover, user: Session.getActiveUser().getEmail(), switchUrl: switchUrl_() });
+  return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail(), switchUrl: switchUrl_() });
 }
 function sliceFromSheet_(m) {
   let book = null;
@@ -182,6 +189,36 @@ function sliceFromSheet_(m) {
   const rows = n < 2 ? [] : sh.getRange(2, BF_COL, n - 1, BF_H.length).getValues().filter(r => String(r[0]).trim());
   return { v: API_VERSION, binome: m.b, tag: '', status: '', fileUrl: book.getUrl(), members: [], alerts: [], fromSheet: true,
     candidates: rows.map(r => candidate_(r, '')) };
+}
+
+/* ---------- an admin opens a binome to its members: their sheet and the dashboard together, silently ---------- */
+
+const ACCESS_LEVELS = ['none', 'view', 'edit'];
+/** webRun('binomeAccess', {binome, level?}). Without level: what each member can do in the binome sheet now, read from Drive.
+ *  With level 'none' | 'view' | 'edit': give both members exactly that on their sheet without Drive's email (TEST_MODE too: a
+ *  deliberate click on one binome; the bulk Re-share and the automatic shares keep their email and their TEST_MODE gate). The
+ *  dashboard follows at the member's next poll (access_). Members only: covers keep the view access their cover gave them.
+ *  Returns {binome, level (as last set from here), members: [{email, now}]}. */
+function binomeAccessCore_(code, level, by) {
+  if (level !== undefined && level !== null && ACCESS_LEVELS.indexOf(level) < 0) throw new Error('Access must be one of: ' + ACCESS_LEVELS.join(', '));
+  const map = savedMemberMap_(), emails = Object.keys(map).filter(e => map[e].b === code && !map[e].cover);
+  if (!emails.length) throw new Error(code + ' is not a locked binome with members.');
+  const f = map[emails[0]].f, errs = [];
+  let roles;
+  try { roles = sheetRoles_(f); } catch (e) { throw new Error('Could not read who can open the ' + code + ' sheet: ' + driveErr_(e)); }
+  if (level) {
+    emails.forEach(e => { try { setSheetAccess_(f, e, level, roles); } catch (x) { errs.push(e + ': ' + driveErr_(x)); } });
+    const props = PropertiesService.getScriptProperties(), all = binAccess_();
+    // recorded only when every member got it: the badge and a later member change rely on it (on a failure the old level stays)
+    if (!errs.length) { all[code] = { level: level, at: fmt_(new Date(), 'dd/MM/yyyy HH:mm'), by: by }; props.setProperty('BIN_ACCESS', JSON.stringify(all)); }
+    const bins = binMeta_(); // the members' pages reload at their next poll and pick up view / edit
+    if (bins[code]) { bins[code].v++; props.setProperty('SNAP_BIN', JSON.stringify(bins)); }
+    say_(code + ': ' + (level === 'none' ? 'closed. Its members no longer open their sheet or the dashboard.' :
+      'its members can now ' + level + ' their sheet' + (level === 'edit' ? ' and fill it in from the dashboard.' : ' and see it on the dashboard.')) +
+      ' No email was sent.' + (errs.length ? '\nNot done for: ' + errs.join('; ') : ''));
+  }
+  return { binome: code, level: (binAccess_()[code] || {}).level || '',
+    members: emails.map(e => ({ email: e, now: roles[e] ? roles[e].level : 'none' })), errors: errs };
 }
 
 /* ---------- members edit their own binome sheet (load-test task 8) ---------- */
@@ -245,6 +282,7 @@ function memberLock_() { let l = null; try { l = LockService.getDocumentLock(); 
  *  sheet whatever Drive says) and its cached slice takes the value, so the partner's next poll shows it. */
 function memberSet_(a, args) {
   if (a.role !== 'member' || a.cover) throw new Error('Not allowed');
+  if (!a.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
   const m = a.m, code = String(args.code || '').trim(), field = String(args.field || '');
   if (BF_EDITABLE.indexOf(field) < 0) throw new Error('Not allowed');
   const value = memberValue_(field, args.value);
@@ -386,7 +424,7 @@ function buildState_(ctx) {
   const alertCounts = { HIGH: 0, MEDIUM: 0, INFO: 0 };
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
 
-  const look = quickLookups_(ctx);
+  const look = quickLookups_(ctx), opened = binAccess_();
   const teamSrc = findTeamSource_(ss_());
 
   return {
@@ -420,7 +458,7 @@ function buildState_(ctx) {
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
       return { code: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
-        people: b.members.map(m => ({ name: m.name, email: m.email })),
+        people: b.members.map(m => ({ name: m.name, email: m.email })), access: (opened[b.code] || {}).level || '',
         assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open };
     }),
     alertCounts: alertCounts,
@@ -487,7 +525,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   const wrote = ['sync', 'integrity', 'digest', 'lockCheck'].indexOf(action) < 0 && !args.dryRun &&
-    !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0);
+    !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false; // BUSY: nothing was changed, and the lock holder publishes
   _webOut = [];
   try {
@@ -521,6 +559,7 @@ function webRun(action, args) {
       case 'addCover': result = addCoverCore_(args); break;
       case 'endCover': result = endCoverCore_(args); break;
       case 'quick': result = quickCore_(String(args.op || ''), args); break;
+      case 'binomeAccess': result = binomeAccessCore_(String(args.binome || ''), args.level, a.email); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked as resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;

@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowRightLeft, ExternalLink, MoveRight, MoreHorizontal, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
+import { ArrowRightLeft, ExternalLink, KeyRound, MoveRight, MoreHorizontal, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { OpenChip } from "@/components/open-chip"
@@ -21,10 +21,15 @@ import { useUi } from "@/lib/vic/ui"
 import type { Binome, Cover, Unpaired } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { MemberName, MemberNames } from "@/components/member-name"
+import { ACCESS_BADGE, AccessDialog } from "./components/access-dialog"
 
 const NONE: Binome[] = []
 
+/** The access dialog's binome, shared by the table's row menus and the page. */
+const AccessCtx = React.createContext<(b: Binome) => void>(() => {})
+
 function RowActions({ b }: { b: Binome }) {
+  const openAccess = React.useContext(AccessCtx)
   const openSheet = useUi((s) => s.openMemberSheet)
   const openMove = useUi((s) => s.openMoveDialog)
   const locked = b.status !== "DRAFT"
@@ -43,6 +48,9 @@ function RowActions({ b }: { b: Binome }) {
             </a>
           </DropdownMenuItem>
         )}
+        <DropdownMenuItem disabled={!locked || !b.fileUrl} className="cursor-pointer" onSelect={() => openAccess(b)}>
+          <KeyRound /> Sheet &amp; dashboard access…
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={!locked} className="cursor-pointer" onSelect={() => openSheet({ mode: "replace", binome: b.code })}>
           <Repeat /> Replace a member…
@@ -82,6 +90,14 @@ const columns: ColumnDef<Binome>[] = [
           <span className={cn("size-2.5 rounded-full", s.dot)} aria-hidden="true" />
           <span className="font-medium">{s.label}</span>
           {row.original.tag && <span className="text-muted-foreground">· {row.original.tag === "ALL" ? "takes any department" : row.original.tag}</span>}
+          {ACCESS_BADGE[row.original.access || ""] && (
+            <span
+              className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", ACCESS_BADGE[row.original.access || ""]!.tone)}
+              title="Opened to its members from the dashboard (sheet and My binome)"
+            >
+              {ACCESS_BADGE[row.original.access || ""]!.label}
+            </span>
+          )}
         </span>
       )
     },
@@ -225,8 +241,12 @@ export default function BinomesPage() {
   }, [binomes, q])
 
   const locked = binomes.filter((b) => b.status !== "DRAFT").length
+  const [accessOf, setAccessOf] = React.useState<string | null>(null)
+  const accessBinome = binomes.find((b) => b.code === accessOf) ?? null
+  const openAccess = React.useCallback((b: Binome) => setAccessOf(b.code), [])
 
   return (
+    <AccessCtx.Provider value={openAccess}>
     <BaseLayout
       title="Binomes"
       description={loading ? "Loading…" : `${binomes.length} pairs of interviewers, ${locked} locked. Each locked binome has its own sheet.`}
@@ -278,6 +298,8 @@ export default function BinomesPage() {
         )}
       />
       <CoversCard list={covers} />
+      <AccessDialog binome={accessBinome} onClose={() => setAccessOf(null)} />
     </BaseLayout>
+    </AccessCtx.Provider>
   )
 }

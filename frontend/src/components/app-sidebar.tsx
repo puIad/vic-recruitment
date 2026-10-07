@@ -71,7 +71,7 @@ function GoogleFiles() {
   )
 }
 
-/** A member's one Google file: their binome sheet, where they type (the dashboard is read-only for now). */
+/** A member's one Google file: their binome sheet (the same cells My binome edits, when they have edit access). */
 function BinomeSheetLink() {
   const url = useVic((s) => s.member?.fileUrl)
   if (!url) return null

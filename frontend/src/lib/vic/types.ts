@@ -13,7 +13,8 @@ export interface Access {
   /** "member": their binome only, read-only (the My binome page); "admin": an editor of the Master */
   role: "" | "admin" | "member"
   email: string
-  reason: "" | "NO_EMAIL" | "DOMAIN" | "NO_PROJECT" | "READ_ONLY"
+  /** NOT_SHARED: in a binome, but their binome sheet isn't open to them (an admin opens it from Binomes) */
+  reason: "" | "NO_EMAIL" | "DOMAIN" | "NO_PROJECT" | "READ_ONLY" | "NOT_SHARED"
   owner: boolean
   binome: string
   cover: boolean
@@ -119,6 +120,18 @@ export interface Binome {
   interviewed: number
   withdrew: number
   open: number
+  /** the level an admin last opened this binome at from the dashboard ("" = never); Drive is the truth (binomeAccess) */
+  access?: "" | AccessLevel
+}
+
+/** What a binome's members can do in their sheet, and so on the dashboard. */
+export type AccessLevel = "none" | "view" | "edit"
+/** webRun binomeAccess: the members' access read live from Drive (owner = owns the sheet). */
+export interface BinomeAccessOut {
+  binome: string
+  level: "" | AccessLevel
+  members: { email: string; now: AccessLevel | "owner" }[]
+  errors: string[]
 }
 
 export interface Interviewee {
@@ -259,6 +272,8 @@ export interface MemberState {
   alerts: MemberAlert[]
   fromSheet: boolean
   cover: boolean
+  /** they can edit their binome sheet (an admin gave edit access): the gold columns are editable here */
+  edit: boolean
   user: string
   switchUrl: string
 }

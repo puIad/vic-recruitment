@@ -235,7 +235,9 @@ export default function MyBinomePage() {
         <>
           {m.cover
             ? `You're covering ${m.candidates.length} candidate${m.candidates.length === 1 ? "" : "s"} of this binome. You see only those.`
-            : `Your candidates${m.tag ? ` in ${m.tag}` : ""}, their status and what needs you. Fill in your columns here or in your sheet: both are the same cells.`}
+            : m.edit
+              ? `Your candidates${m.tag ? ` in ${m.tag}` : ""}, their status and what needs you. Fill in your columns here or in your sheet: both are the same cells.`
+              : `Your candidates${m.tag ? ` in ${m.tag}` : ""}, their status and what needs you.`}
           <Members m={m} />
         </>
       }
@@ -259,6 +261,11 @@ export default function MyBinomePage() {
           <b className="font-bold">Read straight from your binome sheet.</b> Statuses, alerts and names come from the Master and show here after the script's next sync.
         </Note>
       )}
+      {!m.cover && !m.edit && (
+        <Note icon={Lock} tone="info">
+          <b className="font-bold">You can view your binome for now.</b> Filling it in from here or in your sheet opens once an admin gives your binome edit access.
+        </Note>
+      )}
       {m.cover && (
         <Note icon={UserRoundCheck} tone="info">
           <b className="font-bold">You're a cover.</b> When the cover ends, these candidates go back to the binome's own members and this page closes.
@@ -275,10 +282,10 @@ export default function MyBinomePage() {
           <div>
             <h2 id="cand-title" className="text-lg font-bold">Candidates</h2>
             <p className="text-sm text-muted-foreground">
-              The columns of your sheet. {m.cover ? "Open one for everything they wrote" : "Open one to fill in contact, interview, rating and notes"}; View shows more columns.
+              The columns of your sheet. {m.edit ? "Open one to fill in contact, interview, rating and notes" : "Open one for everything they wrote"}; View shows more columns.
             </p>
           </div>
-          {!m.cover && (
+          {m.edit && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <PanelRightOpen className="size-3.5" /> Click a code to edit
             </p>
@@ -287,7 +294,7 @@ export default function MyBinomePage() {
         <CandidatesTable candidates={m.candidates} fromSheet={m.fromSheet} onOpen={openCode} />
       </section>
 
-      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} editable={!m.cover} onClose={() => setOpen(null)} />
+      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} editable={m.edit && !m.cover} onClose={() => setOpen(null)} />
     </BaseLayout>
   )
 }

@@ -598,13 +598,37 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert(b1 && b2, 'two binomes with candidates, one with alerts');
   const mem = b1.people[0].email, partner = b1.people[1].email;
   const tabs = () => m.run('JSON.stringify(master.sheets.map(s => s.cells)) + __outbox.length');
+  const fileOf = code => admin.binomes.find(b => b.code === code).fileUrl.split('/d/')[1];
+  const roleOn = (code, e) => m.run(`__roleOf(${J(fileOf(code))}, ${J(e)})`);
+
+  // the dashboard follows the binome sheet: in a binome but the sheet isn't shared (TEST_MODE) = no dashboard
+  m.run('__acl = true');
+  as(mem);
+  assert.deepStrictEqual(m.call('webAccess'), { ok: false, role: '', email: mem, reason: 'NOT_SHARED', owner: false, binome: b1.code, cover: false, v: 3 });
+  assert.throws(() => m.call('webState'), /Not allowed/);
+  assert.throws(() => m.call('webPulse'), /Not allowed/);
+  // an admin opens the binome: both members, silently, in TEST_MODE; reading it first changes nothing
+  as('admin@g.enp.edu.dz');
+  const out0 = m.run('__outbox.length'), pub0 = m.run('__props.SNAP_VER');
+  const read = m.call('webRun', 'binomeAccess', { binome: b1.code }).result;
+  assert.deepStrictEqual([read.level, read.members.map(x => x.email).sort(), read.members.map(x => x.now)], ['', [mem, partner].sort(), ['none', 'none']]);
+  assert.strictEqual(m.run('__props.SNAP_VER'), pub0, 'a read neither writes nor republishes');
+  const opened = m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'edit' });
+  assert(/its members can now edit their sheet.*No email was sent/.test(opened.messages[0]), opened.messages[0]);
+  assert.deepStrictEqual([opened.result.level, opened.result.members.map(x => x.now)], ['edit', ['edit', 'edit']]);
+  assert.deepStrictEqual([JSON.parse(m.run('JSON.stringify(__silent)')).sort(), m.run('__notified.length'), m.run('__outbox.length')], [[mem, partner].sort(), 0, out0], 'no Drive email, no mail');
+  assert.deepStrictEqual([roleOn(b1.code, mem), roleOn(b1.code, partner)], ['writer', 'writer']);
+  assert.strictEqual(m.call('webState').binomes.find(b => b.code === b1.code).access, 'edit', 'the admin snapshot shows the level');
+  assert.throws(() => m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'owner' }), /Access must be one of/);
+  assert.throws(() => m.call('webRun', 'binomeAccess', { binome: 'B.99', level: 'view' }), /not a locked binome/);
 
   // a member: their binome, nothing else
   as(mem);
   assert.deepStrictEqual(m.call('webAccess'), { ok: true, role: 'member', email: mem, reason: '', owner: false, binome: b1.code, cover: false, v: 3 });
   let st = m.call('webState');
-  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'fileUrl', 'fromSheet', 'members', 'role', 'status', 'switchUrl', 'tag', 'user', 'v'],
+  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'members', 'role', 'status', 'switchUrl', 'tag', 'user', 'v'],
     'no settings, team, history, other binomes or admin lists');
+  assert.strictEqual(st.edit, true);
   assert.deepStrictEqual([st.binome, st.role, st.fromSheet, st.candidates.map(c => c.Code).sort()], [b1.code, 'member', false, ivOf(b1.code)]);
   assert(st.candidates.every(c => c.Status && 'Notes' in c && 'Phone' in c && /^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(c.Registered)), J(st.candidates[0]));
   assert(st.alerts.length && st.alerts.every(a => ivOf(b1.code).includes(a.code) && ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'ODD_VALUE'].includes(a.type)), J(st.alerts));
@@ -619,7 +643,8 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     ['reassign', { code: ivOf(b1.code)[0], binome: b2.code }], ['changeMember', { binome: b1.code, outEmail: partner, inName: 'X', inEmail: 'x@g.enp.edu.dz' }],
     ['swapMembers', { binomeA: b1.code, emailA: partner, binomeB: b2.code, emailB: b2.people[0].email }], ['newBinome', { emailA: 'a@g.enp.edu.dz', emailB: 'b@g.enp.edu.dz' }],
     ['addCover', { codes: ivOf(b2.code)[0], inEmail: mem }], ['endCover', { row: 2 }], ['quick', { op: 'snooze', ids: ['A-0001'], for: '4h' }],
-    ['resolve', { ids: st.alerts.map(a => a.id) }], ['saveSettings', { values: { TEST_MODE: false } }], ['setup']].forEach(([action, args]) =>
+    ['resolve', { ids: st.alerts.map(a => a.id) }], ['saveSettings', { values: { TEST_MODE: false } }], ['setup'],
+    ['binomeAccess', { binome: b2.code, level: 'edit' }], ['binomeAccess', { binome: b1.code }]].forEach(([action, args]) =>
     assert.throws(() => m.call('webRun', action, args), /^Error: Not allowed$/, action + ' must be refused'));
   assert.deepStrictEqual([tabs(), m.run('JSON.stringify(__props)')], [before, props0], 'a member changed nothing');
 
@@ -635,7 +660,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   // only the binome whose slice changed gets a new version; a quiet sync rewrites nothing
   as('admin@g.enp.edu.dz');
   const vers = () => JSON.parse(m.run('__props.SNAP_BIN'));
-  const v0 = vers(), fileOf = code => admin.binomes.find(b => b.code === code).fileUrl.split('/d/')[1], code1 = ivOf(b1.code)[0];
+  const v0 = vers(), code1 = ivOf(b1.code)[0];
   m.run(`(function(){var c=__files[${J(fileOf(b1.code))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code1)}) c[i][BFI.Notes]='called twice'; __touch(${J(fileOf(b1.code))});})()`);
   m.run('var __mm = 0, __spc = savePropChunks_; savePropChunks_ = function (n, s) { if (n === "MEMBER_MAP") __mm++; return __spc(n, s); }');
   m.call('webRun', 'sync');
@@ -656,7 +681,9 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   as('admin@g.enp.edu.dz');
   m.call('webRun', 'addCover', { codes: ivOf(b2.code)[0], inEmail: 'stand.in@g.enp.edu.dz', inName: 'Stand In' });
   as('stand.in@g.enp.edu.dz');
-  assert.deepStrictEqual([m.call('webAccess').cover, m.call('webState').candidates.map(c => c.Code)], [true, [ivOf(b2.code)[0]]]);
+  assert.strictEqual(m.call('webAccess').reason, 'NOT_SHARED', 'a cover too needs their view access to the sheet');
+  m.run(`__files[${J(fileOf(b2.code))}].viewers = ['stand.in@g.enp.edu.dz']`); // shared by hand (TEST_MODE gives covers nothing)
+  assert.deepStrictEqual([m.call('webAccess').cover, m.call('webState').candidates.map(c => c.Code), m.call('webState').edit], [true, [ivOf(b2.code)[0]], false]);
   m.run('__cacheClear()');
   assert.deepStrictEqual(m.call('webState').candidates.map(c => c.Code), [ivOf(b2.code)[0]], 'from the sheet too');
 
@@ -723,6 +750,23 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     assert.strictEqual(set(code2, 'Contacted', 'Yes', 'No answer').result.value, 'Yes', 'no document lock: the script lock');
     m.run('LockService.getDocumentLock = __gdl');
 
+    // opened View: the page is read-only and a write is refused; closed: the dashboard goes at the next poll
+    as('admin@g.enp.edu.dz'); m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'view' });
+    as(partner);
+    assert.strictEqual(m.call('webState').edit, false);
+    assert.throws(() => set(code2, 'Contacted', 'Withdrew', 'Yes'), /can view your binome sheet but not edit it/);
+    const pv = m.call('webPulse');
+    as('admin@g.enp.edu.dz'); m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'none' });
+    assert.deepStrictEqual([roleOn(b1.code, mem), roleOn(b1.code, partner)], ['', '']);
+    as(partner);
+    assert.throws(() => m.call('webPulse'), /Not allowed/);
+    assert.strictEqual(m.call('webAccess').reason, 'NOT_SHARED');
+    as('admin@g.enp.edu.dz'); m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'edit' });
+    as(partner);
+    assert(m.call('webPulse') > pv, 'reopened: a new version, so the page reloads with edit on');
+    assert.strictEqual(m.run('__notified.length'), 0, 'never Drive\'s email');
+    as('admin@g.enp.edu.dz'); // the sync runs as the trigger's account
+
     // the next sync reads a dirty sheet even when Drive's "last updated" didn't move, and only then drops the mark
     const ivVal = k => m.run(`(function(){var sh=ss_().getSheetByName('Interviewees'), I=idx_(IV_H); for (var i=1;i<sh.cells.length;i++) if (sh.cells[i][I.Code]===${J(code2)}) return String(sh.cells[i][I[${J(k)}]]);})()`);
     const lag = () => m.run(`(function(){var s=JSON.parse(__props.FILE_SEEN), r=JSON.parse(__props.FILE_READ); s[${J(fid)}]=__files[${J(fid)}].lastUpdated.getTime(); r[${J(fid)}]=Date.now();
@@ -739,6 +783,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     as(mem);
     assert.strictEqual(m.call('webState').candidates.find(c => c.Code === code2).Status, 'SCHEDULED');
     // a write landing after the read started stays dirty, and its patched slice is kept until a sync reads it
+    as('admin@g.enp.edu.dz');
     lag(); m.run(`__cache['dirty:${b1.code}'] = String(Date.now() + 60000)`);
     const meta = m.run('__props.SNAP_BIN');
     m.run('syncAll()');
@@ -747,17 +792,49 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     m.run(`delete __cache['dirty:${b1.code}']`);
   }
 
+  // review of #30: a quota 403 isn't a revoke; every permissions page is read; a partial failure records nothing; a leaver loses a hand share
+  {
+    as(partner);
+    m.run('var __dfg = Drive.Files.get; Drive.Files.get = () => { throw new Error("API call to drive.files.get failed with error: User Rate Limit Exceeded (403)"); }');
+    assert.throws(() => m.call('webPulse'), /User Rate Limit Exceeded/, 'thrown (the page retries quietly), not read as no access');
+    m.run('Drive.Files.get = __dfg');
+    as('admin@g.enp.edu.dz');
+    m.run('__permPage = 1');
+    assert.deepStrictEqual(m.call('webRun', 'binomeAccess', { binome: b1.code }).result.members.map(x => x.now), ['edit', 'edit'], 'members on later pages are found');
+    m.run('var __pu = Drive.Permissions.update; Drive.Permissions.update = (p, id, pid) => { if (pid.indexOf(' + J(partner) + ') >= 0) throw new Error("Drive refused"); return __pu(p, id, pid); }');
+    const bad = m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'view' });
+    m.run('Drive.Permissions.update = __pu; __permPage = 0');
+    assert.deepStrictEqual([bad.result.errors.length, bad.result.level, /Not done for/.test(bad.messages[0])], [1, 'edit', true], 'the recorded level stays on a partial failure');
+    m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'edit' });
+    // a binome never opened from here: its leaver still loses a sheet shared by hand, the newcomer gets nothing
+    const out2 = b2.people[0].email;
+    m.run(`__files[${J(fileOf(b2.code))}].editors.push(${J(out2)})`);
+    m.call('webRun', 'changeMember', { binome: b2.code, outEmail: out2, inName: 'Other Comer', inEmail: 'other.comer@g.enp.edu.dz' });
+    assert.deepStrictEqual([roleOn(b2.code, out2), roleOn(b2.code, 'other.comer@g.enp.edu.dz'), m.run('__notified.length')], ['', '', 0]);
+    // a removal Drive refuses is reported (a FILE_ERROR alert and the history row), never swallowed
+    m.run(`__files[${J(fileOf(b2.code))}].editors.push('other.comer@g.enp.edu.dz')`);
+    m.run('var __pr = Drive.Permissions.remove; Drive.Permissions.remove = () => { throw new Error("Drive refused"); }');
+    const ch = m.call('webRun', 'changeMember', { binome: b2.code, outEmail: 'other.comer@g.enp.edu.dz', inName: 'Third Comer', inEmail: 'third.comer@g.enp.edu.dz' });
+    m.run('Drive.Permissions.remove = __pr');
+    assert(/could not remove other\.comer@g\.enp\.edu\.dz from the sheet/.test(ch.messages.join(' ')), ch.messages.join(' '));
+    assert(m.call('webState').alerts.some(a => a.type === 'FILE_ERROR' && a.binome === b2.code && /could not remove other\.comer/.test(a.msg)), 'FILE_ERROR alert');
+  }
+
   // removed with Change members: the next poll says Not allowed; Reset all binomes empties the map
   as('admin@g.enp.edu.dz');
   m.call('webRun', 'changeMember', { binome: b1.code, outEmail: mem, inName: 'New Comer', inEmail: 'new.comer@g.enp.edu.dz' });
   as(mem);
   assert.throws(() => m.call('webPulse'), /Not allowed/);
   assert.throws(() => m.call('webRun', 'memberSet', { code: ivOf(b1.code)[0], field: 'Contacted', value: 'Yes', seen: 'Not yet' }), /^Error: Not allowed$/, 'a removed member edits nothing');
+  assert.strictEqual(roleOn(b1.code, mem), '', 'the leaver loses the sheet the binome was opened at');
   as('new.comer@g.enp.edu.dz');
-  assert.strictEqual(m.call('webState').binome, b1.code, 'the newcomer gets in at once');
+  assert.deepStrictEqual([m.call('webState').binome, m.call('webState').edit, roleOn(b1.code, 'new.comer@g.enp.edu.dz')], [b1.code, true, 'writer'],
+    'the newcomer gets the binome\'s level at once');
+  assert.strictEqual(m.run('__notified.length'), 0);
   as('admin@g.enp.edu.dz');
   m.call('webRun', 'resetBinomes', { phrase: m.run('RESET_PHRASE') });
-  assert.strictEqual(m.run('JSON.stringify(savedMemberMap_())'), '{}');
+  assert.deepStrictEqual([m.run('JSON.stringify(savedMemberMap_())'), m.run('__props.BIN_ACCESS')], ['{}', undefined]);
+  m.run('__acl = false');
   as(partner);
   assert.throws(() => m.call('webPulse'), /Not allowed/);
 }
