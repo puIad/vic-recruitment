@@ -283,7 +283,7 @@ export default function MyBinomePage() {
         <CandidatesTable candidates={m.candidates} fromSheet={m.fromSheet} onOpen={openCode} />
       </section>
 
-      <CandidateSheet candidate={candidate} fileUrl={m.fileUrl} onClose={() => setOpen(null)} />
+      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} onClose={() => setOpen(null)} />
     </BaseLayout>
   )
 }

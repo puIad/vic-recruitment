@@ -224,13 +224,16 @@ function Value({ k, v }: { k: SheetKey; v: string }) {
   return <span className="whitespace-pre-line break-words">{v}</span>
 }
 
-export function CandidateSheet({ candidate, fileUrl, onClose }: { candidate: Candidate | null; fileUrl: string; onClose: () => void }) {
-  // keep the last candidate while the sheet slides out
+export function CandidateSheet({ candidate, candidates, fileUrl, onClose }: { candidate: Candidate | null; candidates: Candidate[]; fileUrl: string; onClose: () => void }) {
+  // keep the last candidate while the sheet slides out, but only while they are still in this binome's slice:
+  // someone moved away (or a cover that ended) must not linger on screen or in memory
   const [shown, setShown] = React.useState(candidate)
+  const stillHere = !!shown && candidates.some((x) => cellText(x.Code) === cellText(shown.Code))
   React.useEffect(() => {
     if (candidate) setShown(candidate)
-  }, [candidate])
-  const c = candidate ?? shown
+    else if (!stillHere) setShown(null)
+  }, [candidate, stillHere])
+  const c = candidate ?? (stillHere ? shown : null)
 
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>
