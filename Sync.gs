@@ -14,7 +14,9 @@ function pullBinomeFiles_(ctx, force) {
   } catch (e) { console.warn('Folder listing failed: ' + e); }
   const I = ctx.iv.I, F = idx_(BF_H), offset = tzOffset_();
   const files = ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT');
-  const unchanged = b => !force && updated[b.fileId] && seen[b.fileId] && updated[b.fileId] <= seen[b.fileId];
+  // dirty:<code> = a member wrote that sheet from the dashboard (memberSet_): read it whatever Drive's "last updated" says
+  const cache = CacheService.getScriptCache(), dirty = cache.getAll(files.map(b => 'dirty:' + b.code)), edited = b => !!dirty['dirty:' + b.code];
+  const unchanged = b => !force && !edited(b) && updated[b.fileId] && seen[b.fileId] && updated[b.fileId] <= seen[b.fileId];
   const upgrade = {}, reread = {};
   // sheets not yet read in the current layout: opening them rebuilds them (binomeSheet_), a few per run
   files.filter(b => !seen['v2|' + b.fileId]).slice(0, UPGRADE_PER_RUN).forEach(b => { upgrade[b.fileId] = true; });
@@ -26,7 +28,8 @@ function pullBinomeFiles_(ctx, force) {
     if (unchanged(b) && !upgrade[b.fileId] && !reread[b.fileId]) return;
     // rebuilding a first-layout sheet takes seconds: at most UPGRADE_PER_RUN per run, the rest wait for the next ones
     if (!seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
-    ctx.opened[b.code] = force ? 'forced' : upgrade[b.fileId] ? 'upgrade' : reread[b.fileId] ? 'reread' : 'changed';
+    ctx.opened[b.code] = force ? 'forced' : edited(b) ? 'edited' : upgrade[b.fileId] ? 'upgrade' : reread[b.fileId] ? 'reread' : 'changed';
+    const readFrom = Date.now();
     let sh;
     try { sh = binomeSheet_(ctx, b); } catch (e) {
       ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: b.code, msg: 'Cannot open the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code });
@@ -54,6 +57,8 @@ function pullBinomeFiles_(ctx, force) {
         r[I.Status] = statusOf_(ctx, r);
       });
     }
+    // read: the mark goes, unless a member wrote again after the read started (then the next run reads it again)
+    if (edited(b)) { const t = Number(cache.get('dirty:' + b.code) || 0); if (t && t <= readFrom) cache.remove('dirty:' + b.code); }
     seen[b.fileId] = lu || ctx.now.getTime();
     if (bfLayout_(sh) === 'v2') seen['v2|' + b.fileId] = 1;
     readAt[b.fileId] = ctx.now.getTime();

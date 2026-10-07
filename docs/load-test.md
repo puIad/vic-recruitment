@@ -576,6 +576,42 @@ partner's is stopped and shown.
 
 **Notes.**
 
+- **Code (2026-10-07, branch `p1-8-member-edit`).** `webRun('memberSet', {code, field, value, seen})` is handled before the
+  admin check and never publishes (no script lock). `memberSet_` (WebApp.gs): members only (a cover, an admin, a removed member:
+  "Not allowed"), `field` in `BF_EDITABLE`, `memberValue_` checks the value like the sheet's validations (Rating also takes
+  `7,5`; an Interview Day that rolls over, like 31/02, is refused; Time is strict `HH:mm`). Opens `MEMBER_MAP`'s `f` with the
+  member's own access ("isn't shared with you yet" otherwise), refuses a sheet whose header isn't the current layout.
+- **Lock:** `memberLock_()` = `LockService.getDocumentLock()`, or the script lock when that is null; `tryLock(10000)`, refused
+  → `BUSY:` (the page shows it as not saved, Try again). **Live check still to do:** whether the document lock is null under
+  `scripts.run` (either way it works; with the script lock members queue behind the sync).
+- **Write:** Interview Day as a `Date` (midnight in `TIMEZONE`: a real date whatever the sheet's locale), Time as the
+  string `HH:mm` (Sheets parses it as a time in every locale), Rating a number, Done a boolean, Notes with a leading `'` (stay
+  text: no formula, no date). **Live check:** the date and time land as real date / time in the fr_FR sheet.
+- **Conflict:** the cell is compared with `seen` as text (`goldText_`: Done `true`/`false`, Rating as a number, date and time
+  as displayed); differs → `CONFLICT: <value now>`, nothing written. `run.js` maps the prefix to `{error: <value>, code: 'CONFLICT'}`.
+- **After the write:** `dirty:<binome>` = now in the script cache (6 h); `patchSlice_` puts the value into the cached slice and
+  bumps that binome's `v` in `SNAP_BIN` (slice not cached as published → `v` +1 and no hash: the next `webState` reads the
+  sheet). `pullBinomeFiles_` reads every dirty sheet (`opened` reason `edited`) and removes the key only if its time is not
+  after that sheet's read started. `publishBins_` keeps the old `SNAP_BIN` entry and cached slice of a binome whose dirty time
+  is after `ctx.now` (a sync that loaded before the write must not republish the old value). `ponytail:` the patch's
+  `SNAP_BIN` write is not under the script lock; a publish in the same ms can overwrite that one entry, then the page shows the
+  sheet or the older slice until the next sync, which reads the dirty sheet.
+- **UI:** the details sheet's "Your interview" block is the editor for members (covers stay read-only): selects for Contacted
+  and Final Affectation and the Done checkbox save on change; date, time, rating (0–10 checked as you type) and notes (counter,
+  2,000) save with Save / Enter (Ctrl+Enter in notes), Escape cancels. Never optimistic: the slice changes only with the value
+  the script returns (`store.memberSet` / `patchMember`). A poll doesn't overwrite a field mid-edit; the save sends the value the
+  edit started from as `seen`. On `CONFLICT`: "Your partner changed this to X" with Keep theirs / Use mine (resends with `seen` = X).
+- **Tests** (`web.test.js` › members, `vercel.test.js`): each field written (a real Date for the day, notes kept as text), the
+  partner's next `webPulse` +1 and the patched slice; refused for every invalid value, a field outside `BF_EDITABLE`, another
+  binome's code, a cover, an admin, a stranger, a removed member, a busy lock, an unshared sheet, all with the sheet unchanged;
+  `CONFLICT` with the current value for text, number and boolean; no document lock → script lock; a dirty binome is read by a
+  sync while Drive's time lags (control: without the mark it isn't), the Master gets every value and the status, the mark goes,
+  `v` goes up; a write after the read started stays dirty and its slice is kept. Mutation-checked: the dirty read, the publish
+  guard and the conflict check each fail the suite when removed.
+- **Checked on the mock (playwright-chrome, 1440 and 390 wide, light and dark):** select, notes, checkbox and rating saved;
+  rating 12 refused inline; a write behind the page's back gave the conflict box, Use mine saved 7.5; `webState` afterwards
+  returned the saved values from the cached slice.
+
 ---
 
 ## Task 9 — Triggers on the club account

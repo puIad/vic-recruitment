@@ -11,8 +11,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { SHEET_LABEL, STAGES, STATUS_COLOR, STATUS_LABEL, cellText, sheetTime } from "@/lib/vic/format"
-import type { Candidate, SheetKey } from "@/lib/vic/types"
+import { GOLD_KEYS, type Candidate, type GoldKey, type SheetKey } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { GoldField } from "./gold-fields"
 
 const STATUS_ORDER: Record<string, number> = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
 
@@ -224,7 +225,10 @@ function Value({ k, v }: { k: SheetKey; v: string }) {
   return <span className="whitespace-pre-line break-words">{v}</span>
 }
 
-export function CandidateSheet({ candidate, candidates, fileUrl, onClose }: { candidate: Candidate | null; candidates: Candidate[]; fileUrl: string; onClose: () => void }) {
+const isGold = (k: SheetKey): k is GoldKey => (GOLD_KEYS as readonly string[]).includes(k)
+
+/** editable: a member (not a cover) fills the binome's own columns here; they are written into the binome sheet. */
+export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClose }: { candidate: Candidate | null; candidates: Candidate[]; fileUrl: string; editable: boolean; onClose: () => void }) {
   // keep the last candidate while the sheet slides out, but only while they are still in this binome's slice:
   // someone moved away (or a cover that ended) must not linger on screen or in memory
   const [shown, setShown] = React.useState(candidate)
@@ -247,32 +251,50 @@ export function CandidateSheet({ candidate, candidates, fileUrl, onClose }: { ca
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   {c.Status ? <StatusDot status={c.Status} /> : <span>Status shows after the next sync</span>}
                   <span aria-hidden="true">·</span>
-                  <span>As in your binome sheet</span>
+                  <span>{editable ? "Your columns save straight to your binome sheet" : "As in your binome sheet"}</span>
                 </div>
               </SheetDescription>
             </SheetHeader>
             <div className="space-y-6 p-6">
-              {GROUPS.map((g) => (
-                <section key={g.title} aria-label={g.title}>
-                  <h3 className="mb-2 text-sm font-bold">{g.title}</h3>
-                  <dl className="divide-y rounded-xl border">
-                    {g.keys.map((k) => (
-                      <div key={k} className="grid grid-cols-[9rem_1fr] gap-3 px-3 py-2.5 text-sm">
-                        <dt className="text-muted-foreground">{SHEET_LABEL[k]}</dt>
-                        <dd className="min-w-0">
-                          <Value k={k} v={cellText(c[k])} />
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-              ))}
+              {GROUPS.map((g, gi) => {
+                const edits = editable && gi === 0
+                return (
+                  <section key={g.title} aria-label={g.title}>
+                    <h3 className="mb-2 flex items-baseline justify-between gap-2 text-sm font-bold">
+                      {g.title}
+                      {edits && <span className="text-xs font-medium text-muted-foreground">Saved one by one, as in your sheet</span>}
+                    </h3>
+                    <dl className={cn("divide-y rounded-xl border", edits && "border-vic-aqua/50 bg-accent/30")}>
+                      {g.keys.map((k) =>
+                        edits && isGold(k) ? (
+                          // keyed by candidate: switching candidates starts each field afresh
+                          <div key={`${cellText(c.Code)}-${k}`} className="grid grid-cols-1 gap-1.5 px-3 py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3">
+                            <dt className="pt-2 font-medium text-foreground/80">
+                              <label htmlFor={`gold-${cellText(c.Code)}-${k.replace(/\s+/g, "-")}`}>{SHEET_LABEL[k]}</label>
+                            </dt>
+                            <dd className="min-w-0">
+                              <GoldField code={cellText(c.Code)} k={k} value={c[k]} />
+                            </dd>
+                          </div>
+                        ) : (
+                          <div key={k} className="grid grid-cols-[9rem_1fr] gap-3 px-3 py-2.5 text-sm">
+                            <dt className="text-muted-foreground">{SHEET_LABEL[k]}</dt>
+                            <dd className="min-w-0">
+                              <Value k={k} v={cellText(c[k])} />
+                            </dd>
+                          </div>
+                        )
+                      )}
+                    </dl>
+                  </section>
+                )
+              })}
             </div>
             {fileUrl && (
               <SheetFooter className="border-t p-6">
                 <Button asChild variant="outline">
                   <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                    Edit in my binome sheet <ArrowUpRight />
+                    {editable ? "Open my binome sheet" : "Edit in my binome sheet"} <ArrowUpRight />
                   </a>
                 </Button>
               </SheetFooter>

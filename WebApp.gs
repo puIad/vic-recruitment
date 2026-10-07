@@ -144,9 +144,11 @@ function binMeta_() { try { return JSON.parse(PropertiesService.getScriptPropert
  *  reads their sheet instead. */
 function publishBins_(ctx) {
   const old = binMeta_(), slices = binSlices_(ctx), codes = Object.keys(slices), cache = CacheService.getScriptCache();
-  const have = cache.getAll(codes.map(c => 'snap:bin:' + c)), meta = {};
+  const have = cache.getAll(codes.map(c => 'snap:bin:' + c)), dirty = cache.getAll(codes.map(c => 'dirty:' + c)), meta = {};
   let changed = Object.keys(old).length !== codes.length;
   codes.forEach(c => {
+    // a member wrote after ctx was loaded: ctx may miss it, so their patched slice stays; the next sync reads that sheet
+    if (old[c] && Number(dirty['dirty:' + c] || 0) > ctx.now.getTime()) { meta[c] = old[c]; return; }
     const json = JSON.stringify(slices[c]), h = hash_(json), o = old[c];
     meta[c] = { h: h, v: !o ? 1 : o.h === h ? o.v : o.v + 1 };
     if (!o || o.h !== h) changed = true;
@@ -180,6 +182,110 @@ function sliceFromSheet_(m) {
   const rows = n < 2 ? [] : sh.getRange(2, BF_COL, n - 1, BF_H.length).getValues().filter(r => String(r[0]).trim());
   return { v: API_VERSION, binome: m.b, tag: '', status: '', fileUrl: book.getUrl(), members: [], alerts: [], fromSheet: true,
     candidates: rows.map(r => candidate_(r, '')) };
+}
+
+/* ---------- members edit their own binome sheet (load-test task 8) ---------- */
+
+/** A member's value for one gold column, checked like the sheet's own validations (a script write skips them). Returns what to
+ *  write: a Date for Interview Date (lands as a real date whatever the sheet's locale), a number or '' for Rating. */
+function memberValue_(field, value) {
+  const raw = value === null || value === undefined ? '' : value, s = String(raw).trim();
+  switch (field) {
+    case 'Contacted':
+      if (CONTACT_OPTIONS.indexOf(s) < 0) throw new Error('Contacted must be one of: ' + CONTACT_OPTIONS.join(', ') + '.');
+      return s;
+    case 'Final Affectation':
+      if (s && AFFECTATION_OPTIONS.indexOf(s) < 0) throw new Error('Final Affectation must be one of: ' + AFFECTATION_OPTIONS.join(', ') + ', or empty.');
+      return s;
+    case 'Rating': {
+      if (!s) return '';
+      const n = Number(s.replace(',', '.'));
+      if (isNaN(n) || n < 0 || n > 10) throw new Error('Rating must be a number from 0 to 10, or empty.');
+      return n;
+    }
+    case 'Interview Done':
+      if (raw === true || /^true$/i.test(s)) return true;
+      if (raw === false || /^false$/i.test(s)) return false;
+      throw new Error('Interview Done must be ticked or not.');
+    case 'Interview Date': {
+      if (!s) return '';
+      const at = /^\d{2}\/\d{2}\/\d{4}$/.test(s) ? buildInterviewAt(s, '00:00', tzOffset_()) : null;
+      if (!(at instanceof Date) || fmt_(at, 'dd/MM/yyyy') !== s) throw new Error('Interview Day must be a real date, dd/MM/yyyy.'); // 31/02 rolls over
+      return at;
+    }
+    case 'Interview Time':
+      if (s && !/^([01]\d|2[0-3]):[0-5]\d$/.test(s)) throw new Error('Time must be HH:mm, from 00:00 to 23:59.');
+      return s;
+    case 'Notes':
+      if (s.length > 2000) throw new Error('Notes are limited to 2,000 characters.');
+      return s;
+  }
+  throw new Error('Not allowed'); // not one of the binome's columns (BF_EDITABLE)
+}
+/** A gold cell in the slice's own form, as pullBinomeFiles_ reads it: dates and times as displayed, Done a boolean, Rating a
+ *  number or text. */
+function goldOf_(k, v, d) {
+  if (k === 'Interview Done') return v === true;
+  if (k === 'Rating') return typeof v === 'number' ? v : String(v).trim();
+  if (k === 'Notes') return String(v);
+  return String(k === 'Interview Date' || k === 'Interview Time' ? d : v).trim();
+}
+/** One gold value as text, so the page's `seen` (from the slice: boolean, number or string) compares with the cell. */
+function goldText_(k, x) {
+  if (k === 'Interview Done') return String(x === true || /^true$/i.test(String(x)));
+  const s = String(x === null || x === undefined ? '' : x).trim(), n = Number(s.replace(',', '.'));
+  return k === 'Rating' && s && !isNaN(n) ? String(n) : s;
+}
+/** Members' edits take the document lock, not the script lock the sync holds for seconds; if there is none, the script lock. */
+function memberLock_() { let l = null; try { l = LockService.getDocumentLock(); } catch (e) { /* no document */ } return l || LockService.getScriptLock(); }
+
+/** webRun('memberSet', {code, field, value, seen}): a member (not a cover) sets one gold cell of their own binome sheet, with
+ *  their own access, the way typing would. seen = the value their screen showed: if the cell holds something else, the partner
+ *  changed it meanwhile and nothing is written (CONFLICT: <current>). Then the binome is marked dirty (the next sync reads its
+ *  sheet whatever Drive says) and its cached slice takes the value, so the partner's next poll shows it. */
+function memberSet_(a, args) {
+  if (a.role !== 'member' || a.cover) throw new Error('Not allowed');
+  const m = a.m, code = String(args.code || '').trim(), field = String(args.field || '');
+  if (BF_EDITABLE.indexOf(field) < 0) throw new Error('Not allowed');
+  const value = memberValue_(field, args.value);
+  let sh = null;
+  try { sh = m.f ? SpreadsheetApp.openById(m.f).getSheets()[0] : null; } catch (e) { /* not shared with this account */ }
+  if (!sh) throw new Error("Your binome sheet isn't shared with you yet.");
+  const lock = memberLock_();
+  if (!lock.tryLock(10000)) throw new Error('BUSY: Your sheet is busy with another edit. Nothing was changed: try again.');
+  try {
+    if (bfLayout_(sh) !== 'v2') throw new Error("Your binome sheet's header was changed by hand: ask an admin to repair it before editing from here.");
+    const row = findFileRow_(sh, code);
+    if (row < 0) throw new Error('This candidate is no longer in your binome.');
+    const cell = sh.getRange(row, bfCol_(field)), cur = goldText_(field, goldOf_(field, cell.getValue(), cell.getDisplayValue()));
+    if (cur !== goldText_(field, args.seen)) throw new Error('CONFLICT: ' + cur);
+    cell.setValue(field === 'Notes' && value ? "'" + value : value); // the apostrophe keeps notes as text (no formula, no date)
+    SpreadsheetApp.flush();
+    const now = goldOf_(field, cell.getValue(), cell.getDisplayValue());
+    CacheService.getScriptCache().put('dirty:' + m.b, String(Date.now()), 21600);
+    patchSlice_(m.b, code, field, now);
+    return { code: code, field: field, value: now };
+  } finally { lock.releaseLock(); }
+}
+/** The binome's cached slice takes the member's value and a new version. A slice not cached as published only gets a new
+ *  version and no hash: the next webState reads the sheet. Under the member lock, so two members' patches never cross.
+ *  ponytail: not under the script lock, so a publish in the same few ms can overwrite this SNAP_BIN entry; the page then shows
+ *  the sheet or the older slice until the next sync, which reads this binome (dirty) and publishes it. */
+function patchSlice_(b, code, field, value) {
+  const bins = binMeta_(), o = bins[b];
+  if (!o) return;
+  const cache = CacheService.getScriptCache(), json = o.h ? cache.get('snap:bin:' + b) : null;
+  let h = '';
+  if (typeof json === 'string' && hash_(json) === o.h) {
+    const sl = JSON.parse(json), c = sl.candidates.filter(x => String(x.Code) === code)[0];
+    if (c) {
+      c[field] = value;
+      const out = JSON.stringify(sl);
+      try { cache.put('snap:bin:' + b, out, 21600); h = hash_(out); } catch (e) { cache.remove('snap:bin:' + b); }
+    }
+  }
+  bins[b] = { h: h, v: o.v + 1 };
+  PropertiesService.getScriptProperties().setProperty('SNAP_BIN', JSON.stringify(bins));
 }
 
 function freshCtx_() { _settings = null; return loadCtx_(); }
@@ -375,6 +481,7 @@ function saveSettings_(values) {
  *  ~200s so the run ends before its 300s function limit; the old dashboard and the menu keep 270s. */
 function webRun(action, args) {
   const a = access_();
+  if (action === 'memberSet') return { messages: [], result: memberSet_(a, args || {}) }; // members only; no script lock, no publish
   if (a.role !== 'admin') throw new Error('Not allowed');
   if (action === 'setup' && !a.owner) throw new Error('Only the owner of the master sheet can run Setup');
   args = args || {};

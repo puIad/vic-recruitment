@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowUpRight, CalendarClock, CircleCheck, Database, Info, Lock, PauseCircle, RotateCcw, UserRoundCheck } from "lucide-react"
+import { ArrowUpRight, CalendarClock, CircleCheck, Database, Lock, PanelRightOpen, PauseCircle, RotateCcw, UserRoundCheck } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { DotGrid, RingSlot } from "@/components/brand/motifs"
@@ -235,7 +235,7 @@ export default function MyBinomePage() {
         <>
           {m.cover
             ? `You're covering ${m.candidates.length} candidate${m.candidates.length === 1 ? "" : "s"} of this binome. You see only those.`
-            : `Your candidates${m.tag ? ` in ${m.tag}` : ""}, their status and what needs you. Read-only: you keep typing in your sheet.`}
+            : `Your candidates${m.tag ? ` in ${m.tag}` : ""}, their status and what needs you. Fill in your columns here or in your sheet: both are the same cells.`}
           <Members m={m} />
         </>
       }
@@ -274,16 +274,20 @@ export default function MyBinomePage() {
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 id="cand-title" className="text-lg font-bold">Candidates</h2>
-            <p className="text-sm text-muted-foreground">The columns of your sheet. Open one for everything they wrote; View shows more columns.</p>
+            <p className="text-sm text-muted-foreground">
+              The columns of your sheet. {m.cover ? "Open one for everything they wrote" : "Open one to fill in contact, interview, rating and notes"}; View shows more columns.
+            </p>
           </div>
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Info className="size-3.5" /> Editing from here comes later
-          </p>
+          {!m.cover && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <PanelRightOpen className="size-3.5" /> Click a code to edit
+            </p>
+          )}
         </div>
         <CandidatesTable candidates={m.candidates} fromSheet={m.fromSheet} onOpen={openCode} />
       </section>
 
-      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} onClose={() => setOpen(null)} />
+      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} editable={!m.cover} onClose={() => setOpen(null)} />
     </BaseLayout>
   )
 }
