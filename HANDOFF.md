@@ -27,8 +27,8 @@ Repo: https://github.com/puIad/vic-recruitment-2026 (its own repo, not the AI-OS
    (web app + API) in place. Never `clasp create-deployment` (new URL). Check the "Pushed N files" list:
    `.claspignore` allows `*.gs`, `*.html` and `appsscript.json` at the root, nothing else. **"Skipping push."** means
    nothing was pushed, yet the deploy goes on and re-cuts the old code: clasp asks before overwriting a manifest that
-   differs from the live one, and a non-interactive run says no. A Windows checkout with `core.autocrlf` (worktrees)
-   differs by line endings alone. Check with `clasp pull` in a scratch folder, then `clasp push --force` and both
+   differs from the live one, and a non-interactive run says no. Line endings alone count: on 2026-10-07 the live
+   manifest had CRLF (an earlier push from a CRLF checkout), `main` has LF. Check with `clasp pull` in a scratch folder, then `clasp push --force` and both
    `clasp update-deployment` lines by hand.
 3. Dashboard changes: Vercel builds and deploys `main` by itself. A green Vercel check is not proof; open the build log
    and look for the `npm --prefix ../frontend ci` and Vite lines (tens of seconds, not under a second). Before pushing
