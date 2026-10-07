@@ -333,7 +333,10 @@ and write them under Notes. Target: p50 under 1.5 s, including the ~1 s that `sc
   refusal): a fresh `loadCtx_()` + build under the lock. It **waits** for the lock (30 s), because `resolve`,
   `saveSettings`, `importTeam`, `reshare` and `setup` write without it: a sync that loaded before such a write publishes
   its older view, and only a publish after that sync can replace it (CodeRabbit on #26). Still taken after 30 s → it
-  drops the snapshot (`SNAP_HASH` deleted, `SNAP_VER` +1): the next `webState` builds live and republishes. So an action
+  drops the snapshot (`SNAP_HASH` deleted, `SNAP_VER` +1): the next `webState` builds live and republishes. A drop is
+  final for runs already in flight: `loadCtx_` notes `SNAP_VER` (`ctx.snapVer`) and `publishState_` refuses to publish when
+  it moved since (only a drop moves it outside the lock), so a long sync that loaded before the write can't bring back
+  its older view. Not atomic (check, then set): a drop in the few ms between them waits for the next published change. So an action
   costs one extra load + build in its own call (plus the rest of a running sync), and every screen then refreshes from
   the cache.
 - **`webState` on a miss** builds live, and publishes only if it gets the lock at once (`tryLock(1)`); otherwise it

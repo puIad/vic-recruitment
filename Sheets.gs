@@ -138,6 +138,7 @@ function loadCtx_() {
     books: {},          // fileId -> Spreadsheet (cache)
     mailNew: {},        // binomeCode -> [iv rows] newly assigned this run
     alerts: null,
+    snapVer: Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0), // publishState_: was it dropped since?
   };
   ctx.alerts = alertBuffer_(ctx);
   ctx.covers = loadCovers_();

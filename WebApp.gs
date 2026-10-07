@@ -99,7 +99,9 @@ function readSnap_() {
   return st;
 }
 /** Build the snapshot from ctx; when it differs from the cached one, cache it and add 1 to SNAP_VER (the pulse). A cache that
- *  lost entries is refilled without a new version. Call it inside the script lock, so two publishers never cross. Returns the state. */
+ *  lost entries is refilled without a new version. Call it inside the script lock, so two publishers never cross. Not published
+ *  when the snapshot was dropped since ctx was loaded (SNAP_VER moved, and only dropSnap_ moves it outside the lock): ctx may miss
+ *  the write that dropped it. Returns the state. */
 function publishState_(ctx) {
   const st = buildState_(ctx), json = JSON.stringify(st), h = hash_(json), meta = snapMeta_();
   const same = !!meta && meta.h === h;
@@ -114,6 +116,8 @@ function publishState_(ctx) {
   }
   CacheService.getScriptCache().putAll(chunks, 21600);
   const props = PropertiesService.getScriptProperties(), ver = Number(props.getProperty('SNAP_VER') || 0);
+  // ponytail: check then set, not atomic; a drop in the few ms between them is lost until the next change is published
+  if (ver !== ctx.snapVer) return Object.assign(st, { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm') });
   props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at }), SNAP_VER: String(same ? ver : ver + 1) });
   return Object.assign(st, { updated: at });
 }

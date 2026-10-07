@@ -564,6 +564,10 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert(!cached() && ver() === v1 + 1, 'an action whose publish finds the lock taken drops the snapshot: screens reload from a live build');
   assert.deepStrictEqual(shared(call('webState')), liveOf(run));
   assert(cached(), 'the next webState publishes it again');
+  run('var __old = freshCtx_(); dropSnap_(); publishState_(__old)');
+  assert(!cached(), 'a run that loaded before a drop never restores its older snapshot');
+  call('webState');
+  assert(cached(), 'a fresh read publishes it');
 }
 {
   // a few hundred interviewees: over 100 KB, so several cache values (Google allows 100 KB each)
