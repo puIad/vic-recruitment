@@ -14,7 +14,7 @@ the task itself and the files it lists.
 | 2 | [A refused action is an error, not a green toast](#task-2--a-refused-action-is-an-error-not-a-green-toast) | S | — | ☑ [#19](https://github.com/puIad/vic-recruitment-2026/pull/19), code and deploy; the live check in Notes is still open |
 | 3 | [Polling: one call per tick, a timeout, rate-limit backoff](#task-3--polling-one-call-per-tick-a-timeout-rate-limit-backoff) | S–M | 2 | ☑ [#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, live on Vercel from `963144d` |
 | 4 | [Write only what changed](#task-4--write-only-what-changed) | M | 1 | ☑ [#24](https://github.com/puIad/vic-recruitment-2026/pull/24), code and deploy (@61/@62); the `cycle` reading in Notes is still open |
-| 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☐ |
+| 5 | [Admin dashboard served from a cached snapshot](#task-5--admin-dashboard-served-from-a-cached-snapshot) | M–L | 4 | ☑ [#26](https://github.com/puIad/vic-recruitment-2026/pull/26), code and deploy; the live `webState` times in Notes are still open |
 | 6 | [Member role in the script (read side, security)](#task-6--member-role-in-the-script-read-side-security) | L | 5 | ☐ |
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☐ |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☐ |
@@ -354,6 +354,20 @@ and write them under Notes. Target: p50 under 1.5 s, including the ~1 s that `sc
 - **To watch live:** the sync now builds the snapshot every run; its cost is the `snap` phase of the `cycle` lines.
   `buildState_` re-reads Member Changes and looks for the team source tab (`findTeamSource_` reads row 1 of every extra
   tab): if `snap` is more than ~1 s, those two are the first to cache.
+- **Shipped 2026-10-07:** [#26](https://github.com/puIad/vic-recruitment-2026/pull/26) (with two CodeRabbit fixes: an
+  action's publish waits for the lock; a run that loaded before a drop never publishes), deployed from `47aee3f` (web app
+  @63, API @64; 18 files pushed, and the live project pulled back afterwards: all 18 equal to `main`). No UI change, so
+  nothing new for Vercel to serve.
+- **Checked after the deploy (local mock, real `web/api` proxy, merged code):** `webAccess` → `webPulse` (a version
+  number) → `webState` (complete, the same twice in a row); `resolve` bumps the version by 1 and the alert is gone from the
+  cached state at once; three Sync nows in a row after that keep the version (the first one after a resolve may move it:
+  the sync raises the alert again when its problem is still there, a real change).
+- **Still to do (live):** no dashboard traffic since the deploy, and Vercel Hobby keeps runtime logs for 1 h only, so no
+  production numbers yet. The owner's `cookies.txt` session has expired (`--check`); with a fresh one:
+  `node test/load.js --live https://vic-recruitment.vercel.app --cookies cookies.txt --users 5 --minutes 3` gives
+  `webState` p50 / p95 (target p50 < 1.5 s). Or open the dashboard, click around for a few minutes, and read
+  `"action":"webState","ms":…` in Vercel › Logs within the hour. Also read the `snap` phase in a few `cycle` lines
+  (Apps Script › Executions), and check that a screen no longer reloads every minute while nothing changes.
 
 ---
 

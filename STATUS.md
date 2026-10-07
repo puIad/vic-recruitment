@@ -13,7 +13,13 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
   Latest UI: `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@61**, API **@62**, deployed from `a2e09db` (2026-10-07,
+- **Script, latest:** web app **@63**, API **@64**, deployed from `47aee3f` (2026-10-07,
+  [#26](https://github.com/puIad/vic-recruitment-2026/pull/26)): the admin dashboard is served from a cached snapshot
+  (script cache), republished by every sync and every dashboard action that writes; the pulse is now the snapshot's
+  version, so screens reload only when what they show changed. A hand edit in the Master shows after the next sync
+  (load-test plan, task 5). Live check still to do: `webState` times (needs a fresh `cookies.txt` or a few minutes of use),
+  in [docs/load-test.md](docs/load-test.md#task-5--admin-dashboard-served-from-a-cached-snapshot).
+- **Script, before that:** web app **@61**, API **@62**, deployed from `a2e09db` (2026-10-07,
   [#24](https://github.com/puIad/vic-recruitment-2026/pull/24)): the sync writes only what changed, so a quiet sync writes
   nothing and the Master's "last edited" (the dashboards' pulse) only moves on a real change; the Tracker's clock cell
   now reads "Last change: …" (load-test plan, task 4). It also carries [#21](https://github.com/puIad/vic-recruitment-2026/pull/21)
