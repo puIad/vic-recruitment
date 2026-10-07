@@ -515,6 +515,7 @@ after being removed, they land on the no-access screen within 15 s. Screenshots 
   ended); it now keeps them only while their code is still in the member's candidates.
 - **Shipped 2026-10-07:** merged as `b9f84c0`, UI only (no `.gs` changed, no `npm run deploy`, no `API_VERSION` bump).
   Vercel production built from `b9f84c0` (the real build: frontend `npm ci`, `tsc -b && vite build`, 31 s; "Deployment completed").
+- **Live test script:** [member-access-tests.md](member-access-tests.md) (sign-in, admin pages, every `webRun` action from the console, losing access, covers).
 - **Not checkable on the mock, for the live check:** a real member signing in through `scripts.run` (task 6's open item),
   the cold-cache read from their sheet, and the "isn't shared with you yet" screen (TEST_MODE shares nothing, so on the live
   Master today every member should see that screen).
