@@ -524,6 +524,63 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   assert.deepStrictEqual(open(), [], 'baseline intact after the round trip');
 }
+// ---- the dashboard served from a cached snapshot (load-test task 5) ----
+const shared = st => { const o = Object.assign({}, st); ['user', 'owner', 'switchUrl', 'updated'].forEach(k => delete o[k]); return o; };
+const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'))));
+{
+  const ver = () => call('webPulse'), cached = () => run('readSnap_() !== null');
+  call('webRun', 'sync');
+  const v0 = ver();
+  assert(cached(), 'the sync published the snapshot');
+  st = call('webState');
+  assert.deepStrictEqual(shared(st), liveOf(run), 'from the cache = a live build');
+  assert(/^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(st.updated) && st.user && st.switchUrl && st.owner === true, 'per-request fields added');
+  call('webRun', 'sync');
+  assert.strictEqual(ver(), v0, 'a sync with nothing new keeps the version: no screen reloads');
+
+  const regs = x => Object.keys(x.counts.byStatus).reduce((t, k) => t + x.counts.byStatus[k], 0), n = regs(st);
+  addRegistrations(1, 0);
+  assert.strictEqual(regs(call('webState')), n, 'a hand change shows after the next sync, not before');
+  call('webRun', 'sync');
+  assert.deepStrictEqual([ver(), regs(call('webState'))], [v0 + 1, n + 1], 'a change: version +1, shown');
+
+  call('webRun', 'changeMember', { binome: st.binomes[0].code, outEmail: st.binomes[0].people[0].email, inName: 'X Y', inEmail: 'xy@g.enp.edu.dz', dryRun: true });
+  assert.strictEqual(ver(), v0 + 1, 'a dry run publishes nothing');
+  const hour = st.settingsAll.find(x => x.key === 'DIGEST_HOUR').value;
+  call('webRun', 'saveSettings', { values: { DIGEST_HOUR: hour === 9 ? 10 : 9 } });
+  assert.deepStrictEqual([ver(), call('webState').settingsAll.find(x => x.key === 'DIGEST_HOUR').value], [v0 + 2, hour === 9 ? 10 : 9], 'an action publishes in the same call');
+  call('webRun', 'saveSettings', { values: { DIGEST_HOUR: hour } });
+  const v1 = ver();
+
+  run('__cacheClear()');
+  assert.deepStrictEqual(shared(call('webState')), liveOf(run), 'cache emptied: built live, still right');
+  assert(cached() && ver() === v1, 'and published again, with no new version');
+  run('__cacheClear(); __lockBusy = true');
+  assert.deepStrictEqual(shared(call('webState')), liveOf(run), 'cache emptied and the lock taken: built live without publishing');
+  assert(!cached());
+  run('__lockBusy = false');
+  call('webState');
+  run('__lockBusy = true; publishFresh_(); __lockBusy = false');
+  assert(!cached() && ver() === v1 + 1, 'an action whose publish finds the lock taken drops the snapshot: screens reload from a live build');
+  assert.deepStrictEqual(shared(call('webState')), liveOf(run));
+  assert(cached(), 'the next webState publishes it again');
+  run('var __old = freshCtx_(); dropSnap_(); publishState_(__old)');
+  assert(!cached(), 'a run that loaded before a drop never restores its older snapshot');
+  call('webState');
+  assert(cached(), 'a fresh read publishes it');
+}
+{
+  // a few hundred interviewees: over 100 KB, so several cache values (Google allows 100 KB each)
+  const big = require('./seed')();
+  ['importTeam', 'draft', 'lock'].forEach(a => big.call('webRun', a, { link: '' }));
+  big.addRegistrations(900, 1);
+  big.call('webRun', 'sync');
+  const meta = JSON.parse(big.run('__props.SNAP_HASH'));
+  assert(big.run('JSON.stringify(buildState_(freshCtx_())).length') > 100 * 1024 && meta.n > 1, 'big state in ' + meta.n + ' chunks');
+  assert(big.run('readSnap_() !== null'));
+  assert.deepStrictEqual(shared(big.call('webState')), liveOf(big.run), 'round trip through the chunks');
+}
+
 out = call('webRun', 'setup');
 assert(/Setup complete/.test(out.messages[0]), 'setup works without an active spreadsheet');
 

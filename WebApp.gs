@@ -60,19 +60,96 @@ function webAccess() {
   return { ok: a.ok, email: a.email, reason: a.reason || '', owner: !!a.owner, v: API_VERSION };
 }
 
-/** Cheap change detector for the dashboard's live refresh: when the Master was last edited (by anyone, the script included). */
+/** Cheap change detector for the dashboard's live refresh: the version of the cached dashboard (SNAP_VER), which goes up only
+ *  when what the dashboard shows changed (publishState_). A hand edit in the Master shows after the next sync. */
 function webPulse() {
   if (!access_().ok) throw new Error('Not allowed');
-  return DriveApp.getFileById(ss_().getId()).getLastUpdated().getTime();
+  return Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
 }
 
-/** Everything the dashboard shows, read-only. Dates are pre-formatted (google.script.run can't return Date). */
+/** Everything the dashboard shows, read-only: the cached snapshot plus who is asking. Dates are pre-formatted
+ *  (google.script.run can't return Date). The cache may lose entries at any time: then it is built live, and published
+ *  when the lock is free (otherwise whoever holds it publishes, or the next sync does). */
 function webState() {
   const a = access_();
   if (!a.ok) throw new Error('Not allowed');
-  _settings = null;
+  const st = readSnap_() || withLock_(() => publishState_(freshCtx_()), 1) || liveState_(freshCtx_());
+  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, switchUrl: switchUrl_() });
+}
+
+function freshCtx_() { _settings = null; return loadCtx_(); }
+function liveState_(ctx) { return Object.assign(buildState_(ctx), { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm') }); }
+
+/* ---------- the cached snapshot: CacheService chunks, checked against SNAP_HASH (script properties persist, the cache doesn't) ---------- */
+
+const SNAP_CHUNK = 25000; // chars per cache value: under the 100 KB limit even at 3 bytes a character
+function snapMeta_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('SNAP_HASH')); } catch (e) { return null; } }
+/** The snapshot as cached, or null when a chunk is gone, the hash doesn't match, or it was built for another API_VERSION. */
+function readSnap_() {
+  const meta = snapMeta_();
+  if (!meta || !meta.n) return null;
+  const keys = []; for (let i = 0; i < meta.n; i++) keys.push('snap:admin:' + i);
+  const got = CacheService.getScriptCache().getAll(keys);
+  if (keys.some(k => typeof got[k] !== 'string')) return null;
+  const json = keys.map(k => got[k]).join('');
+  if (hash_(json) !== meta.h) return null;
+  const st = JSON.parse(json);
+  if (st.v !== API_VERSION) return null;
+  st.updated = meta.at;
+  return st;
+}
+/** Build the snapshot from ctx; when it differs from the cached one, cache it and add 1 to SNAP_VER (the pulse). A cache that
+ *  lost entries is refilled without a new version. Call it inside the script lock, so two publishers never cross. Not published
+ *  when the snapshot was dropped since ctx was loaded (SNAP_VER moved, and only dropSnap_ moves it outside the lock): ctx may miss
+ *  the write that dropped it. Returns the state. */
+function publishState_(ctx) {
+  const st = buildState_(ctx), json = JSON.stringify(st), h = hash_(json), meta = snapMeta_();
+  const same = !!meta && meta.h === h;
+  if (same && readSnap_()) return Object.assign(st, { updated: meta.at });
+  const at = same ? meta.at : fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), chunks = {};
+  let n = 0;
+  for (let i = 0; i < json.length; n++) {
+    let j = Math.min(i + SNAP_CHUNK, json.length);
+    const c = json.charCodeAt(j - 1);
+    if (j < json.length && c >= 0xd800 && c <= 0xdbff) j--; // never split a surrogate pair
+    chunks['snap:admin:' + n] = json.slice(i, j); i = j;
+  }
+  CacheService.getScriptCache().putAll(chunks, 21600);
+  const props = PropertiesService.getScriptProperties(), ver = Number(props.getProperty('SNAP_VER') || 0);
+  // ponytail: check then set, not atomic; a drop in the few ms between them is lost until the next change is published
+  if (ver !== ctx.snapVer) return Object.assign(st, { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm') });
+  props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at }), SNAP_VER: String(same ? ver : ver + 1) });
+  return Object.assign(st, { updated: at });
+}
+/** The cache can no longer be trusted (a publish failed or could not run): the next webState builds live, every screen reloads. */
+function dropSnap_() {
+  const props = PropertiesService.getScriptProperties();
+  props.deleteProperty('SNAP_HASH');
+  props.setProperty('SNAP_VER', String(Number(props.getProperty('SNAP_VER') || 0) + 1));
+}
+/** After a dashboard action that wrote: publish from a fresh read (the action's own context is not re-indexed after its writes).
+ *  It waits for the lock rather than dropping at once: a sync that loaded before a lock-free write (resolve, saveSettings…)
+ *  publishes its older view, and only a publish after it can overwrite that. Still taken after 30 s → drop the snapshot
+ *  (the next sync's fresh read republishes it). Never throws. */
+function publishFresh_() {
+  try { if (!withLock_(() => publishState_(freshCtx_()), 30000)) dropSnap_(); }
+  catch (e) { console.warn('Snapshot not published: ' + e); try { dropSnap_(); } catch (e2) { /* the next sync publishes */ } }
+}
+
+/** Form URLs never change: looked up once per form ID, then kept in script property FORM_URLS. */
+function formUrl_(id) {
+  const props = PropertiesService.getScriptProperties();
+  let urls = {}; try { urls = JSON.parse(props.getProperty('FORM_URLS') || '{}'); } catch (e) { /* looked up again */ }
+  if (urls[id]) return urls[id];
+  let url = '';
+  try { url = FormApp.openById(id).getPublishedUrl(); } catch (e) { return ''; }
+  if (url) { urls[id] = url; props.setProperty('FORM_URLS', JSON.stringify(urls)); }
+  return url;
+}
+
+/** The dashboard as every admin sees it: no per-request fields and no clock, so its hash only moves when the data does. */
+function buildState_(ctx) {
   const s = S_();
-  const ctx = loadCtx_();
   const I = ctx.iv.I, A = ctx.alerts.table.I, T = ctx.team.I;
 
   const byStatus = {}; Object.keys(ST).forEach(k => { byStatus[ST[k]] = 0; });
@@ -96,19 +173,15 @@ function webState() {
   const alertCounts = { HIGH: 0, MEDIUM: 0, INFO: 0 };
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
 
-  const formUrl = id => { try { return FormApp.openById(id).getPublishedUrl(); } catch (e) { return ''; } };
   const look = quickLookups_(ctx);
   const teamSrc = findTeamSource_(ss_());
 
   return {
-    user: Session.getActiveUser().getEmail(),
-    owner: a.owner, v: API_VERSION,
-    switchUrl: switchUrl_(),
-    updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm'),
+    v: API_VERSION,
     links: {
       master: ss_().getUrl(),
-      registrationForm: formUrl(CONFIG.REGISTRATION_FORM_ID),
-      interviewForm: formUrl(CONFIG.INTERVIEW_FORM_ID),
+      registrationForm: formUrl_(CONFIG.REGISTRATION_FORM_ID),
+      interviewForm: formUrl_(CONFIG.INTERVIEW_FORM_ID),
       binomeFolder: 'https://drive.google.com/drive/folders/' + CONFIG.BINOME_FOLDER_ID,
     },
     settings: {
@@ -198,6 +271,10 @@ function webRun(action, args) {
   if (!a.ok) throw new Error('Not allowed');
   if (action === 'setup' && !a.owner) throw new Error('Only the owner of the master sheet can run Setup');
   args = args || {};
+  // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck'].indexOf(action) < 0 && !args.dryRun &&
+    !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0);
+  let refused = false; // BUSY: nothing was changed, and the lock holder publishes
   _webOut = [];
   try {
     let result = null;
@@ -236,7 +313,11 @@ function webRun(action, args) {
       default: throw new Error('Unknown action: ' + action);
     }
     return { messages: _webOut.slice(), result: result };
+  } catch (e) {
+    refused = /^BUSY:/.test(e && e.message);
+    throw e;
   } finally {
     _webOut = null;
+    if (wrote && !refused) publishFresh_(); // also after a failure halfway: what was written shows
   }
 }

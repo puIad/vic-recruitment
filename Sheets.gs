@@ -37,6 +37,12 @@ function fmt_(d, pattern) {
   if (!(d instanceof Date) || isNaN(d)) return String(d || '');
   return Utilities.formatDate(d, S_().TIMEZONE, pattern || 'dd/MM/yyyy HH:mm');
 }
+/** FNV-1a (32 bits) plus the length: tells two snapshots apart (publishState_); not for anything secret. */
+function hash_(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16) + '.' + s.length;
+}
 function txt_(v) { const s = String(v == null ? '' : v); return s === '' ? '' : "'" + s; } // force plain text
 /** A Drive error, readable. "enabling APIs" = the Drive API is off in the script's Cloud project: no sharing fix helps. */
 function driveErr_(e) {
@@ -132,6 +138,7 @@ function loadCtx_() {
     books: {},          // fileId -> Spreadsheet (cache)
     mailNew: {},        // binomeCode -> [iv rows] newly assigned this run
     alerts: null,
+    snapVer: Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0), // publishState_: was it dropped since?
   };
   ctx.alerts = alertBuffer_(ctx);
   ctx.covers = loadCovers_();
