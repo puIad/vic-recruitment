@@ -64,9 +64,15 @@ function addMissingColumns_(sh, headers) {
   if (from >= 0 && have.slice(from).every(v => v === '')) sh.getRange(1, from + 1, 1, headers.length - from).setValues([headers.slice(from)]);
 }
 function sameVal_(a, b) { return a === b || (a instanceof Date && b instanceof Date && a.getTime() === b.getTime()); }
+/** v (about to be written) equals cell (read from the tab) only when sure: sameVal_, or text forced with txt_ against that text
+ *  read back. A number against the same number as text is different: a doubt costs a useless write, never a lost one. */
+function sameCell_(v, cell) {
+  return sameVal_(v, cell) || (typeof v === 'string' && typeof cell === 'string' && v[0] === "'" && v.slice(1) === cell);
+}
 /** Write the table back, matching rows by key (Response Key, else the first column) and writing only the cells the script
  *  changed: a cell typed while the run was going keeps the hand value, a row deleted meanwhile stays deleted and a row
- *  inserted meanwhile stays (the baseline still has the old state, so the next run flags them). New rows go at the end. */
+ *  inserted meanwhile stays (the baseline still has the old state, so the next run flags them). New rows go at the end.
+ *  Only the rows that differ from the tab are written, in contiguous blocks: nothing changed, no write. */
 function saveTable_(t) {
   if (!t.data.length) return;
   const kc = t.I['Response Key'] !== undefined ? t.I['Response Key'] : 0;
@@ -85,7 +91,12 @@ function saveTable_(t) {
     out[p] = o ? r.map((v, j) => (sameVal_(v, o[j]) ? now[p][j] : v)) : r;
   });
   const all = out.concat(added);
-  if (all.length) t.sh.getRange(2, 1, all.length, t.H.length).setValues(all);
+  let from = -1;
+  for (let i = 0; i <= all.length; i++) {
+    const differs = i < all.length && (i >= now.length || all[i].some((v, j) => !sameCell_(v, now[i][j])));
+    if (differs && from < 0) from = i;
+    if (!differs && from >= 0) { t.sh.getRange(2 + from, 1, i - from, t.H.length).setValues(all.slice(from, i)); from = -1; }
+  }
 }
 
 let _lockWait = 0; // ms the last withLock_ waited for the lock (runCycle_ logs it)

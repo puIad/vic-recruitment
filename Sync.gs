@@ -153,14 +153,20 @@ function buildTracker_(ctx) {
       p.notContacted, p.noDate, p.overdue, p.open, denom > 0 ? p.interviewed / denom : '', b.fileUrl];
   });
   const summary = [
-    ['VIC Recruitment 2026 — live tracker', '', 'Last update: ' + fmt_(ctx.now)],
+    ['VIC Recruitment 2026 — live tracker', '', 'Last change: ' + fmt_(ctx.now)],
     ['Registered', registered, 'IT ' + byDep.IT + ' · COMM ' + byDep.COMM + ' · FLER ' + byDep.FLER + ' · HR ' + byDep.HR],
     ['Contacted', tot.contacted, 'Scheduled ' + tot.scheduled + ' · Interviewed ' + tot.interviewed + ' · Withdrew ' + tot.withdrew],
     ['Waiting for a binome', unassigned, 'Duplicates ignored: ' + dups],
     ['Open alerts', openAlerts.length, 'HIGH ' + openAlerts.filter(r => r[A.Severity] === 'HIGH').length + ' · MEDIUM ' + openAlerts.filter(r => r[A.Severity] === 'MEDIUM').length],
   ];
-  sh.clear();
   const top = summary.length + 2;
+  // the tab as it would be written (summary, a blank row, the head, the rows): already there → no write, no formatting.
+  // only the label of "Last change" (C1) is compared, not its time, so it moves only when something else does.
+  const grid = summary.map(r => r.concat(head.slice(3).map(() => ''))).concat([head.map(() => ''), head], rows);
+  if (sh.getLastRow() === grid.length && sh.getLastColumn() === head.length &&
+    sh.getRange(1, 1, grid.length, head.length).getValues().every((r, i) => r.every((v, j) =>
+      i === 0 && j === 2 ? String(v).indexOf('Last change: ') === 0 : sameCell_(grid[i][j], v)))) return;
+  sh.clear();
   sh.getRange(1, 1, top + Math.max(rows.length, 1), head.length).setFontFamily(THEME.font).setFontColor(THEME.ink).setVerticalAlignment('middle');
   sh.setHiddenGridlines(true);
   sh.getRange(1, 1, summary.length, 3).setValues(summary);

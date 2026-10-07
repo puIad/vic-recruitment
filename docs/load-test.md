@@ -253,6 +253,25 @@ every screen stops even before task 5.
 
 **Notes.**
 
+- **Code (2026-10-06, branch `p1-4-write-only-changed`):** `sameCell_` (Sheets.gs) is the one comparison: `sameVal_`, or
+  `"'x"` against `"x"`; nothing else is equal. `saveTable_` writes only the rows that differ from the tab read inside the
+  lock, in contiguous blocks; added rows always. `buildTracker_` compares the whole grid it would write (summary, blank
+  row, head, rows) with the tab and returns before `clear()` when it matches and the size is the same; the clock cell C1 is
+  left out of the comparison and now reads **"Last change: …"** (it moves only when something else does). Alerts: `flush`
+  already appended only new rows and saved the rest through `saveTable_`, so it follows the same rule with no change.
+- **`txt_` has no caller** (phones are kept as text by the Phone column's `@` format, Setup.gs); the forced-text rule
+  is there for whoever uses it again.
+- **Mock:** `__writes[tab]` counts `setValues`/`setValue`/`clear`/`clearContent`; all of them bump the file's
+  `lastUpdated`. The e2e test checks: a quiet `syncAll` writes nothing to the Master and doesn't move its `lastUpdated`
+  (fails on the old code: Interviewees 1 write, Tracker 4); a binome-sheet edit (all 7 fields), a status change, an
+  alert raised (registration) and one resolved (NOT_CONTACTED), an interview form and a new registration are each
+  written; one edited row = one row written.
+- **What the mock can't show (check live):** Sheets turns some written strings into numbers or dates (a free-text
+  Notes "12", a Tag "1"). Those cells then compare different every run and their row is written each time: safe, but it
+  would keep the pulse moving. If the Master's "last edited" still moves every minute after the deploy, find the column
+  by comparing `saveTable_`'s rows with `now` on that run (or set that column to `@` like Interview Date / Time).
+- **Still to do:** `npm run deploy` from `main` after merge, then ~20 `cycle` lines and the new average here.
+
 ---
 
 ## Task 5 — Admin dashboard served from a cached snapshot
