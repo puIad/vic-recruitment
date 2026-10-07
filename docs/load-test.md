@@ -490,6 +490,31 @@ after being removed, they land on the no-access screen within 15 s. Screenshots 
 
 **Notes.**
 
+- **Code (2026-10-07, branch `p1-7-my-binome`), UI and `test/webdev.js` only.** No script change, no `API_VERSION` bump
+  (task 6 already shipped the shape). `types.ts`: `MemberState`, `MemberAlert`, `Candidate` (the `BF_H` keys as `SHEET_KEYS`
+  + `Status`); `format.ts`: `SHEET_LABEL` (the sheet's own headers, mirror of `BF_LABEL`), `cellText`, `sheetTime`.
+- **Store:** gate mode `"member"`, `member` (the slice) and `memberError`. The two task-6 gates are gone: `refresh` lets the
+  **shape** of `webState` pick the mode (`role === "member"` → member, else admin) and re-reads `webAccess` when the mode
+  flips, so an admin who loses edit access but sits in a binome lands on My binome, and a member made an editor gets the
+  admin pages. `checkPulse` is shared; a member whose sheet couldn't load (`memberError`) keeps polling, so the page fills
+  itself after the sync publishes their slice.
+- **Shell:** same `AppShell`; members get `memberRoutes` (`/`, Account, Appearance, anything else → `/`), `memberNavGroups`, a
+  "My binome sheet" link instead of Google files, a header with live status, palette and theme only (no search, bell or
+  Sync), and `MEMBER_PULSE_MS` 15000 (admins stay at 2000). Account and the sidebar's account row say Member / Cover of B.xx.
+- **My binome** (`app/my-binome/`): binome code, members, "Open my binome sheet"; notes for Paused, `fromSheet` and covers;
+  Your candidates (count, status bar from Assigned on, Coming up: the next 4 interviews by day and time); Needs you (alerts
+  grouped by candidate, worst first, click opens the candidate); Candidates table (Code, Name, Status, Contacted?, Interview,
+  Done, Rating, Final affectation; the rest under View) and a details sheet with every column of the sheet, grouped.
+  `fromSheet` drops the Status column and says statuses and alerts come after the next sync.
+- **Mock:** `/dev-login?as=member` signs in a member of the busiest binome (the start-up line names them; B.03, yasmine).
+- **Checked on the mock (playwright-chrome, 1440 and 390 wide, light and dark):** a member sees only My binome, Account and
+  Appearance; one `webPulse` per 15 s tick (calls at 7.3 s and 22.3 s); after an admin's Change members removed them, the
+  next tick gave `webPulse` "Not allowed" + one `webAccess` and the no-access screen, 6.9 s after the removal. Admins
+  unchanged (Overview, full nav, Sync now). `npm run typecheck`, `npm test` green.
+- **Not checkable on the mock, for the live check:** a real member signing in through `scripts.run` (task 6's open item),
+  the cold-cache read from their sheet, and the "isn't shared with you yet" screen (TEST_MODE shares nothing, so on the live
+  Master today every member should see that screen).
+
 ---
 
 ## Task 8 — Members edit their binome from the dashboard

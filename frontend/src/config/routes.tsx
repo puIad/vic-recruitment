@@ -1,7 +1,9 @@
 import { lazy } from "react"
+import { Navigate } from "react-router-dom"
 
 // Pages inside the app shell (sidebar + header). Lazy-loaded so the first paint stays small.
 const Overview = lazy(() => import("@/app/overview/page"))
+const MyBinome = lazy(() => import("@/app/my-binome/page"))
 const Alerts = lazy(() => import("@/app/alerts/page"))
 const Binomes = lazy(() => import("@/app/binomes/page"))
 const Interviewees = lazy(() => import("@/app/interviewees/page"))
@@ -52,4 +54,12 @@ export const shellRoutes: RouteConfig[] = [
   { path: "/errors/internal-server-error", element: <ServerError /> },
   { path: "/errors/under-maintenance", element: <Maintenance /> },
   { path: "*", element: <NotFound /> },
+]
+
+/** A binome member's whole dashboard: their binome, read-only, and their own account and appearance. */
+export const memberRoutes: RouteConfig[] = [
+  { path: "/", element: <MyBinome /> },
+  { path: "/settings/account", element: <SettingsAccount /> },
+  { path: "/settings/appearance", element: <SettingsAppearance /> },
+  { path: "*", element: <Navigate to="/" replace /> },
 ]

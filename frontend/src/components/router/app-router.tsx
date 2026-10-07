@@ -2,9 +2,10 @@
 
 import { Suspense } from "react"
 import { Routes, Route } from "react-router-dom"
-import { shellRoutes } from "@/config/routes"
+import { memberRoutes, shellRoutes } from "@/config/routes"
 import { AppShell } from "@/components/layouts/app-shell"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useVic } from "@/lib/vic/store"
 
 function PageFallback() {
   return (
@@ -17,10 +18,11 @@ function PageFallback() {
 }
 
 export function AppRouter() {
+  const member = useVic((s) => s.gate.mode === "member")
   return (
     <Routes>
       <Route element={<AppShell />}>
-        {shellRoutes.map((r) => (
+        {(member ? memberRoutes : shellRoutes).map((r) => (
           <Route key={r.path} path={r.path} element={<Suspense fallback={<PageFallback />}>{r.element}</Suspense>} />
         ))}
       </Route>

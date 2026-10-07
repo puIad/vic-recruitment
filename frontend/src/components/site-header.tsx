@@ -34,14 +34,16 @@ function MiniRing({ spinning, tick }: { spinning: boolean; tick: number }) {
   )
 }
 
-function LiveStatus() {
+function LiveStatus({ member }: { member?: boolean }) {
   const updated = useVic((s) => s.state?.updated)
+  const loadedAt = useVic((s) => s.loadedAt)
   const syncEvery = useVic((s) => s.state?.settings.syncEvery)
   const refreshing = useVic((s) => s.refreshing)
   const busy = useVic((s) => s.busy)
   const tick = useVic((s) => s.tick)
   const refresh = useVic((s) => s.refresh)
-  const time = updated ? updated.split(" ")[1] : "…"
+  // a member's slice carries no "updated": the time this page last read it
+  const time = member ? (loadedAt ? new Date(loadedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "…") : updated ? updated.split(" ")[1] : "…"
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -59,7 +61,9 @@ function LiveStatus() {
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        Changes in the Master show up within 15 s. The script also syncs every {syncEvery ?? 15} min. Click to reload now.
+        {member
+          ? "What you type in your binome sheet shows here after the script's next sync, within 15 s of it. Click to reload now."
+          : `Changes in the Master show up within 15 s. The script also syncs every ${syncEvery ?? 15} min. Click to reload now.`}
       </TooltipContent>
     </Tooltip>
   )
@@ -134,7 +138,37 @@ function SyncButton() {
   )
 }
 
+/** A member's header: no search, alerts bell or Sync (admin tools); live status, palette and theme stay. */
+function MemberHeader() {
+  const binome = useVic((s) => s.member?.binome)
+  return (
+    <header className="sticky top-0 z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 backdrop-blur-sm">
+      <div className="flex w-full items-center gap-1 px-4 py-3 lg:gap-2 lg:px-6">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+        {binome && (
+          <p className="truncate text-sm font-medium text-muted-foreground">
+            Binome <b className="font-bold text-foreground">{binome}</b> · read-only
+          </p>
+        )}
+        <div className="ml-auto flex items-center gap-1.5">
+          <LiveStatus member />
+          <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Customize palette and layout" title="Customize" onClick={() => useUi.getState().setCustomizerOpen(true)}>
+            <SwatchBook />
+          </Button>
+          <ModeToggle variant="ghost" />
+        </div>
+      </div>
+    </header>
+  )
+}
+
 export function SiteHeader() {
+  const member = useVic((s) => s.gate.mode === "member")
+  return member ? <MemberHeader /> : <AdminHeader />
+}
+
+function AdminHeader() {
   const [searchOpen, setSearchOpen] = React.useState(false)
   const testMode = useVic((s) => s.state?.settings.testMode)
 

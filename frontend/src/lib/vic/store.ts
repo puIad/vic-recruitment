@@ -1,11 +1,13 @@
 import { create } from "zustand"
 import { toast } from "sonner"
-import { API_VERSION, type Access, type Alert, type RunOut, type WebState } from "./types"
+import { API_VERSION, type Access, type Alert, type MemberState, type RunOut, type WebState } from "./types"
 import { ApiError, call, hooks, rateLimited } from "./api"
 
 export type Gate =
   | { mode: "booting" }
   | { mode: "ok" }
+  /** a binome member: My binome only, read-only, polled every 15 s */
+  | { mode: "member" }
   | { mode: "signin" | "expired" | "noaccess" | "error"; access?: Access; message?: string }
 
 export interface ActivityItem {
@@ -19,6 +21,10 @@ interface VicStore {
   gate: Gate
   access: Access | null
   state: WebState | null
+  /** a member's slice of the snapshot (gate "member"); state stays null for them */
+  member: MemberState | null
+  /** why a member's binome could not load (e.g. their sheet isn't shared yet): the page shows it instead of a toast */
+  memberError: string | null
   /** true while the first load has not finished: pages show skeletons */
   loading: boolean
   refreshing: boolean
@@ -54,6 +60,8 @@ export const useVic = create<VicStore>((set, get) => ({
   gate: { mode: "booting" },
   access: null,
   state: null,
+  member: null,
+  memberError: null,
   loading: true,
   refreshing: false,
   busy: false,
@@ -78,12 +86,12 @@ export const useVic = create<VicStore>((set, get) => ({
         description: `Page ${API_VERSION}, script ${a.v}. Reload the page; if this stays, tell the admin.`,
       })
     }
-    // members get My binome in task 7; until then the gate ("member", not "!== admin": a script without roles is all admins)
-    if (!a.ok || a.role === "member") {
+    if (!a.ok) {
       set({ gate: { mode: "noaccess", access: a }, access: a, loading: false })
       return
     }
-    set({ gate: { mode: "ok" }, access: a })
+    // "member", not "!== admin": a script without roles answers role "" for its admins
+    set({ gate: { mode: a.role === "member" ? "member" : "ok" }, access: a })
     await get().refresh()
   },
 
@@ -91,24 +99,31 @@ export const useVic = create<VicStore>((set, get) => ({
     if (!quiet) set({ refreshing: true })
     try {
       const p = await call<number>("webPulse", [], POLL_TIMEOUT_MS).catch(() => null) // read before the state, so an edit in between still shows as a change
-      const s = await call<WebState>("webState")
-      // an admin who lost edit access but is in a binome now gets a member slice: the gate, not admin pages on the wrong shape
-      if ((s as unknown as { role?: string }).role === "member") {
-        const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => undefined)
-        set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, pulse: null, loading: false })
-        return
+      const s = await call<WebState | MemberState>("webState")
+      // The shape decides the mode: an admin who lost edit access but is in a binome now gets a member slice (My binome, not
+      // admin pages on the wrong shape), and a member made an editor gets the admin state. Either way the role changed: re-read access.
+      const member = "role" in s && s.role === "member"
+      if (member !== (get().gate.mode === "member")) {
+        const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => null)
+        set({ access: a ?? get().access })
       }
       set((cur) => ({
-        state: s,
+        gate: { mode: member ? "member" : "ok" },
+        state: member ? null : (s as WebState),
+        member: member ? (s as MemberState) : null,
+        memberError: null,
         pulse: p,
         loading: false,
         loadedAt: Date.now(),
-        tick: cur.tick + (quiet && cur.state ? 1 : 0),
+        tick: cur.tick + (quiet && (cur.state || cur.member) ? 1 : 0),
       }))
     } catch (e) {
       // a live refresh hitting Google's rate limit is a quiet pause (rateLimited), not an error toast every tick
       const limited = quiet && e instanceof ApiError && e.code === "RATE_LIMIT"
-      if (get().gate.mode === "ok" && !limited) toast.error("Could not load the dashboard", { description: (e as Error).message })
+      const { gate, member } = get()
+      // a member with nothing on screen yet sees why on the page ("Your binome sheet isn't shared with you yet.")
+      if (gate.mode === "member" && !member) set({ memberError: limited ? get().memberError : (e as Error).message })
+      else if ((gate.mode === "ok" || gate.mode === "member") && !limited) toast.error("Could not load the dashboard", { description: (e as Error).message })
       set({ loading: false })
     } finally {
       set({ refreshing: false })
@@ -117,8 +132,10 @@ export const useVic = create<VicStore>((set, get) => ({
 
   // Live refresh: poll the version of the dashboard's snapshot (it moves only when the data changed) and reload when it moved.
   async checkPulse() {
-    const { busy, refreshing, gate, state, modals, pulse } = get()
-    if (busy || refreshing || polling || document.hidden || gate.mode !== "ok" || !state || modals > 0) return
+    const { busy, refreshing, gate, state, member, memberError, modals, pulse } = get()
+    // a member whose sheet couldn't load keeps polling, so the page fills itself once the sync has published their binome
+    const shown = gate.mode === "ok" ? !!state : gate.mode === "member" && !!(member || memberError)
+    if (busy || refreshing || polling || document.hidden || !shown || modals > 0) return
     if (rateLimited()) return // Google is limiting this account: pause quietly instead of adding to it
     polling = true // at a 2 s tick a slow Apps Script call would otherwise stack up
     try {
@@ -130,7 +147,7 @@ export const useVic = create<VicStore>((set, get) => ({
       // "Not allowed": ask webAccess (it never throws) only for the email and reason the gate shows
       if (e instanceof ApiError && /^(?:Error: )?Not allowed$/.test(e.message)) {
         const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => undefined)
-        if (!a?.ok) set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, pulse: null, loading: false })
+        if (!a?.ok) set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, member: null, memberError: null, pulse: null, loading: false })
       }
       /* anything else stays quiet: the next tick or the refresh button retries */
     } finally {
@@ -193,6 +210,6 @@ export const useVic = create<VicStore>((set, get) => ({
 
 hooks.onSession = (endsAt) => useVic.setState({ sessionEnds: endsAt })
 hooks.onAuthLost = (kind, message) => {
-  if (useVic.getState().gate.mode === "ok" || useVic.getState().gate.mode === "booting")
+  if (["ok", "member", "booting"].includes(useVic.getState().gate.mode))
     useVic.setState({ gate: { mode: kind, message }, loading: false })
 }

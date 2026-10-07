@@ -1,4 +1,4 @@
-import type { BinomeStatus, Severity, Status } from "./types"
+import type { BinomeStatus, SheetKey, Severity, Status } from "./types"
 
 /** Pipeline stages in order. The ramp runs cobalt, blue, teal, aquamarine: the charter gradient, as candidates progress. */
 export const STAGES: { key: Status; label: string; hint: string; color: string }[] = [
@@ -89,4 +89,51 @@ export function ago(ts: number, now = Date.now()): string {
   const m = Math.round(s / 60)
   if (m < 60) return `${m} min ago`
   return `${Math.round(m / 60)} h ago`
+}
+
+/** The binome sheet's own header labels (Config.gs BF_LABEL), so My binome reads like the sheet members know. */
+export const SHEET_LABEL: Record<SheetKey, string> = {
+  Code: "Their code",
+  Registered: "Registered on",
+  "First Name": "First name",
+  "Family Name": "Family name",
+  Email: "E-mail",
+  "Birth Date": "Birth date",
+  Phone: "Phone",
+  Facebook: "Facebook",
+  Discord: "Discord",
+  Field: "Field of study",
+  Year: "Year of study",
+  "Discovered VIC": "How they found VIC",
+  "Why VIC": "Why VIC?",
+  "Other Clubs": "Other clubs",
+  "1st Choice": "1st choice",
+  "2nd Choice": "2nd choice",
+  "Why this department": "Why this department?",
+  "Department Questions": "Department questions",
+  Availability: "When they are free",
+  "Anything to add": "Anything to add",
+  Contacted: "Contacted?",
+  "Interview Date": "Interview day",
+  "Interview Time": "Time",
+  "Interview Done": "Interview done",
+  Rating: "Rating /10",
+  "Final Affectation": "Final affectation",
+  "Interview Form": "Interview form",
+  Notes: "Your notes",
+}
+
+/** A sheet cell as text: "" for empty, Yes / No for a checkbox. */
+export function cellText(v: string | number | boolean | undefined): string {
+  if (v === true || v === "TRUE") return "Yes"
+  if (v === false || v === "FALSE") return ""
+  return v === undefined || v === null ? "" : String(v).trim()
+}
+
+/** dd/MM/yyyy (+ HH:mm) as a timestamp, or NaN. */
+export function sheetTime(date: unknown, time?: unknown): number {
+  const d = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(date ?? "").trim())
+  if (!d) return NaN
+  const t = /^(\d{1,2}):(\d{2})/.exec(String(time ?? "").trim())
+  return new Date(+d[3], +d[2] - 1, +d[1], t ? +t[1] : 0, t ? +t[2] : 0).getTime()
 }

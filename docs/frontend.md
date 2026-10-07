@@ -19,7 +19,7 @@ in `c64f118` (`git show c64f118^:web/index.html` if it is ever needed). How to r
 | Dev against `test/webdev.js` (mock Google), proxied by Vite | Real data shapes, no Google account needed |
 | Replaces `web/index.html` at the same URL, built into `web/dist`; the Vercel root stays `web/` (owner, 2026-10-03) | No second URL; `api/`, `lib/` and the env vars stay untouched; Instant Rollback undoes a bad deploy |
 | Change history was the first placeholder made real (owner, 2026-10-03) | Smallest: the Member Changes tab already logs every tool run |
-| Binome members get a read-only "my binome" view later (owner, 2026-10-03) | Not built; needs a new access rule in WebApp.gs, today access is Master editors only |
+| Binome members get a read-only "my binome" view (owner, 2026-10-03) | Built in task 7 of the load-test plan on task 6's member role; editing from the dashboard is task 8 |
 | Reset all binomes asks for a typed phrase, checked again by the script (2026-10-03) | It trashes every binome sheet and empties Team and Member Changes; a misclick must not do that |
 | Schedule and Analytics kept, Binome desk dropped (owner, 2026-10-04) | Plans in [plans.md](plans.md). The binome view grew into an idea: members would use the dashboard instead of their sheet. Kept, not planned |
 
@@ -40,6 +40,7 @@ The sidebar has four groups: Control room, People, Coming up, System. Alerts car
 | Settings | General, Alerts and timing, Sharing and email (turning Test mode off asks first), Change history, Connections (Google files), Account (session time left), Appearance (charter palettes: VIC, SPARK, English Bubble, Training) |
 | Elsewhere | Command palette (Ctrl K: pages, candidates by code or name, binomes, alerts, Sync), Help (FAQ), Google files row in the sidebar, account menu at its foot |
 | Gate | Sign in, session expired, no access, script unreachable, set in the iris of the charter's divider disc |
+| Members | Someone in a locked binome (or a live cover) who is not an editor gets **My binome** only (`app/my-binome/`), read-only: their candidates with the sheet's columns, statuses, open alerts, a link to their sheet; Account and Appearance. Polls every 15 s. Load-test plan, task 7 |
 
 **Reset all binomes** (`resetBinomesCore_` in Team.gs): trashes every binome sheet (recoverable from the owner's Drive
 trash for 30 days), empties the Binomes, Team and Member Changes tabs, puts interviewees back to Unassigned, closes the
@@ -62,8 +63,7 @@ only leave an INFO alert).
 ## Still open
 
 - Schedule and Analytics ([plans.md](plans.md)); remove the Binome desk page.
-- Binome view: members see their binome in the dashboard, maybe instead of the sheet. An idea, not planned
-  (needs an access rule in WebApp.gs).
+- Members edit their binome from the dashboard: [load-test.md › task 8](load-test.md#task-8--members-edit-their-binome-from-the-dashboard).
 - Log interviewee moves and accepted hand edits in a history source, then show them in Change history.
 - No automated tests for the UI itself; `test/vercel.test.js` only checks its RPC wrapper and `API_VERSION`. The data
   layer is thin enough to add cases against `webdev.js`.
