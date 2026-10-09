@@ -8,14 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Spinner } from "@/lib/vic/confirm"
 import { useVic } from "@/lib/vic/store"
-import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, type GoldKey } from "@/lib/vic/types"
+import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type GoldKey } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 
 type Cell = string | number | boolean
-type Phase = { s: "idle" } | { s: "saving" } | { s: "saved" } | { s: "error"; msg: string } | { s: "conflict"; theirs: string }
+type Phase = { s: "idle" } | { s: "error"; msg: string } | { s: "conflict"; theirs: string }
+/** base = the sheet's value the edit started from (sent as `seen`), draft = what the member has typed or picked. */
+type Field = { base: Cell | undefined; draft: string | boolean; phase: Phase }
+type Fields = Record<GoldKey, Field>
 
-/** Selects and the checkbox save on change; the typed fields wait for Save (or Enter). */
-const INSTANT: GoldKey[] = ["Contacted", "Final Affectation", "Interview Done"]
 const NONE = "__none" // Radix Select has no empty value: the "no affectation yet" item
 const NOTES_MAX = 2000
 
@@ -41,7 +42,7 @@ function toWire(k: GoldKey, d: string | boolean): unknown {
   return d
 }
 
-/** A conflict carries the cell as text (WebApp.gs goldText_); back to the slice's own form for "Keep theirs". */
+/** A conflict carries the cell as text (WebApp.gs goldText_); back to the slice's own form. */
 function fromText(k: GoldKey, t: string): Cell {
   if (k === "Interview Done") return t === "true"
   if (k === "Rating") return t === "" || isNaN(Number(t)) ? t : Number(t)
@@ -60,68 +61,144 @@ function ratingProblem(d: string) {
   return isNaN(n) || n < 0 || n > 10 ? "A mark from 0 to 10" : ""
 }
 
+const isDirty = (k: GoldKey, f: Field) => f.draft !== toDraft(k, f.base)
+const fieldsOf = (c: Candidate) =>
+  Object.fromEntries(GOLD_KEYS.map((k) => [k, { base: c[k], draft: toDraft(k, c[k]), phase: { s: "idle" } }])) as Fields
+
+type Form = {
+  code: string
+  fields: Fields
+  saving: boolean
+  setDraft: (k: GoldKey, d: string | boolean) => void
+  revert: (k: GoldKey) => void
+  useMine: (k: GoldKey) => void
+  saveAll: () => void
+}
+const FormCtx = React.createContext<Form | null>(null)
+
 /**
- * One of the binome's own columns, edited from the dashboard and written into their sheet (webRun memberSet).
- * Nothing shows as saved until the script says so. `base` is the value the edit started from: if the partner changed the
- * cell meanwhile, the script refuses and the field offers Keep theirs / Use mine.
+ * The binome's own columns for one candidate, edited together and written into their sheet (webRun memberSet, one call per
+ * changed field) when the member presses Save. Nothing shows as saved until the script says so. If the partner changed a
+ * cell meanwhile, the script refuses that one and the field offers Keep theirs / Use mine.
+ * Key it by candidate: switching candidates starts afresh. onDirty gets the count of unsaved fields as it changes.
  */
-export function GoldField({ code, k, value }: { code: string; k: GoldKey; value: Cell | undefined }) {
+export function GoldForm({ code, candidate, onDirty, children }: { code: string; candidate: Candidate; onDirty?: (n: number) => void; children: React.ReactNode }) {
   const memberSet = useVic((s) => s.memberSet)
   const patchMember = useVic((s) => s.patchMember)
-  const [base, setBase] = React.useState<Cell | undefined>(value)
-  const [draft, setDraft] = React.useState(() => toDraft(k, value))
-  const [phase, setPhase] = React.useState<Phase>({ s: "idle" })
-  const dirty = draft !== toDraft(k, base)
-  const saving = phase.s === "saving"
-  const id = `gold-${code}-${k.replace(/\s+/g, "-")}`
+  const [fields, setFields] = React.useState(() => fieldsOf(candidate))
+  const [saving, setSaving] = React.useState(false)
+  const [saved, setSaved] = React.useState(false)
 
-  // a poll brought a new value: follow it unless the member is in the middle of an edit (then the save checks it)
-  const editing = dirty || saving || phase.s === "conflict"
+  const put = (k: GoldKey, f: Partial<Field>) => setFields((cur) => ({ ...cur, [k]: { ...cur[k], ...f } }))
+
+  // a poll brought new values: untouched fields follow them, a field mid-edit keeps the draft (the save checks it)
+  const sig = JSON.stringify(GOLD_KEYS.map((k) => candidate[k] ?? null))
   React.useEffect(() => {
-    if (editing) return
-    setBase(value)
-    setDraft(toDraft(k, value))
+    setFields((cur) => {
+      let next = cur
+      for (const k of GOLD_KEYS) {
+        const f = cur[k], v = candidate[k]
+        if (isDirty(k, f) || f.phase.s === "conflict" || v === f.base) continue
+        next = { ...next, [k]: { ...f, base: v, draft: toDraft(k, v) } }
+      }
+      return next
+    })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, k])
+  }, [sig])
 
   React.useEffect(() => {
-    if (phase.s !== "saved") return
-    const t = setTimeout(() => setPhase({ s: "idle" }), 2500)
+    if (!saved) return
+    const t = setTimeout(() => setSaved(false), 2500)
     return () => clearTimeout(t)
-  }, [phase])
+  }, [saved])
 
-  async function save(next: string | boolean, seen: unknown = base) {
-    setDraft(next)
-    setPhase({ s: "saving" })
-    const r = await memberSet(code, k, toWire(k, next), seen)
-    if ("ok" in r) {
-      setBase(r.value)
-      setDraft(toDraft(k, r.value))
-      setPhase({ s: "saved" })
-    } else if ("conflict" in r) setPhase({ s: "conflict", theirs: r.conflict })
-    else setPhase({ s: "error", msg: r.error })
+  async function saveAll() {
+    const todo = GOLD_KEYS.filter((k) => isDirty(k, fields[k]))
+    if (!todo.length || saving || ratingProblem(String(fields.Rating.draft))) return
+    setSaving(true)
+    setSaved(false)
+    let ok = true
+    // one at a time: each takes the sheet's lock, so in parallel they would only queue (or come back BUSY)
+    for (const k of todo) {
+      const f = fields[k]
+      const r = await memberSet(code, k, toWire(k, f.draft), f.base)
+      if ("ok" in r) put(k, { base: r.value, draft: toDraft(k, r.value), phase: { s: "idle" } })
+      else {
+        ok = false
+        if ("conflict" in r) {
+          // the sheet holds theirs: it becomes the base (Use mine then writes over it), the draft stays
+          const theirs = fromText(k, r.conflict)
+          patchMember(code, k, theirs)
+          put(k, { base: theirs, phase: { s: "conflict", theirs: r.conflict } })
+        } else put(k, { phase: { s: "error", msg: r.error } })
+      }
+    }
+    setSaving(false)
+    setSaved(ok)
   }
 
-  function keepTheirs(t: string) {
-    const v = fromText(k, t)
-    patchMember(code, k, v)
-    setBase(v)
-    setDraft(toDraft(k, v))
-    setPhase({ s: "idle" })
+  const form: Form = {
+    code,
+    fields,
+    saving,
+    setDraft: (k, d) => put(k, { draft: d }),
+    revert: (k) => setFields((cur) => ({ ...cur, [k]: { ...cur[k], draft: toDraft(k, cur[k].base), phase: { s: "idle" } } })),
+    useMine: (k) => put(k, { phase: { s: "idle" } }), // the next Save writes the draft over theirs
+    saveAll,
   }
 
-  function cancel() {
-    setDraft(toDraft(k, base))
-    setPhase({ s: "idle" })
-  }
+  const dirty = GOLD_KEYS.filter((k) => isDirty(k, fields[k])).length
+  React.useEffect(() => onDirty?.(dirty), [dirty, onDirty])
+  // closing or reloading the tab with unsaved changes: the browser's own "Leave site?" prompt
+  React.useEffect(() => {
+    if (!dirty) return
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [dirty])
+  const failed = GOLD_KEYS.some((k) => fields[k].phase.s !== "idle")
+
+  return (
+    <FormCtx.Provider value={form}>
+      {children}
+      <div aria-live="polite" className="mt-3 flex min-h-9 flex-wrap items-center gap-2">
+        {dirty > 0 ? (
+          <>
+            <Button onClick={saveAll} disabled={saving || !!ratingProblem(String(fields.Rating.draft))}>
+              {saving ? <Spinner className="size-4" /> : <Check />}{" "}
+              {saving ? "Saving to your sheet…" : dirty > 1 ? `Save ${dirty} changes` : "Save change"}
+            </Button>
+            <Button variant="ghost" onClick={() => GOLD_KEYS.forEach(form.revert)} disabled={saving}>
+              Discard
+            </Button>
+            {failed && !saving && <span className="text-xs font-medium text-danger">Some changes weren't saved: see above.</span>}
+          </>
+        ) : saved ? (
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-success">
+            <Check className="size-3.5" /> Saved to your sheet
+          </p>
+        ) : null}
+      </div>
+    </FormCtx.Provider>
+  )
+}
+
+/** One gold column inside a GoldForm: holds a draft, written only by the form's Save. */
+export function GoldField({ k }: { k: GoldKey }) {
+  const form = React.useContext(FormCtx)!
+  const { code, saving } = form
+  const { draft, phase } = form.fields[k]
+  const dirty = isDirty(k, form.fields[k])
+  const id = `gold-${code}-${k.replace(/\s+/g, "-")}`
+  const set = (d: string | boolean) => form.setDraft(k, d)
 
   const ratingError = k === "Rating" ? ratingProblem(String(draft)) : ""
-  // Enter saves (Ctrl/Cmd+Enter in the notes box), Escape drops the edit
+  // Enter saves everything (Ctrl/Cmd+Enter in the notes box), Escape drops this field's edit
   const onKey = (e: React.KeyboardEvent, needMod = false) => {
-    if (e.key === "Enter" && (!needMod || e.ctrlKey || e.metaKey) && dirty && !saving && !ratingError) save(draft)
+    if (e.key === "Enter" && (!needMod || e.ctrlKey || e.metaKey)) form.saveAll()
     if (e.key === "Escape" && dirty) {
       e.stopPropagation() // Escape cancels the edit, not the whole details panel
-      cancel()
+      form.revert(k)
     }
   }
 
@@ -129,7 +206,7 @@ export function GoldField({ code, k, value }: { code: string; k: GoldKey; value:
   if (k === "Contacted" || k === "Final Affectation") {
     const options = k === "Contacted" ? CONTACT_OPTIONS : AFFECTATION_OPTIONS
     control = (
-      <Select value={String(draft) || NONE} onValueChange={(v) => save(v === NONE ? "" : v)} disabled={saving}>
+      <Select value={String(draft) || NONE} onValueChange={(v) => set(v === NONE ? "" : v)} disabled={saving}>
         <SelectTrigger id={id} className="w-full bg-background sm:w-56">
           <SelectValue />
         </SelectTrigger>
@@ -146,7 +223,7 @@ export function GoldField({ code, k, value }: { code: string; k: GoldKey; value:
   } else if (k === "Interview Done") {
     control = (
       <label htmlFor={id} className="flex w-fit cursor-pointer items-center gap-2.5 py-1 text-sm font-medium">
-        <Checkbox id={id} checked={draft === true} onCheckedChange={(c) => save(c === true)} disabled={saving} className="size-5" />
+        <Checkbox id={id} checked={draft === true} onCheckedChange={(c) => set(c === true)} disabled={saving} className="size-5" />
         {draft === true ? "Yes, done" : "Not yet"}
       </label>
     )
@@ -156,7 +233,7 @@ export function GoldField({ code, k, value }: { code: string; k: GoldKey; value:
         <Textarea
           id={id}
           value={String(draft)}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => set(e.target.value)}
           onKeyDown={(e) => onKey(e, true)}
           maxLength={NOTES_MAX}
           rows={4}
@@ -176,7 +253,7 @@ export function GoldField({ code, k, value }: { code: string; k: GoldKey; value:
         id={id}
         type={type}
         value={String(draft)}
-        onChange={(e) => setDraft(e.target.value)}
+        onChange={(e) => set(e.target.value)}
         onKeyDown={(e) => onKey(e)}
         disabled={saving}
         aria-invalid={!!ratingError || undefined}
@@ -190,38 +267,14 @@ export function GoldField({ code, k, value }: { code: string; k: GoldKey; value:
     <div className="min-w-0 space-y-2">
       {control}
 
-      {dirty && !INSTANT.includes(k) && phase.s !== "conflict" && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" onClick={() => save(draft)} disabled={saving || !!ratingError}>
-            {saving ? <Spinner className="size-3.5" /> : <Check />} Save
-          </Button>
-          <Button size="sm" variant="ghost" onClick={cancel} disabled={saving}>
-            Cancel
-          </Button>
-          {ratingError && <span className="text-xs font-medium text-danger">{ratingError}</span>}
-        </div>
-      )}
-
       <div aria-live="polite" className="empty:hidden">
-        {saving && INSTANT.includes(k) && (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Spinner className="size-3.5" /> Saving to your sheet…
-          </p>
-        )}
-        {phase.s === "saved" && (
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-success">
-            <Check className="size-3.5" /> Saved to your sheet
-          </p>
-        )}
+        {ratingError && <p className="text-xs font-medium text-danger">{ratingError}</p>}
         {phase.s === "error" && (
           <div role="alert" className="flex items-start gap-2 rounded-lg border border-danger/25 bg-danger-soft px-3 py-2 text-xs">
             <AlertTriangle className="mt-px size-3.5 shrink-0 text-danger" />
             <span className="min-w-0 flex-1">
               <b className="font-semibold">Not saved.</b> {phase.msg}
             </span>
-            <button type="button" onClick={() => save(draft)} className="shrink-0 font-semibold text-primary hover:underline">
-              Try again
-            </button>
           </div>
         )}
         {phase.s === "conflict" && (
@@ -230,14 +283,14 @@ export function GoldField({ code, k, value }: { code: string; k: GoldKey; value:
               <Users className="mt-0.5 size-4 shrink-0 text-warning" />
               <span>
                 <b className="font-bold">Your partner changed this to {theirsLabel(k, phase.theirs)}.</b>{" "}
-                <span className="text-foreground/80">Nothing of yours was written.</span>
+                <span className="text-foreground/80">Nothing of yours was written here.</span>
               </span>
             </p>
             <div className="flex flex-wrap gap-2 pl-6">
-              <Button size="sm" variant="outline" className="bg-background" onClick={() => keepTheirs(phase.theirs)}>
+              <Button size="sm" variant="outline" className="bg-background" onClick={() => form.revert(k)} disabled={saving}>
                 <RotateCcw /> Keep theirs
               </Button>
-              <Button size="sm" onClick={() => save(draft, phase.theirs)}>
+              <Button size="sm" onClick={() => form.useMine(k)} disabled={saving}>
                 <Check /> Use mine
               </Button>
             </div>

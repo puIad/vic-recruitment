@@ -717,7 +717,10 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     assert.strictEqual(set(code2, 'Notes', '=1+1, called twice', c0.Notes).result.value, '=1+1, called twice');
     assert.deepStrictEqual(JSON.parse(cell(code2, 'Notes')), ['=1+1, called twice', '=1+1, called twice'], 'notes stay text');
     assert.strictEqual(set(code2, 'Interview Date', '', '15/10/2026').result.value, '', 'a date can be cleared');
-    set(code2, 'Interview Date', '15/10/2026', '');
+    // a member can't open the Master (its Settings tab holds TIMEZONE): a date still saves, on the binome sheet's timezone
+    m.run('var __sobm = SpreadsheetApp.openById, __sga = SpreadsheetApp.getActive; SpreadsheetApp.getActive = () => null; SpreadsheetApp.openById = id => { if (id === __props.MASTER_ID) throw new Error("Exception: You do not have permission to access the requested document."); return __sobm.call(SpreadsheetApp, id); }; _settings = null');
+    assert.strictEqual(set(code2, 'Interview Date', '15/10/2026', '').result.value, '15/10/2026', 'no Master read for a date');
+    m.run('SpreadsheetApp.openById = __sobm; SpreadsheetApp.getActive = __sga');
 
     // refused, and nothing written
     const before = sheet();

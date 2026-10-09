@@ -10,10 +10,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { useConfirm } from "@/lib/vic/confirm"
 import { SHEET_LABEL, STAGES, STATUS_COLOR, STATUS_LABEL, cellText, sheetTime } from "@/lib/vic/format"
 import { GOLD_KEYS, type Candidate, type GoldKey, type SheetKey } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
-import { GoldField } from "./gold-fields"
+import { GoldField, GoldForm } from "./gold-fields"
 
 const STATUS_ORDER: Record<string, number> = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
 
@@ -239,8 +240,28 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
   }, [candidate, stillHere])
   const c = candidate ?? (stillHere ? shown : null)
 
+  // closing with unsaved fields asks first: they would be lost
+  const confirm = useConfirm()
+  const unsaved = React.useRef(0)
+  const onDirty = React.useCallback((n: number) => void (unsaved.current = n), [])
+  async function close() {
+    const n = unsaved.current
+    if (
+      n &&
+      !(await confirm({
+        title: "Discard unsaved changes?",
+        body: <p>{n > 1 ? `${n} fields you changed aren't` : "A field you changed isn't"} saved to your sheet yet. Close anyway and lose them?</p>,
+        okLabel: "Discard changes",
+        danger: true,
+      }))
+    )
+      return
+    unsaved.current = 0
+    onClose()
+  }
+
   return (
-    <Sheet open={!!candidate} onOpenChange={(o) => !o && onClose()}>
+    <Sheet open={!!candidate} onOpenChange={(o) => !o && close()}>
       <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-lg">
         {c && (
           <>
@@ -251,29 +272,23 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   {c.Status ? <StatusDot status={c.Status} /> : <span>Status shows after the next sync</span>}
                   <span aria-hidden="true">·</span>
-                  <span>{editable ? "Your columns save straight to your binome sheet" : "As in your binome sheet"}</span>
+                  <span>{editable ? "Fill in your columns, then Save them to your binome sheet" : "As in your binome sheet"}</span>
                 </div>
               </SheetDescription>
             </SheetHeader>
             <div className="space-y-6 p-6">
               {GROUPS.map((g, gi) => {
                 const edits = editable && gi === 0
-                return (
-                  <section key={g.title} aria-label={g.title}>
-                    <h3 className="mb-2 flex items-baseline justify-between gap-2 text-sm font-bold">
-                      {g.title}
-                      {edits && <span className="text-xs font-medium text-muted-foreground">Saved one by one, as in your sheet</span>}
-                    </h3>
+                const dl = (
                     <dl className={cn("divide-y rounded-xl border", edits && "border-vic-aqua/50 bg-accent/30")}>
                       {g.keys.map((k) =>
                         edits && isGold(k) ? (
-                          // keyed by candidate: switching candidates starts each field afresh
-                          <div key={`${cellText(c.Code)}-${k}`} className="grid grid-cols-1 gap-1.5 px-3 py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3">
+                          <div key={k} className="grid grid-cols-1 gap-1.5 px-3 py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3">
                             <dt className="pt-2 font-medium text-foreground/80">
                               <label htmlFor={`gold-${cellText(c.Code)}-${k.replace(/\s+/g, "-")}`}>{SHEET_LABEL[k]}</label>
                             </dt>
                             <dd className="min-w-0">
-                              <GoldField code={cellText(c.Code)} k={k} value={c[k]} />
+                              <GoldField k={k} />
                             </dd>
                           </div>
                         ) : (
@@ -286,6 +301,21 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
                         )
                       )}
                     </dl>
+                )
+                return (
+                  <section key={g.title} aria-label={g.title}>
+                    <h3 className="mb-2 flex items-baseline justify-between gap-2 text-sm font-bold">
+                      {g.title}
+                      {edits && <span className="text-xs font-medium text-muted-foreground">Written to your sheet when you press Save</span>}
+                    </h3>
+                    {edits ? (
+                      // keyed by candidate: switching candidates starts the form afresh
+                      <GoldForm key={cellText(c.Code)} code={cellText(c.Code)} candidate={c} onDirty={onDirty}>
+                        {dl}
+                      </GoldForm>
+                    ) : (
+                      dl
+                    )}
                   </section>
                 )
               })}
