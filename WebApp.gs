@@ -247,7 +247,9 @@ function memberValue_(field, value, tz) {
       throw new Error('Interview Done must be ticked or not.');
     case 'Interview Date': {
       if (!s) return '';
-      const at = /^\d{2}\/\d{2}\/\d{4}$/.test(s) ? buildInterviewAt(s, '00:00', Utilities.formatDate(new Date(), tz, 'XXX')) : null;
+      // midnight at today's offset, then again at that day's own offset (a daylight-saving zone: they differ for half the year)
+      const off = d => Utilities.formatDate(d, tz, 'XXX'), guess = /^\d{2}\/\d{2}\/\d{4}$/.test(s) ? buildInterviewAt(s, '00:00', off(new Date())) : null;
+      const at = guess instanceof Date ? buildInterviewAt(s, '00:00', off(guess)) : guess;
       if (!(at instanceof Date) || Utilities.formatDate(at, tz, 'dd/MM/yyyy') !== s) throw new Error('Interview Day must be a real date, dd/MM/yyyy.'); // 31/02 rolls over
       return at;
     }

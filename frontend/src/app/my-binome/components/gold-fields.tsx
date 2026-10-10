@@ -141,7 +141,8 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
     code,
     fields,
     saving,
-    setDraft: (k, d) => put(k, { draft: d }),
+    // editing clears that field's "Not saved" (it is about the old value); a conflict stays until Keep theirs / Use mine
+    setDraft: (k, d) => setFields((cur) => ({ ...cur, [k]: { ...cur[k], draft: d, phase: cur[k].phase.s === "error" ? { s: "idle" } : cur[k].phase } })),
     revert: (k) => setFields((cur) => ({ ...cur, [k]: { ...cur[k], draft: toDraft(k, cur[k].base), phase: { s: "idle" } } })),
     useMine: (k) => put(k, { phase: { s: "idle" } }), // the next Save writes the draft over theirs
     saveAll,
