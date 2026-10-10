@@ -224,8 +224,9 @@ function binomeAccessCore_(code, level, by) {
 /* ---------- members edit their own binome sheet (load-test task 8) ---------- */
 
 /** A member's value for one gold column, checked like the sheet's own validations (a script write skips them). Returns what to
- *  write: a Date for Interview Date (lands as a real date whatever the sheet's locale), a number or '' for Rating. */
-function memberValue_(field, value) {
+ *  write: a Date for Interview Date (lands as a real date whatever the sheet's locale), a number or '' for Rating.
+ *  tz = the binome sheet's own timezone: a member can't open the Master, so S_() (TIMEZONE) is out of reach here. */
+function memberValue_(field, value, tz) {
   const raw = value === null || value === undefined ? '' : value, s = String(raw).trim();
   switch (field) {
     case 'Contacted':
@@ -246,8 +247,10 @@ function memberValue_(field, value) {
       throw new Error('Interview Done must be ticked or not.');
     case 'Interview Date': {
       if (!s) return '';
-      const at = /^\d{2}\/\d{2}\/\d{4}$/.test(s) ? buildInterviewAt(s, '00:00', tzOffset_()) : null;
-      if (!(at instanceof Date) || fmt_(at, 'dd/MM/yyyy') !== s) throw new Error('Interview Day must be a real date, dd/MM/yyyy.'); // 31/02 rolls over
+      // midnight at today's offset, then again at that day's own offset (a daylight-saving zone: they differ for half the year)
+      const off = d => Utilities.formatDate(d, tz, 'XXX'), guess = /^\d{2}\/\d{2}\/\d{4}$/.test(s) ? buildInterviewAt(s, '00:00', off(new Date())) : null;
+      const at = guess instanceof Date ? buildInterviewAt(s, '00:00', off(guess)) : guess;
+      if (!(at instanceof Date) || Utilities.formatDate(at, tz, 'dd/MM/yyyy') !== s) throw new Error('Interview Day must be a real date, dd/MM/yyyy.'); // 31/02 rolls over
       return at;
     }
     case 'Interview Time':
@@ -285,10 +288,10 @@ function memberSet_(a, args) {
   if (!a.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
   const m = a.m, code = String(args.code || '').trim(), field = String(args.field || '');
   if (BF_EDITABLE.indexOf(field) < 0) throw new Error('Not allowed');
-  const value = memberValue_(field, args.value);
-  let sh = null;
-  try { sh = m.f ? SpreadsheetApp.openById(m.f).getSheets()[0] : null; } catch (e) { /* not shared with this account */ }
-  if (!sh) throw new Error("Your binome sheet isn't shared with you yet.");
+  let file = null;
+  try { file = m.f ? SpreadsheetApp.openById(m.f) : null; } catch (e) { /* not shared with this account */ }
+  if (!file) throw new Error("Your binome sheet isn't shared with you yet.");
+  const sh = file.getSheets()[0], value = memberValue_(field, args.value, file.getSpreadsheetTimeZone());
   const lock = memberLock_();
   if (!lock.tryLock(10000)) throw new Error('BUSY: Your sheet is busy with another edit. Nothing was changed: try again.');
   try {

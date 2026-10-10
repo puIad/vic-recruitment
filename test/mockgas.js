@@ -120,7 +120,7 @@ MockSS.prototype = {
   deleteSheet(s) { this.sheets = this.sheets.filter(x => x !== s); },
   getActiveSheet() { return this.active; }, setActiveSheet(s) { this.active = s; return s; },
   moveActiveSheet(i) { this.sheets = this.sheets.filter(x => x !== this.active); this.sheets.splice(i - 1, 0, this.active); },
-  setSpreadsheetTimeZone() { }, setSpreadsheetLocale() { }, toast(m) { __uiLog.push('TOAST: ' + m); },
+  setSpreadsheetTimeZone() { }, getSpreadsheetTimeZone() { return 'Africa/Algiers'; }, setSpreadsheetLocale() { }, toast(m) { __uiLog.push('TOAST: ' + m); },
   addEditor(e) { __files[this.id].editors.push(e); return this; },
   getEditors() { return __files[this.id].editors.map(e => ({ getEmail: () => e })); },
   getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; },

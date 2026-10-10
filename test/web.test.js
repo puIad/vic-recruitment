@@ -717,7 +717,18 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     assert.strictEqual(set(code2, 'Notes', '=1+1, called twice', c0.Notes).result.value, '=1+1, called twice');
     assert.deepStrictEqual(JSON.parse(cell(code2, 'Notes')), ['=1+1, called twice', '=1+1, called twice'], 'notes stay text');
     assert.strictEqual(set(code2, 'Interview Date', '', '15/10/2026').result.value, '', 'a date can be cleared');
-    set(code2, 'Interview Date', '15/10/2026', '');
+    // a member can't open the Master (its Settings tab holds TIMEZONE): a date still saves, on the binome sheet's timezone
+    m.run('var __sobm = SpreadsheetApp.openById, __sga = SpreadsheetApp.getActive; SpreadsheetApp.getActive = () => null; SpreadsheetApp.openById = id => { if (id === __props.MASTER_ID) throw new Error("Exception: You do not have permission to access the requested document."); return __sobm.call(SpreadsheetApp, id); }; _settings = null');
+    assert.strictEqual(set(code2, 'Interview Date', '15/10/2026', '').result.value, '15/10/2026', 'no Master read for a date');
+    m.run('SpreadsheetApp.openById = __sobm; SpreadsheetApp.getActive = __sga');
+    // a binome sheet in a daylight-saving zone: a day on either side of the change is still that day's local midnight
+    m.run(`var __ufd = Utilities.formatDate; Utilities.formatDate = (d, tz, p) => {
+      const o = {}; new Intl.DateTimeFormat('en-GB', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', timeZoneName: 'longOffset' })
+        .formatToParts(d).forEach(x => { o[x.type] = x.value; });
+      return p === 'XXX' ? (o.timeZoneName.replace('GMT', '') || '+00:00') : o.day + '/' + o.month + '/' + o.year; }`);
+    assert.deepStrictEqual(JSON.parse(m.run(`JSON.stringify(['15/01/2027', '15/07/2027'].map(s => memberValue_('Interview Date', s, 'Europe/Paris').toISOString()))`)),
+      ['2027-01-14T23:00:00.000Z', '2027-07-14T22:00:00.000Z'], 'winter +01:00 and summer +02:00, whatever today is');
+    m.run('Utilities.formatDate = __ufd');
 
     // refused, and nothing written
     const before = sheet();
