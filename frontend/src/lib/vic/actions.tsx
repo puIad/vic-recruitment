@@ -4,6 +4,8 @@ import { useConfirm } from "./confirm"
 import { useVic } from "./store"
 import { signInUrl } from "./api"
 import { MemberName, MemberNames } from "@/components/member-name"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import type {
   Alert,
   ChangeCheck,
@@ -16,6 +18,7 @@ import type {
   LockCheck,
   NewBinomeCheck,
   Person,
+  RejectionsPreview,
 } from "./types"
 
 /** The old dashboard's ACTIONS table, carried over one for one: same script actions, same previews, same confirmations. */
@@ -51,6 +54,44 @@ export interface CoverArgs {
   inName: string
   outEmail: string
   reason: string
+}
+
+/** The rejection email before it goes: who gets it, and its text (edits are written into `draft`). */
+function RejectionEditor({ p, draft }: { p: RejectionsPreview; draft: { subject: string; body: string } }) {
+  return (
+    <div className="space-y-4">
+      {p.testMode && (
+        <p className="rounded-xl bg-warning-soft px-3 py-2 text-warning">
+          <b>Test mode is on:</b> one copy goes to you, nobody else is emailed and nothing is marked as sent.
+        </p>
+      )}
+      <p>
+        <b className="num">{p.count}</b> applicant{p.count === 1 ? "" : "s"} declined at screening and not emailed yet
+        {p.sample.length > 0 && (
+          <span className="text-muted-foreground">
+            {": "}
+            {p.sample.join(", ")}
+            {p.count > p.sample.length ? `, and ${p.count - p.sample.length} more` : ""}
+          </span>
+        )}
+        . VIC members are never in this list.
+      </p>
+      <div className="space-y-2 rounded-2xl border bg-muted/40 p-3">
+        <Input aria-label="Subject of the rejection email" defaultValue={draft.subject} onChange={(e) => (draft.subject = e.target.value)} className="bg-background font-semibold" />
+        <Textarea
+          aria-label="Text of the rejection email"
+          defaultValue={draft.body}
+          rows={Math.min(14, draft.body.split("\n").length + 2)}
+          onChange={(e) => (draft.body = e.target.value)}
+          className="bg-background leading-relaxed"
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        <b>{"{first}"}</b> becomes each applicant's first name. Sent from your account as “VIC Recruitment Bot”, one email each, and marked in the Screening column so pressing Send again only reaches those not
+        emailed yet.
+      </p>
+    </div>
+  )
 }
 
 /** The script checks this phrase too; keep both in step (Team.gs RESET_PHRASE). */
@@ -456,6 +497,53 @@ export function useActions() {
         if (ok) await go("resetBinomes", { phrase: RESET_PHRASE }, "Reset binomes", true)
         after()
       },
+      /** Declined applications back in: each one is placed in a binome as for a new registration. */
+      async restore(code: string, name: string) {
+        const ok = await confirm({
+          title: `Restore ${name || code}?`,
+          body: (
+            <p>
+              <b>{code}</b> is placed in a binome right away and the binome is emailed if new-interviewee emails are on. Screening never holds or declines them again.
+            </p>
+          ),
+          okLabel: "Restore",
+        })
+        if (!ok) return false
+        const out = await go("restore", { codes: [code] }, `Restore ${code}`)
+        after()
+        return !!out
+      },
+
+      /** Settings › Screening: read the VIC members sheet now instead of waiting for the 30-minute refresh. */
+      async membersRefresh() {
+        const out = await go("membersRefresh", {}, "Read the members sheet")
+        after()
+        return !!out
+      },
+
+      /** Maintenance › Send rejections…: preview who gets it and the text, then send (admins only while test mode is on). */
+      async rejections() {
+        const pre = await go<RejectionsPreview>("rejections", {}, "Prepare rejections")
+        const p = pre?.result
+        if (!p) return false
+        if (!p.count) {
+          await confirm({ title: "Nobody to email", body: <p>No applicant declined at screening is waiting for the rejection email. VIC members never get it.</p>, okLabel: "OK" })
+          return false
+        }
+        const draft = { subject: p.subject, body: p.body }
+        const ok = await confirm({
+          title: p.testMode ? "Send a test rejection to yourself" : `Email ${p.count} declined applicant${p.count === 1 ? "" : "s"}`,
+          wide: true,
+          body: <RejectionEditor p={p} draft={draft} />,
+          okLabel: p.testMode ? "Send me the test" : `Send ${p.count} email${p.count === 1 ? "" : "s"}`,
+          danger: !p.testMode,
+        })
+        if (!ok) return false
+        const out = await go("rejections", { send: true, subject: draft.subject, body: draft.body, budgetMs: 200000 }, "Send rejections", true)
+        after()
+        return !!out
+      },
+
       async setup() {
         const ok = await confirm({
           title: "Run setup again?",

@@ -1,9 +1,10 @@
-import { ArrowUpRight, Inbox } from "lucide-react"
+import { ArrowRight, ArrowUpRight, Inbox, ShieldQuestionMark } from "lucide-react"
+import { Link } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { STAGES, pct } from "@/lib/vic/format"
+import { STAGES, isOut, pct } from "@/lib/vic/format"
 import { cn } from "@/lib/utils"
 import { DotGrid } from "@/components/brand/motifs"
 import { useVic } from "@/lib/vic/store"
@@ -15,10 +16,12 @@ export function PipelineCard() {
 
   const st = s.counts.byStatus
   const n = (k: string) => st[k] || 0
-  const registered = Object.keys(st).reduce((t, k) => t + (k === "DUPLICATE" ? 0 : st[k]), 0)
+  const registered = Object.keys(st).reduce((t, k) => t + (isOut(k) ? 0 : st[k]), 0)
   const contacted = n("CONTACTED") + n("SCHEDULED") + n("INTERVIEWED")
   const scheduled = n("SCHEDULED") + n("INTERVIEWED")
-  const pending = registered - n("UNASSIGNED") - n("WITHDRAWN")
+  const pending = registered - n("UNASSIGNED") - n("WITHDRAWN") - n("HELD")
+  const held = n("HELD")
+  const review = s.alerts.find((a) => a.type === "NEEDS_REVIEW")
   const total = STAGES.reduce((t, x) => t + n(x.key), 0)
   const deps = Object.entries(s.counts.byDep)
 
@@ -48,6 +51,29 @@ export function PipelineCard() {
             ))}
           </ul>
         </div>
+
+        {(held > 0 || n("DECLINED") > 0) && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-warning/30 bg-warning-soft/50 px-4 py-3">
+            <ShieldQuestionMark className="size-5 shrink-0 text-warning" aria-hidden="true" />
+            <p className="min-w-0 flex-1 text-sm">
+              {held > 0 ? (
+                <>
+                  <b className="num">{held}</b> waiting for review: screening held {held > 1 ? "them" : "it"} for a person to read before any binome sees {held > 1 ? "them" : "it"}.
+                </>
+              ) : (
+                "Nothing waiting for review."
+              )}
+              {n("DECLINED") > 0 && <span className="text-muted-foreground"> {n("DECLINED")} declined, not counted.</span>}
+            </p>
+            {held > 0 && (
+              <Button asChild size="sm" variant="outline" className="bg-background">
+                <Link to={review ? `/alerts?id=${encodeURIComponent(review.id)}` : "/alerts"}>
+                  Review <ArrowRight />
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
 
         {total ? (
           <div

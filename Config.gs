@@ -52,7 +52,7 @@ const SETTINGS_DEFAULTS = [
   ['TRUSTED_BACKUPS', '', 'Emails (comma-separated) of people who often replace interviewers, e.g. the HR head: their backup interviews are logged as INFO instead of emailed'],
   ['SYNC_EVERY_MINUTES', 15, '1, 5, 10, 15 or 30: how often the binome files are read (re-run setup after changing)'],
   ['DIGEST_HOUR', 8, 'Hour (0-23) of the daily digest email (re-run setup after changing)'],
-  ['SCREENING', false, 'TRUE = hold low-effort applications for an admin and decline VIC members silently (Settings › Screening)'],
+  ['SCREENING', false, 'TRUE = hold low-effort applications for an admin to review and decline VIC members silently; FALSE = every application goes to a binome as before'],
   ['SCREEN_HOLD_AT', 50, 'Risk score (0-100) at or above which a new application waits for an admin instead of going to a binome'],
   ['VIC_MEMBERS_SHEET', '', 'Link of the Google Sheet listing the VIC members (a column whose header contains "mail"): their applications are declined silently'],
 ];

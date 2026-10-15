@@ -1,4 +1,4 @@
-import { Check, FileSpreadsheet, Mail, Play, RotateCcw, Send, Share2, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react"
+import { Check, FileSpreadsheet, Mail, MailX, Play, RotateCcw, Send, Share2, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
@@ -21,7 +21,7 @@ interface Tool {
 
 /** The old Maintenance tools, one row each. Setup installs triggers, so only the owner sees it (the script enforces it too). */
 export default function MaintenancePage() {
-  const { integrity, digest, reshare, setup, resetBinomes } = useActions()
+  const { integrity, digest, reshare, setup, resetBinomes, rejections } = useActions()
   const busy = useVic((s) => s.busy)
   const running = useVic((s) => s.busyAction)
   const owner = useVic((s) => !!s.access?.owner)
@@ -31,6 +31,7 @@ export default function MaintenancePage() {
     { action: "integrity", icon: FileSpreadsheet, button: Check, title: "Check integrity", label: "Check", run: integrity, text: "Syncs, then opens every binome sheet: missing or extra rows, moved tabs, lost protection, who can edit. Also runs on Sync now and with the digest. It stops in time for the web limit and resumes where it stopped." },
     { action: "digest", icon: Mail, button: Send, title: "Send me the digest now", label: "Send", run: digest, text: "Syncs, then emails the admins the daily summary." },
     { action: "reshare", icon: Share2, button: Share2, title: "Re-share binome sheets", label: "Re-share", run: reshare, text: "Adds current members as editors after you swap someone. Refuses while test mode is on." },
+    { action: "rejections", icon: MailX, button: Send, title: "Send rejections", label: "Send…", run: rejections, text: "Once recruitment closes: one polite email to each applicant declined at screening (never to VIC members), with the text shown first so you can edit it. Each one is marked as sent, so pressing it again reaches only those not emailed yet. Never automatic." },
     { action: "setup", icon: SlidersHorizontal, button: Play, title: "Run setup again", label: "Run", run: setup, ownerOnly: true, text: "Safe to repeat: re-checks tabs, form links and triggers, and re-applies the sync interval and digest hour after you change them in Settings." },
   ]
 

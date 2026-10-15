@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
-import { BellOff, CheckCheck, CircleCheck, Search, Send, Wrench, X } from "lucide-react"
+import { BellOff, CheckCheck, CircleCheck, Search, Send, ThumbsDown, ThumbsUp, Wrench, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { RingSlot } from "@/components/brand/motifs"
@@ -20,7 +20,7 @@ import { useVic } from "@/lib/vic/store"
 import type { Alert, HeldAlert } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { AlertDetail } from "./components/alert-detail"
-import { nudgeable, RowQuickButton, SnoozeMenu, UnmuteButton } from "./components/quick-actions"
+import { nudgeable, REVIEW, RowQuickButton, SnoozeMenu, UnmuteButton } from "./components/quick-actions"
 
 type Filter = "ALL" | "HIGH" | "MEDIUM" | "INFO" | "EDITS" | "MUTED"
 const NONE: Alert[] = []
@@ -110,6 +110,8 @@ export default function AlertsPage() {
   // bulk quick actions: only offered when every selected alert takes them
   const canNudge = picked.length > 0 && picked.every(nudgeable)
   const canRepair = picked.length > 0 && picked.every((a) => !!repairOf(a))
+  const canDecline = picked.length > 0 && picked.every((a) => REVIEW.includes(a.type))
+  const canApprove = canDecline && picked.every((a) => a.type === "NEEDS_REVIEW")
   const clear = () => setSelected(new Set())
 
   const list = (
@@ -172,6 +174,16 @@ export default function AlertsPage() {
           {canRepair && (
             <Button size="sm" variant="outline" disabled={busy} onClick={async () => { if (await quick.repair(picked)) clear() }} title="Let the script repair every selected sheet problem">
               <Wrench /> Repair
+            </Button>
+          )}
+          {canApprove && (
+            <Button size="sm" variant="outline" disabled={busy} onClick={async () => { if (await quick.approve(picked)) clear() }} title="Send every selected application to a binome">
+              <ThumbsUp /> Approve
+            </Button>
+          )}
+          {canDecline && (
+            <Button size="sm" variant="outline" disabled={busy} onClick={async () => { if (await quick.decline(picked)) clear() }} title="Keep every selected application out">
+              <ThumbsDown /> Decline
             </Button>
           )}
           {picked.length > 0 && <SnoozeMenu alerts={picked} onDone={clear} />}

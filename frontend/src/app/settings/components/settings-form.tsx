@@ -5,13 +5,16 @@ import {
   ClipboardList,
   Clock,
   FlaskConical,
+  Gauge,
   Mail,
   Play,
   RefreshCw,
   Repeat,
   Send,
   Share2,
+  ShieldCheck,
   SlidersHorizontal,
+  Table2,
   UserPlus,
   Users,
   type LucideIcon,
@@ -48,6 +51,9 @@ const SETTING_UI: Record<string, [string, LucideIcon]> = {
   TRUSTED_BACKUPS: ["Trusted backup interviewers", Users],
   SYNC_EVERY_MINUTES: ["Auto-sync every (minutes)", RefreshCw],
   DIGEST_HOUR: ["Daily digest hour (0–23)", Repeat],
+  SCREENING: ["Screening", ShieldCheck],
+  SCREEN_HOLD_AT: ["Hold for review from risk", Gauge],
+  VIC_MEMBERS_SHEET: ["VIC members sheet", Table2],
 }
 
 export interface SettingsGroup {
@@ -184,10 +190,16 @@ export function SettingsPage({ group, extra }: { group: SettingsGroup; extra?: R
 const GROUP_KEYS = {
   timing: ["HOURS_NOT_CONTACTED", "HOURS_NO_INTERVIEW_DATE", "HOURS_AFTER_INTERVIEW_NO_FORM", "INSTANT_EMAIL_MIN_SEVERITY"],
   sharing: ["TEST_MODE", "SHARE_FILES_WITH_BINOME", "NOTIFY_BINOME_ON_ALERT", "NOTIFY_BINOME_ON_NEW_INTERVIEWEE"],
+  screening: ["SCREENING", "SCREEN_HOLD_AT", "VIC_MEMBERS_SHEET"],
   general: ["ADMIN_EMAIL", "TIMEZONE", "ASSIGNMENTS_OPEN", "BALANCE_BY", "ALL_BINOME_WEIGHT", "EMAIL_DOMAIN", "TRUSTED_BACKUPS", "SYNC_EVERY_MINUTES", "DIGEST_HOUR"],
 }
 
-export const GROUPS: Record<"general" | "timing" | "sharing", SettingsGroup> = {
+export const GROUPS: Record<"general" | "timing" | "sharing" | "screening", SettingsGroup> = {
+  screening: {
+    title: "Screening",
+    description: "Hold low-effort applications for a person to read before any binome sees them, and decline VIC members without telling them.",
+    keys: GROUP_KEYS.screening,
+  },
   general: { title: "General", description: "Who the admins are, how candidates are assigned, and how often the script syncs.", keys: GROUP_KEYS.general, rest: true },
   timing: { title: "Alerts and timing", description: "How long a candidate may wait before the script raises an alert, and how loudly.", keys: GROUP_KEYS.timing },
   sharing: { title: "Sharing and email", description: "Test mode, whether binome sheets are shared, and which emails go out.", keys: GROUP_KEYS.sharing },

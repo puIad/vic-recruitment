@@ -71,6 +71,7 @@ export const navGroups: NavGroup[] = [
           { title: "General", url: "/settings/general" },
           { title: "Alerts and timing", url: "/settings/timing" },
           { title: "Sharing and email", url: "/settings/sharing" },
+          { title: "Screening", url: "/settings/screening" },
           { title: "Connections", url: "/settings/connections" },
           { title: "Account", url: "/settings/account" },
           { title: "Appearance", url: "/settings/appearance" },

@@ -12,6 +12,9 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+  TriangleAlert,
   Undo2,
   UserPlus,
   UserX,
@@ -35,7 +38,7 @@ import { useActions } from "@/lib/vic/actions"
 import { REPAIR_LABEL, repairOf, useQuick, type LocateTarget, type SnoozeFor } from "@/lib/vic/quick"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
-import type { Alert, FormView, QuickInfo, RegView } from "@/lib/vic/types"
+import type { Alert, AppView, FormView, QuickInfo, RegView } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { MemberName } from "@/components/member-name"
 
@@ -45,6 +48,8 @@ export const TIMING = ["NOT_CONTACTED", "NO_DATE", "OVERDUE", "BAD_DATE"]
 const TYPO = ["BAD_PHONE", "BAD_EMAIL", "BAD_BIRTHDATE", "MISSING_NAME"]
 const ROUTING = ["INVALID_CHOICE", "SAME_CHOICES", "NO_BINOME"]
 const WHO = ["BINOME_MISMATCH", "BACKUP_INTERVIEWER", "NOT_ASSIGNED"]
+/** Screening: an application on hold, or a VIC member who already has a binome. */
+export const REVIEW = ["NEEDS_REVIEW", "VIC_MEMBER"]
 const DEPTS = ["IT", "COMM", "FLER", "HR"]
 const CONTACT_OPTIONS = ["Not yet", "Yes", "No answer", "Withdrew"]
 
@@ -65,6 +70,7 @@ export function rowAction(a: Alert): { label: string; icon: typeof Mail; kind: "
   if (TYPO.includes(a.type) || ROUTING.includes(a.type) || a.type === "UNKNOWN_INTERVIEWEE" || a.type === "EMAIL_MISMATCH" || a.type === "NOT_ASSIGNED" || (a.type === "ODD_VALUE" && a.q.kind === "iv"))
     return { label: "Fix", icon: Sparkles, kind: "open" }
   if (a.type === "DUPLICATE_REGISTRATION" || a.type === "DUPLICATE_INTERVIEW") return { label: "Compare", icon: Sparkles, kind: "open" }
+  if (REVIEW.includes(a.type)) return { label: "Review", icon: Sparkles, kind: "open" }
   return null
 }
 
@@ -264,7 +270,7 @@ function RoutingPanel({ a, v }: { a: Alert; v: RegView }) {
   const valid = (d: string) => (DEPTS.includes(d) ? d : "")
   const [c1, setC1] = React.useState(valid(v.c1))
   const [c2, setC2] = React.useState(valid(v.c2))
-  const waiting = !v.binome && v.status !== "DUPLICATE"
+  const waiting = !v.binome && v.status === "UNASSIGNED" // not on hold, not out
   const values: Record<string, string> = {}
   if (c1 && c1 !== v.c1) values["1st Choice"] = c1
   if (c2 && c2 !== v.c2) values["2nd Choice"] = c2
@@ -492,6 +498,75 @@ function OddPanel({ a, q }: { a: Alert; q: Q<"iv"> }) {
   )
 }
 
+/** Screening's note split in two: why it was held, then what admins decided ("Approved by …", "Rejection sent …"). */
+function splitScreening(s: string) {
+  const parts = s.replace(/^Held: /, "").split("; ").map((p) => p.trim()).filter(Boolean)
+  const decision = (p: string) => /^(Approved|Declined|Restored|VIC member|Rejection sent)\b/.test(p)
+  return { reasons: parts.filter((p) => !decision(p)), decisions: parts.filter(decision) }
+}
+
+function RiskMeter({ risk, holdAt }: { risk: number; holdAt: number }) {
+  const held = risk >= holdAt
+  return (
+    <div className="flex min-w-40 flex-1 items-center gap-3 sm:max-w-64" title={`Held at ${holdAt} or more`}>
+      <span className={cn("num shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold", held ? "bg-warning-soft text-warning" : "bg-secondary text-muted-foreground")}>
+        Risk {risk}
+      </span>
+      <span className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+        <span className={cn("absolute inset-y-0 left-0 rounded-full", held ? "bg-vic-orange" : "bg-primary/50")} style={{ width: `${Math.max(4, Math.min(100, risk))}%` }} />
+        <span className="absolute inset-y-0 w-0.5 bg-foreground/40" style={{ left: `${holdAt}%` }} />
+      </span>
+    </div>
+  )
+}
+
+/** A held application as the admin reads it: the score and its reasons, then every free-text answer, the flagged ones marked. */
+function ReviewPanel({ v, app }: { v: RegView; app?: AppView }) {
+  const holdAt = useVic((s) => s.state?.screening?.holdAt ?? 50)
+  if (!app) return <Well><Who v={v} /></Well>
+  const { reasons, decisions } = splitScreening(app.screening)
+  const flagged = (label: string) => reasons.some((r) => r.startsWith(label + ":"))
+  const dept = v.c1 || "this department"
+  const answers: [string, string, boolean][] = [
+    ["Why VIC", app.whyVic, flagged("Why VIC")],
+    [`Why ${dept}`, app.motivation, flagged(`Why ${dept}`)],
+    ["Department questions", app.deptQuestions, false],
+    ["Other clubs", app.clubs, false],
+    ["Anything to add", app.anything, false],
+  ]
+  return (
+    <Well>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="min-w-0 flex-1 basis-56">
+          <Who v={v} />
+        </div>
+        {app.risk !== null && <RiskMeter risk={app.risk} holdAt={holdAt} />}
+      </div>
+      {reasons.length > 0 && (
+        <ul className="space-y-1.5" aria-label="Why it was held">
+          {reasons.map((r) => (
+            <li key={r} className="flex items-start gap-2 text-sm">
+              <TriangleAlert className="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden="true" />
+              <span className="[overflow-wrap:anywhere]">{r}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <dl className="space-y-2 border-t pt-3">
+        {answers.map(([label, text, bad]) => (
+          <div key={label} className={cn("rounded-xl border bg-background px-3 py-2", bad && "border-warning/50 bg-warning-soft/40")}>
+            <dt className={cn("text-xs font-bold", bad ? "text-warning" : "text-muted-foreground")}>{label}</dt>
+            <dd className={cn("mt-0.5 whitespace-pre-line text-sm leading-relaxed [overflow-wrap:anywhere]", !text.trim() && "italic text-muted-foreground")}>
+              {text.trim() || "No answer"}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {decisions.length > 0 && <p className="text-xs text-muted-foreground">{decisions.join(" · ")}</p>}
+    </Well>
+  )
+}
+
 /* ---------- the section in the detail pane ---------- */
 
 interface Link {
@@ -546,6 +621,18 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     hint = "Compare the two submissions, then decide which answers stand."
     panel = <DuplicatePanel a={a} v={reg.iv} old={reg.old} />
     links.push({ key: "form", label: "The new form response", target: "form" })
+  } else if (reg && a.type === "NEEDS_REVIEW") {
+    hint = "Screening held this application. Read the answers, then send it to a binome or keep it out."
+    panel = <ReviewPanel key={a.id} v={reg.iv} app={reg.app} />
+    btn("approve", ThumbsUp, "Approve", () => quick.approve([a]), "default")
+    btn("decline", ThumbsDown, "Decline", () => quick.decline([a]))
+    links.push({ key: "form", label: "Their form response", target: "form" }, { key: "iv", label: "Interviewees row", target: "iv" })
+  } else if (reg && a.type === "VIC_MEMBER") {
+    hint = "They're on the VIC members list but already have a binome. Decline takes them out of its sheet; mute the alert to keep them."
+    panel = <ReviewPanel key={a.id} v={reg.iv} app={reg.app} />
+    btn("decline", ThumbsDown, "Decline", () => quick.decline([a]), "default")
+    btn("keep", Check, "Keep them", () => quick.mute([a.id]))
+    links.push({ key: "iv", label: "Interviewees row", target: "iv" })
   } else if (TIMING.includes(a.type) && a.code) {
     hint = "Remind the binome, or hand the candidate to someone else."
     if (a.binome) btn("nudge", Send, "Nudge the binome", () => quick.mail([a.id], "binome"), "default")
