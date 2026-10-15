@@ -1,6 +1,6 @@
 # Plans: pairing, screening, department change
 
-The owner's requests of 2026-10-15. Pairing (section 1) is built and in review (its Notes); the other two are not
+The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); the other two are not
 built yet. Unlike [plans.md](plans.md), the first two are needed
 before launch.
 
@@ -123,6 +123,10 @@ A **Pairing** panel on the Binomes page, shown while nothing is locked. Once bin
   - Deploy: merge, `npm run deploy`, then run Setup once for the checkbox rule, then Vercel. Run Setup before the
     rollout's Reset and Import: Setup re-inserts the Exclude checkboxes, which unticks that column (it has always done
     this; the Import that follows rewrites the column anyway).
+- **Shipped 2026-10-15:** merged as `87a7871`, `npm run deploy` (all suites green; web app @73, API @74; 18 files pushed,
+  the live project pulled back afterwards: all 18 equal to `main`). Vercel production built from `87a7871` (the real
+  build: `npm install` 316 packages, `tsc -b && vite build`; "Deployment completed"). Still to do (owner): Setup as
+  `vic.rh` from the Master's menu, then the rollout above.
 
 ## 2. Screening: hold low-effort applications, decline VIC members
 

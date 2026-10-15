@@ -11,7 +11,12 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `6b690e5` (2026-10-07, [#30](https://github.com/puIad/vic-recruitment-2026/pull/30)): a member gets the dashboard
+  Latest UI: `87a7871` (2026-10-15, [#32](https://github.com/puIad/vic-recruitment-2026/pull/32)): the **Pairing** panel on the
+  Binomes page while nothing is locked (pair two by hand, remove, Draw the rest, Redraw all), an Experience column and filter on
+  the Team page, the Launch card's step 2 "Pair the binomes". Vercel production built from `87a7871` (the real build: `npm
+  install` 316 packages, `tsc -b && vite build`; "Deployment completed"). Before that `8f86b70` (2026-10-10,
+  [#31](https://github.com/puIad/vic-recruitment-2026/pull/31)): My binome saves every changed field with one Save.
+  Before that `6b690e5` (2026-10-07, [#30](https://github.com/puIad/vic-recruitment-2026/pull/30)): a member gets the dashboard
   only while they can open their binome sheet ("Binome B.xx isn't open yet" otherwise; view = read-only, edit = fills in);
   admins open a binome from Binomes › ⋯ › **Sheet & dashboard access…** (No access / View / Edit for both members, no email,
   works in TEST_MODE), shown as an "Open · view / edit" badge. Before that `9f20f26` (2026-10-07, [#29](https://github.com/puIad/vic-recruitment-2026/pull/29)): members fill in their
@@ -21,7 +26,15 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@69**, API **@70**, deployed from `6b690e5` (2026-10-07,
+- **Script, latest:** web app **@73**, API **@74**, deployed from `87a7871` (2026-10-15,
+  [#32](https://github.com/puIad/vic-recruitment-2026/pull/32)): pairing with experience. Team column G **Experienced**
+  (Import ticks the 2025 team), the draw gives new members an experienced partner when there are enough, and the draft
+  actions `draftPair` / `draftUnpair` / `draft {keep}` / `teamSet`. No `API_VERSION` bump. 18 files pushed; the live project
+  pulled back afterwards: all 18 equal to `main`. **To do (owner):** run Setup once as `vic.rh` from the Master's menu (the
+  checkbox rule on column G), then the production pairing: [launch-features.md](docs/launch-features.md#rollout).
+  Versions @71 / @72 were cut after @69 / @70 without an entry here (most likely #31's deploy on 2026-10-10); this deploy
+  pushed all of `main`, so #31's Interview Day fix is live either way.
+- **Script, before that:** web app **@69**, API **@70**, deployed from `6b690e5` (2026-10-07,
   [#30](https://github.com/puIad/vic-recruitment-2026/pull/30)): the dashboard follows the binome sheet. `access_()` asks Drive
   (as the member) whether they can open their sheet: no → `NOT_SHARED`, view → read-only, edit → can fill in. New
   `webRun('binomeAccess')` sets both members' access silently through the Drive advanced service (now in the manifest, same
@@ -84,19 +97,8 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - Phases A–D, the timing and interview-form cases and the Reset were all tested live on 2026-10-03:
   [docs/history.md](docs/history.md#live-test-2026-10-03).
 
-## In review
-
-- **Pairing with experience, random or by hand** ([#32](https://github.com/puIad/vic-recruitment-2026/pull/32), launch-features.md section 1): Team
-  column Experienced (Import ticks the 2025 team), the draw gives new members an experienced partner when there are
-  enough, and a Pairing panel on the Binomes page (pair two by hand, remove, Draw the rest, Redraw all) while nothing is
-  locked. Ships as usual: merge, `npm run deploy` (no `API_VERSION` bump: fields and actions only added), run Setup once
-  (the checkbox rule), then Vercel. Then the production pairing: Reset all binomes, Import team, check the ticks, pair,
-  Lock. Details and gotchas: the section's Notes.
-- **Alert quick actions** (branch `alert-quick-actions`): a quick fix for every alert type that has one, snooze / mute,
-  emails with an editable preview, links to the exact row or cell, bulk Nudge / Repair / Snooze. Settled with the owner on
-  2026-10-04; how it works: [architecture.md](docs/architecture.md#quick-actions-alerts-page). Ships as usual: merge,
-  `npm run deploy` (new `QuickFix.gs`, no `API_VERSION` bump: the fields are only added), then Vercel. Run Setup once
-  after deploy so the Alerts tab's Status dropdown lists SNOOZED and MUTED.
+Alert quick actions ([#17](https://github.com/puIad/vic-recruitment-2026/pull/17), merged 2026-10-04, `QuickFix.gs`) are
+live; how they work: [architecture.md](docs/architecture.md#quick-actions-alerts-page). Nothing is in review.
 
 ## Next: members on the dashboard (plan of 2026-10-05)
 
@@ -113,7 +115,9 @@ Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycl
 ## Next: pairing, screening, department change (requested 2026-10-15)
 
 Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand), needed
-before the production Lock, is built and in review (above). Not built yet: screening (hold low-effort applications,
+before the production Lock, is live (@73/@74 and Vercel from `87a7871`). Owner's next steps: Setup as `vic.rh` from the
+Master's menu, then Reset all binomes, Import team, check the Experienced ticks, pair, Lock (TEST_MODE stays on). Run
+Setup before the Reset and Import: Setup re-inserts the Exclude checkboxes, which unticks that column. Not built yet: screening (hold low-effort applications,
 decline VIC members silently) before the form opens, and changing a binome's department from the dashboard. The owner answered its questions on 2026-10-15;
 screening still needs the link of the VIC members sheet.
 
