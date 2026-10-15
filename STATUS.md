@@ -108,7 +108,8 @@ Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycl
 
 Planned, not built: [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand)
 before the production Lock, screening (hold low-effort applications, decline VIC members silently) before the form
-opens, and changing a binome's department from the dashboard. Its open questions need the owner's answers first.
+opens, and changing a binome's department from the dashboard. The owner answered its questions on 2026-10-15;
+screening still needs the link of the VIC members sheet.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
