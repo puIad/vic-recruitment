@@ -35,10 +35,21 @@ st = call('webState');
 assert.deepStrictEqual(st.alerts.filter(a => a.type === 'MANUAL_EDIT'), [], 'reset is not a hand edit');
 assert.deepStrictEqual(st.interviewees.map(i => i.code).sort(), codes, 'same interviewees, same codes');
 
-// start over: new team, draft (no longer refused), lock; waiting interviewees are placed again
+// start over as for production: import (pre-ticked), three pairs by hand, draw the rest, lock; waiting interviewees are placed again
 call('webRun', 'importTeam', { link: '' });
-assert(/Drafted \d+ binomes/.test(call('webRun', 'draft').messages[0]));
+st = call('webState');
+assert(st.teamList.length === 13 && st.teamList.every(m => m.experienced), 'the 2025 team itself: everyone pre-ticked');
+['romaissa', 'sabrina', 'aymene', 'yasmine'].forEach(n => call('webRun', 'teamSet', { email: n + '@g.enp.edu.dz', experienced: false }));
+[['ikram', 'yasmine'], ['zineb', 'aya'], ['aymene', 'sara']].forEach(([a, b]) => call('webRun', 'draftPair', { emailA: a + '@g.enp.edu.dz', emailB: b + '@g.enp.edu.dz' }));
+assert.deepStrictEqual(call('webState').binomes.map(b => b.code + ' ' + b.tag + ' ' + b.status), ['B.01 FLER & HR DRAFT', 'B.02 COMM & HR DRAFT', 'B.03 ALL DRAFT']);
+let drew = call('webRun', 'draft', { keep: true }).messages[0];
+assert(/^Drew \d+ more binomes from the 7 free members; the 3 pairs already made stay\./.test(drew), drew);
+st = call('webState');
+const drafted = st.binomes.flatMap(b => b.people.map(p => p.email));
+assert.deepStrictEqual([drafted.length, new Set(drafted).size, st.binomes.slice(0, 3).map(b => b.people.map(p => p.email.split('@')[0]).join('+'))],
+  [13, 13, ['ikram+yasmine', 'zineb+aya', 'aymene+sara']], 'everyone drafted once, the hand-made pairs first and as made');
 call('webRun', 'lock');
 st = call('webState');
-assert(st.binomes.length > 0 && st.interviewees.filter(i => i.binome).length > 0, 'interviewees placed in the new binomes');
+assert(st.binomes.length > 3 && st.binomes.every(b => b.status === 'ACTIVE' && /\/d\//.test(b.fileUrl)), 'Lock creates every sheet');
+assert(st.interviewees.filter(i => i.binome).length > 0, 'interviewees placed in the new binomes');
 console.log('RESET OK');

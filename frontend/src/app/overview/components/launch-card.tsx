@@ -1,5 +1,6 @@
 import * as React from "react"
-import { Check, Lock, Shuffle, UserPlus } from "lucide-react"
+import { Link } from "react-router-dom"
+import { ArrowRight, Check, Lock, UserPlus, UsersRound } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,15 +9,16 @@ import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
+import { draftCounts } from "@/lib/vic/pairing"
 import { useVic } from "@/lib/vic/store"
 import { cn } from "@/lib/utils"
 
-/** Import the team, draw the binomes, lock them: the three steps that start the recruitment, in order. */
+/** Import the team, pair the binomes (Binomes › Pairing), lock them: the three steps that start the recruitment, in order. */
 export function LaunchCard() {
   const s = useVic((x) => x.state)
   const busy = useVic((x) => x.busy)
   const action = useVic((x) => x.busyAction)
-  const { importTeam, draft, lock } = useActions()
+  const { importTeam, lock } = useActions()
   const [link, setLink] = React.useState("")
   if (!s) return <Skeleton className="h-72 rounded-xl" />
 
@@ -28,15 +30,17 @@ export function LaunchCard() {
   const current = done.indexOf(false)
   const unpaired = (s.unpaired || []).length
   const running = (a: string) => busy && action === a
+  const c = draftCounts(s)
 
   const steps = [
     {
       title: "Import the team",
       icon: UserPlus,
-      text: "Reads the OT list into the Team tab: pairing group and Exclude flags.",
+      text: "Reads the OT list into the Team tab: pairing group, Exclude, and Experienced for everyone in the 2025 team.",
       chips: (
         <>
           {s.team.total ? <Badge variant="success">{s.team.total} members</Badge> : <Badge variant="outline">Team tab empty</Badge>}
+          {s.team.total > 0 && !s.locked && <Badge variant="info">{c.experienced} experienced</Badge>}
           {s.team.excluded > 0 && <Badge variant="outline">{s.team.excluded} excluded</Badge>}
           {s.team.issues > 0 && <Badge variant="warning">{s.team.issues} rows to check</Badge>}
         </>
@@ -57,26 +61,36 @@ export function LaunchCard() {
       ),
     },
     {
-      title: "Draft the binomes",
-      icon: Shuffle,
+      title: "Pair the binomes",
+      icon: UsersRound,
       text: s.locked
         ? "Closed once binomes are locked: nobody is paired automatically again. Members left without a binome are listed on the Binomes page for you to place."
-        : "Random HR + other-department pairs, written to the Binomes tab as drafts. Edit them freely, redraw any time.",
+        : "On the Binomes page: pick pairs by hand, or let the draw pair everyone still free. New members get an experienced partner when there are enough.",
       chips: s.locked ? (
         <>
-          <Badge variant="success">Drafting closed</Badge>
+          <Badge variant="success">Pairing closed</Badge>
           {unpaired > 0 && <Badge variant="warning">{unpaired} unpaired</Badge>}
         </>
       ) : drafts ? (
-        <Badge variant="warning">{drafts} drafts to review</Badge>
+        <>
+          <Badge variant="info">{drafts} draft pairs</Badge>
+          {c.free > 0 && <Badge variant="outline">{c.free} still free</Badge>}
+          {c.without > 0 && <Badge variant="warning">{c.without} without an experienced member</Badge>}
+        </>
       ) : active ? (
         <Badge variant="success">Drafts locked</Badge>
       ) : (
-        <Badge variant="outline">No drafts yet</Badge>
+        <Badge variant="outline">No pairs yet</Badge>
       ),
-      button: (
-        <Button variant={current === 1 ? "default" : "secondary"} size="sm" disabled={busy || s.locked} title={s.locked ? "Closed: binomes are locked, nobody is paired automatically any more" : undefined} onClick={() => draft(drafts)}>
-          {running("draft") ? <Spinner /> : <Shuffle />} Draft
+      button: s.locked ? (
+        <Button variant="secondary" size="sm" disabled title="Closed: binomes are locked, nobody is paired automatically any more">
+          <UsersRound /> Pair
+        </Button>
+      ) : (
+        <Button asChild variant={current === 1 ? "default" : "secondary"} size="sm">
+          <Link to="/binomes#pairing">
+            <UsersRound /> Open pairing <ArrowRight />
+          </Link>
         </Button>
       ),
     },

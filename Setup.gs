@@ -69,6 +69,9 @@ function ensureTabs_(ss) {
   tm.getRange('E2:E500').insertCheckboxes();
   tm.getRange(1, 5).setNote('Tick to leave this member out of the binomes (e.g. the president).');
   tm.getRange(1, 4).setNote('Pair As: HR = HR side of a binome; IT/COMM/FLER = other side; ALL = board member leading an "ALL" binome; SKIP = not interviewing.');
+  // a checkbox rule, not insertCheckboxes: that would untick everyone each time Setup runs again
+  tm.getRange('G2:G500').setDataValidation(SpreadsheetApp.newDataValidation().requireCheckbox().build());
+  tm.getRange(1, 7).setNote('Ticked = has interviewed before. Import ticks everyone in the 2025 team; tick or untick anyone by hand. The draft gives each new member an experienced partner when it can.');
   // Binomes
   const bn = mk(TAB.BINOMES, BIN_H);
   bn.getRange('G2:G300').setDataValidation(SpreadsheetApp.newDataValidation()

@@ -122,6 +122,8 @@ export interface Binome {
   open: number
   /** the level an admin last opened this binome at from the dashboard ("" = never); Drive is the truth (binomeAccess) */
   access?: "" | AccessLevel
+  /** a DRAFT paired by hand on the Pairing panel (Redraw all asks before it loses one); absent on an older script */
+  byHand?: boolean
 }
 
 /** What a binome's members can do in their sheet, and so on the dashboard. */
@@ -145,6 +147,8 @@ export interface TeamMember {
   name: string
   email: string
   pairAs: string
+  /** has interviewed before (Team tab › Experienced; Import ticks the 2025 team); absent on an older script */
+  experienced?: boolean
 }
 
 export interface Unpaired extends TeamMember {
@@ -311,6 +315,14 @@ export interface ChangeCheck {
   out?: Person | null
   inn?: Person | null
   plans?: ChangePlan[]
+}
+
+/** webRun draftPair: the DRAFT row written (its code moves when an earlier draft is removed). */
+export interface DraftPairOut {
+  binome: string
+  tag: string
+  warning: string
+  bothNew: boolean
 }
 
 export interface NewBinomeCheck {

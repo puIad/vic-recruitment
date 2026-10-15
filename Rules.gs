@@ -7,41 +7,69 @@ function shuffled(arr, rnd) {
 /**
  * Draft binomes: 1 HR (pairAs HR) + 1 member of another department.
  * Board members (pairAs ALL) lead "ALL" binomes with a member of another department.
- * members: [{name,email,pairAs}] ; returns [{a, b, tag, warning}]
+ * Experience is a preference, never a rule: each partner is looked for first in the class the other person needs (an
+ * experienced member for a new one, a new one for an experienced one), then in the other class. New HR members go before
+ * the experienced ones, so the experienced members of the other departments go to them first.
+ * members: [{name,email,pairAs,experienced}] ; returns [{a, b, tag, warning, bothNew}] (makePair)
  */
 function draftPairs(members, rnd) {
   rnd = rnd || Math.random;
+  const exp = m => !!m.experienced;
   const leads = shuffled(members.filter(m => m.pairAs === 'ALL'), rnd);
   const hrs = shuffled(members.filter(m => m.pairAs === 'HR'), rnd);
   const byDep = {};
   ['IT', 'COMM', 'FLER'].forEach(d => { byDep[d] = shuffled(members.filter(m => m.pairAs === d), rnd); });
-  const takeOther = () => {
-    let best = null;
-    Object.keys(byDep).forEach(d => { if (byDep[d].length && (!best || byDep[d].length > byDep[best].length)) best = d; });
-    return best ? byDep[best].pop() : null;
+  // the last member of `list` in the wanted class, else its last member
+  const take = (list, wantExp) => {
+    for (let i = list.length - 1; i >= 0; i--) if (exp(list[i]) === wantExp) return list.splice(i, 1)[0];
+    return list.pop() || null;
+  };
+  // from the biggest other-department pool that still has the wanted class, else from the biggest pool
+  const takeOther = wantExp => {
+    let best = null, any = null;
+    Object.keys(byDep).forEach(d => {
+      const n = byDep[d].length;
+      if (!n) return;
+      if (!any || n > byDep[any].length) any = d;
+      if ((!best || n > byDep[best].length) && byDep[d].some(m => exp(m) === wantExp)) best = d;
+    });
+    return best || any ? take(byDep[best || any], wantExp) : null;
   };
   const pairs = [];
-  leads.forEach(l => {
-    const o = takeOther() || hrs.pop() || null;
-    pairs.push({ a: l, b: o, tag: 'ALL', warning: o ? '' : 'No partner left for this board member' });
-  });
+  leads.forEach(l => pairs.push(makePair(l, takeOther(!exp(l)) || take(hrs, !exp(l)))));
   while (hrs.length) {
-    const h = hrs.pop();
-    const o = takeOther();
-    if (o) pairs.push({ a: h, b: o, tag: o.pairAs + ' & HR', warning: '' });
-    else {
-      const h2 = hrs.pop() || null;
-      pairs.push({ a: h, b: h2, tag: 'HR', warning: h2 ? 'Two HR members (not enough members from other departments)' : 'No partner left' });
-    }
+    const h = take(hrs, false); // new HR members first
+    pairs.push(makePair(h, takeOther(!exp(h)) || take(hrs, !exp(h))));
   }
   let rest = [];
   Object.keys(byDep).forEach(d => { rest = rest.concat(byDep[d]); });
   while (rest.length) {
-    const a = rest.pop(), b = rest.pop() || null;
-    const tag = b && b.pairAs !== a.pairAs ? a.pairAs + ' & ' + b.pairAs : a.pairAs;
-    pairs.push({ a: a, b: b, tag: tag, warning: 'No HR member available for this pair' });
+    const a = take(rest, false);
+    pairs.push(makePair(a, take(rest, !exp(a))));
   }
   return pairs;
+}
+
+/** One binome of the draft or of the pairing panel: its tag (pairTag), a warning when its shape is off, bothNew when it
+ *  has two members and neither is experienced. a, b: {pairAs, experienced} (b null = alone; pairAs '' = not in the Team tab). */
+function makePair(a, b) {
+  b = b || null;
+  const sides = b ? [a.pairAs, b.pairAs] : [], others = ['IT', 'COMM', 'FLER'];
+  const warning = !b ? (a.pairAs === 'ALL' ? 'No partner left for this board member' : 'No partner left')
+    : sides.every(s => s === 'HR') ? 'Two HR members (they only receive HR candidates)'
+    : sides.every(s => others.indexOf(s) >= 0) ? 'No HR member available for this pair' : '';
+  return { a: a, b: b, tag: b ? pairTag(a.pairAs, b.pairAs) : a.pairAs, warning: warning, bothNew: !!b && !a.experienced && !b.experienced };
+}
+
+/** The experience mix of binomes [{a, b}]: {binomes, withExp, without, experienced, fresh} (fresh = new members). */
+function draftMix(pairs) {
+  const out = { binomes: pairs.length, withExp: 0, without: 0, experienced: 0, fresh: 0 };
+  pairs.forEach(p => {
+    const ms = [p.a, p.b].filter(Boolean);
+    ms.forEach(m => { if (m.experienced) out.experienced++; else out.fresh++; });
+    if (ms.some(m => m.experienced)) out.withExp++; else out.without++;
+  });
+  return out;
 }
 
 /** Tag of a hand-made pair, as the draft gives it: 'ALL' with a board lead, else 'IT & HR', 'HR', 'IT & COMM', 'IT'. */
@@ -55,8 +83,8 @@ function pairTag(a, b) {
 
 /**
  * Team members who should interview but sit in no ACTIVE/PAUSED binome (after lock nobody is auto-paired again).
- * team: [{name,email,pairAs,exclude}] ; binomes: [{code,status,members:[{email}]}]
- * returns [{name,email,pairAs,draft}] (draft = code of a DRAFT row they sit in, waiting for Lock)
+ * team: [{name,email,pairAs,exclude,experienced}] ; binomes: [{code,status,members:[{email}]}]
+ * returns [{name,email,pairAs,experienced,draft}] (draft = code of a DRAFT row they sit in, waiting for Lock)
  */
 function unpairedMembers(team, binomes) {
   const locked = {}, draft = {};
@@ -66,7 +94,7 @@ function unpairedMembers(team, binomes) {
     else if (!draft[m.email]) draft[m.email] = b.code;
   }));
   return team.filter(m => m.email && !m.exclude && m.pairAs !== 'SKIP' && !locked[m.email])
-    .map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, draft: draft[m.email] || '' }));
+    .map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: !!m.experienced, draft: draft[m.email] || '' }));
 }
 
 /** Pick the binome for a new interviewee of department `dep`. binomes: [{code, tag, load}] */

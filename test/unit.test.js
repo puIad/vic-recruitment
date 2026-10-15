@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const ctx = vm.createContext({ console });
 require('./gs')(ctx);
-vm.runInContext('globalThis.__x = {parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch,unpairedMembers};', ctx);
+vm.runInContext('globalThis.__x = {parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,makePair,draftMix,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch,unpairedMembers};', ctx);
 const X = ctx.__x;
 const D = iso => vm.runInContext('new Date("' + iso + '")', ctx);
 let pass = 0; const t = (name, fn) => { try { fn(); pass++; } catch (e) { console.log('FAIL', name, '\n ', e.message); process.exitCode = 1; } };
@@ -140,6 +140,74 @@ t('draft pairs uneven', () => {
   const m = [{ name: 'h1', email: 'h1', pairAs: 'HR' }, { name: 'h2', email: 'h2', pairAs: 'HR' }, { name: 'h3', email: 'h3', pairAs: 'HR' }, { name: 'i1', email: 'i1', pairAs: 'IT' }];
   const p = X.draftPairs(m, Math.random);
   assert.strictEqual(p.length, 2); assert(p.some(x => x.tag === 'HR' && x.warning));
+});
+// experience: a fixed rnd per seed, so a failure replays
+const seeded = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+const team = spec => {
+  const m = [];
+  Object.keys(spec).forEach(k => { const [side, cls] = k.split(':'); for (let i = 0; i < spec[k]; i++) m.push({ name: k + i, email: (k + i).toLowerCase(), pairAs: side, experienced: cls === 'exp' }); });
+  return m;
+};
+const plain = x => JSON.parse(JSON.stringify(x)); // the vm's arrays are another realm's
+const once = p => { const used = new Set(); p.forEach(x => [x.a, x.b].forEach(y => { if (y) { assert(!used.has(y.email), 'twice: ' + y.email); used.add(y.email); } })); return used.size; };
+t('draft pairs: each new member gets an experienced partner when there are enough', () => {
+  for (let s = 1; s <= 40; s++) {
+    const m = team({ 'HR:new': 6, 'HR:exp': 4, 'IT:exp': 4, 'IT:new': 3, 'FLER:exp': 2, 'COMM:new': 1 });
+    const p = X.draftPairs(m, seeded(s));
+    assert.strictEqual(once(p), m.length, 'everyone once');
+    assert.strictEqual(p.length, 10);
+    p.forEach(x => { assert.strictEqual(x.a.pairAs, 'HR'); assert.strictEqual(x.tag, x.b.pairAs + ' & HR'); assert.strictEqual(x.warning, ''); });
+    assert.strictEqual(p.filter(x => x.bothNew).length, 0, 'seed ' + s + ': nobody new with new');
+    p.filter(x => !x.a.experienced).forEach(x => assert(x.b.experienced, 'a new HR member gets an experienced partner'));
+    p.filter(x => x.a.experienced).forEach(x => assert(!x.b.experienced, 'an experienced HR member gets a new one'));
+    assert.deepStrictEqual(Object.assign({}, X.draftMix(p)), { binomes: 10, withExp: 10, without: 0, experienced: 10, fresh: 10 });
+  }
+});
+t('draft pairs: experienced members go first to the biggest other-department pool', () => {
+  const p = X.draftPairs(team({ 'HR:new': 2, 'IT:exp': 3, 'IT:new': 2, 'COMM:exp': 1 }), seeded(7));
+  assert.deepStrictEqual(plain(p.filter(x => x.a.pairAs === 'HR').map(x => x.b.pairAs + ':' + x.b.experienced)), ['IT:true', 'IT:true'], 'IT (5) before COMM (1)');
+});
+t('draft pairs: both new only when forced, with a note', () => {
+  for (let s = 1; s <= 20; s++) {
+    const p = X.draftPairs(team({ 'HR:new': 5, 'IT:new': 4, 'IT:exp': 1 }), seeded(s));
+    assert.strictEqual(p.length, 5);
+    assert.strictEqual(p.filter(x => x.bothNew).length, 4, 'one experienced member for five binomes');
+    assert(p.every(x => x.bothNew === (!x.a.experienced && !x.b.experienced)));
+    assert.deepStrictEqual(Object.assign({}, X.draftMix(p)), { binomes: 5, withExp: 1, without: 4, experienced: 1, fresh: 9 });
+  }
+});
+t('draft pairs: a class that runs out falls back to the other', () => {
+  const p = X.draftPairs(team({ 'HR:exp': 3, 'IT:exp': 3 }), seeded(3));
+  assert.deepStrictEqual([p.length, p.every(x => x.tag === 'IT & HR' && !x.bothNew)], [3, true], 'experienced with experienced rather than HR + HR');
+});
+t('draft pairs: board leads take a new member, a new lead an experienced one', () => {
+  for (let s = 1; s <= 20; s++) {
+    const p = X.draftPairs(team({ 'ALL:exp': 1, 'IT:exp': 1, 'IT:new': 1, 'HR:exp': 1 }), seeded(s));
+    const lead = p.find(x => x.tag === 'ALL');
+    assert.deepStrictEqual([lead.a.pairAs, lead.b.pairAs, lead.b.experienced], ['ALL', 'IT', false]);
+    const q = X.draftPairs(team({ 'ALL:new': 1, 'IT:exp': 1, 'IT:new': 1, 'HR:new': 1 }), seeded(s));
+    assert.strictEqual(q.find(x => x.tag === 'ALL').b.experienced, true);
+  }
+});
+t('draft pairs: HR + HR and other leftovers mix new with experienced', () => {
+  for (let s = 1; s <= 20; s++) {
+    const hr = X.draftPairs(team({ 'HR:new': 2, 'HR:exp': 2 }), seeded(s));
+    assert.deepStrictEqual(plain(hr.map(x => [x.tag, x.bothNew, !!x.warning])), [['HR', false, true], ['HR', false, true]]);
+    const it = X.draftPairs(team({ 'IT:new': 2, 'COMM:exp': 2 }), seeded(s));
+    assert(it.every(x => !x.bothNew && /No HR member/.test(x.warning)), JSON.stringify(it.map(x => x.tag)));
+    const odd = X.draftPairs(team({ 'HR:new': 2, 'HR:exp': 1 }), seeded(s));
+    assert.deepStrictEqual(plain(odd.map(x => [!!x.b, x.warning])), [[true, 'Two HR members (they only receive HR candidates)'], [false, 'No partner left']]);
+    assert.strictEqual(odd[0].bothNew, false, 'the new HR members go first, so the first one gets the experienced one');
+  }
+});
+t('makePair: tags and warnings for hand-made pairs', () => {
+  const P = (a, b) => X.makePair({ pairAs: a.split(':')[0], experienced: a.endsWith(':exp') }, b && { pairAs: b.split(':')[0], experienced: b.endsWith(':exp') });
+  assert.deepStrictEqual(plain(['HR:new|IT:exp', 'IT:new|HR:new', 'ALL:exp|HR:new', 'IT:new|COMM:new', 'HR:exp|HR:exp', 'ALL:exp|'].map(k => {
+    const [a, b] = k.split('|'), p = P(a, b);
+    return [p.tag, p.warning, p.bothNew];
+  })), [['IT & HR', '', false], ['IT & HR', '', true], ['ALL', '', false], ['IT & COMM', 'No HR member available for this pair', true],
+    ['HR', 'Two HR members (they only receive HR candidates)', false], ['ALL', 'No partner left for this board member', false]]);
+  assert.strictEqual(P('HR:new', ':new').warning, '', 'someone not in the Team tab: no guess about the shape');
 });
 t('unpaired members: only locked binomes count; excluded and SKIP ignored', () => {
   const team = [{ name: 'A', email: 'a', pairAs: 'HR' }, { name: 'B', email: 'b', pairAs: 'IT' }, { name: 'C', email: 'c', pairAs: 'IT', exclude: true },

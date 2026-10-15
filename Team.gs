@@ -56,22 +56,34 @@ function importTeamCore_(text, replace) {
     const ext = SpreadsheetApp.openById(id);
     src = findTeamSource_(ext) || ext.getSheets()[0];
   }
-  const rows = teamRowsFrom_(src.getDataRange().getValues());
   const sh = ss_().getSheetByName(TAB.TEAM);
   const used = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().filter(r => String(r[0]).trim() || String(r[1]).trim()).length : 0;
-  if (used && !replace) return { confirm: true, existing: used, incoming: rows.length, source: src.getName() };
+  if (used && !replace) return { confirm: true, existing: used, incoming: teamRowsFrom_(src.getDataRange().getValues()).length, source: src.getName() };
+  const past = pastTeam_(), rows = teamRowsFrom_(src.getDataRange().getValues(), past);
   if (sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, TEAM_H.length).clearContent();
   if (rows.length) sh.getRange(2, 1, rows.length, TEAM_H.length).setValues(rows);
   const count = {}; rows.forEach(r => { count[r[3]] = (count[r[3]] || 0) + 1; });
   const issues = rows.filter(r => r[5]).map(r => '• ' + r[0] + ': ' + r[5]);
   say_('Imported ' + rows.length + ' members from "' + src.getName() + '".\nPair As: ' + Object.keys(count).map(k => k + ' ' + count[k]).join(' · ') +
+    '\n' + (past ? rows.filter(r => r[6]).length + ' marked Experienced (in the 2025 team).' : 'The 2025 database could not be read, so nobody is marked Experienced yet.') +
     (issues.length ? '\n\nPlease check these rows (see the Notes column):\n' + issues.join('\n') : '') +
-    '\n\nReview "Pair As" (HR side / IT, COMM, FLER side / ALL = board lead / SKIP), tick "Exclude" for anyone not interviewing, then draft the binomes.');
+    '\n\nReview "Pair As" (HR side / IT, COMM, FLER side / ALL = board lead / SKIP), tick "Exclude" for anyone not interviewing and ' +
+    '"Experienced" for anyone else who has interviewed before, then pair the binomes.');
   return { done: true };
 }
 
-/** Team rows [name, email, dept, pairAs, exclude, notes] from a 2025-style database. */
-function teamRowsFrom_(vals) {
+/** Emails of the 2025 organizing team (CONFIG.TEAM_DB_DEFAULT_ID), who have interviewed before; null when it can't be read. */
+function pastTeam_() {
+  try {
+    const db = SpreadsheetApp.openById(CONFIG.TEAM_DB_DEFAULT_ID), out = {};
+    teamRowsFrom_((findTeamSource_(db) || db.getSheets()[0]).getDataRange().getValues()).forEach(r => { if (r[1]) out[r[1]] = true; });
+    return out;
+  } catch (e) { console.warn('2025 database not read: ' + e); return null; }
+}
+
+/** Team rows [name, email, dept, pairAs, exclude, notes, experienced] from a 2025-style database; experienced = the email is in
+ *  `past` (pastTeam_). */
+function teamRowsFrom_(vals, past) {
   const hdr = vals[0].map(normText);
   const col = (re, d) => { const i = hdr.findIndex(h => re.test(h)); return i >= 0 ? i : d; };
   const cF = col(/first name/, 1), cL = col(/last name|family name/, 2), cE = col(/mail/, 3);
@@ -89,54 +101,190 @@ function teamRowsFrom_(vals) {
     else if (!emailMatchesName_(email, name)) notes.push('Email does not look like this person\'s (' + email + ')');
     if (email && seen[email]) notes.push('Same email as ' + seen[email]);
     if (email) seen[email] = name;
-    rows.push([name, email, p.dep, p.pairAs, false, notes.join('; ')]);
+    rows.push([name, email, p.dep, p.pairAs, false, notes.join('; '), !!(past && email && past[email])]);
   }
   return rows;
 }
 
-/** Team tab as [{name, email, pairAs, exclude}]; an empty Pair As falls back to the department. */
+/** Team tab as [{name, email, pairAs, exclude, experienced}]; an empty Pair As falls back to the department. */
 function teamMembers_(ctx) {
   const T = ctx.team.I;
   return ctx.team.data.filter(r => String(r[T.Email]).trim()).map(r => {
     let pairAs = String(r[T['Pair As']]).trim().toUpperCase();
     if (!pairAs) pairAs = sectionToPair_(r[T.Department]).pairAs;
-    return { name: String(r[T['Full Name']]).trim(), email: String(r[T.Email]).trim().toLowerCase(), pairAs: pairAs, exclude: bool_(r[T.Exclude]) };
+    return { name: String(r[T['Full Name']]).trim(), email: String(r[T.Email]).trim().toLowerCase(), pairAs: pairAs,
+      exclude: bool_(r[T.Exclude]), experienced: bool_(r[T.Experienced]) };
   });
 }
 
-function draftBinomes() {
+/* ---------- drafts: the random draw and the pairing panel, all before Lock ---------- */
+
+function draftBinomes() { draftCore_(false); }
+
+const isDraft_ = (r, B) => String(r[B.Status]).trim().toUpperCase() === 'DRAFT' && !!String(r[B.Binome]).trim();
+/** The DRAFT rows, in sheet order. */
+function draftRows_(ctx) { return ctx.bin.data.filter(r => isDraft_(r, ctx.bin.I)); }
+/** Team members by email, excluded and SKIP too (a draft row typed by hand may hold anyone). */
+function teamByEmail_(ctx) { const o = {}; teamMembers_(ctx).forEach(m => { o[m.email] = m; }); return o; }
+/** A draft row as a pair (makePair), its members looked up in the Team tab; someone not in it counts as new, side unknown. */
+function rowPair_(who, r, B) {
+  const m = k => { const e = lc_(r[B['Email ' + k]]); return who[e] || { name: String(r[B['Member ' + k]]).trim(), email: e, pairAs: '', experienced: false }; };
+  const a = m(1), b = String(r[B['Email 2']]).trim() || String(r[B['Member 2']]).trim() ? m(2) : null;
+  return makePair(a, b);
+}
+/** The note on a draft's code cell: its warning, then "Both members are new". */
+function draftNote_(p) { return [p.warning, p.bothNew ? 'Both members are new' : ''].filter(Boolean).join('. '); }
+function noteCell_(range, notes) {
+  range.setNotes(notes.map(n => [n ? '⚠️ ' + n : ''])).setBackgrounds(notes.map(n => [n ? '#fce5cd' : null]));
+}
+
+/** Rewrite the Binomes tab: the rows that are not DRAFT stay first as they are, then `drafts` (rows), coded B.NN upwards from
+ *  the highest code above them, so the codes have no gaps (nothing points at a DRAFT code until Lock). Each draft's code cell
+ *  gets its note. ctx follows (bin.data, binomes). */
+function writeDrafts_(ctx, drafts) {
+  const B = ctx.bin.I, sh = ctx.bin.sh, who = teamByEmail_(ctx);
+  const kept = ctx.bin.data.filter(r => !isDraft_(r, B) && String(r[B.Binome]).trim());
+  let max = 0; kept.forEach(r => { const n = codeNum(r[B.Binome]); if (n > max) max = n; });
+  drafts.forEach((r, i) => { r[B.Binome] = 'B.' + pad2(max + i + 1); });
+  const all = kept.concat(drafts), n = sh.getLastRow() - 1;
+  if (n > 0) { sh.getRange(2, 1, n, BIN_H.length).clearContent(); sh.getRange(2, 1, n, 1).clearNote().setBackground(null); }
+  if (all.length) sh.getRange(2, 1, all.length, BIN_H.length).setValues(all);
+  if (drafts.length) noteCell_(sh.getRange(kept.length + 2, 1, drafts.length, 1), drafts.map(r => draftNote_(rowPair_(who, r, B))));
+  ctx.bin.data = all;
+  indexCtx_(ctx);
+}
+
+/** A new DRAFT row for a pair from makePair / draftPairs. */
+function draftRow_(p, B) {
+  const row = new Array(BIN_H.length).fill('');
+  row[B['Member 1']] = p.a.name; row[B['Email 1']] = p.a.email;
+  row[B['Member 2']] = p.b ? p.b.name : ''; row[B['Email 2']] = p.b ? p.b.email : '';
+  row[B.Tag] = p.tag; row[B.Status] = 'DRAFT';
+  return row;
+}
+
+/** Drafts made by hand on the pairing panel, kept as their members' emails ('a|b', sorted) in DRAFT_HAND: Redraw all asks before
+ *  it loses them, and the panel marks them. Pairs drawn by the draft are not in it. */
+const handKey_ = emails => emails.map(lc_).filter(Boolean).sort().join('|');
+function handDrafts_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('DRAFT_HAND') || '[]'); } catch (e) { return []; } }
+/** Save the hand-made keys that still match a DRAFT row, plus `add`. */
+function keepHand_(ctx, add) {
+  const B = ctx.bin.I, live = draftRows_(ctx).map(r => handKey_([r[B['Email 1']], r[B['Email 2']]]));
+  PropertiesService.getScriptProperties().setProperty('DRAFT_HAND', JSON.stringify(handDrafts_().filter(k => live.indexOf(k) >= 0).concat(add ? [add] : [])));
+}
+
+/** "28 binomes, 26 with an experienced member, 2 without one (12 experienced for 30 new)." */
+function mixText_(m) {
+  return m.binomes + ' binome' + (m.binomes === 1 ? '' : 's') + ', ' + m.withExp + ' with an experienced member, ' + m.without + ' without one (' +
+    m.experienced + ' experienced for ' + m.fresh + ' new).';
+}
+
+const DRAFTS_CLOSED = 'Binomes are already locked, so drafts are closed. Members without a binome are listed on the Binomes page: place them with Change members or Pair two….';
+
+/** Runs fn(ctx) on a fresh context in the script lock, for the draft actions: refused once anything is locked, hand edits
+ *  checked first and the baseline saved after, so the drafts' own writes never show as hand edits. fn throws to refuse. */
+function draftEdit_(fn) {
   const res = withLock_(() => {
     const ctx = loadCtx_();
-    // Once binomes are locked nobody is auto-paired again: free members show up as UNPAIRED_MEMBER alerts for the admins.
-    if (activeOrPaused_(ctx).length) return { refused: true };
-    const B = ctx.bin.I;
-    const members = teamMembers_(ctx).filter(m => !m.exclude && m.pairAs !== 'SKIP');
-    const pairs = draftPairs(members, Math.random);
-    const kept = ctx.bin.data.filter(r => String(r[B.Status]).toUpperCase() !== 'DRAFT' && String(r[B.Binome]).trim());
-    let max = 0; kept.forEach(r => { const n = codeNum(r[B.Binome]); if (n > max) max = n; });
-    const fresh = pairs.map((p, i) => {
-      const row = new Array(BIN_H.length).fill('');
-      row[B.Binome] = 'B.' + pad2(max + i + 1);
-      row[B['Member 1']] = p.a.name; row[B['Email 1']] = p.a.email;
-      row[B['Member 2']] = p.b ? p.b.name : ''; row[B['Email 2']] = p.b ? p.b.email : '';
-      row[B.Tag] = p.tag; row[B.Status] = 'DRAFT';
-      return { row: row, warning: p.warning };
-    });
-    const sh = ctx.bin.sh;
-    if (sh.getLastRow() > 1) { sh.getRange(2, 1, sh.getLastRow() - 1, BIN_H.length).clearContent(); sh.getRange(2, 1, sh.getLastRow(), 1).clearNote().setBackground(null); }
-    const all = kept.concat(fresh.map(f => f.row));
-    if (all.length) sh.getRange(2, 1, all.length, BIN_H.length).setValues(all);
-    fresh.forEach((f, i) => { if (f.warning) sh.getRange(kept.length + 2 + i, 1).setNote('⚠️ ' + f.warning).setBackground('#fce5cd'); else sh.getRange(kept.length + 2 + i, 1).setBackground(null); });
-    const tags = {}; fresh.forEach(f => { tags[f.row[B.Tag]] = (tags[f.row[B.Tag]] || 0) + 1; });
-    return { n: fresh.length, members: members.length, tags: tags, warnings: fresh.filter(f => f.warning).map(f => f.row[B.Binome] + ': ' + f.warning) };
+    if (activeOrPaused_(ctx).length) throw new Error(DRAFTS_CLOSED);
+    detectEdits_(ctx);
+    const out = fn(ctx);
+    ctx.alerts.flush();
+    commitBase_(ctx);
+    return out;
   });
-  if (!res) return busy_();
-  if (res.refused) return say_('Binomes are already locked, so new drafts are closed.\n' +
-    'Members without a binome appear in Alerts. Use Change members to place them, or exclude them in the Team tab.');
-  say_('Drafted ' + res.n + ' binomes from ' + res.members + ' available members.\n' +
-    Object.keys(res.tags).map(k => k + ': ' + res.tags[k]).join(' · ') +
+  if (!res) busy_();
+  return res;
+}
+
+/** Draft (keep false: Redraw all) clears every DRAFT row and draws everyone; keep true (Draw the rest) keeps the drafts there are
+ *  and draws only the members still free. Closed once binomes are locked: free members show up as UNPAIRED_MEMBER alerts. */
+function draftCore_(keep) {
+  let res;
+  try {
+    res = draftEdit_(ctx => {
+      const B = ctx.bin.I, held = keep ? draftRows_(ctx) : [], taken = {};
+      held.forEach(r => { [r[B['Email 1']], r[B['Email 2']]].forEach(e => { if (lc_(e)) taken[lc_(e)] = true; }); });
+      const members = teamMembers_(ctx).filter(m => !m.exclude && m.pairAs !== 'SKIP' && !taken[m.email]);
+      const pairs = draftPairs(members, Math.random);
+      writeDrafts_(ctx, held.concat(pairs.map(p => draftRow_(p, B))));
+      if (keep) keepHand_(ctx); else PropertiesService.getScriptProperties().deleteProperty('DRAFT_HAND');
+      const who = teamByEmail_(ctx), tags = {};
+      pairs.forEach(p => { tags[p.tag] = (tags[p.tag] || 0) + 1; });
+      return { n: pairs.length, held: held.length, members: members.length, tags: tags, mix: draftMix(draftRows_(ctx).map(r => rowPair_(who, r, B))),
+        warnings: draftRows_(ctx).slice(held.length).map((r, i) => pairs[i].warning ? r[B.Binome] + ': ' + pairs[i].warning : '').filter(Boolean) };
+    });
+  } catch (e) {
+    if (e.message !== DRAFTS_CLOSED) throw e;
+    return say_(DRAFTS_CLOSED); // a message, not an error: the menu shows it as a dialog
+  }
+  if (!res) return;
+  say_((keep ? 'Drew ' + res.n + ' more binomes from the ' + res.members + ' free members; the ' + res.held + ' pairs already made stay.\n'
+    : 'Drafted ' + res.n + ' binomes from ' + res.members + ' available members.\n') +
+    Object.keys(res.tags).map(k => k + ': ' + res.tags[k]).join(' · ') + '\nDrafts now: ' + mixText_(res.mix) +
     (res.warnings.length ? '\n\nPlease check:\n' + res.warnings.join('\n') : '') +
-    '\n\nReview them in the Binomes tab. Draft again for a new random draw, or lock them when you are happy.');
+    '\n\nLock them when you are happy.');
+}
+
+/** webRun('draftPair', {emailA, emailB}): two free members (in the Team tab, not excluded, not SKIP, in no draft) become a
+ *  DRAFT row at the end, tagged as Pair two… would (pairTag), board lead or HR member first. No confirmation: drafts are scratch. */
+function draftPair_(args) {
+  const ea = lc_(args.emailA), eb = lc_(args.emailB);
+  if (!ea || !eb) throw new Error('Choose two members.');
+  if (ea === eb) throw new Error('Choose two different members.');
+  return draftEdit_(ctx => {
+    const B = ctx.bin.I, who = teamByEmail_(ctx), inDraft = {};
+    draftRows_(ctx).forEach(r => { [r[B['Email 1']], r[B['Email 2']]].forEach(e => { if (lc_(e)) inDraft[lc_(e)] = r[B.Binome]; }); });
+    const [x, y] = [ea, eb].map(e => {
+      const m = who[e], name = m ? m.name || e : e;
+      if (!m) throw new Error(e + ' is not in the Team tab.');
+      if (m.exclude) throw new Error(name + ' is excluded in the Team tab.');
+      if (m.pairAs === 'SKIP') throw new Error(name + ' is set to SKIP (not interviewing) in the Team tab.');
+      if (inDraft[e]) throw new Error(name + ' is already in draft ' + inDraft[e] + '.');
+      return m;
+    });
+    const rank = m => (m.pairAs === 'ALL' ? 0 : m.pairAs === 'HR' ? 1 : 2);
+    const p = rank(y) < rank(x) ? makePair(y, x) : makePair(x, y);
+    if (!tagDepts(p.tag).length) throw new Error('No department to receive from (Pair As ' + x.pairAs + ' / ' + y.pairAs + ').');
+    writeDrafts_(ctx, draftRows_(ctx).concat([draftRow_(p, B)]));
+    keepHand_(ctx, handKey_([x.email, y.email]));
+    const rows = draftRows_(ctx), code = rows[rows.length - 1][B.Binome];
+    return { binome: code, tag: p.tag, warning: p.warning, bothNew: p.bothNew };
+  });
+}
+
+/** webRun('draftUnpair', {binome, email?}): remove a DRAFT row; its members are free again and the later drafts move up a code.
+ *  email (one of the row's members, as the page showed it) guards against a code that moved meanwhile. */
+function draftUnpair_(args) {
+  const code = String(args.binome || '').trim(), e = lc_(args.email);
+  return draftEdit_(ctx => {
+    const B = ctx.bin.I, rows = draftRows_(ctx), r = rows.filter(x => x[B.Binome] === code)[0];
+    if (!r) throw new Error(code + ' is not a draft binome.');
+    if (e && lc_(r[B['Email 1']]) !== e && lc_(r[B['Email 2']]) !== e) throw new Error(code + ' changed meanwhile: nothing was removed. Look again and retry.');
+    writeDrafts_(ctx, rows.filter(x => x !== r));
+    keepHand_(ctx);
+    return { removed: code, members: [r[B['Member 1']], r[B['Member 2']]].map(String).filter(s => s.trim()) };
+  });
+}
+
+/** webRun('teamSet', {email, experienced}): tick or untick Experienced for one Team member (open after Lock too). A draft
+ *  holding them gets its note again ("Both members are new"). */
+function teamSet_(args) {
+  const e = lc_(args.email), on = args.experienced === true;
+  if (typeof args.experienced !== 'boolean') throw new Error('Experienced must be true or false.');
+  const res = withLock_(() => {
+    const ctx = loadCtx_(), T = ctx.team.I, B = ctx.bin.I, i = ctx.team.data.findIndex(r => lc_(r[T.Email]) === e);
+    if (i < 0) throw new Error((e || 'That member') + ' is not in the Team tab.');
+    ctx.team.data[i][T.Experienced] = on;
+    ctx.team.sh.getRange(i + 2, T.Experienced + 1).setValue(on);
+    const who = teamByEmail_(ctx);
+    ctx.bin.data.forEach((r, j) => {
+      if (isDraft_(r, B) && (lc_(r[B['Email 1']]) === e || lc_(r[B['Email 2']]) === e)) noteCell_(ctx.bin.sh.getRange(j + 2, 1), [draftNote_(rowPair_(who, r, B))]);
+    });
+    return { email: e, experienced: on, name: who[e].name };
+  });
+  if (!res) busy_();
+  return res;
 }
 
 function lockBinomes() {
@@ -243,7 +391,7 @@ function resetBinomesCore_(phrase) {
     });
     // forget the old binomes; registrations deleted on purpose (iv entry 0) stay remembered so they are not re-imported
     const props = PropertiesService.getScriptProperties();
-    ['FILE_SEEN', 'FILE_READ', 'INTEG_NEXT', 'BIN_ACCESS'].forEach(k => props.deleteProperty(k));
+    ['FILE_SEEN', 'FILE_READ', 'INTEG_NEXT', 'BIN_ACCESS', 'DRAFT_HAND'].forEach(k => props.deleteProperty(k));
     const old = loadBaseline_(), fresh = loadCtx_();
     fresh.base = { bin: {}, iv: {} };
     Object.keys((old && old.iv) || {}).forEach(k => { if (old.iv[k] === 0) fresh.base.iv[k] = 0; });

@@ -102,6 +102,7 @@ MockRange.prototype = {
   clearContent() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = ''; } __wrote(this.sh); return this; },
   setNumberFormat(f) { for (let j = 0; j < this.nc; j++) this.sh.fmt[this.c + j] = f; __counted(this.sh); return this; },
   setNote(n) { this.sh.notes[this.r + ':' + this.c] = n; return this; },
+  setNotes(ns) { ns.forEach((row, i) => row.forEach((n, j) => { this.sh.notes[(this.r + i) + ':' + (this.c + j)] = n; })); return this; },
   insertCheckboxes() { for (let i = 0; i < this.nr; i++) { const row = this.sh.cells[this.r - 1 + i]; if (row) for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = false; } return this; }, // like Apps Script: every box unticked
   applyRowBanding() { return chain(); },
 };
