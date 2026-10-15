@@ -84,15 +84,21 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   registration shown. The 32 old sheets rebuild themselves, 6 per sync. **Run setup again (owner) once** to restyle the
   Master. Dashboard: Vercel production at `fef4bc6`'s UI (unchanged).
 - **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
-- **Master** (redone on the evening of 2026-10-03 with Reset all binomes, then Import team → Draft → Lock):
-  - Team: 63 rows (33 HR, 12 IT, 10 FLER, 8 COMM, no board / ALL rows). The two IT rows that had no email got their
-    emails on 2026-10-04 and were paired into a new binome with **Pair two…**: B.32.
-  - 32 binomes locked, sheets created, **not shared**: B.01–B.28 pair HR with IT / FLER / COMM; B.29 and B.30 are two
-    HR members (tag `HR`, so they only get HR candidates); **B.31 is one HR member alone** (all three kept for now,
-    2026-10-04); B.32 from Pair two… (tag `IT & HR`).
-  - No registrations, interviewees, forms or member changes. The ~185 alerts raised by the re-import and reset are all
-    closed. The 49 old binome sheets are in the owner's Drive trash (Drive deletes them after 30 days).
-  - Setup's v2 changes are in place (every Settings row, the Member Changes tab, Team column E "Exclude").
+- **Master: production binomes** (2026-10-15: Setup, Reset all binomes, Import team, pairs made on the Pairing
+  panel, Lock; TEST_MODE on). This replaced the 32 test binomes of 2026-10-03.
+  - Team: 65 rows (34 HR, 12 IT, 10 FLER, 9 COMM, no board / ALL rows), one FLER member excluded; 37 ticked
+    Experienced.
+  - 32 binomes locked, every one a pair, sheets created, **not shared**: B.01–B.10, B.31, B.32 `IT & HR` (12);
+    B.11–B.19 `COMM & HR` (9); B.20–B.28 `FLER & HR` (9); B.29, B.30 `HR` (2, two HR members). Mix: 21 experienced
+    with new, 8 both experienced, **3 both new** (B.10, B.11, B.18).
+  - **B.03 still has the typo email** `mohamed_louai.bahlouli@g.enp.enp.edu.dz` (`enp` twice), in Binomes and Team.
+    B.08 has the guessed `rami.ahmane@g.enp.edu.dz`. Fix before launch (Change members › Replace).
+  - Registration Responses and Interviewees still hold the 273 applications of 2025 fed in on 2026-10-04. The Reset
+    put them back to waiting and the Lock **assigned all 273 to the production binomes** (Assigned At 15/10 13:07), so
+    the new binome sheets hold test candidates and the test timing limits will raise NOT_CONTACTED alerts to the
+    admins. Clean up before launch as in step 6 below. They are also the screening calibration set.
+  - Setup's v2 changes are in place (every Settings row, the Member Changes tab, Team column E "Exclude", column G
+    "Experienced").
   - Timing limits are still the test values 32 / 40 / 5 (24 / 48 / 12 before launch).
 - Phases A–D, the timing and interview-form cases and the Reset were all tested live on 2026-10-03:
   [docs/history.md](docs/history.md#live-test-2026-10-03).
@@ -114,20 +120,18 @@ Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycl
 
 ## Next: pairing, screening, department change (requested 2026-10-15)
 
-Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand), needed
-before the production Lock, is live (@73/@74 and Vercel from `87a7871`). Owner's next steps: Setup as `vic.rh` from the
-Master's menu, then Reset all binomes, Import team, check the Experienced ticks, pair, Lock (TEST_MODE stays on). Run
-Setup before the Reset and Import: Setup re-inserts the Exclude checkboxes, which unticks that column. Not built yet: screening (hold low-effort applications,
-decline VIC members silently) before the form opens, and changing a binome's department from the dashboard. The owner answered its questions on 2026-10-15;
-screening still needs the link of the VIC members sheet.
+Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand) is live
+(@73/@74 and Vercel from `87a7871`) and the owner used it for the production binomes on 2026-10-15 (above). Being
+built: screening (hold low-effort applications, decline VIC members silently), needed before the form opens. Not built
+yet: changing a binome's department from the dashboard. Screening still needs the link of the VIC members sheet.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
 In order. Each step says where to do it.
 
 1. ~~**Fix the two IT members without an email.**~~ Done 2026-10-04: emails added, paired with Pair two… (#15) as
-   B.32. **One of the two emails has a typo:** `mohamed_louai.bahlouli@g.enp.enp.edu.dz` (`enp` twice). Fix it before
-   launch (Change members › Replace with the right address, or edit the Binomes cell and Apply).
+   B.32. **One of the two emails has a typo:** `mohamed_louai.bahlouli@g.enp.enp.edu.dz` (`enp` twice), now in B.03
+   of the production binomes. Fix it before launch (Change members › Replace with the right address, or edit the Binomes cell and Apply).
 2. ~~**Settle the leftovers of the draft.**~~ Settled: B.29 / B.30 (HR + HR) and B.31 (alone) stay as they are for
    now. The Team tab is the live OT list; the owner adjusts them with Change members as it settles
    ([decisions.md](docs/decisions.md#open-questions), question 2).
@@ -136,7 +140,7 @@ In order. Each step says where to do it.
    editor, a removed ENP account ("No access", no flash of the dashboard), a viewer ("View only"), a multi-account
    browser, sign-out then sign-in within 48 h. Then share the URL with the editors.
 5. **Before launch, by about 2026-10-20:** reword the 2026 forms (they still say 2025 in places); verify the guessed
-   email `rami.ahmane@g.enp.edu.dz` (now in B.19); fix the B.32 email (step 1); answer the
+   email `rami.ahmane@g.enp.edu.dz` (now in B.08); fix the B.03 email (step 1); answer the
    [open questions](docs/decisions.md#open-questions); give admins edit access to the Binome Sheets folder (Change
    members / Cover / Apply need it); timing limits back to 24 / 48 / 12 in Settings › Alerts and timing.
 6. **Full simulation on real data, before TEST_MODE goes off.** Feed the 273 applications of 2025 (Drive: VIC
