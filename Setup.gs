@@ -227,7 +227,7 @@ function styleMaster_(ss) {
       .setRanges([col('1st Choice'), col('2nd Choice'), col('Final Affectation')]).build());
     [[ST.INTERVIEWED, '#DCEBDF', '#1A472A'], [ST.SCHEDULED, '#DDE3F0', '#0E1A40'], [ST.CONTACTED, '#FBEFC8', '#6B4E00'],
       [ST.ASSIGNED, '#FFFDF7', THEME.ink], [ST.WITHDRAWN, '#E6E1D8', THEME.muted], [ST.DUPLICATE, '#E6E1D8', THEME.muted],
-      [ST.UNASSIGNED, '#F5DCDC', '#740001']].forEach(x => cf.push(rule().whenTextEqualTo(x[0]).setBackground(x[1]).setFontColor(x[2])
+      [ST.UNASSIGNED, '#F5DCDC', '#740001'], [ST.HELD, '#FBEFC8', '#6B4E00'], [ST.DECLINED, '#E6E1D8', THEME.muted]].forEach(x => cf.push(rule().whenTextEqualTo(x[0]).setBackground(x[1]).setFontColor(x[2])
       .setBold(true).setRanges([col('Status')]).build()));
     cf.push(rule().setGradientMinpointWithValue('#F5DCDC', SpreadsheetApp.InterpolationType.NUMBER, '0')
       .setGradientMidpointWithValue('#FBEFC8', SpreadsheetApp.InterpolationType.NUMBER, '5')

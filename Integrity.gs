@@ -360,7 +360,7 @@ function oddValues_(ctx) {
   };
   ctx.iv.data.forEach(r => {
     const at = r[I['Interview At']], reg = r[I['Registered At']], st = r[I.Status], c = String(r[I.Contacted]).trim(), code = r[I.Code];
-    if (!code || !r[I.Binome] || !(at instanceof Date) || st === ST.DUPLICATE) return;
+    if (!code || !r[I.Binome] || !(at instanceof Date) || isOut_(st)) return;
     const when = fmt_(at), year = fmt_(reg instanceof Date ? reg : ctx.now, 'yyyy');
     if (fmt_(at, 'yyyy') !== year) add('MEDIUM', 'YEAR', r, 'Interview of ' + code + ' set in ' + fmt_(at, 'yyyy') + ' (' + when + '): probably a typo in the year', true);
     else if (reg instanceof Date && at < reg) add('MEDIUM', 'BEFORE', r, 'Interview of ' + code + ' set on ' + when + ', before they registered (' + fmt_(reg) + ')', true);
@@ -387,7 +387,7 @@ function integrityCheck_(ctx, deadline) {
   if (start < 0) start = 0;
   const owed = {}; // binome -> codes the Master puts in its sheet
   ctx.iv.data.forEach(r => {
-    if (r[I.Code] && r[I.Binome] && r[I.Status] !== ST.DUPLICATE) (owed[r[I.Binome]] = owed[r[I.Binome]] || []).push(String(r[I.Code]).trim());
+    if (r[I.Code] && r[I.Binome] && !isOut_(r[I.Status])) (owed[r[I.Binome]] = owed[r[I.Binome]] || []).push(String(r[I.Code]).trim());
   });
   const env = { share: bool_(s.SHARE_FILES_WITH_BINOME) && !bool_(s.TEST_MODE), staff: null };
   const seen = {}, checked = {};

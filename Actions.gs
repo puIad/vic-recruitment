@@ -117,7 +117,7 @@ function sendDailyDigest() {
   const newInts = ctx.iv.data.filter(r => r[I['Interview Submitted At']] instanceof Date && r[I['Interview Submitted At']] > yesterday).length;
   const perBinome = {}; open.forEach(r => { if (r[A.Binome]) perBinome[r[A.Binome]] = (perBinome[r[A.Binome]] || 0) + 1; });
   const lag = Object.keys(perBinome).sort((a, b) => perBinome[b] - perBinome[a]).slice(0, 8);
-  const statusLine = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED, ST.INTERVIEWED, ST.WITHDRAWN, ST.UNASSIGNED, ST.DUPLICATE]
+  const statusLine = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED, ST.INTERVIEWED, ST.WITHDRAWN, ST.UNASSIGNED, ST.HELD, ST.DECLINED, ST.DUPLICATE]
     .map(s => s.charAt(0) + s.slice(1).toLowerCase() + ': <b>' + (count[s] || 0) + '</b>').join(' · ');
   const html = '<div style="font-family:Arial;font-size:13px">' +
     '<h3 style="margin:0 0 8px">VIC Recruitment · daily digest (' + fmt_(ctx.now, 'EEE dd/MM') + ')</h3>' +

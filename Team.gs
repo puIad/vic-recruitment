@@ -383,7 +383,8 @@ function resetBinomesCore_(phrase) {
     });
     let nIv = 0;
     ctx.iv.data.forEach(r => {
-      if (r[I.Status] === ST.DUPLICATE || !(r[I.Binome] || r[I.Code])) return;
+      // on hold and out stay as they are: a held row sent back to UNASSIGNED would be assigned at the next Lock
+      if (isOut_(r[I.Status]) || r[I.Status] === ST.HELD || !(r[I.Binome] || r[I.Code])) return;
       ['Binome', 'Assigned At', 'Contacted', 'Contacted Seen At', 'Interview Date', 'Interview Time', 'Interview At',
         'Interview Submitted At', 'Interview Log Row', 'Binome Notes'].forEach(h => { r[I[h]] = ''; });
       r[I.Status] = ST.UNASSIGNED;

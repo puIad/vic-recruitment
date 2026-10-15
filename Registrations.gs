@@ -59,7 +59,7 @@ function loads_(ctx) {
   const load = {};
   ctx.iv.data.forEach(r => {
     const b = r[I.Binome]; if (!b) return;
-    if (mode === 'TOTAL' ? r[I.Status] !== ST.DUPLICATE : PENDING_STATUSES.indexOf(r[I.Status]) >= 0) load[b] = (load[b] || 0) + 1;
+    if (mode === 'TOTAL' ? !isOut_(r[I.Status]) : PENDING_STATUSES.indexOf(r[I.Status]) >= 0) load[b] = (load[b] || 0) + 1;
   });
   return load;
 }
@@ -118,6 +118,9 @@ function processRegistrations_(ctx) {
     const rec = { ts: ts, collected: collected, typedEmail: typed, first: String(get(row, H.first)).trim(),
       family: String(get(row, H.family)).trim(), birth: get(row, H.birth), phone: get(row, H.phone),
       c1: normDept(c1raw), c1raw: c1raw, c2: normDept(get(row, H.c2)) };
+    // family name typed as the first name and the other way round, as the ENP email shows: put right (owner, 2026-10-15)
+    const swapped = namesSwapped(rec.first, rec.family, collected || typed);
+    if (swapped) { const f = rec.first; rec.first = rec.family; rec.family = f; }
     const existing = ctx.iv.data.filter(x => x[I.Status] !== ST.DUPLICATE).map(x => ({
       code: x[I.Code], email: String(x[I.Email]).toLowerCase(), typedEmail: String(x[I['Typed Email']]).toLowerCase(),
       name: x[I['First Name']] + ' ' + x[I['Family Name']], phone: normPhone(x[I.Phone]) }));
@@ -137,7 +140,9 @@ function processRegistrations_(ctx) {
     const extra = regExtras_(H, data[0], row, rec.c1);
     REG_EXTRAS.forEach(h => { out[I[h]] = extra[h]; });
     out[I['Interview Done']] = false;
-    out[I.Flags] = chk.alerts.map(a => a.type).join(', ');
+    out[I.Flags] = (swapped ? ['NAMES_SWAPPED'] : []).concat(chk.alerts.map(a => a.type)).join(', ');
+    const scr = screenOn_() ? screenNew_(ctx, H, row, rec) : null;
+    if (scr) { out[I.Risk] = scr.member ? '' : scr.score; out[I.Screening] = scr.note; }
     out[I['Response Key']] = key;
     out[I.Status] = ST.UNASSIGNED;
     ctx.iv.data.push(out);
@@ -146,17 +151,31 @@ function processRegistrations_(ctx) {
       const old = ctx.restore[key];
       out[I.Code] = old.Code; out[I.Binome] = old.Binome;
       out[I['Assigned At']] = old['Assigned At'] ? new Date(old['Assigned At']) : ''; // older baselines lack it: empty, as before
-      out[I.Status] = old.Status === ST.DUPLICATE ? ST.DUPLICATE : statusOf_(ctx, out);
+      out[I.Status] = old.Status; // out and on hold stay so (statusOf_ keeps them); the others are computed again
+      out[I.Status] = statusOf_(ctx, out);
       if (out[I.Code]) ctx.ivByCode[out[I.Code]] = out;
       continue;
     }
 
+    const named = (rec.first + ' ' + rec.family).trim();
+    if (scr && scr.member) {
+      // a VIC member: out, silently (no alert mail, no binome mail); one line in the history so admins can audit it
+      out[I.Status] = ST.DECLINED;
+      if (rec.c1) { out[I.Code] = nextCode(rec.c1, Object.keys(ctx.ivByCode)); ctx.ivByCode[out[I.Code]] = out; }
+      ctx.alerts.add({ severity: 'INFO', type: 'VIC_MEMBER_DECLINED', status: 'AUTO-FIXED', code: out[I.Code] || named, binome: '',
+        msg: (out[I.Code] || named) + ' (' + out[I.Email] + ') is on the VIC members list: declined silently, nobody was emailed.', key: '' });
+      continue;
+    }
     if (chk.duplicateOf) {
       out[I.Status] = ST.DUPLICATE;
+    } else if (scr && scr.hold) {
+      // waits for an admin (screenWaiting_ raises NEEDS_REVIEW); a code so alerts and quick actions can point at it
+      out[I.Status] = ST.HELD;
+      if (rec.c1) { out[I.Code] = nextCode(rec.c1, Object.keys(ctx.ivByCode)); ctx.ivByCode[out[I.Code]] = out; }
     } else if (rec.c1) {
       assignRow_(ctx, out);
     }
-    const label = out[I.Code] || (rec.first + ' ' + rec.family).trim();
+    const label = out[I.Code] || named;
     chk.alerts.forEach(a => ctx.alerts.add({ severity: a.severity, type: a.type, code: label, binome: out[I.Binome],
       msg: a.msg, key: 'REG|' + a.type + '|' + key, notifyBinome: false }));
     if (out[I.Status] === ST.UNASSIGNED && rec.c1 && bool_(s.ASSIGNMENTS_OPEN)) {
