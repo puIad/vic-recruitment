@@ -120,8 +120,9 @@ function FreeRow({
           <span className="flex items-center gap-1.5">
             <span className="truncate font-bold">{m.name ? <MemberName name={m.name} /> : m.email}</span>
             {match && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-success">
-                <Sparkles className="size-3" aria-hidden="true" /> good match
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-success" title="Good match">
+                <Sparkles className="size-3" aria-hidden="true" />
+                <span className="sr-only sm:not-sr-only">good match</span>
               </span>
             )}
           </span>
@@ -181,7 +182,7 @@ function DraftRow({
         size="icon-sm"
         disabled={disabled}
         onClick={onRemove}
-        aria-label={`Remove ${b.code}: ${b.people.map((p) => p.name || p.email).join(" and ")} go back to the free members`}
+        aria-label={`Remove ${b.code}: ${b.people.map((p) => p.name || p.email).join(" and ")} ${b.people.length > 1 ? "go" : "goes"} back to the free members`}
         title="Remove this pair"
       >
         {removing ? <Spinner /> : <X />}
