@@ -22,6 +22,7 @@ import type { Binome, Cover, Unpaired } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { MemberName, MemberNames } from "@/components/member-name"
 import { ACCESS_BADGE, AccessDialog } from "./components/access-dialog"
+import { PairingPanel } from "./components/pairing-panel"
 
 const NONE: Binome[] = []
 
@@ -215,7 +216,8 @@ function CoversCard({ list }: { list: Cover[] }) {
 }
 
 export default function BinomesPage() {
-  const binomes = useVic((s) => s.state?.binomes) ?? NONE
+  const state = useVic((s) => s.state)
+  const binomes = state?.binomes ?? NONE
   const unpaired = useVic((s) => s.state?.unpaired) ?? []
   const covers = useVic((s) => s.state?.covers) ?? []
   const loading = useVic((s) => !s.state)
@@ -252,6 +254,7 @@ export default function BinomesPage() {
       description={loading ? "Loading…" : `${binomes.length} pairs of interviewers, ${locked} locked. Each locked binome has its own sheet.`}
       watermark="Binomes"
     >
+      {state && !state.locked && <PairingPanel state={state} />}
       <UnpairedCard list={unpaired} />
       <DataTable
         columns={columns}
@@ -262,7 +265,7 @@ export default function BinomesPage() {
         empty={
           <div className="space-y-1 py-6">
             <p className="font-bold">{binomes.length ? "No match" : "No binomes yet"}</p>
-            <p className="text-sm text-muted-foreground">{binomes.length ? "Nothing fits this filter." : "Import the team, then draft the binomes from the Overview."}</p>
+            <p className="text-sm text-muted-foreground">{binomes.length ? "Nothing fits this filter." : "Import the team from the Overview, then pair them in the panel above."}</p>
           </div>
         }
         toolbar={(table) => (

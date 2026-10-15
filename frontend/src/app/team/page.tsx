@@ -1,7 +1,7 @@
 import * as React from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Link } from "react-router-dom"
-import { Search, UserPlus, X } from "lucide-react"
+import { Check, Search, UserPlus, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { DataTable } from "@/components/data-table/data-table"
@@ -62,6 +62,20 @@ const columns: ColumnDef<Row>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Pairs as" />,
     filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
     cell: ({ row }) => <Badge variant="outline">{row.original.pairAs}</Badge>,
+  },
+  {
+    id: "experience",
+    accessorFn: (m) => (m.experienced ? "Experienced" : "New"),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Experience" />,
+    filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
+    cell: ({ row }) =>
+      row.original.experienced ? (
+        <Badge variant="success" title="Has interviewed before (Team tab › Experienced)">
+          <Check aria-hidden="true" /> Experienced
+        </Badge>
+      ) : (
+        <Badge variant="secondary" className="text-muted-foreground">New</Badge>
+      ),
   },
   {
     accessorKey: "binome",
@@ -148,6 +162,7 @@ export default function TeamPage() {
               )}
             </div>
             <DataTableFacetedFilter column={table.getColumn("state")} title="Paired" options={[{ label: "Paired", value: "Paired" }, { label: "In draft", value: "In draft" }, { label: "Unpaired", value: "Unpaired" }]} />
+            <DataTableFacetedFilter column={table.getColumn("experience")} title="Experience" options={[{ label: "Experienced", value: "Experienced" }, { label: "New", value: "New" }]} />
             <DataTableFacetedFilter column={table.getColumn("pairAs")} title="Pairs as" options={[...new Set(rows.map((r) => r.pairAs))].sort().map((v) => ({ label: v, value: v }))} />
             <DataTableViewOptions table={table} />
           </div>

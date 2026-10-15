@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-07. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-15. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
@@ -86,6 +86,12 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 ## In review
 
+- **Pairing with experience, random or by hand** ([#32](https://github.com/puIad/vic-recruitment-2026/pull/32), launch-features.md section 1): Team
+  column Experienced (Import ticks the 2025 team), the draw gives new members an experienced partner when there are
+  enough, and a Pairing panel on the Binomes page (pair two by hand, remove, Draw the rest, Redraw all) while nothing is
+  locked. Ships as usual: merge, `npm run deploy` (no `API_VERSION` bump: fields and actions only added), run Setup once
+  (the checkbox rule), then Vercel. Then the production pairing: Reset all binomes, Import team, check the ticks, pair,
+  Lock. Details and gotchas: the section's Notes.
 - **Alert quick actions** (branch `alert-quick-actions`): a quick fix for every alert type that has one, snooze / mute,
   emails with an editable preview, links to the exact row or cell, bulk Nudge / Repair / Snooze. Settled with the owner on
   2026-10-04; how it works: [architecture.md](docs/architecture.md#quick-actions-alerts-page). Ships as usual: merge,
@@ -106,9 +112,9 @@ Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycl
 
 ## Next: pairing, screening, department change (requested 2026-10-15)
 
-Planned, not built: [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand)
-before the production Lock, screening (hold low-effort applications, decline VIC members silently) before the form
-opens, and changing a binome's department from the dashboard. The owner answered its questions on 2026-10-15;
+Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand), needed
+before the production Lock, is built and in review (above). Not built yet: screening (hold low-effort applications,
+decline VIC members silently) before the form opens, and changing a binome's department from the dashboard. The owner answered its questions on 2026-10-15;
 screening still needs the link of the VIC members sheet.
 
 ## Brief for 2026-10-04 (settled with the owner)

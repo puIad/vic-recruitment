@@ -4,6 +4,8 @@
 //   ?as=helper@g.enp.edu.dz → no-access view; /dev-login?as=  → signed-out view. --empty = before team import.
 //   /dev-login?as=member → a member of the busiest binome (opened with edit: My binome only; the start-up line names them).
 //   /dev-login?as=closed → a member of a binome not opened yet (the "isn't open yet" gate).
+//   --pairing = before Lock: this year's OT list (part of the 2025 team, pre-ticked Experienced), three pairs made by hand, the
+//   rest free, so the Binomes page shows the Pairing panel (npm run mock -- --pairing).
 const http = require('http'), crypto = require('crypto');
 const port = +process.argv.find(a => /^\d+$/.test(a)) || 3000;
 process.env.SESSION_KEY = crypto.randomBytes(32).toString('base64');
@@ -12,7 +14,22 @@ process.env.SCRIPT_API_DEPLOYMENT_ID = 'LOCAL';
 const S = require('../web/lib/session');
 const s = require('./seed')();
 require('./googlemock')(s);
-if (!process.argv.includes('--empty')) {
+const pairing = process.argv.includes('--pairing'), empty = process.argv.includes('--empty') || pairing;
+if (pairing) {
+  s.run(`master.insertSheet('OT 2026').cells = [["Section", "First Name", "Last Name", "Email"],
+    ["Committee Board", "Aymene", "Khaled", "aymene@g.enp.edu.dz"], ["Council Board", "Sabrina", "Aknine", "sabrina@g.enp.edu.dz"],
+    ["HR", "Ikram", "Mahi", "ikram@g.enp.edu.dz"], ["", "Zineb", "Taibi", "zineb@g.enp.edu.dz"], ["", "Djamila", "Cherifi", "djamila@g.enp.edu.dz"],
+    ["", "Nada", "Rahmani", "nada.rahmani@g.enp.edu.dz"], ["", "Hiba", "Saadi", "hiba.saadi@g.enp.edu.dz"], ["", "Wafa", "Djebbar", "wafa.djebbar@g.enp.edu.dz"],
+    ["", "Imene", "Boudiaf", "imene.boudiaf@g.enp.edu.dz"], ["", "Rania", "Mekki", "rania.mekki@g.enp.edu.dz"], ["", "Selma", "Haddad", "selma.haddad@g.enp.edu.dz"],
+    ["IT", "Sara", "Bouznad", "sara@g.enp.edu.dz"], ["", "Madjid", "Medjkane", "madjid@g.enp.edu.dz"], ["", "Ilyes", "Hamdi", "ilyes.hamdi@g.enp.edu.dz"],
+    ["", "Omar", "Ferhat", "omar.ferhat@g.enp.edu.dz"], ["", "Anis", "Belaid", "anis.belaid@g.enp.edu.dz"], ["", "Yanis", "Ouali", "yanis.ouali@g.enp.edu.dz"],
+    ["COMM", "Aya", "Gharbi", "aya@g.enp.edu.dz"], ["", "Lyna", "Toumi", "lyna.toumi@g.enp.edu.dz"], ["", "Meriem", "Kaci", "meriem.kaci@g.enp.edu.dz"],
+    ["FLER", "Yasmine", "Ait Ahmed", "yasmine@g.enp.edu.dz"], ["", "Nour", "Amrani", "nour.amrani@g.enp.edu.dz"], ["", "Walid", "Saidi", "walid.saidi@g.enp.edu.dz"]]`);
+  s.call('webRun', 'importTeam', { link: '' });
+  s.call('webRun', 'teamSet', { email: 'selma.haddad@g.enp.edu.dz', experienced: true }); // ticked by hand: interviewed before, not in the 2025 list
+  [['nada.rahmani', 'sara'], ['hiba.saadi', 'aya'], ['wafa.djebbar', 'ilyes.hamdi']].forEach(([a, b]) =>
+    s.call('webRun', 'draftPair', { emailA: a + '@g.enp.edu.dz', emailB: b + '@g.enp.edu.dz' }));
+} else if (!empty) {
   s.call('webRun', 'importTeam', { link: '' }); s.call('webRun', 'draft'); s.call('webRun', 'lock');
   s.run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,1,6).setValues([['Late Member','late@g.enp.edu.dz','IT','IT',false,'']]);})()"); // shows the Unpaired card
   s.addRegistrations(40, 3); s.call('webRun', 'sync'); s.backdateAssignments(3); s.call('webRun', 'sync');
@@ -34,7 +51,7 @@ if (!process.argv.includes('--empty')) {
   s.call('webRun', 'swapMembers', { binomeA: two[1].code, emailA: two[1].people[0].email, binomeB: two[2].code, emailB: two[2].people[0].email });
 }
 // a binome member who is not an editor of the Master: the member view (task 7)
-const busiest = process.argv.includes('--empty') ? null : s.call('webState').binomes.filter(b => b.people.length).sort((a, b) => b.assigned - a.assigned)[0];
+const busiest = empty ? null : s.call('webState').binomes.filter(b => b.people.length).sort((a, b) => b.assigned - a.assigned)[0];
 const memberEmail = busiest ? busiest.people[busiest.people.length - 1].email : '';
 // members get the dashboard only while they can open their binome sheet: the busiest binome is opened (edit), the others not
 const closed = busiest ? s.call('webState').binomes.find(b => b.code !== busiest.code && b.status !== 'DRAFT' && b.people.length) : null;

@@ -7,6 +7,7 @@ import { MemberName, MemberNames } from "@/components/member-name"
 import type {
   Alert,
   ChangeCheck,
+  DraftPairOut,
   ChangePlan,
   Cover,
   CoverCheck,
@@ -146,21 +147,49 @@ export function useActions() {
         after()
       },
 
-      async draft(drafts: number) {
-        if (drafts) {
+      // Pairing panel (before Lock). Pair, remove and the Experienced toggle don't ask: drafts are scratch, Lock previews.
+      // They wait for the fresh state, so the panel can drop its pending marks the moment the real rows arrive.
+      async draftPair(emailA: string, emailB: string) {
+        const out = await go<DraftPairOut>("draftPair", { emailA, emailB }, "Pair")
+        await refresh(true)
+        return out ? out.result : null
+      },
+      async draftUnpair(binome: string, email: string) {
+        const out = await go("draftUnpair", { binome, email }, `Remove ${binome}`)
+        await refresh(true)
+        return !!out
+      },
+      async teamSet(email: string, experienced: boolean) {
+        const out = await go("teamSet", { email, experienced }, experienced ? "Mark experienced" : "Mark new")
+        await refresh(true)
+        return !!out
+      },
+      /** Draw the rest: the free members only; every draft there is stays. */
+      async drawRest() {
+        await go("draft", { keep: true }, "Draw the rest")
+        await refresh(true)
+      },
+      /** Redraw all: every draft goes and everyone is drawn again. Asks only when pairs made by hand would be lost. */
+      async redrawAll(drafts: number, byHand: number) {
+        if (byHand) {
           const ok = await confirm({
-            title: "Redraw the binomes?",
+            title: "Redraw all the pairs?",
             body: (
-              <p>
-                The <b>{drafts}</b> current DRAFT binomes (and any edits you made to them) are replaced by a new random draw. Locked binomes are kept.
-              </p>
+              <>
+                <p>
+                  The <b>{byHand}</b> pair{byHand > 1 ? "s" : ""} you made by hand {drafts > byHand ? <>and the <b>{drafts - byHand}</b> drawn ones </> : null}
+                  go, and everyone is drawn again at random.
+                </p>
+                <p className="text-muted-foreground">To keep your pairs, use Draw the rest instead: it only pairs the members still free.</p>
+              </>
             ),
-            okLabel: "Redraw",
+            okLabel: "Redraw all",
+            danger: true,
           })
           if (!ok) return
         }
-        await go("draft", {}, "Draft binomes")
-        after()
+        await go("draft", {}, "Redraw all")
+        await refresh(true)
       },
 
       async lock() {

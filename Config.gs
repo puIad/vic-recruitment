@@ -59,7 +59,7 @@ const TAB = {
   REG_RESP: 'Registration Responses', INT_RESP: 'Interview Responses', CHANGES: 'Member Changes',
 };
 
-const TEAM_H = ['Full Name', 'Email', 'Department', 'Pair As', 'Exclude', 'Notes'];
+const TEAM_H = ['Full Name', 'Email', 'Department', 'Pair As', 'Exclude', 'Notes', 'Experienced'];
 const BIN_H = ['Binome', 'Member 1', 'Email 1', 'Member 2', 'Email 2', 'Tag', 'Status', 'File', 'File ID', 'Created'];
 const IV_H = ['Code', 'Binome', 'Status', 'Registered At', 'Assigned At', 'First Name', 'Family Name', 'Email', 'Typed Email',
   'Phone', 'Facebook', 'Discord', 'Field', 'Year', '1st Choice', '2nd Choice', 'Availability', 'Motivation',

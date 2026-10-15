@@ -1,6 +1,7 @@
 # Plans: pairing, screening, department change
 
-The owner's requests of 2026-10-15. Nothing here is built yet. Unlike [plans.md](plans.md), the first two are needed
+The owner's requests of 2026-10-15. Pairing (section 1) is built and in review (its Notes); the other two are not
+built yet. Unlike [plans.md](plans.md), the first two are needed
 before launch.
 
 | # | Feature | Needed by | Size |
@@ -93,6 +94,35 @@ A **Pairing** panel on the Binomes page, shown while nothing is locked. Once bin
 1. Ship it (script, then Vercel) and try it on the mock.
 2. Production, TEST_MODE still on so nothing is shared: Reset all binomes, Import team, check the Experienced ticks,
    pair, Lock. This replaces the 32 test binomes and clears the simulation.
+
+### Notes
+
+- 2026-10-15: built in [#32](https://github.com/puIad/vic-recruitment-2026/pull/32), in review, not deployed. All suites pass (34 unit tests), typecheck
+  clean, panel checked on the mock at desktop and 390 px, light and dark.
+  - Team column G **Experienced**. The script adds its header when it loads the tab; Setup adds a checkbox rule
+    (`requireCheckbox`, not `insertCheckboxes`, which would untick everyone each time Setup runs) and a header note.
+    Import reads the 2025 database (`pastTeam_`) and ticks the members it finds there. If that sheet can't be read,
+    nobody is ticked and the import message says so. If G1 already holds another header (the script never writes over
+    one), nobody counts as experienced, and teamSet and Import refuse with "Run Setup first" until Setup puts the header
+    there (owner's review of #32).
+  - `draftPairs`: with nobody experienced it draws exactly as before (same order, same random calls). A board lead takes
+    the class it lacks, so an experienced lead gets a new member and a new lead an experienced one. The leftovers
+    without an HR member mix new with experienced too. Every draft's code-cell note is rewritten on each change (the
+    shape warning, then "Both members are new"), and ticking someone re-notes the draft that holds them.
+  - The draft actions (`draft`, `draftPair`, `draftUnpair`) share `draftEdit_`: script lock, refused once anything is
+    locked, `detectEdits_` first and `commitBase_` after. `teamSet` stays open after Lock. A plain `draft` refused when
+    locked is still a message (the menu shows it as a dialog); pair and remove throw.
+  - Pairs made by hand are remembered as their members' emails in the script property `DRAFT_HAND`, so Redraw all asks
+    only when it would lose one and the panel marks them "by hand". Draw the rest keeps the list; Redraw all and Reset
+    clear it. The snapshot carries `byHand` on draft binomes and `experienced` on `teamList` and `unpaired`.
+  - The panel previews the tag and the mix of the two picked members and marks good partners (the side the draw would
+    give, the other experience class). The Launch card's step 2 is now "Pair the binomes" with a link to the panel;
+    the Team page has an Experience column and filter.
+  - Local check: `npm run mock -- --pairing` seeds an unlocked Master (23 members, 9 of them from the 2025 team, one
+    ticked by hand, 3 pairs made by hand).
+  - Deploy: merge, `npm run deploy`, then run Setup once for the checkbox rule, then Vercel. Run Setup before the
+    rollout's Reset and Import: Setup re-inserts the Exclude checkboxes, which unticks that column (it has always done
+    this; the Import that follows rewrites the column anyway).
 
 ## 2. Screening: hold low-effort applications, decline VIC members
 

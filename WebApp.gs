@@ -427,7 +427,7 @@ function buildState_(ctx) {
   const alertCounts = { HIGH: 0, MEDIUM: 0, INFO: 0 };
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
 
-  const look = quickLookups_(ctx), opened = binAccess_();
+  const look = quickLookups_(ctx), opened = binAccess_(), hand = ctx.binomes.some(b => b.status === 'DRAFT') ? handDrafts_() : [];
   const teamSrc = findTeamSource_(ss_());
 
   return {
@@ -457,11 +457,12 @@ function buildState_(ctx) {
     covers: (ctx.covers || []).map(c => ({ row: c.row, binome: c.binome, name: c.name, email: c.email, outName: c.outName,
       codes: c.codes, live: coverLive_(ctx, c), reason: c.reason })),
     history: historyRows_(),
-    teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs })),
+    teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
       return { code: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
         people: b.members.map(m => ({ name: m.name, email: m.email })), access: (opened[b.code] || {}).level || '',
+        byHand: b.status === 'DRAFT' && hand.indexOf(handKey_(b.members.map(m => m.email))) >= 0,
         assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open };
     }),
     alertCounts: alertCounts,
@@ -545,7 +546,10 @@ function webRun(action, args) {
       case 'editRevert': result = editFixCore_('revert', args.ids); break;
       case 'editAccept': result = editFixCore_('accept', args.ids); break;
       case 'importTeam': result = importTeamCore_(args.link, !!args.replace); break;
-      case 'draft': draftBinomes(); break;
+      case 'draft': draftCore_(!!args.keep); break; // keep: Draw the rest; without: Redraw all
+      case 'draftPair': result = draftPair_(args); break;
+      case 'draftUnpair': result = draftUnpair_(args); break;
+      case 'teamSet': result = teamSet_(args); break;
       case 'lockCheck': result = lockCheck_(); break;
       case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;

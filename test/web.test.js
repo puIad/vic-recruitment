@@ -644,7 +644,8 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     ['swapMembers', { binomeA: b1.code, emailA: partner, binomeB: b2.code, emailB: b2.people[0].email }], ['newBinome', { emailA: 'a@g.enp.edu.dz', emailB: 'b@g.enp.edu.dz' }],
     ['addCover', { codes: ivOf(b2.code)[0], inEmail: mem }], ['endCover', { row: 2 }], ['quick', { op: 'snooze', ids: ['A-0001'], for: '4h' }],
     ['resolve', { ids: st.alerts.map(a => a.id) }], ['saveSettings', { values: { TEST_MODE: false } }], ['setup'],
-    ['binomeAccess', { binome: b2.code, level: 'edit' }], ['binomeAccess', { binome: b1.code }]].forEach(([action, args]) =>
+    ['binomeAccess', { binome: b2.code, level: 'edit' }], ['binomeAccess', { binome: b1.code }], ['draft', { keep: true }],
+    ['draftPair', { emailA: mem, emailB: partner }], ['draftUnpair', { binome: b1.code }], ['teamSet', { email: mem, experienced: true }]].forEach(([action, args]) =>
     assert.throws(() => m.call('webRun', action, args), /^Error: Not allowed$/, action + ' must be refused'));
   assert.deepStrictEqual([tabs(), m.run('JSON.stringify(__props)')], [before, props0], 'a member changed nothing');
 
@@ -943,6 +944,110 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   assert(st.alerts.some(a => a.type === 'FILE_ERROR' && /history not written/.test(a.msg)), 'MEDIUM alert for the missing history');
   assert(!st.alerts.some(a => a.type === 'MANUAL_EDIT'), 'baseline still saved');
 }
+// ---- pairing before Lock: experience, pairs by hand, draw the rest, redraw (launch-features.md, section 1). Own project ----
+{
+  const p = require('./seed')();
+  const E = n => n + '@g.enp.edu.dz';
+  // this year's OT list in a tab of the Master: three of the 2025 team (seed DB), six new
+  p.run(`master.insertSheet('OT 2026').cells = [["Section","First Name","Last Name","Email"],
+    ["HR","Ikram","Mahi","ikram@g.enp.edu.dz"],["","Nada","Rahmani","nada@g.enp.edu.dz"],["","Hiba","Saadi","hiba@g.enp.edu.dz"],["","Wafa","Djebbar","wafa@g.enp.edu.dz"],
+    ["IT","Sara","Bouznad","sara@g.enp.edu.dz"],["","Ilyes","Hamdi","ilyes@g.enp.edu.dz"],["","Omar","Ferhat","omar@g.enp.edu.dz"],
+    ["COMM","Aya","Gharbi","aya@g.enp.edu.dz"],["","Lyna","Toumi","lyna@g.enp.edu.dz"]]`);
+  let out = p.call('webRun', 'importTeam', { link: '' });
+  assert(/Imported 9 members from "OT 2026"[\s\S]*\n3 marked Experienced \(in the 2025 team\)/.test(out.messages[0]), out.messages[0]);
+  const st = () => p.call('webState');
+  const exp = () => st().teamList.filter(m => m.experienced).map(m => m.email.split('@')[0]).sort();
+  assert.deepStrictEqual(exp(), ['aya', 'ikram', 'sara'], 'pre-ticked from the 2025 database');
+  // by hand, both ways; written in the Team tab's Experienced column
+  out = p.call('webRun', 'teamSet', { email: E('nada'), experienced: true });
+  assert.deepStrictEqual(out.result, { email: E('nada'), experienced: true, name: 'Nada Rahmani' });
+  p.call('webRun', 'teamSet', { email: E('Aya'), experienced: false });
+  assert.deepStrictEqual(exp(), ['ikram', 'nada', 'sara']);
+  assert.strictEqual(p.run(`master.getSheetByName('Team').cells.find(r => r[1] === 'nada@g.enp.edu.dz')[TEAM_H.indexOf('Experienced')]`), true);
+  assert.throws(() => p.call('webRun', 'teamSet', { email: E('ghost'), experienced: true }), /ghost@g\.enp\.edu\.dz is not in the Team tab/);
+  assert.throws(() => p.call('webRun', 'teamSet', { email: E('nada'), experienced: 'yes' }), /true or false/);
+  // Lyna excluded and Omar SKIP by hand in the Team tab
+  p.run(`master.getSheetByName('Team').cells.forEach(r => { if (r[1] === 'lyna@g.enp.edu.dz') r[4] = true; if (r[1] === 'omar@g.enp.edu.dz') r[3] = 'SKIP'; })`);
+
+  // pairs by hand: a DRAFT row at once, HR member first, tagged like Pair two…
+  const rows = () => p.run(`JSON.stringify(master.getSheetByName('Binomes').cells.slice(1).filter(r => r[0]).map(r => [r[0], r[2], r[4], r[5], r[6]]))`);
+  const note = r => p.run(`master.getSheetByName('Binomes').notes["${r}:1"] || ''`);
+  out = p.call('webRun', 'draftPair', { emailA: E('ilyes'), emailB: E('nada') });
+  assert.deepStrictEqual(out.result, { binome: 'B.01', tag: 'IT & HR', warning: '', bothNew: false });
+  out = p.call('webRun', 'draftPair', { emailA: E('hiba'), emailB: E('aya') });
+  assert.deepStrictEqual(out.result, { binome: 'B.02', tag: 'COMM & HR', warning: '', bothNew: true });
+  out = p.call('webRun', 'draftPair', { emailA: E('sara'), emailB: E('wafa') });
+  assert.deepStrictEqual(JSON.parse(rows()), [['B.01', E('nada'), E('ilyes'), 'IT & HR', 'DRAFT'], ['B.02', E('hiba'), E('aya'), 'COMM & HR', 'DRAFT'],
+    ['B.03', E('wafa'), E('sara'), 'IT & HR', 'DRAFT']]);
+  assert.deepStrictEqual([note(2), note(3), note(4)], ['', '⚠️ Both members are new', '']);
+  // a tick changes the note of the draft holding them
+  p.call('webRun', 'teamSet', { email: E('aya'), experienced: true });
+  assert.strictEqual(note(3), '');
+  p.call('webRun', 'teamSet', { email: E('aya'), experienced: false });
+  assert.strictEqual(note(3), '⚠️ Both members are new');
+  // refused: nobody twice, nobody excluded or SKIP, two different members, only the Team
+  const before = rows();
+  [[{ emailA: E('ikram'), emailB: E('nada') }, /Nada Rahmani is already in draft B\.01/], [{ emailA: E('ikram'), emailB: E('lyna') }, /Lyna Toumi is excluded/],
+    [{ emailA: E('ikram'), emailB: E('omar') }, /Omar Ferhat is set to SKIP/], [{ emailA: E('ikram'), emailB: E('ikram') }, /two different members/],
+    [{ emailA: E('ikram') }, /Choose two members/], [{ emailA: E('ikram'), emailB: E('ghost') }, /ghost@g\.enp\.edu\.dz is not in the Team tab/]]
+    .forEach(([args, re]) => assert.throws(() => p.call('webRun', 'draftPair', args), re));
+  assert.strictEqual(rows(), before, 'a refused pair writes nothing');
+
+  // remove: the row goes, the later drafts move up a code (and their notes with them)
+  assert.throws(() => p.call('webRun', 'draftUnpair', { binome: 'B.09' }), /B\.09 is not a draft binome/);
+  assert.throws(() => p.call('webRun', 'draftUnpair', { binome: 'B.01', email: E('hiba') }), /changed meanwhile/);
+  out = p.call('webRun', 'draftUnpair', { binome: 'B.01', email: E('nada') });
+  assert.deepStrictEqual(out.result, { removed: 'B.01', members: ['Nada Rahmani', 'Ilyes Hamdi'] });
+  assert.deepStrictEqual(JSON.parse(rows()).map(r => r[0] + ' ' + r[1]), ['B.01 ' + E('hiba'), 'B.02 ' + E('wafa')]);
+  assert.deepStrictEqual([note(2), note(3)], ['⚠️ Both members are new', '']);
+  assert.deepStrictEqual(st().binomes.map(b => b.code + ':' + b.status + ':' + b.byHand), ['B.01:DRAFT:true', 'B.02:DRAFT:true'], 'the snapshot follows, made by hand');
+
+  // Draw the rest: the hand-made pairs stay, the free members (Ikram, Nada, Ilyes) are drawn, with the mix
+  out = p.call('webRun', 'draft', { keep: true });
+  assert(/^Drew 2 more binomes from the 3 free members; the 2 pairs already made stay\./.test(out.messages[0]), out.messages[0]);
+  assert(/Drafts now: 4 binomes, 3 with an experienced member, 1 without one \(3 experienced for 4 new\)\./.test(out.messages[0]), out.messages[0]);
+  let r = JSON.parse(rows());
+  assert.deepStrictEqual(r.slice(0, 2).map(x => x[0] + ' ' + x[1] + ' ' + x[2]), ['B.01 ' + E('hiba') + ' ' + E('aya'), 'B.02 ' + E('wafa') + ' ' + E('sara')]);
+  assert.deepStrictEqual(r.map(x => x[0]), ['B.01', 'B.02', 'B.03', 'B.04']);
+  assert.deepStrictEqual(st().binomes.map(b => b.byHand), [true, true, false, false], 'drawn pairs are not marked as made by hand');
+  const drawn = r.slice(2).map(x => [x[1], x[2]].filter(Boolean));
+  assert(drawn.some(x => x.length === 2 && x[1] === E('ilyes') && [E('ikram'), E('nada')].includes(x[0])) && drawn.some(x => x.length === 1),
+    'new Ilyes goes to an experienced HR member, the other one is left alone: ' + JSON.stringify(drawn));
+  assert.strictEqual(JSON.parse(p.run(`JSON.stringify(master.getSheetByName('Binomes').cells.slice(1).map(r => r[1] + r[3]).filter(String))`)).length, 4);
+  // nothing of it is a hand edit
+  p.call('webRun', 'sync');
+  assert.deepStrictEqual(st().alerts.filter(a => a.type === 'MANUAL_EDIT'), [], 'no manual-edit alert after the draft actions');
+  // Redraw all: every draft goes, everyone free is drawn again
+  out = p.call('webRun', 'draft');
+  assert(/^Drafted 4 binomes from 7 available members\./.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual(JSON.parse(rows()).map(x => x[0]), ['B.01', 'B.02', 'B.03', 'B.04']);
+  assert(st().binomes.every(b => !b.byHand), 'Redraw all forgets the hand-made pairs');
+
+  // Lock, then the pairing actions are closed; teamSet stays open
+  p.call('webRun', 'lock');
+  assert(st().locked);
+  assert.throws(() => p.call('webRun', 'draftPair', { emailA: E('ikram'), emailB: E('nada') }), /already locked/);
+  assert.throws(() => p.call('webRun', 'draftUnpair', { binome: 'B.01' }), /already locked/);
+  assert(/already locked/.test(p.call('webRun', 'draft', { keep: true }).messages[0]));
+  assert.strictEqual(p.call('webRun', 'teamSet', { email: E('aya'), experienced: true }).result.experienced, true);
+  assert(st().unpaired.every(m => typeof m.experienced === 'boolean'));
+}
+// ---- a Team tab whose column G is someone else's (Setup not run since Experienced came): refused, nobody counts as experienced ----
+{
+  const q = require('./seed')();
+  q.call('webRun', 'importTeam', { link: '' });
+  q.run(`(function () { var c = master.getSheetByName('Team').cells; c[0][6] = 'Phone'; c[1][6] = '0555123456'; c[2][6] = true; })()`);
+  const team = () => q.run(`JSON.stringify(master.getSheetByName('Team').cells)`), before = team();
+  assert.throws(() => q.call('webRun', 'teamSet', { email: 'ikram@g.enp.edu.dz', experienced: true }),
+    /^Error: The Team tab has no Experienced column yet \(its column G holds something else\)\. Run Setup first, from the Master: VIC Recruitment › Run setup again, as vic\.rh .*Nothing was changed\.$/);
+  assert.throws(() => q.call('webRun', 'importTeam', { link: '', replace: true }), /no Experienced column yet/, 'Import would write over that column');
+  assert.strictEqual(team(), before, 'the Team tab is unchanged');
+  assert(q.call('webState').teamList.every(m => m.experienced === false), 'the snapshot reads nobody as experienced');
+  assert(/Drafted \d+ binomes/.test(q.call('webRun', 'draft').messages[0]), 'the draft still runs, everyone new');
+  q.call('webRun', 'setup');
+  assert.strictEqual(q.run(`master.getSheetByName('Team').cells[0][6]`), 'Experienced', 'Setup writes the header');
+  assert.strictEqual(q.call('webRun', 'teamSet', { email: 'ikram@g.enp.edu.dz', experienced: true }).result.experienced, true, 'then teamSet works');
+}
 // a refused lock is an error on the dashboard, never a message; nothing is changed
 {
   const tabs = () => run('JSON.stringify(master.sheets.map(s => s.cells)) + __outbox.length');
@@ -953,7 +1058,8 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
     ['resetBinomes', { phrase }], ['reassign', { code: 'IT.1', binome: 'B.01' }],
     ['changeMember', { binome: 'B.01', outEmail: 'a@x.dz', inEmail: 'b@x.dz' }], ['swapMembers', { binomeA: 'B.01', emailA: 'a@x.dz', binomeB: 'B.02', emailB: 'b@x.dz' }],
     ['newBinome', { emailA: 'a@x.dz', emailB: 'b@x.dz' }], ['addCover', { codes: ['IT.1'], inEmail: 'a@x.dz' }], ['endCover', { row: 2 }],
-    ['quick', { op: 'snooze', ids: ['A-1'], for: '4h' }]].forEach(([action, args]) =>
+    ['quick', { op: 'snooze', ids: ['A-1'], for: '4h' }], ['draft', { keep: true }], ['draftPair', { emailA: 'a@x.dz', emailB: 'b@x.dz' }],
+    ['draftUnpair', { binome: 'B.01' }], ['teamSet', { email: 'a@x.dz', experienced: true }]].forEach(([action, args]) =>
     assert.throws(() => call('webRun', action, args), /^Error: BUSY: Another update is running\. Nothing was changed/, action + ' must fail with BUSY'));
   run('__lockBusy = false');
   assert.strictEqual(tabs(), before, 'a refused action changes nothing');
