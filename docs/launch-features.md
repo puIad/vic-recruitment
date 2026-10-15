@@ -283,7 +283,7 @@ Refresh now.
 
 ### Notes
 
-- 2026-10-15: calibrated with the owner on the 273 applications of 2025 (the Master's Registration Responses, read
+- 2026-10-15: built in [#33](https://github.com/puIad/vic-recruitment-2026/pull/33), in review, not deployed. Calibrated with the owner on the 273 applications of 2025 (the Master's Registration Responses, read
   through the Sheets connector; nothing saved). What turned up: 4 answered a why-question with only dots or a slash, 3
   typed a name where the answer goes, 4 a yes/no or "I don't know", 17 wrote under 10 words in all (most of them short
   but sincere), about 29 read like ChatGPT, no keyboard mash, one answer pasted twice. The department questions in the
