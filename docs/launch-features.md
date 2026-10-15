@@ -1,7 +1,7 @@
 # Plans: pairing, screening, department change
 
-The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); the other two are not
-built yet. Unlike [plans.md](plans.md), the first two are needed
+The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); screening (section 2)
+is built and in review (its Notes); the department change is not built yet. Unlike [plans.md](plans.md), the first two are needed
 before launch.
 
 | # | Feature | Needed by | Size |
@@ -181,7 +181,7 @@ With `SCREENING` off, steps 1 and 3 are skipped and everything behaves exactly a
 A pure function `screenApplication(answers)` in Rules.gs returns `{score, reasons[]}`. It reads the free-text
 answers: why this department (Motivation), Why VIC, each department question on its own (not the joined text
 `regExtras_` builds for the sheet), and Anything to add. Each signal adds points, capped at 100. Starting weights,
-which the calibration replaces:
+which the calibration replaced (the rules as built are in Notes below and Decisions 7 to 10):
 
 | Signal | Points |
 |---|---|
@@ -281,6 +281,39 @@ Refresh now.
    rejections… once to see the email reach the admins only.
 5. During the form rewording before launch, check that the form's confirmation message doesn't promise an interview.
 
+### Notes
+
+- 2026-10-15: calibrated with the owner on the 273 applications of 2025 (the Master's Registration Responses, read
+  through the Sheets connector; nothing saved). What turned up: 4 answered a why-question with only dots or a slash, 3
+  typed a name where the answer goes, 4 a yes/no or "I don't know", 17 wrote under 10 words in all (most of them short
+  but sincere), about 29 read like ChatGPT, no keyboard mash, one answer pasted twice. The department questions in the
+  real form are yes/no, so one-word answers there are normal and are not scored.
+- The rules as built (`screenApplication`, Rules.gs): each why-answer (Why VIC, Why <first choice>) that is only
+  punctuation or emoji adds 60, one word 50, a fixed non-answer 50 (`NON_ANSWERS` in Config.gs: "I don't know", "idk",
+  "no idea", "nothing", "rien", "je sais pas", "test", "n/a"…); under 10 words in all (with Anything to add) adds 10.
+  `SCREEN_HOLD_AT` 50, so one strong sign holds by itself and length alone never does. On 2025: 252 at 0, 10 at 10,
+  3 at 50, 4 at 60, 4 at 100, so 11 held (4 %).
+- Built as planned, with these differences: the alerts are `NEEDS_REVIEW`, `VIC_MEMBER` (a member who already has a
+  binome; Decline, or mute it to keep them) and `MEMBERS_SHEET`; the silent decline leaves a `VIC_MEMBER_DECLINED`
+  line (INFO, AUTO-FIXED). A declined VIC member gets a code too, so Interviewees › Declined › Restore works for every
+  declined row. Approve and Decline are quick ops on those alerts (`webRun('quick', {op: 'approve' | 'decline'})`,
+  several at once from the list); Restore is `webRun('restore', {codes})`. The members re-check runs on every sync
+  (cheap: the list is cached), not only when the list changes. Send rejections with TEST_MODE on sends one copy to the
+  admin pressing it and marks nothing, so the real send still reaches everyone later.
+- Also asked by the owner: names typed the wrong way round (the first-name field holds the family part of their
+  `first.family@` ENP email and the other way round) are swapped in Interviewees and the binome sheet, the form
+  response stays as typed, and Flags says `NAMES_SWAPPED`, whether screening is on or not. 14 of the 273 in 2025.
+- UI: the review pane on Alerts (risk meter, the reasons, every free-text answer with the flagged ones marked,
+  Approve / Decline), Approve / Decline on a selection, Interviewees (Risk column, On hold in the status filter,
+  Review link, a Declined toggle with Restore), the Overview pipeline's "waiting for review" line, Settings ›
+  Screening (the three settings, the members list's count, last read and Refresh now, the rules), Maintenance › Send
+  rejections…. Local check: `npm run mock -- --screening`.
+- Limits: Revert of an Interviewees row deleted by hand brings its status back but not its Risk / Screening text (they
+  are not in the baseline); the score is recomputed, the decisions written there are lost. A rejection whose mail fails
+  is still marked sent (`mail_` logs the failure in Executions).
+- Deploy: merge, `npm run deploy` (no `API_VERSION` bump: fields only added), then Vercel. Setup once for the status
+  colours (the Risk and Screening columns add themselves). Then rollout steps 3 and 4.
+
 ## 3. Change a binome's department
 
 ### Goal
@@ -334,6 +367,12 @@ Binomes › ⋯ › **Change department…**, a dialog like Sheet & dashboard ac
 | 4 | Do declined applicants hear back? | Yes: one polite email after recruitment closes, sent by an admin. VIC members get nothing. |
 | 5 | Where does the VIC members list come from? | A linked Google Sheet, read every 30 minutes |
 | 6 | Email the binome when its department changes? | No: the sheet shows it |
+| 7 | What makes an application weak? | A why-answer that is only dots or a slash, under 2 words, or a non-answer ("I don't know", "idk", "rien", "test"…). ChatGPT-sounding answers don't count |
+| 8 | Is one strong sign enough to hold? | Yes, the rest can be fine; a person approves it in one click |
+| 9 | A short answer that seems sincere? | Never held for length alone (under 10 words adds 10 points) |
+| 10 | `SCREEN_HOLD_AT` | 50: 11 of the 273 applications of 2025 held |
+| 11 | Names typed the wrong way round? | Swap them automatically, note `NAMES_SWAPPED` in Flags |
+| 12 | The members sheet's link | Set later in Settings › Screening; Screening stays off until then |
+| 13 | 2025 results for the calibration | Not kept: calibrated on the applications alone |
 
-Still to get from the owner before screening ships: the members sheet's link, and the 2025 results if they exist (for
-the calibration).
+Still to get from the owner: the members sheet's link, after the deploy.
