@@ -210,7 +210,7 @@ function rejectionList_(ctx) {
 /**
  * webRun('rejections', {send, subject, body, budgetMs}). Without send: the preview {count, sample, subject, body, testMode}.
  * With send: one email each ({first} = their first name), stamped "Rejection sent" in Screening so pressing again reaches
- * only those not sent yet; stops before budgetMs and says how many are left. TEST_MODE: one copy to the admin pressing it,
+ * only those not sent yet (a failed send is not stamped, so it is retried); stops before budgetMs and says how many are left. TEST_MODE: one copy to the admin pressing it,
  * nothing stamped. Never automatic.
  */
 function rejectionsCore_(a) {
@@ -233,18 +233,22 @@ function rejectionsCore_(a) {
         list.length + ' declined applicant(s).</i></p>' + html(String(list[0][I['First Name']]).trim() || 'there'));
       return { sent: 0, left: list.length, test: true };
     }
-    let sent = 0;
-    for (; sent < list.length && Date.now() - t0 < budget; sent++) {
-      const r = list[sent];
-      mail_(String(r[I.Email]).trim(), subject, html(String(r[I['First Name']]).trim() || 'there'));
+    let i = 0, sent = 0, failed = 0;
+    for (; i < list.length && Date.now() - t0 < budget; i++) {
+      const r = list[i];
+      // a failed send (quota, bad address) stays unstamped so the next press retries it
+      if (!mail_(String(r[I.Email]).trim(), subject, html(String(r[I['First Name']]).trim() || 'there'))) { failed++; continue; }
       r[I.Screening] = String(r[I.Screening]).trim() + '; Rejection sent ' + fmt_(ctx.now, 'dd/MM');
+      sent++;
     }
     saveTable_(ctx.iv);
     commitBase_(ctx);
-    return { sent: sent, left: list.length - sent, test: false };
+    return { sent: sent, failed: failed, left: list.length - i, test: false };
   }, 60000);
   if (!res) { busy_(); return null; }
   say_(res.test ? (res.left ? 'Test mode is on: one copy went to you, nobody else was emailed and nothing was marked as sent.' : 'Nobody to email: no applicant declined at screening is waiting for the email.')
-    : res.sent + ' rejection email' + (res.sent === 1 ? '' : 's') + ' sent.' + (res.left ? ' ' + res.left + ' left: press Send again to carry on.' : ''));
+    : res.sent + ' rejection email' + (res.sent === 1 ? '' : 's') + ' sent.' +
+      (res.failed ? ' ' + res.failed + ' failed (daily quota or a bad address) and stay unsent: press Send again later to retry them.' : '') +
+      (res.left ? ' ' + res.left + ' left: press Send again to carry on.' : ''));
   return res;
 }

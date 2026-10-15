@@ -160,6 +160,19 @@ assert(/1 rejection email sent/.test(out.messages[0]), out.messages[0]);
 assert.deepStrictEqual(R('__outbox.slice(' + box + ').map(function (m) { return m.to; })'), ['junk.two@g.enp.edu.dz']);
 assert(/Rejection sent \d\d\/\d\d/.test(ivRow('junk.two@g.enp.edu.dz')[IV.Screening]), 'stamped');
 assert.strictEqual(call('webRun', 'rejections', {}).result.count, 0, 'pressing again reaches nobody');
+// a failed send (quota, bad address) is not stamped, so the next press retries it
+apply('junk.four@g.enp.edu.dz', 'Junk', 'Four', '/', DEPT);
+sync();
+quick('decline', find('NEEDS_REVIEW', ivRow('junk.four@g.enp.edu.dz')[IV.Code]).id);
+run('__send = MailApp.sendEmail; MailApp.sendEmail = function () { throw new Error("quota"); }');
+out = call('webRun', 'rejections', { send: true, subject: 'Your application', body: 'Hi {first}, sorry.' });
+run('MailApp.sendEmail = __send');
+assert(/0 rejection emails sent\. 1 failed/.test(out.messages[0]), out.messages[0]);
+assert.deepStrictEqual([out.result.sent, out.result.failed, out.result.left], [0, 1, 0]);
+assert(!/Rejection sent/.test(ivRow('junk.four@g.enp.edu.dz')[IV.Screening]), 'not stamped');
+out = call('webRun', 'rejections', { send: true, subject: 'Your application', body: 'Hi {first}, sorry.' });
+assert(/1 rejection email sent\.$/.test(out.messages[0]), out.messages[0]);
+assert(/Rejection sent/.test(ivRow('junk.four@g.enp.edu.dz')[IV.Screening]), 'retried and stamped');
 assert.throws(() => call('webRun', 'rejections', { send: true, subject: ' ', body: 'x' }), /needs a subject/);
 settings({ TEST_MODE: true });
 
