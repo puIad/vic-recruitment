@@ -72,20 +72,23 @@ function esc_(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').repl
 
 function idx_(headers) { const o = {}; headers.forEach((h, i) => { o[h] = i; }); return o; }
 
-/** Load a script-managed tab as {sh, H, I, data} (data = rows below the header). */
+/** Load a script-managed tab as {sh, H, I, data, head} (data = rows below the header; head = its header row as it stands). */
 function loadTable_(name, headers) {
   const sh = ss_().getSheetByName(name);
-  addMissingColumns_(sh, headers);
+  const head = addMissingColumns_(sh, headers);
   const n = sh.getLastRow();
   const data = n > 1 ? sh.getRange(2, 1, n - 1, headers.length).getValues() : [];
-  return { sh: sh, H: headers, I: idx_(headers), data: data, originalLength: data.length, orig: data.map(r => r.slice()) };
+  return { sh: sh, H: headers, I: idx_(headers), data: data, head: head, originalLength: data.length, orig: data.map(r => r.slice()) };
 }
-/** Columns added to a tab's headers in a later version: give the tab room and their header cells, at the end. */
+/** Columns added to a tab's headers in a later version: give the tab room and their header cells, at the end (never over a
+ *  header someone typed there). Returns the header row as it stands after that. */
 function addMissingColumns_(sh, headers) {
   if (sh.getMaxColumns() < headers.length) sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
-  const have = sh.getRange(1, 1, 1, headers.length).getValues()[0];
-  const from = have.findIndex((v, i) => String(v).trim() !== headers[i]);
-  if (from >= 0 && have.slice(from).every(v => v === '')) sh.getRange(1, from + 1, 1, headers.length - from).setValues([headers.slice(from)]);
+  const have = sh.getRange(1, 1, 1, headers.length).getValues()[0].map(v => String(v).trim());
+  const from = have.findIndex((v, i) => v !== headers[i]);
+  if (from < 0 || !have.slice(from).every(v => v === '')) return have;
+  sh.getRange(1, from + 1, 1, headers.length - from).setValues([headers.slice(from)]);
+  return headers.slice();
 }
 function sameVal_(a, b) { return a === b || (a instanceof Date && b instanceof Date && a.getTime() === b.getTime()); }
 /** v (about to be written) equals cell (read from the tab) only when sure: sameVal_, or text forced with txt_ against that text

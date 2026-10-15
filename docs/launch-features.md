@@ -102,7 +102,9 @@ A **Pairing** panel on the Binomes page, shown while nothing is locked. Once bin
   - Team column G **Experienced**. The script adds its header when it loads the tab; Setup adds a checkbox rule
     (`requireCheckbox`, not `insertCheckboxes`, which would untick everyone each time Setup runs) and a header note.
     Import reads the 2025 database (`pastTeam_`) and ticks the members it finds there. If that sheet can't be read,
-    nobody is ticked and the import message says so.
+    nobody is ticked and the import message says so. If G1 already holds another header (the script never writes over
+    one), nobody counts as experienced, and teamSet and Import refuse with "Run Setup first" until Setup puts the header
+    there (owner's review of #32).
   - `draftPairs`: with nobody experienced it draws exactly as before (same order, same random calls). A board lead takes
     the class it lacks, so an experienced lead gets a new member and a new lead an experienced one. The leftovers
     without an HR member mix new with experienced too. Every draft's code-cell note is rewritten on each change (the

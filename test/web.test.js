@@ -1032,6 +1032,22 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   assert.strictEqual(p.call('webRun', 'teamSet', { email: E('aya'), experienced: true }).result.experienced, true);
   assert(st().unpaired.every(m => typeof m.experienced === 'boolean'));
 }
+// ---- a Team tab whose column G is someone else's (Setup not run since Experienced came): refused, nobody counts as experienced ----
+{
+  const q = require('./seed')();
+  q.call('webRun', 'importTeam', { link: '' });
+  q.run(`(function () { var c = master.getSheetByName('Team').cells; c[0][6] = 'Phone'; c[1][6] = '0555123456'; c[2][6] = true; })()`);
+  const team = () => q.run(`JSON.stringify(master.getSheetByName('Team').cells)`), before = team();
+  assert.throws(() => q.call('webRun', 'teamSet', { email: 'ikram@g.enp.edu.dz', experienced: true }),
+    /^Error: The Team tab has no Experienced column yet \(its column G holds something else\)\. Run Setup first, from the Master: VIC Recruitment › Run setup again, as vic\.rh .*Nothing was changed\.$/);
+  assert.throws(() => q.call('webRun', 'importTeam', { link: '', replace: true }), /no Experienced column yet/, 'Import would write over that column');
+  assert.strictEqual(team(), before, 'the Team tab is unchanged');
+  assert(q.call('webState').teamList.every(m => m.experienced === false), 'the snapshot reads nobody as experienced');
+  assert(/Drafted \d+ binomes/.test(q.call('webRun', 'draft').messages[0]), 'the draft still runs, everyone new');
+  q.call('webRun', 'setup');
+  assert.strictEqual(q.run(`master.getSheetByName('Team').cells[0][6]`), 'Experienced', 'Setup writes the header');
+  assert.strictEqual(q.call('webRun', 'teamSet', { email: 'ikram@g.enp.edu.dz', experienced: true }).result.experienced, true, 'then teamSet works');
+}
 // a refused lock is an error on the dashboard, never a message; nothing is changed
 {
   const tabs = () => run('JSON.stringify(master.sheets.map(s => s.cells)) + __outbox.length');

@@ -57,6 +57,8 @@ function importTeamCore_(text, replace) {
     src = findTeamSource_(ext) || ext.getSheets()[0];
   }
   const sh = ss_().getSheetByName(TAB.TEAM);
+  // Import writes column G: refused while it is someone else's column, as teamSet is (hasExpCol_)
+  if (addMissingColumns_(sh, TEAM_H)[TEAM_H.indexOf('Experienced')] !== 'Experienced') throw new Error(NO_EXP_COL);
   const used = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().filter(r => String(r[0]).trim() || String(r[1]).trim()).length : 0;
   if (used && !replace) return { confirm: true, existing: used, incoming: teamRowsFrom_(src.getDataRange().getValues()).length, source: src.getName() };
   const past = pastTeam_(), rows = teamRowsFrom_(src.getDataRange().getValues(), past);
@@ -106,14 +108,20 @@ function teamRowsFrom_(vals, past) {
   return rows;
 }
 
+/** The Team tab has its Experienced column (column G says so). Loading the tab writes that header into an empty G1, never over
+ *  another one: until Setup puts it there, column G is someone else's and nobody counts as experienced. */
+const hasExpCol_ = ctx => ctx.team.head[ctx.team.I.Experienced] === 'Experienced';
+const NO_EXP_COL = 'The Team tab has no Experienced column yet (its column G holds something else). Run Setup first, from the ' +
+  'Master: VIC Recruitment › Run setup again, as vic.rh (the account that owns the triggers). Nothing was changed.';
+
 /** Team tab as [{name, email, pairAs, exclude, experienced}]; an empty Pair As falls back to the department. */
 function teamMembers_(ctx) {
-  const T = ctx.team.I;
+  const T = ctx.team.I, exp = hasExpCol_(ctx);
   return ctx.team.data.filter(r => String(r[T.Email]).trim()).map(r => {
     let pairAs = String(r[T['Pair As']]).trim().toUpperCase();
     if (!pairAs) pairAs = sectionToPair_(r[T.Department]).pairAs;
     return { name: String(r[T['Full Name']]).trim(), email: String(r[T.Email]).trim().toLowerCase(), pairAs: pairAs,
-      exclude: bool_(r[T.Exclude]), experienced: bool_(r[T.Experienced]) };
+      exclude: bool_(r[T.Exclude]), experienced: exp && bool_(r[T.Experienced]) };
   });
 }
 
@@ -274,6 +282,7 @@ function teamSet_(args) {
   if (typeof args.experienced !== 'boolean') throw new Error('Experienced must be true or false.');
   const res = withLock_(() => {
     const ctx = loadCtx_(), T = ctx.team.I, B = ctx.bin.I, i = ctx.team.data.findIndex(r => lc_(r[T.Email]) === e);
+    if (!hasExpCol_(ctx)) throw new Error(NO_EXP_COL);
     if (i < 0) throw new Error((e || 'That member') + ' is not in the Team tab.');
     ctx.team.data[i][T.Experienced] = on;
     ctx.team.sh.getRange(i + 2, T.Experienced + 1).setValue(on);
