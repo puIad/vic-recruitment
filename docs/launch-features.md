@@ -97,7 +97,7 @@ A **Pairing** panel on the Binomes page, shown while nothing is locked. Once bin
 
 ### Notes
 
-- 2026-10-15: built on branch `pairing-experience`, in review, not deployed. All suites pass (34 unit tests), typecheck
+- 2026-10-15: built in [#32](https://github.com/puIad/vic-recruitment-2026/pull/32), in review, not deployed. All suites pass (34 unit tests), typecheck
   clean, panel checked on the mock at desktop and 390 px, light and dark.
   - Team column G **Experienced**. The script adds its header when it loads the tab; Setup adds a checkbox rule
     (`requireCheckbox`, not `insertCheckboxes`, which would untick everyone each time Setup runs) and a header note.

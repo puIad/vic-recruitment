@@ -86,7 +86,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 ## In review
 
-- **Pairing with experience, random or by hand** (branch `pairing-experience`, launch-features.md section 1): Team
+- **Pairing with experience, random or by hand** ([#32](https://github.com/puIad/vic-recruitment-2026/pull/32), launch-features.md section 1): Team
   column Experienced (Import ticks the 2025 team), the draw gives new members an experienced partner when there are
   enough, and a Pairing panel on the Binomes page (pair two by hand, remove, Draw the rest, Redraw all) while nothing is
   locked. Ships as usual: merge, `npm run deploy` (no `API_VERSION` bump: fields and actions only added), run Setup once
