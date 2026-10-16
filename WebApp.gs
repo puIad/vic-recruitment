@@ -34,8 +34,8 @@ const DOMAIN = 'g.enp.edu.dz';
 
 /**
  * Who is the signed-in account? {ok, role, email, reason, owner} (+ binome, cover, m, edit for a member). The script runs as
- * that account, so opening the sheet is the real test: an editor of the Master is an admin (role 'admin'; owner = owns the
- * Master, only the owner may run Setup). Otherwise an email in MEMBER_MAP whose binome sheet Drive lets them open is a member
+ * that account, so opening the sheet is the real test: an editor of the Master is an admin (role 'admin'; owner = the
+ * account that runs the triggers, TRIGGER_OWNER, or the Master's owner while that is unset; only the owner may run Setup). Otherwise an email in MEMBER_MAP whose binome sheet Drive lets them open is a member
  * (role 'member': their binome only; edit = they can edit that sheet; cover = a live cover, who sees only the codes they
  * cover); in MEMBER_MAP but not shared yet = NOT_SHARED (an admin opens a binome with binomeAccess). Else DOMAIN = not an
  * @g.enp.edu.dz account, NO_PROJECT = can't open the Master, READ_ONLY = can open it, can't edit it. Admin entry points check
@@ -52,7 +52,9 @@ function access_() {
       const owner = ss.getOwner();
       const ownerEmail = owner ? String(owner.getEmail()).toLowerCase() : '';
       const editors = ss.getEditors().map(u => String(u.getEmail()).toLowerCase()).concat(ownerEmail ? [ownerEmail] : []);
-      if (editors.indexOf(email) >= 0) return { ok: true, role: 'admin', email: email, owner: email === ownerEmail };
+      // owner = whoever Setup accepts (triggerOwner_): the trigger owner, else the Master's owner before the first Setup
+      const setupBy = String(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || ownerEmail).toLowerCase();
+      if (editors.indexOf(email) >= 0) return { ok: true, role: 'admin', email: email, owner: email === setupBy };
     } catch (e) { /* viewers can't list the editors */ }
   }
   const m = savedMemberMap_()[email];
@@ -526,7 +528,7 @@ function webRun(action, args) {
   const a = access_();
   if (action === 'memberSet') return { messages: [], result: memberSet_(a, args || {}) }; // members only; no script lock, no publish
   if (a.role !== 'admin') throw new Error('Not allowed');
-  if (action === 'setup' && !a.owner) throw new Error('Only the owner of the master sheet can run Setup');
+  if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh'].indexOf(action) < 0 && !args.dryRun &&
