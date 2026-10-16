@@ -11,7 +11,10 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `87a7871` (2026-10-15, [#32](https://github.com/puIad/vic-recruitment-2026/pull/32)): the **Pairing** panel on the
+  Latest UI: `9aaad16` (2026-10-17, [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): **Settings › Screening**,
+  plus the screening changes on Alerts (quick actions), Interviewees and the Overview Pipeline card. Vercel production
+  built from `9aaad16` (`npm install` 316 packages, `tsc -b && vite build`; "Deployment completed"; no runtime errors in the
+  first hour). Before that `87a7871` (2026-10-15, [#32](https://github.com/puIad/vic-recruitment-2026/pull/32)): the **Pairing** panel on the
   Binomes page while nothing is locked (pair two by hand, remove, Draw the rest, Redraw all), an Experience column and filter on
   the Team page, the Launch card's step 2 "Pair the binomes". Vercel production built from `87a7871` (the real build: `npm
   install` 316 packages, `tsc -b && vite build`; "Deployment completed"). Before that `8f86b70` (2026-10-10,
@@ -26,7 +29,12 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@73**, API **@74**, deployed from `87a7871` (2026-10-15,
+- **Script, latest:** web app **@75**, API **@76**, deployed from `9aaad16` (2026-10-17,
+  [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): screening (`Screening.gs`), the silent VIC-member decline, the
+  rejection email, the name swap. `npm test` passed, 19 files pushed; the live project pulled back afterwards: all 19 equal to
+  `main`. **To do (owner):** run Setup once as `vic.rh` from the Master's menu, then link the members sheet in Settings ›
+  Screening and turn screening on.
+- **Script, before that:** web app **@73**, API **@74**, deployed from `87a7871` (2026-10-15,
   [#32](https://github.com/puIad/vic-recruitment-2026/pull/32)): pairing with experience. Team column G **Experienced**
   (Import ticks the 2025 team), the draw gives new members an experienced partner when there are enough, and the draft
   actions `draftPair` / `draftUnpair` / `draft {keep}` / `teamSet`. No `API_VERSION` bump. 18 files pushed; the live project
@@ -123,9 +131,9 @@ Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycl
 Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand) is live
 (@73/@74 and Vercel from `87a7871`) and the owner used it for the production binomes on 2026-10-15 (above). Screening
 (hold low-effort applications for review, decline VIC members silently, the rejection email, plus the name swap) is
-built in [#33](https://github.com/puIad/vic-recruitment-2026/pull/33), calibrated with the owner on the 273 applications of 2025 (11 held at 50), in review,
-not deployed: see its Notes. After merge: `npm run deploy`, Setup once, Vercel; then link the members sheet in Settings ›
-Screening and turn it on. Not built yet: changing a binome's department from the dashboard.
+merged and deployed ([#33](https://github.com/puIad/vic-recruitment-2026/pull/33), @75/@76 and Vercel from `9aaad16`, 2026-10-17),
+calibrated with the owner on the 273 applications of 2025 (11 held at 50). Still to do (owner): Setup once, then link the
+members sheet in Settings › Screening and turn it on. Not built yet: changing a binome's department from the dashboard.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
