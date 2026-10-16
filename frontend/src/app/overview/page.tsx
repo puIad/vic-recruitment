@@ -1,4 +1,5 @@
 import { BaseLayout } from "@/components/layouts/base-layout"
+import { isOut } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import { PipelineCard } from "./components/pipeline-card"
 import { AttentionCard } from "./components/attention-card"
@@ -9,7 +10,7 @@ import { ActivityCard } from "./components/activity-card"
 
 export default function OverviewPage() {
   const s = useVic((x) => x.state)
-  const registered = s ? Object.keys(s.counts.byStatus).reduce((t, k) => t + (k === "DUPLICATE" ? 0 : s.counts.byStatus[k]), 0) : 0
+  const registered = s ? Object.keys(s.counts.byStatus).reduce((t, k) => t + (isOut(k) ? 0 : s.counts.byStatus[k]), 0) : 0
   const description = s
     ? `${registered} registrants across ${s.binomes.filter((b) => b.status !== "DRAFT").length} locked binomes.`
     : "Loading the Master…"

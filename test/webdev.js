@@ -6,6 +6,8 @@
 //   /dev-login?as=closed → a member of a binome not opened yet (the "isn't open yet" gate).
 //   --pairing = before Lock: this year's OT list (part of the 2025 team, pre-ticked Experienced), three pairs made by hand, the
 //   rest free, so the Binomes page shows the Pairing panel (npm run mock -- --pairing).
+//   --screening = the default data with Screening on and a linked members sheet: applications held for review (dots, one
+//   word, a non-answer), a VIC member declined silently, one declined by an admin, one with a binome flagged (npm run mock -- --screening).
 const http = require('http'), crypto = require('crypto');
 const port = +process.argv.find(a => /^\d+$/.test(a)) || 3000;
 process.env.SESSION_KEY = crypto.randomBytes(32).toString('base64');
@@ -49,6 +51,33 @@ if (pairing) {
   const two = s.call('webState').binomes.filter(b => b.people.length === 2);
   s.call('webRun', 'changeMember', { binome: two[0].code, outEmail: two[0].people[0].email, inName: 'Outside Person', inEmail: 'outside@g.enp.edu.dz', reason: 'left the club' });
   s.call('webRun', 'swapMembers', { binomeA: two[1].code, emailA: two[1].people[0].email, binomeB: two[2].code, emailB: two[2].people[0].email });
+  if (process.argv.includes('--screening')) seedScreening();
+}
+function seedScreening() {
+  const MEM = 'M3mb3rsSheetForTheVicClub2026xxxxxxxxxxxx';
+  s.run(`var mem = new MockSS('VIC members 2026'); __files['${MEM}'] = __files[mem.id];
+    mem.sheets[0].cells = [['Name', 'E-mail'], ['Lina Kaci', 'lina.kaci@g.enp.edu.dz'], ['Rym Benali', 'rym.benali@g.enp.edu.dz'], ['Adam Rahmani', 'adam.rahmani@g.enp.edu.dz']];`);
+  s.call('webRun', 'saveSettings', { values: { SCREENING: true, VIC_MEMBERS_SHEET: 'https://docs.google.com/spreadsheets/d/' + MEM + '/edit' } });
+  const VIC = 'I want to learn video editing and meet people who organise events, the open day made me want to be part of it';
+  const apps = [ // email, first, family, 1st choice, why VIC, why this department, anything to add
+    ['nadia.ferhat@g.enp.edu.dz', 'Nadia', 'Ferhat', 'IT', '..', '.', ':)'],
+    ['karim.oudjit@g.enp.edu.dz', 'Karim', 'Oudjit', 'FLER', VIC, 'Yes', ''],
+    ['ines.bouras@g.enp.edu.dz', 'Ines', 'Bouras', 'COMM', 'Bouras', 'Because I like posting and I follow every trend', ''],
+    ['yacine.mazouz@g.enp.edu.dz', 'Yacine', 'Mazouz', 'HR', 'To meet people', 'I don’t know', 'No'],
+    ['rym.benali@g.enp.edu.dz', 'Rym', 'Benali', 'IT', VIC, 'I edit videos for my friends and want to learn more', ''],
+    ['sami.lounis@g.enp.edu.dz', 'Lounis', 'Sami', 'IT', VIC, 'Because I already make posters and I want to get better with a team', 'Thank you'],
+    ['amel.taleb@g.enp.edu.dz', 'Amel', 'Taleb', 'HR', '/', 'test', ''],
+  ];
+  s.run(`(function () { var reg = master.getSheetByName('Registration Responses'), t = Date.now() - 36e5, W = { IT: 16, COMM: 18, HR: 19, FLER: 20 };
+    ${JSON.stringify(apps)}.forEach(function (a, i) {
+      var r = regRow(new Date(t + i * 6e4), a[0], a[1], a[2], a[0], '01/03/2005', '0555' + (200000 + i), a[3], 'HR');
+      r[12] = a[4]; r[W[a[3]]] = a[5]; r[23] = a[6]; reg.cells.push(r); }); })()`);
+  s.call('webRun', 'sync');
+  const st = s.call('webState'), amelCode = (st.interviewees.find(x => x.name === 'Amel Taleb') || {}).code;
+  const amel = st.alerts.find(a => a.type === 'NEEDS_REVIEW' && a.code === amelCode);
+  if (amel) s.call('webRun', 'quick', { op: 'decline', ids: [amel.id] });
+  // a VIC member who registered before screening was on and already has a binome (lina.kaci, from the default data)
+  s.call('webRun', 'sync');
 }
 // a binome member who is not an editor of the Master: the member view (task 7)
 const busiest = empty ? null : s.call('webState').binomes.filter(b => b.people.length).sort((a, b) => b.assigned - a.assigned)[0];

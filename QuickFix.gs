@@ -5,7 +5,7 @@
 // exact row or cell. 'draft' + 'send' email the binome, the candidate or the form's sender, after an editable preview.
 
 // ops that close their alert when they succeed
-const QUICK_RESOLVES = { edit: 1, setCell: 1, exclude: 1, pickCandidate: 1, keepForm: 1, dupNew: 1, dupSeparate: 1, repair: 1 };
+const QUICK_RESOLVES = { edit: 1, setCell: 1, exclude: 1, pickCandidate: 1, keepForm: 1, dupNew: 1, dupSeparate: 1, repair: 1, approve: 1, decline: 1 };
 const QUICK_EDITABLE = ['First Name', 'Family Name', 'Email', 'Phone', 'Birth Date', '1st Choice', '2nd Choice'];
 const SNOOZE_HOURS = { '4h': 4, '24h': 24, '3d': 72 };
 // what "Use the new answers" copies from a second registration onto the earlier one (+ REG_EXTRAS, declared in a later file)
@@ -19,6 +19,7 @@ function alertRef_(r, A) {
   switch (p[0]) {
     case 'REG': return { kind: 'reg', rk: rest(2) };
     case 'NO_BINOME': return p[1] === 'ALL' ? { kind: 'none' } : { kind: 'reg', rk: rest(1) };
+    case 'REVIEW': case 'MEMBER': return { kind: 'reg', rk: rest(1) }; // screening: on hold, a VIC member with a binome
     case 'TIME': return { kind: 'iv', code: rest(2), check: '' };
     case 'ODD': return { kind: 'iv', code: rest(2), check: p[1] };
     case 'INT': return { kind: 'log', lk: rest(2), check: p[1] };
@@ -35,7 +36,7 @@ function logIndex_(ctx, lk) { const L = ctx.log.I; return ctx.log.data.findIndex
 function dupOriginal_(ctx, x) {
   const I = ctx.iv.I, name = r => normText(r[I['First Name']] + ' ' + r[I['Family Name']]);
   const e = lc_(x[I.Email]), t = lc_(x[I['Typed Email']]), n = name(x), ph = normPhone(x[I.Phone]);
-  return ctx.iv.data.filter(o => o !== x && o[I.Status] !== ST.DUPLICATE && (
+  return ctx.iv.data.filter(o => o !== x && !isOut_(o[I.Status]) && (
     (e && (e === lc_(o[I.Email]) || e === lc_(o[I['Typed Email']]))) || (t && t === lc_(o[I.Email])) ||
     (n && n === name(o) && ph && ph === normPhone(o[I.Phone]))))[0] || null;
 }
@@ -56,6 +57,13 @@ function regView_(ctx, x) {
     typed: s('Typed Email'), phone: s('Phone'), birth: birth instanceof Date ? fmt_(birth, 'dd/MM/yyyy') : s('Birth Date'),
     c1: s('1st Choice'), c2: s('2nd Choice'), field: s('Field'), year: s('Year'), availability: s('Availability'),
     registered: fmt_(x[I['Registered At']], 'dd/MM/yyyy HH:mm') };
+}
+
+/** The answers an admin reads to decide on a held application, with its screening score and reasons. */
+function appView_(ctx, x) {
+  const I = ctx.iv.I, s = h => String(x[I[h]] == null ? '' : x[I[h]]);
+  return { whyVic: s('Why VIC'), motivation: s('Motivation'), deptQuestions: s('Department Questions'), anything: s('Anything to add'),
+    clubs: s('Other Clubs'), risk: x[I.Risk] === '' ? null : Number(x[I.Risk]), screening: s('Screening') };
 }
 
 function formView_(ctx, i) {
@@ -90,6 +98,7 @@ function quickInfo_(ctx, r, look) {
     if (!x) return null;
     const q = { kind: 'reg', iv: regView_(ctx, x) };
     if (type === 'DUPLICATE_REGISTRATION') { const o = dupOriginal_(ctx, x); if (o) q.old = regView_(ctx, o); }
+    if (type === 'NEEDS_REVIEW' || type === 'VIC_MEMBER') q.app = appView_(ctx, x);
     return q;
   }
   if (ref.kind === 'iv') {
@@ -181,6 +190,10 @@ function quickOne_(ctx, op, r, a) {
     case 'dupNew': return dupNew_(ctx, regRow_(ctx, ref));
     case 'dupSeparate': return dupSeparate_(ctx, regRow_(ctx, ref));
     case 'repair': return repair_(ctx, r, ref, !!a.dryRun);
+    case 'approve': case 'decline':
+      if (['NEEDS_REVIEW', 'VIC_MEMBER'].indexOf(r[A.Type]) < 0) throw new Error('only an application on hold or a VIC member can be ' + op + 'd here.');
+      if (op === 'approve' && r[A.Type] !== 'NEEDS_REVIEW') throw new Error('a VIC member is declined or kept, not approved.');
+      return reviewRow_(ctx, regRow_(ctx, ref), op, r[A.Type] === 'VIC_MEMBER');
     default: throw new Error('unknown quick action "' + op + '".');
   }
 }
@@ -254,7 +267,7 @@ function quickEdit_(ctx, x, values) {
   const what = keys.map(f => f + ' ' + shown_(x[I[f]]) + ' → ' + shown_(v[f])).join(', ');
   keys.forEach(f => { x[I[f]] = v[f]; });
   let where;
-  if (v['1st Choice'] && !x[I.Binome] && x[I.Status] !== ST.DUPLICATE) {
+  if (v['1st Choice'] && !x[I.Binome] && x[I.Status] === ST.UNASSIGNED) { // not on hold, not out
     // a candidate the routing could not place: the right department lets it place them now
     where = assignRow_(ctx, x) ? '; assigned to ' + x[I.Binome] + ' as ' + x[I.Code]
       : '; still waiting for a binome (' + (bool_(S_().ASSIGNMENTS_OPEN) ? 'no ACTIVE binome takes ' + v['1st Choice'] : 'assignments are closed') + ')';
@@ -339,7 +352,7 @@ function noteLog_(ctx, i, result, note) {
 function pickCandidate_(ctx, ref, codeText) {
   const i = logRow_(ctx, ref), L = ctx.log.I, I = ctx.iv.I, row = ctx.log.data[i];
   const code = String(codeText || '').trim().toUpperCase(), x = ctx.ivByCode[code];
-  if (!x || x[I.Status] === ST.DUPLICATE) throw new Error('unknown interviewee code "' + code + '".');
+  if (!x || isOut_(x[I.Status])) throw new Error('unknown interviewee code "' + code + '".');
   row[L.Interviewee] = code; row[L.Binome] = x[I.Binome];
   noteLog_(ctx, i, 'OK', 'interviewee set to ' + code + ' by an admin');
   if (x[I['Interview Submitted At']]) return 'form linked to ' + code + ', who already had a form (Interview Log row ' + x[I['Interview Log Row']] + '): that first one still counts.';

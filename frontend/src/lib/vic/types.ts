@@ -3,7 +3,8 @@
 export const API_VERSION = 3
 
 export type Severity = "HIGH" | "MEDIUM" | "INFO"
-export type Status = "UNASSIGNED" | "ASSIGNED" | "CONTACTED" | "SCHEDULED" | "INTERVIEWED" | "WITHDRAWN" | "DUPLICATE"
+/** HELD: screening put it aside for an admin; DECLINED: out by screening (a VIC member, or an admin's decision) */
+export type Status = "UNASSIGNED" | "ASSIGNED" | "CONTACTED" | "SCHEDULED" | "INTERVIEWED" | "WITHDRAWN" | "DUPLICATE" | "HELD" | "DECLINED"
 export type BinomeStatus = "ACTIVE" | "PAUSED" | "DRAFT"
 export type FixMode = "apply" | "revert" | "accept"
 export type Dept = "IT" | "COMM" | "FLER" | "HR"
@@ -70,8 +71,20 @@ export interface FormView {
 
 export type RepairKind = "rename" | "reorder" | "protect" | "dedupe" | "remove" | "putback" | "reshare" | "unshare" | "retry" | ""
 
+/** The answers an admin reads to review a held application (QuickFix.gs appView_). screening = the reasons ("Held: …"),
+ *  then each decision ("Approved by …"); risk null = not scored (screening was off, or a VIC member). */
+export interface AppView {
+  whyVic: string
+  motivation: string
+  deptQuestions: string
+  anything: string
+  clubs: string
+  risk: number | null
+  screening: string
+}
+
 export type QuickInfo =
-  | { kind: "reg"; iv: RegView; old?: RegView }
+  | { kind: "reg"; iv: RegView; old?: RegView; app?: AppView }
   | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean }
   | { kind: "log"; check: string; form: FormView; first?: FormView }
   | { kind: "integ"; check: string; subject: string; repair: RepairKind }
@@ -141,6 +154,25 @@ export interface Interviewee {
   binome: string
   status: Status
   name: string
+  /** screening risk 0–100; null = not scored; absent on an older script */
+  risk?: number | null
+}
+
+/** Settings › Screening: the switch, the threshold, and the last read of the VIC members sheet (at "" = never). */
+export interface ScreeningState {
+  on: boolean
+  holdAt: number
+  linked: boolean
+  members: { at: string; n: number; error: string }
+}
+
+/** webRun rejections without send: who would get the email, and its default text ({first} = their first name). */
+export interface RejectionsPreview {
+  count: number
+  sample: string[]
+  subject: string
+  body: string
+  testMode: boolean
 }
 
 export interface TeamMember {
@@ -223,6 +255,8 @@ export interface WebState {
   /** snoozed and muted alerts; absent on an older script */
   muted?: HeldAlert[]
   interviewees: Interviewee[]
+  /** absent on an older script */
+  screening?: ScreeningState
 }
 
 /** A candidate as their binome sheet holds it (WebApp.gs candidate_: the BF_H keys, plus Status from the Master;

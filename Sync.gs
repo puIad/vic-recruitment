@@ -68,8 +68,8 @@ function pullBinomeFiles_(ctx, force) {
 
 function statusOf_(ctx, r) {
   const I = ctx.iv.I, c = String(r[I.Contacted]).trim();
-  if (r[I.Status] === ST.DUPLICATE) return ST.DUPLICATE;
-  if (!r[I.Binome]) return ST.UNASSIGNED;
+  if (isOut_(r[I.Status])) return r[I.Status];
+  if (!r[I.Binome]) return r[I.Status] === ST.HELD ? ST.HELD : ST.UNASSIGNED;
   if (r[I['Interview Submitted At']]) return ST.INTERVIEWED;
   if (c === 'Withdrew') return ST.WITHDRAWN;
   if (r[I['Interview At']] instanceof Date) return ST.SCHEDULED;
@@ -120,14 +120,16 @@ function buildTracker_(ctx) {
   const per = {};
   const blank = () => ({ assigned: 0, contacted: 0, scheduled: 0, interviewed: 0, withdrew: 0, notContacted: 0, noDate: 0, overdue: 0, open: 0 });
   activeOrPaused_(ctx).forEach(b => { per[b.code] = blank(); });
-  const tot = blank(); let registered = 0, unassigned = 0, dups = 0;
+  const tot = blank(); let registered = 0, unassigned = 0, dups = 0, held = 0, declined = 0;
   const byDep = {}; DEPTS.forEach(d => { byDep[d] = 0; });
   ctx.iv.data.forEach(r => {
     const st = r[I.Status];
     if (st === ST.DUPLICATE) { dups++; return; }
+    if (st === ST.DECLINED) { declined++; return; }
     registered++;
     if (byDep[r[I['1st Choice']]] !== undefined) byDep[r[I['1st Choice']]]++;
     if (st === ST.UNASSIGNED) { unassigned++; return; }
+    if (st === ST.HELD) { held++; return; }
     const p = per[r[I.Binome]] || (per[r[I.Binome]] = blank());
     [p, tot].forEach(x => {
       x.assigned++;
@@ -161,7 +163,7 @@ function buildTracker_(ctx) {
     ['VIC Recruitment 2026 — live tracker', '', 'Last change: ' + fmt_(ctx.now)],
     ['Registered', registered, 'IT ' + byDep.IT + ' · COMM ' + byDep.COMM + ' · FLER ' + byDep.FLER + ' · HR ' + byDep.HR],
     ['Contacted', tot.contacted, 'Scheduled ' + tot.scheduled + ' · Interviewed ' + tot.interviewed + ' · Withdrew ' + tot.withdrew],
-    ['Waiting for a binome', unassigned, 'Duplicates ignored: ' + dups],
+    ['Waiting for a binome', unassigned, 'Duplicates ignored: ' + dups + (held || declined ? ' · On hold: ' + held + ' · Declined: ' + declined : '')],
     ['Open alerts', openAlerts.length, 'HIGH ' + openAlerts.filter(r => r[A.Severity] === 'HIGH').length + ' · MEDIUM ' + openAlerts.filter(r => r[A.Severity] === 'MEDIUM').length],
   ];
   const top = summary.length + 2;
@@ -230,6 +232,7 @@ function runCycle_(opts) {
     const ctx = loaded = loadCtx_(); lap('load');
     detectEdits_(ctx); lap('edits');
     processRegistrations_(ctx);
+    screenWaiting_(ctx); // before the assignment: a VIC member waiting for a binome is declined, not placed
     assignUnassigned_(ctx); lap('regs');
     processInterviews_(ctx); lap('forms');
     if (opts.pull) pullBinomeFiles_(ctx, opts.force); lap('pull');

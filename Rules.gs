@@ -174,6 +174,43 @@ function checkRegistration(rec, existing, domain) {
   return { alerts: alerts, duplicateOf: duplicateOf, phone: phone };
 }
 
+/**
+ * Risk that an application isn't serious (owner's rules, 2026-10-15, calibrated on the 273 applications of 2025).
+ * a: {whyVic, whyDept, dept, anything}; whyDept null = the form has no "why" question for that department.
+ * Each why-answer that is only punctuation (60), under 2 words (50) or a non-answer like "I don't know" (50) is enough
+ * to hold at the default SCREEN_HOLD_AT of 50; under 10 words in all adds 10 but never holds by itself. Words are split
+ * on whitespace, so Arabic, French and Darija count like English.
+ * returns {score 0-100, reasons: [sentence]}
+ */
+function screenApplication(a) {
+  const reasons = [];
+  let score = 0;
+  const words = s => String(s == null ? '' : s).trim().split(/\s+/).filter(w => /[\p{L}\p{N}]/u.test(w));
+  const quote = s => { s = String(s).trim().replace(/\s+/g, ' '); return '"' + (s.length > 40 ? s.slice(0, 39) + '…' : s) + '"'; };
+  const check = (label, s) => {
+    const n = words(s).length;
+    const said = normText(s).split(' ').filter((w, i, all) => w && w !== all[i - 1]).join(' ');
+    if (!n) { score += 60; reasons.push(label + ': ' + (String(s == null ? '' : s).trim() ? 'only ' + quote(s) : 'empty')); }
+    else if (n < 2) { score += 50; reasons.push(label + ': one word, ' + quote(s)); }
+    else if (NON_ANSWERS.indexOf(said) >= 0) { score += 50; reasons.push(label + ': ' + quote(s)); }
+  };
+  check('Why VIC', a.whyVic);
+  if (a.whyDept != null) check('Why ' + (a.dept || 'this department'), a.whyDept);
+  if (words(a.whyVic).length + words(a.whyDept).length + words(a.anything).length < 10) { score += 10; reasons.push('Under 10 words in all'); }
+  return { score: Math.min(100, score), reasons: reasons };
+}
+
+/** True when the first- and family-name fields are the wrong way round: each holds a part of the other side of the
+ *  email (first.family@, several names joined by "_"), and neither holds a part of its own side. */
+function namesSwapped(first, family, email) {
+  const parts = String(email || '').trim().toLowerCase().split('@')[0].split('.');
+  if (parts.length !== 2) return false;
+  const toks = s => normText(String(s).replace(/_/g, ' ')).split(' ').filter(w => w.length > 1);
+  const F = toks(first), L = toks(family), ef = toks(parts[0]), el = toks(parts[1]);
+  const meets = (x, y) => x.some(w => y.indexOf(w) >= 0);
+  return !!(F.length && L.length && meets(F, el) && meets(L, ef) && !meets(F, ef) && !meets(L, el));
+}
+
 /** "09/11/2026" (+ "14:30" / "14h30") + "+01:00" -> Date ; '' -> null ; unreadable -> 'INVALID' */
 function buildInterviewAt(dateStr, timeStr, offset) {
   dateStr = String(dateStr || '').trim(); timeStr = String(timeStr || '').trim();

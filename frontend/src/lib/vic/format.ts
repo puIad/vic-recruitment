@@ -12,8 +12,19 @@ export const STAGES: { key: Status; label: string; hint: string; color: string }
 
 export const STATUS_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label]))
 STATUS_LABEL.DUPLICATE = "Duplicate"
+STATUS_LABEL.HELD = "On hold"
+STATUS_LABEL.DECLINED = "Declined"
 
-export const STATUS_COLOR: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.color]))
+/** Outside the pipeline: screening's statuses, for filters and badges (not stages a candidate moves through). */
+export const SCREEN_STAGES: { key: Status; label: string; hint: string; color: string }[] = [
+  { key: "HELD", label: "On hold", hint: "Waiting for an admin to review", color: "#f29a09" },
+  { key: "DECLINED", label: "Declined", hint: "Out: a VIC member, or declined by an admin", color: "#b6abb9" },
+]
+
+/** Out of the recruitment, never counted as registrants (Config.gs isOut_). */
+export const isOut = (status: string) => status === "DUPLICATE" || status === "DECLINED"
+
+export const STATUS_COLOR: Record<string, string> = Object.fromEntries(STAGES.concat(SCREEN_STAGES).map((s) => [s.key, s.color]))
 
 export const SEVERITY: Record<Severity, { label: string; tone: string; rank: number }> = {
   HIGH: { label: "High", tone: "bg-danger-soft text-danger", rank: 3 },
@@ -57,6 +68,10 @@ const ALERT_LABELS: Record<string, string> = {
   MANUAL_EDIT: "Edited by hand",
   ODD_VALUE: "Odd value in a sheet",
   INTEGRITY: "Sheet check",
+  NEEDS_REVIEW: "Waiting for review",
+  VIC_MEMBER: "VIC member in a binome",
+  VIC_MEMBER_DECLINED: "VIC member declined",
+  MEMBERS_SHEET: "Members sheet unreadable",
 }
 
 /** Sentence-case label for an alert type (the charter forbids all-caps setting of Gilroy). */

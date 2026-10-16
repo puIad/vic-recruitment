@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const ctx = vm.createContext({ console });
 require('./gs')(ctx);
-vm.runInContext('globalThis.__x = {parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,makePair,draftMix,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch,unpairedMembers};', ctx);
+vm.runInContext('globalThis.__x = {screenApplication,namesSwapped,parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,makePair,draftMix,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch,unpairedMembers};', ctx);
 const X = ctx.__x;
 const D = iso => vm.runInContext('new Date("' + iso + '")', ctx);
 let pass = 0; const t = (name, fn) => { try { fn(); pass++; } catch (e) { console.log('FAIL', name, '\n ', e.message); process.exitCode = 1; } };
@@ -259,5 +259,42 @@ t('timing issues', () => {
   const c = X.timingIssues({ code: 'IT.01', status: 'ASSIGNED', registeredAt: reg, assignedAt: D('2026-11-10T06:00:00Z'), contacted: '', interviewAt: null }, now, lim);
   assert.deepStrictEqual(Array.from(c.map(x => x.type)), []);
   assert.strictEqual(X.timingIssues({ code: 'IT.01', status: 'INTERVIEWED', registeredAt: reg }, now, lim).length, 0);
+});
+t('screening: each signal, made-up answers', () => {
+  const S = (whyVic, whyDept, anything) => X.screenApplication({ whyVic, whyDept, dept: 'IT', anything: anything || '' });
+  const long = 'I want to learn design and meet people who build things together at school';
+  let r = S(long, 'Because I already edit videos and want to get better at it with a team');
+  assert.deepStrictEqual([r.score, r.reasons.length], [0, 0]);
+  r = S('..', '.', ':)');
+  assert.deepStrictEqual([r.score, Array.from(r.reasons)], [100, ['Why VIC: only ".."', 'Why IT: only "."', 'Under 10 words in all']]);
+  r = S('/', long);
+  assert.deepStrictEqual([r.score, Array.from(r.reasons)], [60, ['Why VIC: only "/"']], 'one strong sign holds by itself');
+  r = S(long, 'Creativity');
+  assert.deepStrictEqual([r.score, r.reasons[0]], [50, 'Why IT: one word, "Creativity"']);
+  assert.strictEqual(S(long, '🔥🔥').reasons[0], 'Why IT: only "🔥🔥"', 'emoji only = no words');
+  assert.strictEqual(S(long, '').reasons[0], 'Why IT: empty');
+  ['I don’t know', 'idk', 'No idea.', 'rien', 'je sais pas', 'test test test', 'N/A'].forEach(x =>
+    assert.strictEqual(S(long, x).score, 50, x + ' is a non-answer'));
+  assert.strictEqual(S(long, 'I know nothing about IT yet but I want to learn it').score, 0, 'containing the words is fine');
+  r = S('I love this club', 'I love technology');
+  assert.deepStrictEqual([r.score, Array.from(r.reasons)], [10, ['Under 10 words in all']], 'short but sincere stays under 50');
+  assert.strictEqual(S('Y3jbni bzff w endi bzf des amies tma alors bghit ndir haja jdida', 'Nbghu RH bzf').score, 0, 'Darija counts words like English');
+  assert.strictEqual(S('أريد أن أتعلم أشياء جديدة مع الفريق', 'لأنني أحب التصميم والتواصل').score, 0, 'Arabic words count');
+  assert.strictEqual(S('apprendre de nouvelles choses', 'Pour apprendre des choses').score, 10, 'French short = short, not junk');
+  r = X.screenApplication({ whyVic: '.', whyDept: null, dept: 'IT', anything: '' });
+  assert.deepStrictEqual(Array.from(r.reasons), ['Why VIC: only "."', 'Under 10 words in all'], 'no why-question for the department: not checked');
+  assert.strictEqual(S('.', '.', '.').score, 100, 'capped at 100');
+  assert.strictEqual(S(long, 'x'.repeat(60)).reasons[0], 'Why IT: one word, "' + 'x'.repeat(39) + '…"', 'long quotes are cut');
+});
+t('names typed the wrong way round', () => {
+  assert.strictEqual(X.namesSwapped('Boureghda', 'Yasser', 'yasser.boureghda@g.enp.edu.dz'), true);
+  assert.strictEqual(X.namesSwapped('Yasser', 'Boureghda', 'yasser.boureghda@g.enp.edu.dz'), false, 'right way round');
+  assert.strictEqual(X.namesSwapped('Hadj Sadok', 'Wissam Amani', 'wissam_amani.hadj_sadok@g.enp.edu.dz'), true, 'several names');
+  assert.strictEqual(X.namesSwapped('Ziad', 'Sarah', 'sarah_nadia.ziad@g.enp.edu.dz'), true, 'one of several');
+  assert.strictEqual(X.namesSwapped('Sarah', 'Sarah', 'sarah.sarah@g.enp.edu.dz'), false, 'same name both sides: leave it');
+  assert.strictEqual(X.namesSwapped('Ali', 'Benali', 'someone@gmail.com'), false, 'no first.family email');
+  assert.strictEqual(X.namesSwapped('Benali', 'Ali', 'x.y.z@g.enp.edu.dz'), false, 'not two parts');
+  assert.strictEqual(X.namesSwapped('Benali', '', 'ali.benali@g.enp.edu.dz'), false, 'an empty field');
+  assert.strictEqual(X.namesSwapped('Bénali', 'Ali', 'ali.benali@g.enp.edu.dz'), true, 'accents');
 });
 console.log(pass + ' tests passed' + (process.exitCode ? ' (with failures)' : ''));

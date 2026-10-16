@@ -22,6 +22,7 @@
  *   Integrity.gs      hand-edit detection (baseline in script properties), odd values, full binome-sheet check
  *   Actions.gs        reassign interviewee, resolve alerts, daily digest
  *   QuickFix.gs       the dashboard's quick actions on alerts: fixes, snooze / mute, emails, links
+ *   Screening.gs      hold low-effort applications for review, decline VIC members, the rejection email
  ******************************************************************************/
 
 // IDs of the files created in Drive › Recruitment › VIC Recruitment 2026
@@ -51,6 +52,9 @@ const SETTINGS_DEFAULTS = [
   ['TRUSTED_BACKUPS', '', 'Emails (comma-separated) of people who often replace interviewers, e.g. the HR head: their backup interviews are logged as INFO instead of emailed'],
   ['SYNC_EVERY_MINUTES', 15, '1, 5, 10, 15 or 30: how often the binome files are read (re-run setup after changing)'],
   ['DIGEST_HOUR', 8, 'Hour (0-23) of the daily digest email (re-run setup after changing)'],
+  ['SCREENING', false, 'TRUE = hold low-effort applications for an admin to review and decline VIC members silently; FALSE = every application goes to a binome as before'],
+  ['SCREEN_HOLD_AT', 50, 'Risk score (0-100) at or above which a new application waits for an admin instead of going to a binome'],
+  ['VIC_MEMBERS_SHEET', '', 'Link of the Google Sheet listing the VIC members (a column whose header contains "mail"): their applications are declined silently'],
 ];
 
 const TAB = {
@@ -66,7 +70,9 @@ const IV_H = ['Code', 'Binome', 'Status', 'Registered At', 'Assigned At', 'First
   'Anything to add', 'Contacted', 'Contacted Seen At', 'Interview Date', 'Interview Time', 'Interview At',
   'Interview Submitted At', 'Interview Log Row', 'Binome Notes', 'Flags', 'Response Key',
   // added 2026-10-04: more of the registration (shown in the binome sheets) and what the binome records after the interview
-  'Birth Date', 'Discovered VIC', 'Why VIC', 'Other Clubs', 'Department Questions', 'Interview Done', 'Rating', 'Final Affectation'];
+  'Birth Date', 'Discovered VIC', 'Why VIC', 'Other Clubs', 'Department Questions', 'Interview Done', 'Rating', 'Final Affectation',
+  // added 2026-10-15, admins only (never in the binome sheets): the screening score and its reasons, then each decision
+  'Risk', 'Screening'];
 const LOG_H = ['Submitted At', 'Submitter', 'Typed Binome', 'Typed Interviewee', 'Binome', 'Interviewee',
   'Result', 'Notes', 'Final Dep', 'Response Key'];
 // One row per member change after lock (history; also tells the interview check who used to be in a binome)
@@ -104,13 +110,21 @@ const HOUSE = {
 const CONTACT_OPTIONS = ['Not yet', 'Yes', 'No answer', 'Withdrew'];
 
 const ST = { ASSIGNED: 'ASSIGNED', CONTACTED: 'CONTACTED', SCHEDULED: 'SCHEDULED', INTERVIEWED: 'INTERVIEWED',
-  WITHDRAWN: 'WITHDRAWN', UNASSIGNED: 'UNASSIGNED', DUPLICATE: 'DUPLICATE' };
+  WITHDRAWN: 'WITHDRAWN', UNASSIGNED: 'UNASSIGNED', DUPLICATE: 'DUPLICATE', HELD: 'HELD', DECLINED: 'DECLINED' };
+/** Out of the recruitment: not counted, not in the loads, not matched by the interview form (DECLINED = by screening). */
+function isOut_(st) { return st === ST.DUPLICATE || st === ST.DECLINED; }
 const PENDING_STATUSES = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED];
 const SEV_RANK = { INFO: 1, MEDIUM: 2, HIGH: 3 };
 // Alert types that close themselves once the problem disappears
+// (timingAlerts_ closes these; the screening alerts NEEDS_REVIEW, VIC_MEMBER and MEMBERS_SHEET close in screenWaiting_)
 const AUTO_RESOLVING = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'NO_BINOME', 'UNPAIRED_MEMBER'];
 // Statuses of an alert put aside from the dashboard: its key is not raised again while it holds one
 const HELD_STATUSES = ['SNOOZED', 'MUTED'];
+
+// Screening (owner, 2026-10-15): a why-answer that is only punctuation, under 2 words or one of these phrases holds the
+// application for a person. Phrases are in normText form; a repeated word counts once ("test test").
+const NON_ANSWERS = ['i don t know', 'i dont know', 'idk', 'no idea', 'nothing', 'rien', 'je sais pas', 'je ne sais pas',
+  'jsp', 'test', 'none', 'n a', 'na'];
 
 const DEPTS = ['IT', 'COMM', 'FLER', 'HR'];
 const DEPT_ALIASES = { it: 'IT', info: 'IT', comm: 'COMM', com: 'COMM', communication: 'COMM',

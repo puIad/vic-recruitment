@@ -15,7 +15,7 @@ export type SnoozeFor = "4h" | "24h" | "3d" | "interview"
 export type LocateTarget = "form" | "iv" | "log" | "team" | "binomes" | "cell"
 
 // ops after which the alerts they acted on leave the open list
-const LEAVES = new Set(["edit", "setCell", "exclude", "pickCandidate", "keepForm", "dupNew", "dupSeparate", "repair", "snooze", "mute"])
+const LEAVES = new Set(["edit", "setCell", "exclude", "pickCandidate", "keepForm", "dupNew", "dupSeparate", "repair", "snooze", "mute", "approve", "decline"])
 
 export const REPAIR_LABEL: Record<Exclude<RepairKind, "">, string> = {
   rename: "Rename the sheet",
@@ -173,6 +173,52 @@ export function useQuick() {
           okLabel: "Make them a candidate",
         })
         return ok ? q("dupSeparate", [a.id], {}, "Different person") : null
+      },
+
+      /** Screening: send held applications to a binome. The binomes are emailed, as for any new registration. */
+      async approve(alerts: Alert[]) {
+        const n = alerts.length
+        const ok = await confirm({
+          title: n > 1 ? `Approve ${n} applications?` : `Approve ${name(alerts[0])}?`,
+          body: (
+            <p>
+              They are placed in a binome right away, as for any new registration. The binome is emailed if new-interviewee emails are on.
+              Screening never holds {n > 1 ? "them" : "this application"} again.
+            </p>
+          ),
+          okLabel: n > 1 ? `Approve ${n}` : "Approve",
+        })
+        return ok ? q("approve", alerts.map((a) => a.id), {}, n > 1 ? `Approve ${n}` : `Approve ${name(alerts[0])}`) : null
+      },
+
+      /** Screening: keep held applications (or VIC members already with a binome) out. Nobody is emailed now. */
+      async decline(alerts: Alert[]) {
+        const n = alerts.length
+        const members = alerts.every((a) => a.type === "VIC_MEMBER")
+        const placed = alerts.filter((a) => a.binome)
+        const ok = await confirm({
+          title: n > 1 ? `Decline ${n} applications?` : `Decline ${name(alerts[0])}?`,
+          danger: true,
+          body: (
+            <>
+              {placed.length > 0 && (
+                <p>
+                  {placed.length > 1 ? `${placed.length} of them are` : "They are"} taken out of {[...new Set(placed.map((a) => a.binome))].join(", ")}'s sheet, with whatever the
+                  binome wrote about them.
+                </p>
+              )}
+              <p>
+                Nobody is emailed now.{" "}
+                {members
+                  ? "As VIC members, they never get the rejection email."
+                  : "Declined applicants get one polite email when an admin presses Maintenance › Send rejections… after recruitment closes."}
+              </p>
+              <p className="text-muted-foreground">Interviewees › Declined › Restore brings an application back.</p>
+            </>
+          ),
+          okLabel: n > 1 ? `Decline ${n}` : "Decline",
+        })
+        return ok ? q("decline", alerts.map((a) => a.id), {}, n > 1 ? `Decline ${n}` : `Decline ${name(alerts[0])}`) : null
       },
 
       /** Sheet repairs and retries, one or many. Deleting, sharing or unsharing shows the script's dry run first. */

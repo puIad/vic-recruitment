@@ -19,7 +19,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 |---|---|
 | `Config.gs` | IDs, `SETTINGS_DEFAULTS`, tab names and column headers, statuses, alert types |
 | `Matching.gs` | pure: code parsing, name matching, the interview-form check/autocorrect (`resolveInterview`) |
-| `Rules.gs` | pure: pairing (`draftPairs`), routing (`pickBinome`), codes, registration and timing checks |
+| `Rules.gs` | pure: pairing (`draftPairs`), routing (`pickBinome`), codes, registration and timing checks, the screening score (`screenApplication`) and the name swap (`namesSwapped`) |
 | `Sheets.gs` | plumbing: settings, tables, lock, run context (`loadCtx_`), alert buffer, mail (TEST_MODE gate) |
 | `BinomeFiles.gs` | create / append / remove / mark rows in the binome sheets |
 | `Registrations.gs` | registration form → Interviewees (code + binome) |
@@ -29,6 +29,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | `Team.gs` | team import, Draft / Lock / Re-share, Reset all binomes (`resetBinomesCore_`) |
 | `Members.gs` | after lock: change / swap members, temporary covers (Member Changes tab) |
 | `Actions.gs` | Move interviewee, resolve alerts, daily digest |
+| `Screening.gs` | screening ([launch-features.md](launch-features.md#2-screening-hold-low-effort-applications-decline-vic-members)): the VIC members sheet through the script cache, `screenWaiting_` each run, Approve / Decline / Restore (`reviewRow_`), Send rejections |
 | `QuickFix.gs` | the Alerts page's quick actions (`webRun('quick', {op, ids})`): fixes, snooze / mute, emails, links to the exact row or cell |
 | `Integrity.gs` | manual-edit detection (baseline), odd values, full binome-sheet check |
 | `WebApp.gs` | `webAccess` / `webState` / `webPulse` / `webRun`, the API the dashboard calls; `API_VERSION`; `doGet`. `webState` serves a snapshot from the script cache, republished (`publishState_`) at the end of every sync and every dashboard action that writes; `webPulse` returns its version. A hand edit in the Master shows after the next sync |
@@ -42,7 +43,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 |---|---|---|
 | Tracker | script | per-binome progress, rebuilt by a sync only when a value in it changed |
 | Alerts | script (+ admins resolve) | ID, severity, type, status OPEN / RESOLVED / AUTO-RESOLVED / AUTO-FIXED / SNOOZED / MUTED, key (dedup) |
-| Interviewees | script (warning-protected) | one row per registration: code, binome, status, contact data, what the binome wrote |
+| Interviewees | script (warning-protected) | one row per registration: code, binome, status, contact data, what the binome wrote; Risk and Screening (admins only) |
 | Binomes | admins before Lock, then the tools | code, 2 members, tag, status DRAFT / ACTIVE / PAUSED, sheet link |
 | Member Changes | script | PERMANENT (change/swap) and TEMPORARY (cover) rows |
 | Team | import + admins | name, email, department, Pair As, Exclude |
@@ -67,6 +68,9 @@ Triggers: every `SYNC_EVERY_MINUTES` (`syncAll`), on form submit, and the daily 
 
 1. **Detect hand edits** against the baseline (Integrity.gs) — before anything else writes.
 2. Registrations → code + binome (balanced by load; IT/COMM/FLER go to binomes of that department, HR anywhere, ALL takes anyone).
+   Names typed the wrong way round are swapped (`NAMES_SWAPPED` in Flags). With `SCREENING` on, a VIC member is
+   `DECLINED` silently and a risky application is `HELD` (a code, no binome); then `screenWaiting_` re-checks waiting
+   rows against the members list and raises `NEEDS_REVIEW` for each held one, before the waiting ones are assigned.
 3. Interview forms → checked and autocorrected; real mistakes alerted.
 4. Pull the binome sheets that changed since last read (`FILE_SEEN`); recompute statuses.
 5. End finished covers; timing alerts; odd values; on demand the **full sheet check**.
@@ -111,6 +115,8 @@ Any missed trigger self-heals: unprocessed form rows are picked up by the next r
 | `MANUAL_EDIT` | baseline compare, Team check | yes, once undone; or via the fix buttons |
 | `ODD_VALUE` | odd-value check | yes (form ones: no) |
 | `INTEGRITY` | full sheet check | yes, at the next clean check of that binome |
+| `NEEDS_REVIEW` (MEDIUM), `VIC_MEMBER` (MEDIUM: a member with a binome), `MEMBERS_SHEET` (HIGH: the sheet can't be read) | `screenWaiting_` | yes |
+| `VIC_MEMBER_DECLINED` | screening (INFO, AUTO-FIXED: history only, emailed to nobody) | — |
 
 ## Quick actions (Alerts page)
 

@@ -136,7 +136,7 @@ function binSlices_(ctx) {
   });
   ctx.iv.data.forEach(r => {
     const s = out[String(r[I.Binome]).trim()];
-    if (s && r[I.Code] && r[I.Status] !== ST.DUPLICATE) s.candidates.push(candidate_(ivToFileRow_(ctx, r, ivCarry_(ctx, r)), r[I.Status]));
+    if (s && r[I.Code] && !isOut_(r[I.Status])) s.candidates.push(candidate_(ivToFileRow_(ctx, r, ivCarry_(ctx, r)), r[I.Status]));
   });
   ctx.alerts.table.data.forEach(r => {
     const s = out[String(r[A.Binome]).trim()];
@@ -412,7 +412,7 @@ function buildState_(ctx) {
   ctx.iv.data.forEach(r => {
     if (!r[I.Code] && !r[I['Response Key']]) return;
     byStatus[r[I.Status]] = (byStatus[r[I.Status]] || 0) + 1;
-    if (r[I.Status] === ST.DUPLICATE) return;
+    if (isOut_(r[I.Status])) return;
     if (byDep[r[I['1st Choice']]] !== undefined) byDep[r[I['1st Choice']]]++;
     const p = r[I.Binome] && (perBin[r[I.Binome]] = perBin[r[I.Binome]] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 });
     if (!p) return;
@@ -472,7 +472,8 @@ function buildState_(ctx) {
       fix: r[A.Type] === 'MANUAL_EDIT' ? editFixes_(String(r[A.Key]), base) : [], q: quickInfo_(ctx, r, look) })),
     muted: heldAlerts_(ctx),
     interviewees: ctx.iv.data.filter(r => r[I.Code]).map(r => ({ code: String(r[I.Code]), binome: String(r[I.Binome]), status: r[I.Status],
-      name: (String(r[I['First Name']]) + ' ' + String(r[I['Family Name']])).trim() })),
+      name: (String(r[I['First Name']]) + ' ' + String(r[I['Family Name']])).trim(), risk: r[I.Risk] === '' ? null : Number(r[I.Risk]) })),
+    screening: { on: screenOn_(), holdAt: num_(s.SCREEN_HOLD_AT, 50), linked: !!String(s.VIC_MEMBERS_SHEET || '').trim(), members: membersStatus_() },
   };
 }
 
@@ -528,7 +529,8 @@ function webRun(action, args) {
   if (action === 'setup' && !a.owner) throw new Error('Only the owner of the master sheet can run Setup');
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh'].indexOf(action) < 0 && !args.dryRun &&
+    !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false; // BUSY: nothing was changed, and the lock holder publishes
   _webOut = [];
@@ -567,6 +569,9 @@ function webRun(action, args) {
       case 'endCover': result = endCoverCore_(args); break;
       case 'quick': result = quickCore_(String(args.op || ''), args); break;
       case 'binomeAccess': result = binomeAccessCore_(String(args.binome || ''), args.level, a.email); break;
+      case 'restore': result = restoreCore_(args.codes); break;
+      case 'membersRefresh': result = membersRefreshCore_(); break;
+      case 'rejections': result = rejectionsCore_(args); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked as resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;

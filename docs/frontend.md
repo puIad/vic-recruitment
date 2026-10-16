@@ -30,14 +30,14 @@ The sidebar has four groups: Control room, People, Coming up, System. Alerts car
 | Place | What it does |
 |---|---|
 | Header | Live status button (reload; numbers also refresh every 15 s from the Master's last edit), the primary **Sync now**, Test mode pill |
-| Overview | Pipeline card (registrants by status), Launch sequence (Import team → Draft → Lock, only the current step is primary), attention, binome load, departments, Activity of this session |
-| Alerts | Inbox: list left, reading pane right; severity filter, Manual edits and Muted, search, select, Mark resolved, Accept edits on several, Apply / Revert / Accept per manual edit. Quick fix per alert type in the reading pane (inline fixes, comparisons, emails with an editable preview, links to the exact row or cell), one quick action on each row, and Nudge / Repair / Snooze on a selection (`app/alerts/components/quick-actions.tsx`, `lib/vic/quick.tsx`) |
+| Overview | Pipeline card (registrants by status, a "waiting for review" line while screening holds some), Launch sequence (Import team → Draft → Lock, only the current step is primary), attention, binome load, departments, Activity of this session |
+| Alerts | Inbox: list left, reading pane right; severity filter, Manual edits and Muted, search, select, Mark resolved, Accept edits on several, Apply / Revert / Accept per manual edit. Quick fix per alert type in the reading pane (inline fixes, comparisons, emails with an editable preview, links to the exact row or cell), one quick action on each row, and Nudge / Repair / Snooze on a selection (`app/alerts/components/quick-actions.tsx`, `lib/vic/quick.tsx`). Screening: a review pane on Waiting for review and VIC member alerts (risk, reasons, every answer), Approve / Decline, also on a selection |
 | Binomes | Table (filter, sort, status facet, row menu); Unpaired members and Active covers cards (Place… opens Change members prefilled; Pair two… opens its New binome tab) |
 | Change members | Sheet with Replace / Swap / New binome / Cover, each with the script's dry-run preview; opened from Binomes or a row menu |
 | Move interviewee | Dialog, from Binomes, an interviewee row or a binome row menu |
-| Interviewees, Team | Tables of the two tabs |
-| Maintenance | Check integrity, Send me the digest now, Re-share binome sheets, Run setup again (owner only); Danger zone: Reset all binomes (phrase "I confirm to reset the binomes") |
-| Settings | General, Alerts and timing, Sharing and email (turning Test mode off asks first), Change history, Connections (Google files), Account (session time left), Appearance (charter palettes: VIC, SPARK, English Bubble, Training) |
+| Interviewees, Team | Tables of the two tabs. Interviewees: Risk column, On hold in the status filter with a Review link, a Declined toggle with Restore |
+| Maintenance | Check integrity, Send me the digest now, Re-share binome sheets, Send rejections (editable preview), Run setup again (owner only); Danger zone: Reset all binomes (phrase "I confirm to reset the binomes") |
+| Settings | General, Alerts and timing, Sharing and email (turning Test mode off asks first), Screening (the members list's count, last read and Refresh now, the rules), Change history, Connections (Google files), Account (session time left), Appearance (charter palettes: VIC, SPARK, English Bubble, Training) |
 | Elsewhere | Command palette (Ctrl K: pages, candidates by code or name, binomes, alerts, Sync), Help (FAQ), Google files row in the sidebar, account menu at its foot |
 | Gate | Sign in, session expired, no access, script unreachable, set in the iris of the charter's divider disc |
 | Members | Someone in a locked binome (or a live cover) who is not an editor gets **My binome** only (`app/my-binome/`), read-only: their candidates with the sheet's columns, statuses, open alerts, a link to their sheet; Account and Appearance. Polls every 15 s. Load-test plan, task 7 |

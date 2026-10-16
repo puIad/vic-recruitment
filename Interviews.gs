@@ -19,7 +19,7 @@ function resolverCtx_(ctx) {
   ctx.iv.data.forEach(r => { if (r[I.Code] && r[I['Interview Submitted At']]) interviewed[r[I.Code]] = true; });
   return {
     binomes: ctx.binomes.filter(b => b.status === 'ACTIVE' || b.status === 'PAUSED'),
-    interviewees: ctx.iv.data.filter(r => r[I.Code] && r[I.Status] !== ST.DUPLICATE).map(r => ({
+    interviewees: ctx.iv.data.filter(r => r[I.Code] && !isOut_(r[I.Status])).map(r => ({
       code: String(r[I.Code]).trim(), binome: String(r[I.Binome]).trim(),
       name: r[I['First Name']] + ' ' + r[I['Family Name']], firstChoice: String(r[I['1st Choice']]).trim() })),
     interviewed: interviewed,

@@ -121,9 +121,11 @@ Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycl
 ## Next: pairing, screening, department change (requested 2026-10-15)
 
 Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with experience (random or by hand) is live
-(@73/@74 and Vercel from `87a7871`) and the owner used it for the production binomes on 2026-10-15 (above). Being
-built: screening (hold low-effort applications, decline VIC members silently), needed before the form opens. Not built
-yet: changing a binome's department from the dashboard. Screening still needs the link of the VIC members sheet.
+(@73/@74 and Vercel from `87a7871`) and the owner used it for the production binomes on 2026-10-15 (above). Screening
+(hold low-effort applications for review, decline VIC members silently, the rejection email, plus the name swap) is
+built in [#33](https://github.com/puIad/vic-recruitment-2026/pull/33), calibrated with the owner on the 273 applications of 2025 (11 held at 50), in review,
+not deployed: see its Notes. After merge: `npm run deploy`, Setup once, Vercel; then link the members sheet in Settings ›
+Screening and turn it on. Not built yet: changing a binome's department from the dashboard.
 
 ## Brief for 2026-10-04 (settled with the owner)
 

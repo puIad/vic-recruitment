@@ -16,6 +16,7 @@ const Desk = lazy(() => import("@/app/chat/page"))
 const SettingsGeneral = lazy(() => import("@/app/settings/general/page"))
 const SettingsTiming = lazy(() => import("@/app/settings/timing/page"))
 const SettingsSharing = lazy(() => import("@/app/settings/sharing/page"))
+const SettingsScreening = lazy(() => import("@/app/settings/screening/page"))
 const SettingsConnections = lazy(() => import("@/app/settings/connections/page"))
 const SettingsAccount = lazy(() => import("@/app/settings/account/page"))
 const SettingsAppearance = lazy(() => import("@/app/settings/appearance/page"))
@@ -45,6 +46,7 @@ export const shellRoutes: RouteConfig[] = [
   { path: "/settings/general", element: <SettingsGeneral /> },
   { path: "/settings/timing", element: <SettingsTiming /> },
   { path: "/settings/sharing", element: <SettingsSharing /> },
+  { path: "/settings/screening", element: <SettingsScreening /> },
   { path: "/settings/connections", element: <SettingsConnections /> },
   { path: "/settings/account", element: <SettingsAccount /> },
   { path: "/settings/appearance", element: <SettingsAppearance /> },
