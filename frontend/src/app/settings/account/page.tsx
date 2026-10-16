@@ -73,7 +73,7 @@ export default function AccountSettings() {
                 <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> An ENP account that can edit the VIC Recruitment 2026 master sheet.
               </li>
               <li className="flex items-start gap-2">
-                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> {access?.owner ? "You own the Master: you may also run Setup." : "Setup is reserved for the owner of the Master."}
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success" /> {access?.owner ? "You run the sync triggers: you may also run Setup." : "Setup is reserved for the owner, the account that runs the sync triggers."}
               </li>
             </ul>
             )}
