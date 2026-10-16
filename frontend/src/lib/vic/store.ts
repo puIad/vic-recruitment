@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { toast } from "sonner"
 import { API_VERSION, type Access, type Alert, type GoldKey, type MemberSetOut, type MemberState, type RunOut, type WebState } from "./types"
 import { ApiError, call, hooks, rateLimited } from "./api"
+import { startNotice } from "./notice"
 
 export type Gate =
   | { mode: "booting" }
@@ -30,6 +31,8 @@ interface VicStore {
   refreshing: boolean
   busy: boolean
   busyAction: string | null
+  /** the running action as the page names it ("Sync", "Lock binomes"): the hint on grayed-out buttons says it */
+  busyLabel: string | null
   /** number of confirm dialogs open: live refresh pauses while one is */
   modals: number
   pulse: number | null
@@ -73,6 +76,7 @@ export const useVic = create<VicStore>((set, get) => ({
   refreshing: false,
   busy: false,
   busyAction: null,
+  busyLabel: null,
   modals: 0,
   pulse: null,
   loadedAt: 0,
@@ -164,7 +168,8 @@ export const useVic = create<VicStore>((set, get) => ({
 
   async run<R>(action: string, args: Record<string, unknown> = {}, label?: string) {
     const name = label || action
-    set({ busy: true, busyAction: action })
+    set({ busy: true, busyAction: action, busyLabel: name })
+    const finish = startNotice(name)
     const log = (text: string, error = false) =>
       set((cur) => ({ activity: [{ id: ++activityId, time: hhmm(), text, error }, ...cur.activity].slice(0, 40) }))
     try {
@@ -175,27 +180,20 @@ export const useVic = create<VicStore>((set, get) => ({
         await new Promise((r) => setTimeout(r, 3000))
         return send()
       })
-      const msg = (out.messages || []).join("\n\n")
-      if (msg) {
-        const [head, ...rest] = msg.split("\n").filter((l) => l.trim())
-        toast.success(head, rest.length ? { description: rest.join("\n"), duration: 12000 } : undefined)
-        log(`${name} · ${head}`)
-      } else {
-        log(`${name} · done`)
-      }
+      const head = finish("success", (out.messages || []).join("\n"))
+      log(`${name} · ${head || "done"}`)
       return out
     } catch (e) {
       const m = e instanceof ApiError || e instanceof Error ? e.message : String(e)
       const busy = e instanceof ApiError && e.code === "BUSY"
-      toast.error(busy ? `${name} was not done` : `${name} failed`, {
-        description: m,
-        duration: 15000,
+      finish("error", m, {
+        head: busy ? `${name} was not done` : `${name} failed`,
         action: busy ? { label: "Try again", onClick: () => void get().run(action, args, label) } : undefined,
       })
       log(`${name} failed: ${m}`, true)
       return null
     } finally {
-      set({ busy: false, busyAction: null })
+      set({ busy: false, busyAction: null, busyLabel: null })
     }
   },
 

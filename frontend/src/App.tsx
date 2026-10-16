@@ -5,6 +5,7 @@ import { AppRouter } from "@/components/router/app-router"
 import { AuthGate } from "@/components/gate/gate-screen"
 import { ConfirmProvider } from "@/lib/vic/confirm"
 import { Toaster } from "@/components/ui/sonner"
+import { BusyHint } from "@/components/busy-hint"
 
 // Get basename from environment (for deployment) or use empty string for development
 const basename = import.meta.env.VITE_BASENAME || ""
@@ -21,6 +22,7 @@ function App() {
               </AuthGate>
             </Router>
             <Toaster position="bottom-right" richColors closeButton />
+            <BusyHint />
           </ConfirmProvider>
         </SidebarConfigProvider>
       </ThemeProvider>
