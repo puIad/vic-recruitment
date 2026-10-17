@@ -35,7 +35,7 @@ Launch features ([launch-features.md](docs/launch-features.md)):
 - Moved to next season (2026-10-17): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
   settings and My binome. The build doesn't fit before task 10 (by 2026-10-20), so every save stays a direct write
   this season. Two pieces ship now: skip Vercel builds on doc-only pushes
-  ([#64](https://github.com/puIad/vic-recruitment-2026/issues/64)) and sign-ins per browser
+  ([#64](https://github.com/puIad/vic-recruitment-2026/issues/64), live 2026-10-17 from `e70bf5a`, [#71](https://github.com/puIad/vic-recruitment-2026/pull/71): `ignoreCommand` in `web/vercel.json`, see [vercel.md](docs/vercel.md); its own merge built with npm install + Vite) and sign-ins per browser
   ([#65](https://github.com/puIad/vic-recruitment-2026/issues/65): no revoke at the 48 h end, no consent screen when
   signing back in). Plan: [plans.md](docs/plans.md#pending-changes-the-build-plan).
 
