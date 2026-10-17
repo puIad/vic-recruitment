@@ -1,7 +1,8 @@
 # Plans: pairing, screening, department change
 
 The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); screening (section 2)
-is built and in review (its Notes); the department change is not built yet. Unlike [plans.md](plans.md), the first two are needed
+is live since 2026-10-17 (#33, @75/@76) but stays off until the owner links the members sheet (its Rollout); the
+department change is not built yet. Unlike [plans.md](plans.md), the first two are needed
 before launch.
 
 | # | Feature | Needed by | Size |

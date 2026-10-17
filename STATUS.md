@@ -1,10 +1,44 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-15. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-17. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
+
+## Launch checklist (2026-10-17)
+
+One list of what is done and what is left before the registration form opens. Details are in the sections below.
+No PR or issue is open.
+
+Launch features ([launch-features.md](docs/launch-features.md)):
+
+- Done: **pairing with experience** (#32, live 2026-10-15; the 32 production binomes were made with it and locked).
+- Done in code: **screening** (#33, live 2026-10-17). Off until the owner does rollout steps 3 and 4: Setup once as
+  `vic.rh`, link and share the members sheet in Settings › Screening, turn it on, test one member / one junk / one
+  decent application in TEST_MODE, then Send rejections… once.
+- Not built: **change a binome's department** from the dashboard (launch-features section 3; a hand edit of the Tag
+  plus Accept works meanwhile).
+- Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
+  weight that gives pure `HR` binomes (B.29, B.30) their share of HR candidates. The owner wants it after screening.
+
+Done since 2026-10-15: the 2026-10-17 audit fixes (#37–#43, @81/@82), the Google profile picture (#36), the Owner
+check on `TRIGGER_OWNER` (#34), the old Apps Script dashboard retired, and every open and muted alert loaded (#44).
+
+Left, owner (in order):
+
+1. Setup once as `vic.rh` from the Master's menu (pairing's checkbox rule, screening's status colours).
+2. Screening rollout steps 3 and 4 (above).
+3. Fix the B.03 email typo (`enp` twice) and verify B.08's guessed email: Change members › Replace.
+4. Reword the 2026 forms (they still say 2025; the confirmation must not promise an interview).
+5. Answer the [open questions](docs/decisions.md#open-questions) (board members interviewing, confirmation email…).
+6. Give admins edit access to the Binome Sheets folder; timing limits back to 24 / 48 / 12.
+7. Live checks still open: #37 (`=1+1` in a form, a Discord handle starting with `-`), #30 (the member shared by hand
+   during task 8 still gets in: set that binome to No access), the other-account checks
+   ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines.
+8. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
+9. Load-test task 10: load test again and sign off before members get the dashboard.
+10. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
 ## Live now
 
@@ -29,7 +63,11 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@81**, API **@82**, deployed from `e80e7fd` (2026-10-17, the 2026-10-17 audit fixes
+- **Script, latest:** web app **@83**, API **@84**, most likely from `75f64c4` (2026-10-17,
+  [#44](https://github.com/puIad/vic-recruitment-2026/pull/44); not logged at deploy time, found 2026-10-17 with
+  `clasp deployments`): the dashboard payload no longer cuts open alerts at 300 and snoozed / muted ones at 200. The live
+  `QuickFix.gs` and `WebApp.gs` pulled back equal `main`. Vercel production from `75f64c4` ("Deployment has completed").
+- **Script, before that:** web app **@81**, API **@82**, deployed from `e80e7fd` (2026-10-17, the 2026-10-17 audit fixes
   [#37](https://github.com/puIad/vic-recruitment-2026/pull/37)–[#43](https://github.com/puIad/vic-recruitment-2026/pull/43)):
   candidate text starting with `=` `+` `-` written as text (plain-text columns left as they are); the Interview Log written
   after Interviewees is saved; alert IDs numbered from the highest one; placing waiting candidates stops before the 6-min
