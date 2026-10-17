@@ -29,12 +29,16 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@77**, API **@78**, deployed from `634193a` (2026-10-17,
+- **Script, latest:** web app **@79**, API **@80**, deployed from `6cec554` (2026-10-17,
+  [#36](https://github.com/puIad/vic-recruitment-2026/pull/36)): `webAccess` returns `photo` (Drive `about.get` photoLink,
+  per-user cache 6h); the sidebar, Account page and no-access gate show it, initials as fallback. CSP `img-src` allows
+  `*.googleusercontent.com`. Vercel production from `6cec554`.
+- **Script, before that:** web app **@77**, API **@78**, deployed from `634193a` (2026-10-17,
   [#34](https://github.com/puIad/vic-recruitment-2026/pull/34)): the dashboard's **Owner** (role badge, Setup button, the
   `webRun('setup')` gate) is now `TRIGGER_OWNER` (`vic.rh`), or the Master's Drive owner while it is unset. Drive still lists
   `mourad_islam.fernane@` as the Master's owner and `vic.rh@` as a writer; re-protecting binome sheets still needs that Drive
   owner. Vercel production from `634193a`, no runtime errors. 19 files pushed, all equal to `main` when pulled back.
-- **Script, before that:** web app **@75**, API **@76**, deployed from `9aaad16` (2026-10-17,
+- **Script, earlier:** web app **@75**, API **@76**, deployed from `9aaad16` (2026-10-17,
   [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): screening (`Screening.gs`), the silent VIC-member decline, the
   rejection email, the name swap. `npm test` passed, 19 files pushed; the live project pulled back afterwards: all 19 equal to
   `main`. **To do (owner):** run Setup once as `vic.rh` from the Master's menu, then link the members sheet in Settings ›
