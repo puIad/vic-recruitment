@@ -23,6 +23,7 @@
  *   Actions.gs        reassign interviewee, resolve alerts, daily digest
  *   QuickFix.gs       the dashboard's quick actions on alerts: fixes, snooze / mute, emails, links
  *   Screening.gs      hold low-effort applications for review, decline VIC members, the rejection email
+ *   Mail.gs           the email template every mail is built with, the registrant's confirmation text
  ******************************************************************************/
 
 // IDs of the files created in Drive › Recruitment › VIC Recruitment 2026
@@ -44,6 +45,7 @@ const SETTINGS_DEFAULTS = [
   ['INSTANT_EMAIL_MIN_SEVERITY', 'MEDIUM', 'HIGH, MEDIUM or INFO: alerts at/above this level are emailed instantly'],
   ['NOTIFY_BINOME_ON_ALERT', true, 'Also email the binome for big mistakes and delays that concern them'],
   ['NOTIFY_BINOME_ON_NEW_INTERVIEWEE', true, 'Email the binome each time a new interviewee is assigned to them'],
+  ['CONFIRM_REGISTRANTS', true, 'Email each new registrant a confirmation with their code (not duplicates, not declined VIC members)'],
   ['SHARE_FILES_WITH_BINOME', true, 'Share each binome file with its two members as editors'],
   ['ASSIGNMENTS_OPEN', true, 'FALSE = stop assigning new registrants (they stay UNASSIGNED until TRUE again)'],
   ['BALANCE_BY', 'ACTIVE', 'ACTIVE = give to the binome with fewest pending interviewees; TOTAL = fewest ever assigned'],

@@ -117,19 +117,16 @@ function sendDailyDigest() {
   const newInts = ctx.iv.data.filter(r => r[I['Interview Submitted At']] instanceof Date && r[I['Interview Submitted At']] > yesterday).length;
   const perBinome = {}; open.forEach(r => { if (r[A.Binome]) perBinome[r[A.Binome]] = (perBinome[r[A.Binome]] || 0) + 1; });
   const lag = Object.keys(perBinome).sort((a, b) => perBinome[b] - perBinome[a]).slice(0, 8);
-  const statusLine = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED, ST.INTERVIEWED, ST.WITHDRAWN, ST.UNASSIGNED, ST.HELD, ST.DECLINED, ST.DUPLICATE]
-    .map(s => s.charAt(0) + s.slice(1).toLowerCase() + ': <b>' + (count[s] || 0) + '</b>').join(' · ');
-  const html = '<div style="font-family:Arial;font-size:13px">' +
-    '<h3 style="margin:0 0 8px">VIC Recruitment · daily digest (' + fmt_(ctx.now, 'EEE dd/MM') + ')</h3>' +
-    '<p>Last 24h: <b>' + newRegs + '</b> new registrations · <b>' + newInts + '</b> interviews submitted</p>' +
-    '<p>' + statusLine + '</p>' +
-    (lag.length ? '<p><b>Binomes with the most open alerts:</b> ' + lag.map(b => b + ' (' + perBinome[b] + ')').join(', ') + '</p>' : '') +
-    '<h4 style="margin:12px 0 4px">Open alerts (' + open.length + ')</h4>' +
-    (open.length ? '<table cellpadding="5" style="border-collapse:collapse">' + open.slice(0, 60).map(r =>
-      '<tr style="border-bottom:1px solid #ddd"><td>' + esc_(r[A.ID]) + '</td><td><b style="color:' + (r[A.Severity] === 'HIGH' ? '#c62828' : r[A.Severity] === 'MEDIUM' ? '#ef6c00' : '#555') + '">' +
-      esc_(r[A.Severity]) + '</b></td><td>' + esc_(r[A.Type]) + '</td><td>' + esc_(r[A.Binome]) + '</td><td>' + esc_(r[A.Message]) + '</td></tr>').join('') +
-      '</table>' + (open.length > 60 ? '<p>…and ' + (open.length - 60) + ' more.</p>' : '') : '<p>Nothing open 🎉</p>') +
-    '<p><a href="' + ss_().getUrl() + '">Open the master sheet</a></p></div>';
+  const statuses = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED, ST.INTERVIEWED, ST.WITHDRAWN, ST.UNASSIGNED, ST.HELD, ST.DECLINED, ST.DUPLICATE]
+    .map(s => [s.charAt(0) + s.slice(1).toLowerCase(), count[s] || 0]);
+  const html = mailHtml_({ title: 'Daily digest · ' + fmt_(ctx.now, 'EEE dd/MM'),
+    blocks: [mailH_('Last 24h'), mailStats_([['New registrations', newRegs], ['Interviews submitted', newInts]]),
+      mailH_('Interviewees'), mailStats_(statuses)]
+      .concat(lag.length ? [mailP_('**Binomes with the most open alerts:** ' + lag.map(b => b + ' (' + perBinome[b] + ')').join(', '))] : [])
+      .concat(mailH_('Open alerts (' + open.length + ')'))
+      .concat(open.length ? [mailAlerts_(open.slice(0, 60).map(r => [r[A.Severity], r[A.ID], r[A.Type], r[A.Binome], r[A.Message]]))]
+        .concat(open.length > 60 ? [mailP_('…and ' + (open.length - 60) + ' more.')] : []) : [mailP_('Nothing open 🎉')]),
+    cta: { label: 'Open the master sheet', url: ss_().getUrl() }, footer: mailTeamFooter_() });
   _mailsSent = 0; // the cycle line above was logged before these mails: count them in their own line
   adminEmails_().forEach(e => mail_(e, '[VIC Recruitment] Daily digest: ' + open.length + ' open alert' + (open.length === 1 ? '' : 's'), html));
   console.log(JSON.stringify({ at: 'digest', mailsSent: _mailsSent }));

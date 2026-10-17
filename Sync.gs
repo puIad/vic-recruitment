@@ -206,13 +206,16 @@ function sendNewIntervieweeMails_(ctx) {
     const b = ctx.binByCode[code];
     if (!b) return;
     const list = ctx.mailNew[code];
-    const html = '<p>Hi ' + esc_(b.members.map(m => m.name.split(' ')[0]).join(' & ')) + ',</p><p>' + list.length +
-      ' new interviewee' + (list.length > 1 ? 's were' : ' was') + ' assigned to your binome <b>' + code + '</b>:</p><ul>' +
-      list.map(r => '<li><b>' + esc_(r[I.Code]) + '</b>: ' + esc_(r[I['First Name']] + ' ' + r[I['Family Name']]) + ' · ' +
-        esc_(String(r[I.Phone]).replace(/^'/, '')) + ' · available: ' + esc_(r[I.Availability]) + '</li>').join('') +
-      '</ul><p>Please contact them within ' + S_().HOURS_NOT_CONTACTED + 'h and fill in <i>Contacted</i>, <i>Interview Date</i> and <i>Interview Time</i> in ' +
-      (b.fileUrl ? '<a href="' + b.fileUrl + '">your binome sheet</a>' : 'your binome sheet') +
-      '.</p><p>In the interview form, use your binome code <b>' + code + '</b> and the interviewee code.</p>';
+    const html = mailHtml_({ title: list.length + ' new interviewee' + (list.length > 1 ? 's' : '') + ' for ' + code,
+      intro: 'Hi ' + b.members.map(m => m.name.split(' ')[0]).join(' & ') + ',\n\n' + list.length +
+        ' new interviewee' + (list.length > 1 ? 's were' : ' was') + ' assigned to your binome **' + code + '**:',
+      blocks: [
+        mailList_(list.map(r => [r[I.Code], r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' +
+          String(r[I.Phone]).replace(/^'/, '') + ' · available: ' + r[I.Availability]])),
+        mailP_('Please contact them within ' + S_().HOURS_NOT_CONTACTED + 'h and fill in **Contacted**, **Interview Date** and ' +
+          '**Interview Time** in your binome sheet.\n\nIn the interview form, use your binome code **' + code + '** and the interviewee code.'),
+      ],
+      cta: { label: 'Open your binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) });
     b.members.forEach(m => { if (m.email) mail_(m.email, '[VIC Recruitment] New interviewee(s) for ' + code, html); });
   });
   ctx.mailNew = {};
@@ -238,13 +241,13 @@ function runCycle_(opts) {
     processInterviews_(ctx); lap('forms');
     if (opts.pull) pullBinomeFiles_(ctx, opts.force); lap('pull');
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });
-    endFinishedCovers_(ctx); lap('statuses');
+    endFinishedCovers_(ctx); stampConfirmations_(ctx); lap('statuses');
     if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); } lap('timing');
     if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity); lap('integrity');
     saveTable_(ctx.iv); appendLog_(ctx); lap('save');
     commitBase_(ctx); lap('base'); // before the mails: if they fail, the tabs and the baseline still agree
     ctx.alerts.flush(); lap('alerts');
-    sendNewIntervieweeMails_(ctx); lap('mails');
+    sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx); lap('mails');
     if (opts.tracker) buildTracker_(ctx); lap('tracker');
     saveMemberMap_(ctx); // covers ended above, hand edits of the Binomes tab
     // the dashboard's snapshot; a failure must not fail the sync, and must not leave a snapshot that misses this run

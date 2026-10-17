@@ -362,7 +362,7 @@ Binomes › ⋯ › **Change department…**, a dialog like Sheet & dashboard ac
 ## 4. Emails: one template, and a confirmation to registrants
 
 Asked by the owner on 2026-10-17 ([decisions.md](decisions.md#open-questions), question 4). Needed before the form
-opens (the confirmation), in one PR with the template. Not built.
+opens (the confirmation), in one PR with the template. Built in [#45](https://github.com/puIad/vic-recruitment-2026/pull/45), in review, not deployed.
 
 ### Goal
 
@@ -429,6 +429,45 @@ its own inline Arial HTML:
 - The confirmation's language (English, French or both) and its exact wording.
 - A preview of the template (one confirmation, one alert mail, one digest) sent to the owner's inbox before it
   replaces the live mails.
+
+### Notes
+
+- 2026-10-17: built in [#45](https://github.com/puIad/vic-recruitment-2026/pull/45), in review, not deployed. All suites pass, typecheck clean. Mails checked as rendered
+  HTML at 680 px and 375 px (logo loaded, and with images off: the alt text "VIC" shows in the blue band), and the new
+  setting on the mock's Settings › Sharing and email.
+  - `Mail.gs`: `mailHtml_({title, intro, blocks, cta, footer})` and the blocks `mailP_` (escaped text; a blank line is a
+    new paragraph, `**x**` is bold), `mailList_` (key/value), `mailAlerts_` (severity chip, then the details on a small
+    line above the message, so a phone never scrolls sideways), `mailStats_`, plus two the callers needed: `mailH_` (a
+    small heading, for the digest) and `mailCode_` (the registrant's code, large). `mailButton_` is the table-cell
+    button, `mailTeamFooter_(sheetUrl)` the team footer (dashboard, and the binome sheet when there is one). No footer
+    argument means the candidate footer, with no link.
+  - Colours: the four charter hexes from the plan; the button is `primary` (#0075b2, the text-safe blue, since
+    DESIGN.md keeps #127dbb off button fills); chips are DESIGN.md's danger / warning / info and their soft fills as hex.
+  - `esc_` (Sheets.gs) now also escapes `"`, so a value is safe inside an attribute too (links).
+  - Logo: `frontend/public/brand/vic-logo-white.png` (480 × 193, transparent), shown at 120 × 48. It only loads once
+    Vercel has deployed it: merge before `npm run deploy`, or the first mails show the alt text.
+  - Senders moved, content and recipients kept: the new-interviewee mail, the alert mails (admins get "Open the master
+    sheet", a binome "Open your binome sheet"), the digest, the five member mails (joined, left, new binome, you cover,
+    someone covers for you: the plan said four), the quick-action mails (the edited text wrapped, candidate footer for
+    all of them, since some go to candidates) and the rejections (the TEST_MODE note is now a first paragraph). `mail_`
+    is unchanged.
+  - Confirmation: `CONFIRM_MAIL` at the top of Mail.gs holds the subject and text in one place, English for now; the
+    wording waits for the owner. It says thanks, shows the code, says a binome will contact them, and never mentions an
+    interview (a test checks the word is absent). `processRegistrations_` queues each new row; `stampConfirmations_`
+    runs before the save and keeps the ones with a code, status waiting / assigned / held, a first name and an address
+    of the form `x@y.z`, stamping `CONFIRMED dd/MM/yyyy` in Flags; `sendConfirmations_` mails them after the save,
+    next to the new-interviewee mail.
+  - Difference: the stamp is written before the send, so a send that fails (quota) is not retried, the same as the
+    new-interviewee mail; `mail_` logs it. In TEST_MODE the rows are stamped too, so registrations made while testing
+    never get a confirmation later.
+  - Difference: "the dates if set" is left out: there is no setting with the recruitment dates yet.
+  - Held registrations get the same text, which says a binome will contact them; if screening then declines them, that
+    line is wrong for them. To settle with the wording.
+  - `CONFIRM_REGISTRANTS` (on by default) is in Config.gs and in Settings › Sharing and email. The "Who hears about
+    what" table on that page doesn't list the confirmation (its columns are admins / binome / digest).
+  - Tests: `test/mail.test.js` (template, escaping, chips, footers, which registrations get one, sent once, the skips,
+    setting off, TEST_MODE, member and digest mails). The mock's `MailApp` also records any mail not built by
+    `mailHtml_`, and `test/gs.js` fails a suite on exit if there was one, so every suite checks every sender it reaches.
 
 ## Decisions (owner, 2026-10-15)
 
