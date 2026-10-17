@@ -231,6 +231,19 @@ assert.deepStrictEqual([JSON.stringify(run("__blocks")), ivOf('COMM.01')[IVX['Bi
 // equal only when sure: forced text matches its read-back; a number never matches the same number as text
 assert(run(`sameCell_("'0555", '0555') && sameCell_(new Date(5), new Date(5)) && !sameCell_(7, '7') && !sameCell_('7', 7) && !sameCell_("'0555", 555) && !sameCell_('', 0)`));
 
+// ---- a run that fails after reading a form reads it again next time: the form is never lost ----
+const bNadia = bins.find(r => r[0] === nadia[IVX.Binome]), logLen = () => run('master.getSheetByName("Interview Log").getLastRow()');
+const logBefore = logLen();
+run(`master.getSheetByName('Interview Responses').cells.push([new Date(), '${bNadia[2]}', '${bNadia[0]}', '${nadia[0]}', 'intro', 'HR', 'HR', '']);
+  var __pb2 = pullBinomeFiles_; pullBinomeFiles_ = function () { pullBinomeFiles_ = __pb2; throw new Error('Service Spreadsheets timed out'); };`);
+assert.throws(() => run('syncAll()'), /timed out/);
+assert.strictEqual(logLen(), logBefore, 'the failed run left the Interview Log as it was');
+run('syncAll()');
+assert.strictEqual(logLen(), logBefore + 1, 'logged once');
+const nadiaNow = ivOf(nadia[0]);
+assert.strictEqual(nadiaNow[IVX.Status], 'INTERVIEWED');
+assert(nadiaNow[IVX['Interview Submitted At']], 'Interview Submitted At set');
+
 // ---- reassign ----
 const it02 = ivs.find(r => r[0] === 'IT.02');
 const target = bins.find(r => r[0] !== it02[1] && (r[5] === 'ALL' || r[5].includes('IT')));

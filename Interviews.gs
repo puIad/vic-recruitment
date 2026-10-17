@@ -81,9 +81,13 @@ function processInterviews_(ctx) {
         msg: res.notes.join(' | ') + ' [Interview Log row ' + logRowNumber + ']', key: 'INT|AUTOCORRECTED|' + key });
     }
   }
-  if (ctx.log.data.length > ctx.log.originalLength) {
-    const t = ctx.log;
-    t.sh.getRange(t.originalLength + 2, 1, t.data.length - t.originalLength, LOG_H.length).setValues(t.data.slice(t.originalLength));
-    t.originalLength = t.data.length;
-  }
+}
+
+/** The forms read this run, added to the Interview Log after Interviewees is saved: a run that fails before then reads them again
+ *  (if this write fails instead, the next run reads them again and raises DUPLICATE_INTERVIEW: loud, not lost). */
+function appendLog_(ctx) {
+  const t = ctx.log;
+  if (t.data.length <= t.originalLength) return;
+  t.sh.getRange(t.originalLength + 2, 1, t.data.length - t.originalLength, LOG_H.length).setValues(t.data.slice(t.originalLength));
+  t.originalLength = t.data.length;
 }
