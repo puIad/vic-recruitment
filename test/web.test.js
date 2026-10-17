@@ -763,6 +763,26 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     assert.strictEqual(set(code2, 'Contacted', 'Yes', 'No answer').result.value, 'Yes', 'no document lock: the script lock');
     m.run('LockService.getDocumentLock = __gdl');
 
+    // several fields in one call (one Save): each answers on its own; a stale seen or a bad value stops only that field
+    const setMany = fields => m.call('webRun', 'memberSet', { code: code2, fields: fields });
+    const many = setMany([{ field: 'Contacted', value: 'No answer', seen: 'Yes' }, { field: 'Rating', value: 9, seen: 3 },
+      { field: 'Interview Time', value: '16:00', seen: '14:30' }, { field: 'Final Affectation', value: 'MATH', seen: 'IT' }]);
+    assert.strictEqual(J(many.result), J({ code: code2, fields: [{ field: 'Contacted', value: 'No answer' }, { field: 'Rating', conflict: '8' },
+      { field: 'Interview Time', value: '16:00' }, { field: 'Final Affectation', error: 'Final Affectation must be one of: IT, COMM, FLER, HR, Not accepted, or empty.' }] }));
+    assert.deepStrictEqual([cell(code2, 'Contacted'), cell(code2, 'Rating'), cell(code2, 'Interview Time'), cell(code2, 'Final Affectation')].map(c => JSON.parse(c)[1]),
+      ['No answer', '8', '16:00', 'IT'], 'the two written, the conflict and the bad value left as they were');
+    assert.strictEqual(m.call('webState').candidates.find(c => c.Code === code2).Contacted, 'No answer', 'slice patched');
+    assert.throws(() => setMany([{ field: 'Contacted', value: 'Yes', seen: 'No answer' }, { field: 'Email', value: 'a@b.dz', seen: '' }]), /^Error: Not allowed$/,
+      'a field members may not edit refuses the whole call');
+    assert.throws(() => setMany([]), /^Error: Not allowed$/);
+    assert.throws(() => setMany([{ field: 'Contacted', value: 'Yes', seen: 'No answer' }, { field: 'Contacted', value: 'Withdrew', seen: 'No answer' }]), /^Error: Not allowed$/,
+      'the same field twice');
+    assert.strictEqual(JSON.parse(cell(code2, 'Contacted'))[1], 'No answer', 'nothing written by a refused call');
+    const pvBatch = m.call('webPulse');
+    assert.strictEqual(J(setMany([{ field: 'Contacted', value: 'Yes', seen: 'No answer' }, { field: 'Interview Time', value: '14:30', seen: '16:00' }]).result.fields),
+      J([{ field: 'Contacted', value: 'Yes' }, { field: 'Interview Time', value: '14:30' }]), 'both written back');
+    assert.strictEqual(m.call('webPulse'), pvBatch + 1, 'one new version for the whole save, not one per field');
+
     // opened View: the page is read-only and a write is refused; closed: the dashboard goes at the next poll
     as('admin@g.enp.edu.dz'); m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'view' });
     as(partner);

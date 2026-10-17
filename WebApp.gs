@@ -283,40 +283,61 @@ function goldText_(k, x) {
 /** Members' edits take the document lock, not the script lock the sync holds for seconds; if there is none, the script lock. */
 function memberLock_() { let l = null; try { l = LockService.getDocumentLock(); } catch (e) { /* no document */ } return l || LockService.getScriptLock(); }
 
-/** webRun('memberSet', {code, field, value, seen}): a member (not a cover) sets one gold cell of their own binome sheet, with
- *  their own access, the way typing would. seen = the value their screen showed: if the cell holds something else, the partner
- *  changed it meanwhile and nothing is written (CONFLICT: <current>). Then the binome is marked dirty (the next sync reads its
- *  sheet whatever Drive says) and its cached slice takes the value, so the partner's next poll shows it. */
+/** webRun('memberSet', {code, fields: [{field, value, seen}]}): a member (not a cover) sets gold cells of one candidate in their
+ *  own binome sheet, with their own access, the way typing would; one access check, one open, one lock for all of them.
+ *  seen = the value their screen showed: if the cell holds something else, the partner changed it meanwhile and that field is
+ *  not written. Each field answers on its own: {field, value} written, {field, conflict: <current>} or {field, error}.
+ *  Then the binome is marked dirty (the next sync reads its sheet whatever Drive says) and its cached slice takes the values,
+ *  so the partner's next poll shows them. The one-field form {code, field, value, seen} (pages loaded before the batch) answers
+ *  {code, field, value} and throws CONFLICT: <current> or the field's error, as it always did. */
 function memberSet_(a, args) {
   if (a.role !== 'member' || a.cover) throw new Error('Not allowed');
   if (!a.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
-  const m = a.m, code = String(args.code || '').trim(), field = String(args.field || '');
-  if (BF_EDITABLE.indexOf(field) < 0) throw new Error('Not allowed');
+  const m = a.m, code = String(args.code || '').trim(), batch = Array.isArray(args.fields);
+  const list = (batch ? args.fields : [args]).map(x => ({ field: String((x && x.field) || ''), value: x && x.value, seen: x && x.seen }));
+  // a field twice would be checked against the row as read before the first write: refused, like an unknown field
+  if (!list.length || list.some((x, i) => BF_EDITABLE.indexOf(x.field) < 0 || list.findIndex(y => y.field === x.field) !== i)) throw new Error('Not allowed');
   let file = null;
   try { file = m.f ? SpreadsheetApp.openById(m.f) : null; } catch (e) { /* not shared with this account */ }
   if (!file) throw new Error("Your binome sheet isn't shared with you yet.");
-  const sh = file.getSheets()[0], value = memberValue_(field, args.value, file.getSpreadsheetTimeZone());
+  const sh = file.getSheets()[0], tz = file.getSpreadsheetTimeZone();
+  list.forEach(x => { try { x.v = memberValue_(x.field, x.value, tz); } catch (e) { x.error = e.message; } });
+  if (!batch && list[0].error) throw new Error(list[0].error);
   const lock = memberLock_();
   if (!lock.tryLock(10000)) throw new Error('BUSY: Your sheet is busy with another edit. Nothing was changed: try again.');
   try {
     if (bfLayout_(sh) !== 'v2') throw new Error("Your binome sheet's header was changed by hand: ask an admin to repair it before editing from here.");
     const row = findFileRow_(sh, code);
     if (row < 0) throw new Error('This candidate is no longer in your binome.');
-    const cell = sh.getRange(row, bfCol_(field)), cur = goldText_(field, goldOf_(field, cell.getValue(), cell.getDisplayValue()));
-    if (cur !== goldText_(field, args.seen)) throw new Error('CONFLICT: ' + cur);
-    cell.setValue(field === 'Notes' && value ? "'" + value : value); // the apostrophe keeps notes as text (no formula, no date)
-    SpreadsheetApp.flush();
-    const now = goldOf_(field, cell.getValue(), cell.getDisplayValue());
-    CacheService.getScriptCache().put('dirty:' + m.b, String(Date.now()), 21600);
-    patchSlice_(m.b, code, field, now);
-    return { code: code, field: field, value: now };
+    // the row read once before the writes and once after them: a read between two writes would flush each one
+    const rng = sh.getRange(row, BF_COL, 1, BF_H.length), F = idx_(BF_H), was = rng.getValues()[0], wasShown = rng.getDisplayValues()[0];
+    list.forEach(x => {
+      if (x.error) return;
+      const cur = goldText_(x.field, goldOf_(x.field, was[F[x.field]], wasShown[F[x.field]]));
+      if (cur !== goldText_(x.field, x.seen)) { x.conflict = cur; return; }
+      sh.getRange(row, bfCol_(x.field)).setValue(x.field === 'Notes' && x.v ? "'" + x.v : x.v); // the apostrophe keeps notes as text (no formula, no date)
+    });
+    const written = list.filter(x => !x.error && x.conflict === undefined);
+    if (written.length) {
+      SpreadsheetApp.flush();
+      CacheService.getScriptCache().put('dirty:' + m.b, String(Date.now()), 21600);
+      const now = rng.getValues()[0], shown = rng.getDisplayValues()[0], vals = {};
+      written.forEach(x => { x.now = vals[x.field] = goldOf_(x.field, now[F[x.field]], shown[F[x.field]]); });
+      patchSlice_(m.b, code, vals);
+    }
+    if (!batch) {
+      if (list[0].conflict !== undefined) throw new Error('CONFLICT: ' + list[0].conflict);
+      return { code: code, field: list[0].field, value: list[0].now };
+    }
+    return { code: code, fields: list.map(x => (x.error ? { field: x.field, error: x.error }
+      : x.conflict !== undefined ? { field: x.field, conflict: x.conflict } : { field: x.field, value: x.now })) };
   } finally { lock.releaseLock(); }
 }
-/** The binome's cached slice takes the member's value and a new version. A slice not cached as published only gets a new
+/** The binome's cached slice takes the member's values ({field: value}, one candidate) and one new version. A slice not cached as published only gets a new
  *  version and no hash: the next webState reads the sheet. Under the member lock, so two members' patches never cross.
  *  ponytail: not under the script lock, so a publish in the same few ms can overwrite this SNAP_BIN entry; the page then shows
  *  the sheet or the older slice until the next sync, which reads this binome (dirty) and publishes it. */
-function patchSlice_(b, code, field, value) {
+function patchSlice_(b, code, vals) {
   const bins = binMeta_(), o = bins[b];
   if (!o) return;
   const cache = CacheService.getScriptCache(), json = o.h ? cache.get('snap:bin:' + b) : null;
@@ -324,7 +345,7 @@ function patchSlice_(b, code, field, value) {
   if (typeof json === 'string' && hash_(json) === o.h) {
     const sl = JSON.parse(json), c = sl.candidates.filter(x => String(x.Code) === code)[0];
     if (c) {
-      c[field] = value;
+      Object.assign(c, vals);
       const out = JSON.stringify(sl);
       try { cache.put('snap:bin:' + b, out, 21600); h = hash_(out); } catch (e) { cache.remove('snap:bin:' + b); }
     }
