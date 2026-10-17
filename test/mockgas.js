@@ -233,5 +233,5 @@ var MailApp = { sendEmail(o) { __outbox.push(o); } };
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };
 var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { } };
 var HtmlService = { createHtmlOutput: h => chain({ _html: h }) };
-var ScriptApp = { getService() { return { getUrl: () => 'https://script.google.com/macros/s/TEST/exec' }; }, getProjectTriggers() { return __triggers; }, deleteTrigger() { }, newTrigger(h) { const c = chain({ create: () => { __triggers.push({ getHandlerFunction: () => h }); } }); return c; } };
+var ScriptApp = { getProjectTriggers() { return __triggers; }, deleteTrigger() { }, newTrigger(h) { const c = chain({ create: () => { __triggers.push({ getHandlerFunction: () => h }); } }); return c; } };
 var Logger = { log: console.log };

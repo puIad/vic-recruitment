@@ -49,7 +49,7 @@ While signed in as the member, type each address into the address bar:
 | B3 | `/settings/general`, `/settings/timing`, `/settings/sharing`, `/settings/connections`, `/settings/history` | Sent back to `/` | ☐ |
 | B4 | `/settings/account`, `/settings/appearance` | Open (they're the member's own) | ☐ |
 | B5 | Press Ctrl K | Nothing opens (no command palette for members) | ☐ |
-| B6 | The old Apps Script dashboard: https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec A one-line page linking to the Vercel dashboard, never a dashboard | ☐ |
+| B6 | The old Apps Script dashboard: https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec | A one-line page linking to the Vercel dashboard, never a dashboard | ☐ |
 | B7 | The Master's URL (from an admin's Google files) | Google refuses it or shows it read-only. If the member can **edit** the Master, they're an admin by definition: stop, the account is wrong for this test | ☐ |
 | B8 | Another binome's sheet URL | Google refuses it (with Test mode on, nothing is shared at all) | ☐ |
 
