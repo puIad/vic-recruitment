@@ -95,7 +95,8 @@ MockRange.prototype = {
     if (vals.length !== this.nr || vals[0].length !== this.nc) throw new Error('setValues dims ' + vals.length + 'x' + vals[0].length + ' vs ' + this.nr + 'x' + this.nc + ' on ' + this.sh.name);
     for (let i = 0; i < this.nr; i++) {
       const ri = this.r - 1 + i; for (let k = 0; k <= ri; k++) if (!this.sh.cells[k]) this.sh.cells[k] = []; // no holes, like a real sheet
-      for (let j = 0; j < this.nc; j++) { let v = vals[i][j]; if (v === undefined || v === null) v = ''; if (typeof v === 'string' && /^[=+-]/.test(v)) __formulas.push(this.sh.name + ': ' + v); if (typeof v === 'string' && v[0] === "'") v = v.slice(1); this.sh.cells[ri][this.c - 1 + j] = v; }
+      for (let j = 0; j < this.nc; j++) { let v = vals[i][j]; if (v === undefined || v === null) v = ''; const asText = this.sh.fmt[this.c + j] === '@'; // a plain-text cell keeps what it gets, apostrophe included
+        if (!asText && typeof v === 'string' && /^[=+-]/.test(v)) __formulas.push(this.sh.name + ': ' + v); if (!asText && typeof v === 'string' && v[0] === "'") v = v.slice(1); this.sh.cells[ri][this.c - 1 + j] = v; }
     }
     __wrote(this.sh); return this;
   },

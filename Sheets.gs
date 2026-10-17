@@ -62,9 +62,15 @@ function loadPropChunks_(name) {
   return s;
 }
 // text a candidate typed that the sheet would run as a formula keeps a leading apostrophe (shown and read back without it).
-// shortcut: '@' is left out (not a formula in Sheets; Discord handles start with it and some columns are plain text)
+// shortcut: '@' is left out (not a formula in Sheets; Discord handles start with it)
 function plain_(v) { return typeof v === 'string' && /^[=+\-]/.test(v) ? "'" + v : v; }
-function plainRows_(rows) { return rows.map(r => r.map(plain_)); }
+/** plain_ on every cell of rows laid out as H, except H's plain-text ('@') columns: they never run a formula, and an apostrophe
+ *  written there stays in the cell. shortcut: by header name, as Setup / formatBinomeSheet_ format them; a column re-formatted
+ *  by hand is not seen. */
+function plainRows_(rows, H) {
+  const keep = (H === IV_H ? IV_TEXT_COLS : H === BF_H ? BF_TEXT_COLS : []).map(h => H.indexOf(h));
+  return rows.map(r => r.map((v, j) => (keep.indexOf(j) >= 0 ? v : plain_(v))));
+}
 /** A Drive error, readable. "enabling APIs" = the Drive API is off in the script's Cloud project: no sharing fix helps. */
 function driveErr_(e) {
   const m = String(e && e.message || e);
@@ -125,7 +131,7 @@ function saveTable_(t) {
   for (let i = 0; i <= all.length; i++) {
     const differs = i < all.length && (i >= now.length || all[i].some((v, j) => !sameCell_(v, now[i][j])));
     if (differs && from < 0) from = i;
-    if (!differs && from >= 0) { t.sh.getRange(2 + from, 1, i - from, t.H.length).setValues(plainRows_(all.slice(from, i))); from = -1; }
+    if (!differs && from >= 0) { t.sh.getRange(2 + from, 1, i - from, t.H.length).setValues(plainRows_(all.slice(from, i), t.H)); from = -1; }
   }
 }
 

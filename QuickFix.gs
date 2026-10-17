@@ -240,7 +240,7 @@ function refreshFileRow_(ctx, x) {
   const row = findFileRow_(sh, String(x[I.Code]).trim());
   if (row < 0) return ' (they have no row in the sheet of ' + b.code + ')';
   const rng = sh.getRange(row, BF_COL, 1, BF_H.length);
-  rng.setValues(plainRows_([ivToFileRow_(ctx, x, fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H)))]));
+  rng.setValues(plainRows_([ivToFileRow_(ctx, x, fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H)))], BF_H));
   return ', also in the sheet of ' + b.code;
 }
 
