@@ -59,6 +59,16 @@ const H = 3.6e6;
   assert.strictEqual(status(ids[2]), 'OPEN');
 }
 
+// ---- a sync that loaded the row before the write does not overwrite it when it saves ----
+{
+  setRow(ids[2], 'SNOOZED', Date.now() - H);
+  run('var __ctx = freshCtx_()'); // the sync's load: it already reopened the ran-out snooze in memory
+  assert.deepStrictEqual(ends(apply({ alert: ids[2], op: 'mute', seen: 'OPEN' })), ['applied']);
+  run('__ctx.alerts.flush()');
+  assert.strictEqual(status(ids[2]), 'MUTED', 'the applied change stays');
+  setRow(ids[2], 'OPEN', 0);
+}
+
 // ---- closed by the sync: met for all four ----
 {
   setRow(ids[3], 'AUTO-RESOLVED', Date.now());
@@ -74,10 +84,19 @@ const H = 3.6e6;
   assert.strictEqual(status(ids[4]), 'RESOLVED');
 }
 
+// ---- seen = the author's own earlier value (merged by the accept step): their cell, so it applies; reopened since: dropped ----
+{
+  setRow(ids[4], 'MUTED', Date.now());
+  assert.deepStrictEqual(ends(apply({ alert: ids[4], op: 'resolve', seen: 'MUTED' })), ['applied']);
+  setRow(ids[4], 'OPEN', 0);
+  assert.deepStrictEqual(ends(apply({ alert: ids[4], op: 'resolve', seen: 'MUTED' }, { alert: ids[4], op: 'unmute', seen: 'MUTED' })), ['dropped:OPEN', 'met']);
+  setRow(ids[4], 'RESOLVED', Date.now());
+}
+
 // ---- refused values drop at once, with a reason ----
 {
   const out = apply({ alert: ids[5], op: 'delete', seen: 'OPEN' }, { alert: ids[5], op: 'snooze', seen: 'OPEN' },
-    { alert: ids[5], op: 'resolve', seen: 'MUTED' }, { alert: ids[5], op: 'snooze', seen: 'OPEN', at: Date.now() - 2 * H, until: Date.now() - H });
+    { alert: ids[5], op: 'resolve', seen: 'RESOLVED' }, { alert: ids[5], op: 'snooze', seen: 'OPEN', at: Date.now() - 2 * H, until: Date.now() - H });
   assert.deepStrictEqual(out.results.map(r => r.end), ['dropped', 'dropped', 'dropped', 'met']);
   assert(out.results.slice(0, 3).every(r => r.reason), 'each says why');
   assert.strictEqual(status(ids[5]), 'OPEN');

@@ -4,11 +4,12 @@
 
 /** Change format the consumer sends. A call in another format is refused whole (nothing read or written). */
 const APPLY_FORMAT = 1;
-/** What each alert action wants, and what it accepts as the author's screen (issue 50's table). */
+/** What each alert action wants, and what it accepts as the author's screen. seen is OPEN (SNOOZED or MUTED for Unmute), or
+ *  the author's own earlier value when the accept step merged the change with theirs (issue 61). */
 const APPLY_ALERT = {
-  resolve: { seen: ['OPEN'], to: 'RESOLVED' },
-  snooze: { seen: ['OPEN'], to: 'SNOOZED' },
-  mute: { seen: ['OPEN'], to: 'MUTED' },
+  resolve: { seen: ['OPEN', 'SNOOZED', 'MUTED'], to: 'RESOLVED' },
+  snooze: { seen: ['OPEN', 'SNOOZED', 'MUTED'], to: 'SNOOZED' },
+  mute: { seen: ['OPEN', 'SNOOZED', 'MUTED'], to: 'MUTED' },
   unmute: { seen: ['SNOOZED', 'MUTED'], to: 'OPEN' },
 };
 
@@ -51,7 +52,8 @@ function webApply(call) {
   } finally { lock.releaseLock(); }
 }
 
-/** One alert change, by issue 50's table. A snooze that ran out counts as OPEN, as the sync treats it. */
+/** One alert change: the cell still holds what the author saw = write their value; else issue 50's table (written for
+ *  seen = OPEN, and for Unmute's seen hold). A snooze that ran out counts as OPEN, as the sync treats it. */
 function applyAlert_(sh, I, ids, rows, c) {
   const id = String(c.id || ''), want = APPLY_ALERT[c.op], at = Number(c.at), until = Number(c.until);
   const drop = reason => ({ id: id, end: 'dropped', reason: reason });
@@ -68,16 +70,13 @@ function applyAlert_(sh, I, ids, rows, c) {
   const cur = x.status === 'SNOOZED' && !(x.end > now) ? 'OPEN' : x.status;
   if (x.type === 'MANUAL_EDIT' && c.op !== 'unmute' && c.op !== 'resolve') return drop('Use Apply / Revert / Accept for a manual edit.');
   if (cur === want.to) return { id: id, end: 'met' }; // the author's own value: a retry, or someone else did it
-  if (c.op === 'unmute') {
-    if (cur === c.seen) return write_(sh, I, row, x, id, 'OPEN', '');
-    if (HELD_STATUSES.indexOf(cur) >= 0) return { id: id, end: 'dropped', sheet: cur }; // the other hold
-    return { id: id, end: 'met' }; // open again, or closed
-  }
-  if (cur === 'OPEN') {
+  if (cur === c.seen) {
     if (c.op === 'snooze' && !(until > now.getTime())) return { id: id, end: 'met' }; // the snooze would already be over
-    return write_(sh, I, row, x, id, want.to, new Date(c.op === 'snooze' ? until : at));
+    return write_(sh, I, row, x, id, want.to, c.op === 'unmute' ? '' : new Date(c.op === 'snooze' ? until : at));
   }
-  if (cur === 'SNOOZED' && c.op !== 'snooze') return { id: id, end: 'dropped', sheet: cur }; // another admin snoozed it
+  // someone else changed the cell since the author saw it
+  if (c.op === 'unmute') return HELD_STATUSES.indexOf(cur) >= 0 ? { id: id, end: 'dropped', sheet: cur } : { id: id, end: 'met' }; // the other hold; open or closed
+  if (cur === 'OPEN' || (cur === 'SNOOZED' && c.op !== 'snooze')) return { id: id, end: 'dropped', sheet: cur }; // another admin snoozed it, or reopened it
   return { id: id, end: 'met' }; // closed or muted meanwhile
 }
 
