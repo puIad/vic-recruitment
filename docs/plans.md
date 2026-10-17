@@ -2,8 +2,8 @@
 
 The owner's decisions of 2026-10-04 on the three "Coming up" pages. None of this is needed for launch. The pages
 are placeholders today ([frontend.md](frontend.md#placeholders-sample-data-each-labelled-and-what-makes-them-real)).
-The build plan for pending changes (2026-10-17) is [at the end](#pending-changes-the-build-plan); two of its items
-ship before launch, the rest next season.
+The build plan for pending changes (2026-10-17, pulled forward 2026-10-18) is [at the end](#pending-changes-the-build-plan);
+it ships before load-test task 10 and the launch.
 
 | Page | Decision |
 |---|---|
@@ -156,27 +156,28 @@ The design is in [ADR 0001](adr/0001-pending-changes-on-vercel-queues.md), [ADR 
 and the map's Decisions so far; the terms (pending change, direct write, applying, already met, dropped change,
 addressed, sign-in, snapshot) are in [GLOSSARY.md](../GLOSSARY.md).
 
-**Timing.** Load-test task 10 runs by 2026-10-20. The build is about 5 PRs and 3 script deploys plus the owner's live
-checks, which doesn't fit, so by the map's timing rule pending changes move to next season and every save stays a
-direct write this season. Two items stand alone and ship now: skipping Vercel builds on doc-only pushes, and slice 1
-(sign-ins per browser), after the owner rotates the OAuth client secret.
+**Timing.** On 2026-10-17 load-test task 10 was due by 2026-10-20, too soon for about 5 PRs and 3 script deploys plus
+the owner's live checks, so pending changes were moved to next season. Two items that stand alone shipped that day:
+skipping Vercel builds on doc-only pushes, and slice 1 (sign-ins per browser), after the owner rotated the OAuth client
+secret. On 2026-10-18 the owner **pulled the build forward**: slice 0's re-check passed, slices 2 to 5 are built this
+season, and task 10 waits until they are live, so its sign-off covers the new path (the map's timing rule). Members get
+the dashboard, and the launch comes, after it.
 
 **Slices.** Vertical: each slice ships with the switch off, so nothing changes for anyone until the owner turns
 pending changes on. Slice 2 takes the four alert actions end to end, proving the Queues consumer, `scripts.run` as the
 author, Redis and the Pending pill on actions the owner can try live; slices 3 to 5 widen it.
 
-**Tracking.** One issue per item. The two now items are `ready-for-agent`. Next season's are `needs-triage` and open
-with "run the re-check first", so nobody starts them early; next season's triage turns them `ready-for-agent`.
+**Tracking.** One issue per item, `ready-for-agent` once its blockers are closed (GitHub's blocked-by edges).
 
-| Item | When | Issue | Ships as | Depends on |
+| Item | Status | Issue | Ships as | Depends on |
 |---|---|---|---|---|
-| [Skip Vercel builds on doc-only pushes](#skip-vercel-builds-on-doc-only-pushes) | now | [#64](https://github.com/puIad/vic-recruitment-2026/issues/64) | 1 PR, Vercel | — |
-| [Slice 1: sign-ins per browser](#slice-1-sign-ins-per-browser) | now | [#65](https://github.com/puIad/vic-recruitment-2026/issues/65) | 1 PR, Vercel | client secret rotated (owner) |
-| [Slice 0: re-check before building](#slice-0-re-check-before-building) | next season | [#66](https://github.com/puIad/vic-recruitment-2026/issues/66) | no PR | — |
-| [Slice 2: alert actions end to end](#slice-2-alert-actions-end-to-end) | next season | [#67](https://github.com/puIad/vic-recruitment-2026/issues/67) | script deploy, Upstash install, 1 PR | 0 |
-| [Slice 3: Save settings and My binome fields](#slice-3-save-settings-and-my-binome-fields) | next season | [#68](https://github.com/puIad/vic-recruitment-2026/issues/68) | script deploy, 1 PR | 2 |
-| [Slice 4: dropped changes away from the page](#slice-4-dropped-changes-away-from-the-page) | next season | [#69](https://github.com/puIad/vic-recruitment-2026/issues/69) | 1 PR, then script deploy | 2 |
-| [Slice 5: token edges](#slice-5-token-edges) | next season | [#70](https://github.com/puIad/vic-recruitment-2026/issues/70) | 1 PR, Vercel | 1, 2 |
+| [Skip Vercel builds on doc-only pushes](#skip-vercel-builds-on-doc-only-pushes) | live 2026-10-17 ([#71](https://github.com/puIad/vic-recruitment-2026/pull/71)) | [#64](https://github.com/puIad/vic-recruitment-2026/issues/64) | 1 PR, Vercel | — |
+| [Slice 1: sign-ins per browser](#slice-1-sign-ins-per-browser) | live 2026-10-17 ([#72](https://github.com/puIad/vic-recruitment-2026/pull/72)) | [#65](https://github.com/puIad/vic-recruitment-2026/issues/65) | 1 PR, Vercel | client secret rotated (owner) |
+| [Slice 0: re-check before building](#slice-0-re-check-before-building) | passed 2026-10-18 | [#66](https://github.com/puIad/vic-recruitment-2026/issues/66) | no PR | — |
+| [Slice 2: alert actions end to end](#slice-2-alert-actions-end-to-end) | next | [#67](https://github.com/puIad/vic-recruitment-2026/issues/67) | script deploy, Upstash install, 1 PR | 0 |
+| [Slice 3: Save settings and My binome fields](#slice-3-save-settings-and-my-binome-fields) | after 2 | [#68](https://github.com/puIad/vic-recruitment-2026/issues/68) | script deploy, 1 PR | 2 |
+| [Slice 4: dropped changes away from the page](#slice-4-dropped-changes-away-from-the-page) | after 2 | [#69](https://github.com/puIad/vic-recruitment-2026/issues/69) | 1 PR, then script deploy | 2 |
+| [Slice 5: token edges](#slice-5-token-edges) | after 2 | [#70](https://github.com/puIad/vic-recruitment-2026/issues/70) | 1 PR, Vercel | 1, 2 |
 
 Slices 3, 4 and 5 each need only slice 2, but all three touch the page's store and 3 and 4 the apply entry, so build
 them one at a time unless a session keeps to its own files. Releases follow [HANDOFF](../HANDOFF.md#how-changes-ship)
@@ -185,13 +186,13 @@ script first (it only adds), then Vercel. Slice 4 is the exception: its script d
 sync calls an endpoint the PR adds (no secret set, no call).
 
 After slice 5 the owner turns pending changes on, runs each slice's live check, then load-test task 10 with its
-next-season block ([load-test.md](load-test.md#task-10--load-test-again-then-sign-off)).
+pending-changes block ([load-test.md](load-test.md#task-10--load-test-again-then-sign-off)).
 
-Keep until next season: branches `prototype/pending-changes` (the prototype the owner chose from, and the dropped-change
+Keep until the build is done: branches `prototype/pending-changes` (the prototype the owner chose from, and the dropped-change
 email draft `frontend/public/prototype/dropped-email.html`), `pulad/spike-queues-accept-46bc93` (the accept timing
 script), `research/pending-change-store` and `research/google-apply-limits`.
 
-### Now, before load-test task 10
+### Shipped first (2026-10-17)
 
 Side by side with the rest of the launch code (the confirmation's wording, `SAME_CHOICES`, the department change,
 `HR_ONLY_WEIGHT`): separate sessions on separate files.
@@ -241,24 +242,28 @@ current secret was pasted in a build chat.
 - Ships: one PR, Vercel only; no script deploy, no `API_VERSION` change.
 - Check: load-test task 10's sign-in block, live.
 
-### Next season
+### The pending-changes slices (before task 10)
 
 #### Slice 0: re-check before building
 
-Load-test task 10 of 2026 came before pending changes could be built. A year later, check what the plan stands on:
+Planned for next season; run on 2026-10-18 when the owner pulled the build forward. Every check held
+([#66](https://github.com/puIad/vic-recruitment-2026/issues/66)):
 
-- Vercel Queues on Hobby: still free, same SDK (`send`, `handleNodeCallback`), push consumers, retention up to 7 days,
-  messages partitioned per deployment.
-- Upstash Redis Free through the Vercel Marketplace: its limits (500K commands a month in 2026), installable as a
-  Vercel-managed Free plan on whichever account holds the Vercel project then (vic.rh after the handover).
-- The accept timing, re-run with `spike/time-accept.mjs` from the spike branch, this time inside `api/run.js`: warm p95
-  still under 1 s?
-- Code drift since `3f1a4d5` in `web/api/`, `frontend/src/lib/vic/store.ts`, `WebApp.gs`, `QuickFix.gs`, `Actions.gs`,
-  `Sync.gs`: are the files and functions below still where this plan says?
-- The map's rules (speed, the sheet wins, tokens, who sees what, the switch, free tiers), read with next season's owner.
+- Vercel Queues on Hobby: still a beta, still free (1M operations a month), same SDK (`@vercel/queue` 0.8.0, CommonJS),
+  push consumers, retention 60 s to 7 days, messages partitioned per deployment, rollback and delete as #58 says.
+- Upstash Redis Free through the Vercel Marketplace: 500K commands a month, 250 MB, 10 GB bandwidth; installs as a
+  Free plan connected to chosen projects only; free databases archived after 30 idle days; not moved by a project
+  transfer.
+- The accept timing: not re-run. The 2026-10-17 spike stands (warm p95 303 ms), and slice 2 and task 10's pass mark
+  measure it inside `api/run.js`.
+- Code drift since `3f1a4d5`: only #71 and #72, both from this plan. The `.gs` files and `store.ts` are unchanged.
+- The map's rules: the owner confirmed all of them stand, now for this season.
 
-No PR: each check and its answer goes on the issue. A check that fails reopens the ticket that decided it, and the
-map, before any slice is built.
+Details for slice 2 from the re-check: `handleNodeCallback` is a method of a `new QueueClient()`, not a top-level
+export; the trigger is `functions.<file>.experimentalTriggers: [{ type: "queue/v2beta", topic, retryAfterSeconds,
+maxDeliveries }]`; setting a max concurrency on push makes each delivery count twice, so leave it unset; the Redis
+env var names the Marketplace sets aren't documented, so read them in Vercel after the install (`Redis.fromEnv()` takes
+`UPSTASH_REDIS_REST_*` or `KV_REST_API_*`).
 
 #### Slice 2: alert actions end to end
 
@@ -359,7 +364,7 @@ Vercel, one PR ([Token handling for pending changes](https://github.com/puIad/vi
   still being saved and that one which can't be shows at the next sign-in and by email.
 - Live check: load-test task 10's next-season block.
 
-### After that season
+### After the season
 
 Hand the store over as [Research: handing the Marketplace Redis store over to vic.rh](https://github.com/puIad/vic-recruitment-2026/issues/60)
 says: switch pending changes off and let the queue drain, disconnect the store, transfer the project, and the new owner

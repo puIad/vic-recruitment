@@ -9,7 +9,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-No PR is open. Open issues: next season's pending-changes slices #66–#70 (`needs-triage`).
+No PR is open. Open issues: pending-changes slices #67–#70 (`ready-for-agent`, slice 2 first).
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
@@ -30,9 +30,11 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   ([decisions.md](docs/decisions.md#open-questions), question 5). Code PR.
 - Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
   weight that gives pure `HR` binomes (B.29, B.30) their share of HR candidates. The owner wants it after screening.
-- Moved to next season (2026-10-17): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
-  settings and My binome. The build doesn't fit before task 10 (by 2026-10-20), so every save stays a direct write
-  this season. Two pieces ship now: skip Vercel builds on doc-only pushes
+- Pulled forward (owner, 2026-10-18): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
+  settings and My binome. Planned for next season on 2026-10-17; slice 0's re-check passed
+  ([#66](https://github.com/puIad/vic-recruitment-2026/issues/66)), and slices 2–5 (#67–#70) are built now, one at a
+  time. Task 10 waits for them so its sign-off covers the new path, so members get the dashboard, and the launch comes,
+  later than 2026-10-20. Shipped first: skip Vercel builds on doc-only pushes
   ([#64](https://github.com/puIad/vic-recruitment-2026/issues/64), live 2026-10-17 from `e70bf5a`, [#71](https://github.com/puIad/vic-recruitment-2026/pull/71): `ignoreCommand` in `web/vercel.json`, see [vercel.md](docs/vercel.md); its own merge built with npm install + Vite) and sign-ins per browser
   ([#65](https://github.com/puIad/vic-recruitment-2026/issues/65), live 2026-10-17 from `f5ab1df`,
   [#72](https://github.com/puIad/vic-recruitment-2026/pull/72): no revoke at the 48 h end or at sign-out, the next
@@ -56,11 +58,13 @@ Left, owner (in order):
    during task 8 still gets in: set that binome to No access), the other-account checks
    ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines.
 6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
-7. Load-test task 10: load test again and sign off before members get the dashboard, with the sign-in checks of #65
+7. Load-test task 10, once pending-changes slices 2–5 are live: load test again and sign off before members get the
+   dashboard, with the sign-in checks of #65 and the pending-changes block
    ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)).
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
 Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
+Side by side with these: pending-changes slices 2, then 3, 4 and 5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)); task 10 waits for them.
 
 ## Live now
 
@@ -254,10 +258,7 @@ In order. Each step says where to do it.
 ## Later (not needed for launch)
 
 - **Schedule** (calendar of the interviews set, plus admin events saved in the Master) and **Analytics** (a profile
-  for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).
-- **Pending changes** (near-instant saves), next season: slices 0 and 2–5 in
-  [docs/plans.md](docs/plans.md#pending-changes-the-build-plan), issues #66–#70, starting with the re-check.
-- **Binome desk** dropped (2026-10-04); remove the page in the next UI PR.
+  for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).- **Binome desk** dropped (2026-10-04); remove the page in the next UI PR.
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.
 - Retired the Apps Script web app's old dashboard (2026-10-17): `Index.html` and `NoAccess.html` are deleted, and its

@@ -19,7 +19,7 @@ the task itself and the files it lists.
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☑ [#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, live on Vercel from `b9f84c0`; a real member sign-in is still open |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☑ [#29](https://github.com/puIad/vic-recruitment-2026/pull/29) (@67/@68) and the access follow-up [#30](https://github.com/puIad/vic-recruitment-2026/pull/30) (@69/@70); the live check of #30 in Notes is still open |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
-| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9 | ☐ |
+| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9, pending-changes slices 2–5 | ☐ |
 
 Tasks 1, 2 and 9 can go in any order; 9 is mostly steps for the owner.
 
@@ -748,21 +748,22 @@ editor of the protections; make sure the Master's owner stays able to edit the p
 
 Then the owner decides to open the dashboard to the binomes (STATUS.md, launch steps).
 
-**Sign-ins per browser (this season).** Before this run, the OAuth client secret is rotated and
-[slice 1](plans.md#slice-1-sign-ins-per-browser) is live. Check live, with real ENP accounts:
+**When.** Once pending-changes slices 2 to 5 are live (owner, 2026-10-18: the build was pulled forward, and this task
+waits so its sign-off covers the new path). One run with both blocks below.
+
+**Sign-ins per browser.** The OAuth client secret is rotated and [slice 1](plans.md#slice-1-sign-ins-per-browser) is
+live (2026-10-17, #72). Check live, with real ENP accounts:
 - Signing back in on a browser whose sign-in is past its 48 h: one account picker, no consent screen, and the same
   person's other browser keeps working throughout. To have such a browser on the day, sign in on a spare browser profile
-  at least 48 h before and don't open the dashboard there until slice 1 is live (today's code revokes on the first call
-  after the 48 h, which signs that person out everywhere).
+  at least 48 h before and leave it closed.
 - A switch onto a cookie past its 48 h: a second account signs in on that browser. The first person's other browser
   keeps working, and nothing of theirs is revoked.
 - A reused token Google refuses goes to the consent screen: person X is signed in on browsers A and B, removes the
   dashboard's access in their Google account (Security › third-party connections), signs in on B (consent, a new
   grant), then signs in on A: one consent screen, then in, and B keeps working.
 
-**Pending changes (next season, not part of this season's run).** Pending changes moved to next season
-([the build plan](plans.md#pending-changes-the-build-plan)). When this task runs again after slices 2 to 5 are live,
-with pending changes switched on, it adds:
+**Pending changes** ([the build plan](plans.md#pending-changes-the-build-plan)). With slices 2 to 5 live and pending
+changes switched on, this task adds:
 - The model: the pending path in `test/load.js` (the accept step inside `/api/run`, the consumer's invocations and its
   `scripts.run` calls, about 3 Redis commands per change plus the reads that ride on the poll, Queues operations).
 - An account switch with changes pending: no revoke until the earlier person's last change ends, then the revoke. A
