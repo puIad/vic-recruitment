@@ -1,24 +1,5 @@
 import * as React from "react"
-import {
-  ArrowUpDown,
-  Bell,
-  ClipboardList,
-  Clock,
-  FlaskConical,
-  Gauge,
-  Mail,
-  Play,
-  RefreshCw,
-  Repeat,
-  Send,
-  Share2,
-  ShieldCheck,
-  SlidersHorizontal,
-  Table2,
-  UserPlus,
-  Users,
-  type LucideIcon,
-} from "lucide-react"
+import { SlidersHorizontal } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Button } from "@/components/ui/button"
@@ -32,29 +13,7 @@ import { useActions } from "@/lib/vic/actions"
 import { useVic } from "@/lib/vic/store"
 import type { SettingRow } from "@/lib/vic/types"
 
-/** key: [friendly name, icon]. A new setting in SETTINGS_DEFAULTS gets a row here (falls back to its key). */
-const SETTING_UI: Record<string, [string, LucideIcon]> = {
-  ADMIN_EMAIL: ["Admin emails", Mail],
-  TEST_MODE: ["Test mode", FlaskConical],
-  TIMEZONE: ["Timezone", Clock],
-  HOURS_NOT_CONTACTED: ["Alert: not contacted after (hours)", Bell],
-  HOURS_NO_INTERVIEW_DATE: ["Alert: no interview date after (hours)", Clock],
-  HOURS_AFTER_INTERVIEW_NO_FORM: ["Alert: no interview form after (hours)", ClipboardList],
-  INSTANT_EMAIL_MIN_SEVERITY: ["Instant email from alert level", Bell],
-  NOTIFY_BINOME_ON_ALERT: ["Email binomes about alerts", Send],
-  NOTIFY_BINOME_ON_NEW_INTERVIEWEE: ["Email binomes about new interviewees", UserPlus],
-  SHARE_FILES_WITH_BINOME: ["Share sheets with binomes", Share2],
-  ASSIGNMENTS_OPEN: ["Assigning new registrants", Play],
-  BALANCE_BY: ["Balance interviewees by", SlidersHorizontal],
-  ALL_BINOME_WEIGHT: ["Board binome load weight", ArrowUpDown],
-  EMAIL_DOMAIN: ["Registrant email domain", Mail],
-  TRUSTED_BACKUPS: ["Trusted backup interviewers", Users],
-  SYNC_EVERY_MINUTES: ["Auto-sync every (minutes)", RefreshCw],
-  DIGEST_HOUR: ["Daily digest hour (0–23)", Repeat],
-  SCREENING: ["Screening", ShieldCheck],
-  SCREEN_HOLD_AT: ["Hold for review from risk", Gauge],
-  VIC_MEMBERS_SHEET: ["VIC members sheet", Table2],
-}
+import { SETTING_UI } from "@/lib/vic/settings-ui"
 
 export interface SettingsGroup {
   title: string
