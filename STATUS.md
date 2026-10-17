@@ -9,9 +9,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-No PR is open. Open issues: [#64](https://github.com/puIad/vic-recruitment-2026/issues/64) and
-[#65](https://github.com/puIad/vic-recruitment-2026/issues/65) (before task 10), and next season's pending-changes
-slices #66–#70 (`needs-triage`).
+No PR is open. Open issues: next season's pending-changes slices #66–#70 (`needs-triage`).
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
@@ -36,20 +34,19 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   settings and My binome. The build doesn't fit before task 10 (by 2026-10-20), so every save stays a direct write
   this season. Two pieces ship now: skip Vercel builds on doc-only pushes
   ([#64](https://github.com/puIad/vic-recruitment-2026/issues/64), live 2026-10-17 from `e70bf5a`, [#71](https://github.com/puIad/vic-recruitment-2026/pull/71): `ignoreCommand` in `web/vercel.json`, see [vercel.md](docs/vercel.md); its own merge built with npm install + Vite) and sign-ins per browser
-  ([#65](https://github.com/puIad/vic-recruitment-2026/issues/65): no revoke at the 48 h end, no consent screen when
-  signing back in). Plan: [plans.md](docs/plans.md#pending-changes-the-build-plan).
+  ([#65](https://github.com/puIad/vic-recruitment-2026/issues/65), live 2026-10-17 from `f5ab1df`,
+  [#72](https://github.com/puIad/vic-recruitment-2026/pull/72): no revoke at the 48 h end or at sign-out, the next
+  sign-in on that browser reuses the token with no consent screen; see [vercel.md](docs/vercel.md); its live checks
+  are task 10's sign-in block). Plan: [plans.md](docs/plans.md#pending-changes-the-build-plan).
 
 Done since 2026-10-15: the 2026-10-17 audit fixes (#37–#43, @81/@82), the Google profile picture (#36), the Owner
 check on `TRIGGER_OWNER` (#34), the old Apps Script dashboard retired, and every open and muted alert loaded (#44).
-Owner, 2026-10-17: Setup run as `vic.rh`, the members sheet linked and shared, the B.03 email typo fixed, and every
+Owner, 2026-10-17: the OAuth client secret rotated, Setup run as `vic.rh`, the members sheet linked and shared, the B.03 email typo fixed, and every
 [open question](docs/decisions.md#open-questions) answered (board members are ordinary team members, no ALL
 binomes; the confirmation email is planned; `SAME_CHOICES` becomes INFO; new-interviewee mails stay on).
 
 Left, owner (in order):
 
-0. Rotate the OAuth client secret (Cloud Console › Credentials: add a new secret, set `GOOGLE_CLIENT_SECRET` in
-   Vercel, redeploy, disable the old one). It was pasted in a build chat, and sign-ins per browser (#65) can't go live
-   before it.
 1. Screening: turn it on and test (above).
 2. Verify B.08's guessed email `rami.ahmane@g.enp.edu.dz` (Change members › Replace if wrong).
 3. Reword the 2026 forms (they still say 2025; the confirmation must not promise an interview). Settle the
@@ -64,7 +61,6 @@ Left, owner (in order):
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
 Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
-Side by side with these, before task 10: skip doc-only builds (#64), then sign-ins per browser (#65) once the secret is rotated.
 
 ## Live now
 
