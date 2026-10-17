@@ -40,7 +40,7 @@ _Avoid_: superseded, skipped, no-op
 
 **Dropped change**:
 A pending change that was never applied, because the sheet changed in a way that does not do what its author wanted, or
-because applying it kept failing.
+because it could not be applied in time: applying it kept failing, or never got to run.
 _Avoid_: rejected change, lost change, conflict
 
 **Addressed**:

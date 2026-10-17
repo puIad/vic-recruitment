@@ -26,7 +26,8 @@ each cell and writes it, without republishing the snapshot or reading the whole 
 
 - Vercel Queues is a public beta. If it breaks mid-season, the switch goes back to direct writes.
 - A queue can't be listed, so the author's view after a reload and the record of dropped changes live somewhere else.
-- Messages stay with the deployment that published them, which shapes how deploys and rollbacks are done.
+- Messages stay with the deployment that published them, which shapes how deploys and rollbacks are done (rules on
+  [Deploying pending changes safely](https://github.com/puIad/vic-recruitment-2026/issues/58)).
 
 Decided on [Pick the path: cheap fix or pending changes](https://github.com/puIad/vic-recruitment-2026/issues/52),
 2026-10-17.
