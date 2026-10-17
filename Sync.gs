@@ -240,7 +240,7 @@ function runCycle_(opts) {
     endFinishedCovers_(ctx); lap('statuses');
     if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); } lap('timing');
     if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity); lap('integrity');
-    saveTable_(ctx.iv); lap('save');
+    saveTable_(ctx.iv); appendLog_(ctx); lap('save');
     commitBase_(ctx); lap('base'); // before the mails: if they fail, the tabs and the baseline still agree
     ctx.alerts.flush(); lap('alerts');
     sendNewIntervieweeMails_(ctx); lap('mails');
