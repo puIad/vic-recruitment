@@ -191,6 +191,20 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   const gs = require('fs').readFileSync(__dirname + '/../WebApp.gs', 'utf8');
   assert.strictEqual(front('types.ts').match(/export const API_VERSION = (\d+)/)[1], gs.match(/const API_VERSION = (\d+)/)[1], 'front and script API_VERSION match');
 
+  // --- ignoreCommand (web/vercel.json): skip (exit 0) only when web/ and frontend/ are unchanged; an empty or unknown SHA builds
+  {
+    const { execSync, spawnSync } = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ign-')), sh = c => execSync(c, { cwd: dir, stdio: 'pipe' }).toString().trim();
+    const cmd = JSON.parse(fs.readFileSync(__dirname + '/../web/vercel.json', 'utf8')).ignoreCommand;
+    const run = sha => spawnSync('sh', ['-c', cmd], { cwd: path.join(dir, 'web'), env: Object.assign({}, process.env, { VERCEL_GIT_PREVIOUS_SHA: sha }) }).status;
+    const commit = (f, m) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.appendFileSync(path.join(dir, f), 'x'); sh('git add -A && git -c user.name=t -c user.email=t@t commit -qm ' + m); return sh('git rev-parse HEAD'); };
+    sh('git init -q'); const base = commit('web/a', 'a');
+    commit('docs/x.md', 'doc'); assert.strictEqual(run(base), 0, 'doc-only push is skipped');
+    commit('frontend/y', 'fe'); assert.strictEqual(run(base), 1, 'a frontend change builds');
+    assert.strictEqual(run(''), 1, 'no previous SHA builds'); assert.notStrictEqual(run('0'.repeat(40)), 0, 'unknown SHA builds');
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+
   g.restore();
   process.stdout.write('VERCEL OK\n');
 })().catch(e => { process.stderr.write(e.stack + '\n'); process.exit(1); });
