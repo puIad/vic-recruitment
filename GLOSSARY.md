@@ -20,17 +20,22 @@ _Avoid_: refresh, flush
 ## Changes made on the dashboard
 
 **Pending change**:
-A change someone made on the dashboard that has been accepted but is not yet in the Master or the binome sheet. Only
-its author sees it before it is applied.
+A change someone made on the dashboard to one value (one alert's status, one setting, or one field of one candidate)
+that has been accepted but is not yet in the Master or the binome sheet. Only its author sees it before it is applied.
 _Avoid_: queued write, cached write, draft
 
 **Applying**:
 Writing a pending change into the Master or the binome sheet as the person who made it.
 _Avoid_: flushing, syncing, saving
 
+**Already met**:
+A pending change that was not applied because the sheet already does what its author wanted, for instance the alert
+they resolved had already closed. Its author is not told.
+_Avoid_: superseded, skipped, no-op
+
 **Dropped change**:
-A pending change that was never applied, because the sheet no longer held what its author saw, or because applying it
-kept failing.
+A pending change that was never applied, because the sheet changed in a way that does not do what its author wanted, or
+because applying it kept failing.
 _Avoid_: rejected change, lost change, conflict
 
 **Addressed**:
