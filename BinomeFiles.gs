@@ -62,7 +62,7 @@ function ivCarry_(ctx, r) {
 function appendToBinomeFile_(ctx, b, r, carry) {
   const sh = binomeSheet_(ctx, b);
   if (!sh) return;
-  sh.getRange(bfLastRow_(sh) + 1, BF_COL, 1, BF_H.length).setValues([ivToFileRow_(ctx, r, carry)]);
+  sh.getRange(bfLastRow_(sh) + 1, BF_COL, 1, BF_H.length).setValues(plainRows_([ivToFileRow_(ctx, r, carry)]));
 }
 
 function findFileRow_(sh, code) {
@@ -312,7 +312,7 @@ function upgradeBinomeSheet_(ctx, b, sh, from) {
   sh.setConditionalFormatRules([]);
   if (sh.getMaxColumns() < BF_COL - 1 + BF_H.length) sh.insertColumnsAfter(sh.getMaxColumns(), BF_COL - 1 + BF_H.length - sh.getMaxColumns());
   sh.getRange(2, bfCol_('Phone'), Math.max(rows.length, 1), 1).setNumberFormat('@'); // keep the leading 0 of the numbers
-  if (rows.length) sh.getRange(2, BF_COL, rows.length, BF_H.length).setValues(rows);
+  if (rows.length) sh.getRange(2, BF_COL, rows.length, BF_H.length).setValues(plainRows_(rows));
   formatBinomeSheet_(sh, b, b.members);
   // inserting the checkboxes unticked every cell: tick back the interviews already done
   if (rows.length) sh.getRange(2, bfCol_('Interview Done'), rows.length, 1).setValues(rows.map(r => [r[BF_H.indexOf('Interview Done')]]));

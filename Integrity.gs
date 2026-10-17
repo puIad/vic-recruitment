@@ -329,7 +329,7 @@ function applyEdit_(ctx, p, group) {
     const I = ctx.iv.I, code = String(p.row[I.Code]).trim(), b = ctx.binByCode[p.row[I.Binome]];
     const sh = b && binomeSheet_(ctx, b), row = sh ? findFileRow_(sh, code) : -1;
     if (row < 0) throw new Error(code + ' has no row in a binome sheet to copy it to.');
-    sh.getRange(row, bfCol_('First Name'), 1, 3).setValues([[p.row[I['First Name']], p.row[I['Family Name']], p.row[I.Email]]]);
+    sh.getRange(row, bfCol_('First Name'), 1, 3).setValues(plainRows_([[p.row[I['First Name']], p.row[I['Family Name']], p.row[I.Email]]]));
     return 'name/email copied to the sheet of ' + b.code + '.';
   }
   throw new Error('there is no tool for this change: use Revert or Accept.');
