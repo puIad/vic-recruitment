@@ -46,9 +46,18 @@ _Avoid_: superseded, skipped, no-op
 
 **Dropped change**:
 A pending change that was never applied, because the sheet changed in a way that does not do what its author wanted, or
-because it could not be applied in time: applying it kept failing, or never got to run.
+because it could not be applied in time: its author lost access or their sign-in ended first, applying kept failing,
+or it never got to run.
 _Avoid_: rejected change, lost change, conflict
 
 **Addressed**:
 A dropped change whose author has chosen between keeping the sheet's value and applying theirs anyway.
 _Avoid_: dismissed, acknowledged
+
+## Signing in
+
+**Sign-in**:
+The 48 hours, counted from when a person signs in with their ENP Google account, during which the dashboard acts as
+them; signing out keeps it, and another account signing in on that browser ends it. Pending changes saved during a
+sign-in can finish applying after it ends.
+_Avoid_: session, login
