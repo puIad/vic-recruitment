@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { signInUrl, signOut } from "@/lib/vic/api"
-import { displayName, initials } from "@/lib/vic/format"
+import { displayName } from "@/lib/vic/format"
+import { UserAvatar } from "@/components/user-avatar"
 import { useVic } from "@/lib/vic/store"
 
 const SESSION_MS = 48 * 3600e3
@@ -36,9 +37,7 @@ export default function AccountSettings() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
-              <span className="flex size-16 shrink-0 items-center justify-center rounded-full bg-vic-aqua text-xl font-extrabold text-vic-ink" aria-hidden="true">
-                {initials(email)}
-              </span>
+              <UserAvatar email={email} photo={access?.photo} className="size-16 text-xl font-extrabold" />
               <div className="min-w-0">
                 <p className="truncate text-2xl font-extrabold leading-tight">{displayName(email)}</p>
                 <p className="truncate text-muted-foreground">{email}</p>
