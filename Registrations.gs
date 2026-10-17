@@ -206,13 +206,13 @@ function assignUnassigned_(ctx, stopAt) {
 const CONFIRM_STATUSES = [ST.UNASSIGNED, ST.HELD].concat(PENDING_STATUSES);
 
 /** Before the save: keeps in ctx.confirm the registrations read this run that get a confirmation (a code, waiting, assigned
- *  or held, a usable email and first name) and stamps them "CONFIRMED <date>" in Flags, so a re-run never mails them twice.
+ *  or held, a usable email and first name) and stamps them "CONFIRMED <date>" in Flags as the record. Only rows
+ *  read this run are queued (a saved row is never read again), so nobody is mailed twice.
  *  shortcut: stamped before the send, so a send that fails (quota) is not retried; mail_ logs it. */
 function stampConfirmations_(ctx) {
   const I = ctx.iv.I;
   ctx.confirm = !bool_(S_().CONFIRM_REGISTRANTS) ? [] : ctx.confirm.filter(r => r[I.Code] && CONFIRM_STATUSES.indexOf(r[I.Status]) >= 0 &&
-    /[a-z]/i.test(normText(r[I['First Name']])) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(r[I.Email]).trim()) &&
-    !/\bCONFIRMED\b/.test(r[I.Flags]));
+    /\p{L}/u.test(String(r[I['First Name']])) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(r[I.Email]).trim())); // a letter in any script
   ctx.confirm.forEach(r => { r[I.Flags] = (r[I.Flags] ? r[I.Flags] + ', ' : '') + 'CONFIRMED ' + fmt_(ctx.now, 'dd/MM/yyyy'); });
 }
 
