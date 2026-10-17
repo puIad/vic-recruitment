@@ -47,9 +47,10 @@ interface VicStore {
   checkPulse: () => Promise<void>
   run: <R = unknown>(action: string, args?: Record<string, unknown>, label?: string) => Promise<RunOut<R> | null>
   dropAlerts: (ids: string[]) => void
-  /** A member sets one of their binome's columns. Never optimistic: the slice changes only with the value the script wrote.
-   *  seen = what the screen showed when the edit started; the partner changed it meanwhile → conflict, with the value now. */
-  memberSet: (code: string, field: GoldKey, value: unknown, seen: unknown) => Promise<MemberSetResult>
+  /** A member sets some of their binome's columns for one candidate, in one call. Never optimistic: the slice changes only
+   *  with the values the script wrote. seen = what the screen showed when the edit started; the partner changed it meanwhile
+   *  → conflict, with the value now. One result per field, in the order given. */
+  memberSet: (code: string, fields: { field: GoldKey; value: unknown; seen: unknown }[]) => Promise<MemberSetResult[]>
   /** Put a value the script reported into the member's slice (a save, or "Keep theirs" after a conflict). */
   patchMember: (code: string, field: GoldKey, value: string | number | boolean) => void
   setModals: (delta: number) => void
@@ -210,14 +211,20 @@ export const useVic = create<VicStore>((set, get) => ({
     })
   },
 
-  async memberSet(code, field, value, seen) {
+  async memberSet(code, fields) {
     try {
-      const out = await call<RunOut<MemberSetOut>>("webRun", ["memberSet", { code, field, value, seen }])
-      get().patchMember(code, field, out.result.value)
-      return { ok: true, value: out.result.value }
+      const out = await call<RunOut<MemberSetOut>>("webRun", ["memberSet", { code, fields }])
+      return out.result.fields.map((r): MemberSetResult => {
+        if ("value" in r) {
+          get().patchMember(code, r.field, r.value)
+          return { ok: true, value: r.value }
+        }
+        return "conflict" in r ? { conflict: r.conflict } : { error: r.error }
+      })
     } catch (e) {
-      if (e instanceof ApiError && e.code === "CONFLICT") return { conflict: e.message }
-      return { error: (e as Error).message, busy: e instanceof ApiError && e.code === "BUSY" }
+      // the whole call was refused (busy sheet, no access, candidate gone): every field says why
+      const err = { error: (e as Error).message, busy: e instanceof ApiError && e.code === "BUSY" }
+      return fields.map(() => err)
     }
   },
 

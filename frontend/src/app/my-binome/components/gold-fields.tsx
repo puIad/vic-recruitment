@@ -77,8 +77,8 @@ type Form = {
 const FormCtx = React.createContext<Form | null>(null)
 
 /**
- * The binome's own columns for one candidate, edited together and written into their sheet (webRun memberSet, one call per
- * changed field) when the member presses Save. Nothing shows as saved until the script says so. If the partner changed a
+ * The binome's own columns for one candidate, edited together and written into their sheet (webRun memberSet, one call for
+ * every changed field) when the member presses Save. Nothing shows as saved until the script says so. If the partner changed a
  * cell meanwhile, the script refuses that one and the field offers Keep theirs / Use mine.
  * Key it by candidate: switching candidates starts afresh. onDirty gets the count of unsaved fields as it changes.
  */
@@ -117,24 +117,19 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
     if (!todo.length || saving || ratingProblem(String(fields.Rating.draft))) return
     setSaving(true)
     setSaved(false)
-    let ok = true
-    // one at a time: each takes the sheet's lock, so in parallel they would only queue (or come back BUSY)
-    for (const k of todo) {
-      const f = fields[k]
-      const r = await memberSet(code, k, toWire(k, f.draft), f.base)
+    const rs = await memberSet(code, todo.map((k) => ({ field: k, value: toWire(k, fields[k].draft), seen: fields[k].base })))
+    todo.forEach((k, i) => {
+      const r = rs[i]
       if ("ok" in r) put(k, { base: r.value, draft: toDraft(k, r.value), phase: { s: "idle" } })
-      else {
-        ok = false
-        if ("conflict" in r) {
-          // the sheet holds theirs: it becomes the base (Use mine then writes over it), the draft stays
-          const theirs = fromText(k, r.conflict)
-          patchMember(code, k, theirs)
-          put(k, { base: theirs, phase: { s: "conflict", theirs: r.conflict } })
-        } else put(k, { phase: { s: "error", msg: r.error } })
-      }
-    }
+      else if ("conflict" in r) {
+        // the sheet holds theirs: it becomes the base (Use mine then writes over it), the draft stays
+        const theirs = fromText(k, r.conflict)
+        patchMember(code, k, theirs)
+        put(k, { base: theirs, phase: { s: "conflict", theirs: r.conflict } })
+      } else put(k, { phase: { s: "error", msg: r.error } })
+    })
     setSaving(false)
-    setSaved(ok)
+    setSaved(rs.every((r) => "ok" in r))
   }
 
   const form: Form = {

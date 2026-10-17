@@ -281,11 +281,12 @@ export type GoldKey = (typeof GOLD_KEYS)[number]
 export const CONTACT_OPTIONS = ["Not yet", "Yes", "No answer", "Withdrew"] as const
 export const AFFECTATION_OPTIONS = ["IT", "COMM", "FLER", "HR", "Not accepted"] as const
 
-/** What memberSet saved, in the slice's own form (Done a boolean, Rating a number or "", the rest text as the sheet shows it). */
+/** memberSet's answer for one field: the value saved, in the slice's own form (Done a boolean, Rating a number or "", the rest
+ *  text as the sheet shows it); or conflict = what the partner put in the cell meanwhile; or error = why the value was refused. */
+export type MemberSetField = { field: GoldKey } & ({ value: string | number | boolean } | { conflict: string } | { error: string })
 export interface MemberSetOut {
   code: string
-  field: GoldKey
-  value: string | number | boolean
+  fields: MemberSetField[]
 }
 
 /** An open alert of the member's binome (only the types the script mails to binomes). */
