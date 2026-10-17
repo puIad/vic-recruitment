@@ -349,8 +349,9 @@ function lockBinomesCore_(budgetMs) {
     return true;
   }, 60000);
   if (!held) return busy_();
-  // the sync after the sheets are created (creating them is not in its total); placing stops 5 min after this call started
-  const c = runCycle_({ kind: 'post-lock', pull: false, timing: false, tracker: true, wait: 60000, assignBy: t0 + 300000 });
+  // the sync after the sheets are created (creating them is not in its total); placing stops 4 min after this call started,
+  // leaving 2 for the save, alerts, mails (one per member of each binome that got someone), tracker and snapshot
+  const c = runCycle_({ kind: 'post-lock', pull: false, timing: false, tracker: true, wait: 60000, assignBy: t0 + 240000 });
   say_('Locked ' + created + ' binomes.' + (stopped ? '\n\nPaused before the time limit: lock again to finish the rest.' : '') +
     (c && c.leftWaiting ? '\n' + c.leftWaiting + ' waiting registrants will be assigned by the next sync.' : '\nAny waiting registrants have been assigned.'));
 }
