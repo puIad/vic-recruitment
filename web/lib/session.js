@@ -66,6 +66,7 @@ const expiresAt = s => s.iat + SESSION_HOURS * 3600e3;
 
 const origin = () => String(process.env.APP_ORIGIN || '').replace(/\/$/, '');
 const redirectUri = () => origin() + '/api/callback';
+const runUrl = () => 'https://script.googleapis.com/v1/scripts/' + process.env.SCRIPT_API_DEPLOYMENT_ID + ':run';
 
 async function tokenRequest(params) {
   const r = await fetch(TOKEN_URL, {
@@ -110,5 +111,5 @@ function redirect(res, url) { res.statusCode = 302; res.setHeader('Location', ur
 
 module.exports = {
   SESSION_HOURS, COOKIE, PKCE_COOKIE, DOMAIN, SCOPES, b64u, seal, open, cookies, cookie, addCookie, sessionCookie, clearSession,
-  expired, expiresAt, origin, redirectUri, tokenRequest, revoke, idClaims, sameOrigin, sendJson, sendPage, redirect,
+  expired, expiresAt, origin, redirectUri, runUrl, tokenRequest, revoke, idClaims, sameOrigin, sendJson, sendPage, redirect,
 };
