@@ -20,6 +20,8 @@ export interface Access {
   binome: string
   cover: boolean
   v: number
+  /** Google profile picture URL; absent on an older script, "" when the account has none */
+  photo?: string
 }
 
 export interface Alert {

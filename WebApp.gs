@@ -74,7 +74,18 @@ function isAdmin_() { return access_().role === 'admin'; }
 function webAccess() {
   const a = access_();
   return { ok: a.ok, role: a.role || '', email: a.email, reason: a.reason || '', owner: !!a.owner,
-    binome: a.binome || '', cover: !!a.cover, v: API_VERSION };
+    binome: a.binome || '', cover: !!a.cover, v: API_VERSION, photo: a.email ? photo_() : '' };
+}
+
+/** The signed-in account's Google profile picture URL ('' if none or Drive fails), via the Drive scope we already hold.
+ *  Cached per user for 6h so the first call stays cheap. */
+function photo_() {
+  const cache = CacheService.getUserCache(), hit = cache.get('photo');
+  if (hit !== null) return hit;
+  let url = '';
+  try { url = String((Drive.About.get({ fields: 'user(photoLink)' }).user || {}).photoLink || '').replace(/=s\d+(-c)?$/, '=s128-c'); } catch (e) { /* initials instead */ }
+  cache.put('photo', url, 21600);
+  return url;
 }
 
 /** Cheap change detector for the dashboard's live refresh. Admins: the version of the cached dashboard (SNAP_VER), which goes

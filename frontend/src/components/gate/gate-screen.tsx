@@ -7,8 +7,8 @@ import { VicLogo } from "@/components/brand/vic-logo"
 import { RingStage } from "@/components/brand/ring-stage"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { UserAvatar } from "@/components/user-avatar"
 import { signInUrl, signOut } from "@/lib/vic/api"
-import { initials } from "@/lib/vic/format"
 import { useVic, type Gate } from "@/lib/vic/store"
 import { cn } from "@/lib/utils"
 
@@ -82,9 +82,7 @@ export function GateScreen() {
 
         {noaccess && access?.email && (
           <div className="mt-5 flex items-center gap-3 rounded-2xl border bg-background/80 p-3 text-left">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-vic-aqua text-sm font-bold text-vic-ink" aria-hidden="true">
-              {initials(access.email)}
-            </span>
+            <UserAvatar email={access.email} photo={access.photo} className="size-9 text-sm" />
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block text-xs text-muted-foreground">Signed in as</span>
               <span className="block truncate text-sm font-bold">{access.email}</span>

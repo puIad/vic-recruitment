@@ -1,5 +1,6 @@
 // Drives every dashboard action through webState/webRun under web-app conditions (no UI, no active sheet)
 const assert = require('assert');
+const PHOTO = 'https://lh3.googleusercontent.com/a/test=s128-c'; // mockgas Drive.About, sized up by photo_
 const { run, call, addRegistrations, backdateAssignments } = require('./seed')();
 
 let st = call('webState');
@@ -604,7 +605,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   // the dashboard follows the binome sheet: in a binome but the sheet isn't shared (TEST_MODE) = no dashboard
   m.run('__acl = true');
   as(mem);
-  assert.deepStrictEqual(m.call('webAccess'), { ok: false, role: '', email: mem, reason: 'NOT_SHARED', owner: false, binome: b1.code, cover: false, v: 3 });
+  assert.deepStrictEqual(m.call('webAccess'), { ok: false, role: '', email: mem, reason: 'NOT_SHARED', owner: false, binome: b1.code, cover: false, v: 3, photo: PHOTO });
   assert.throws(() => m.call('webState'), /Not allowed/);
   assert.throws(() => m.call('webPulse'), /Not allowed/);
   // an admin opens the binome: both members, silently, in TEST_MODE; reading it first changes nothing
@@ -624,7 +625,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
 
   // a member: their binome, nothing else
   as(mem);
-  assert.deepStrictEqual(m.call('webAccess'), { ok: true, role: 'member', email: mem, reason: '', owner: false, binome: b1.code, cover: false, v: 3 });
+  assert.deepStrictEqual(m.call('webAccess'), { ok: true, role: 'member', email: mem, reason: '', owner: false, binome: b1.code, cover: false, v: 3, photo: PHOTO });
   let st = m.call('webState');
   assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'members', 'role', 'status', 'switchUrl', 'tag', 'user', 'v'],
     'no settings, team, history, other binomes or admin lists');
@@ -878,12 +879,12 @@ assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of 
 assert.strictEqual(run('doGet()._file'), 'Index');
 
 // Vercel front (scripts.run): webAccess never throws, domain + owner rules, setup owner-only, trigger owner guard
-assert.deepStrictEqual(call('webAccess'), { ok: true, role: 'admin', email: 'helper@g.enp.edu.dz', reason: '', owner: false, binome: '', cover: false, v: 3 });
+assert.deepStrictEqual(call('webAccess'), { ok: true, role: 'admin', email: 'helper@g.enp.edu.dz', reason: '', owner: false, binome: '', cover: false, v: 3, photo: PHOTO });
 assert.strictEqual(call('webState').owner, false);
 assert.throws(() => call('webRun', 'setup'), /Only the owner/, 'an editor cannot run Setup');
 assert.throws(() => run('installTriggers_(ss_())'), /triggers belong to admin@g.enp.edu.dz/, 'menu path: a second account cannot double the triggers');
 run('ss_().addEditor("someone@gmail.com"); __as("someone@gmail.com")');
-assert.deepStrictEqual(call('webAccess'), { ok: false, role: '', email: 'someone@gmail.com', reason: 'DOMAIN', owner: false, binome: '', cover: false, v: 3 }, 'non-ENP editor refused');
+assert.deepStrictEqual(call('webAccess'), { ok: false, role: '', email: 'someone@gmail.com', reason: 'DOMAIN', owner: false, binome: '', cover: false, v: 3, photo: PHOTO }, 'non-ENP editor refused');
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
 {
   run('__as("stranger@g.enp.edu.dz")');
@@ -1073,5 +1074,10 @@ run('__as("")');
 assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
 assert.throws(() => call('webState'), /Not allowed/);
 run('Session = __realSession');
+
+assert.strictEqual(run('webAccess().photo'), PHOTO, 'profile picture from Drive, sized up');
+run('__realAbout = Drive.About; Drive.About = { get() { throw new Error("quota"); } }');
+assert.strictEqual(run('webAccess().photo'), '', 'a Drive failure falls back to initials');
+run('Drive.About = __realAbout');
 
 console.log('WEB OK');

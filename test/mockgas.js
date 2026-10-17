@@ -177,6 +177,7 @@ function __unshare(f, e) { f.editors = f.editors.filter(x => String(x).toLowerCa
 function __share(f, e, role) { __unshare(f, e); if (role === 'writer') f.editors.push(e); else (f.viewers = f.viewers || []).push(e); }
 // The Drive advanced service (v3): the calls the script makes, on the same editors / viewers lists
 var Drive = {
+  About: { get() { return { user: { photoLink: 'https://lh3.googleusercontent.com/a/test=s64' } }; } },
   Files: { get(id) {
     const r = __roleOf(id);
     if (!__files[id] || (__acl && !r)) throw new Error('API call to drive.files.get failed with error: File not found: ' + id + '.');
@@ -222,7 +223,8 @@ var CacheService = { getScriptCache() { return {
   get: k => (k in __cache ? __cache[k] : null),
   getAll: ks => { const o = {}; ks.forEach(k => { if (k in __cache) o[k] = __cache[k]; }); return o; },
   put: (k, v) => __cachePut(k, v), putAll: o => Object.keys(o).forEach(k => __cachePut(k, o[k])),
-  remove: k => { delete __cache[k]; }, removeAll: ks => ks.forEach(k => { delete __cache[k]; }) }; } };
+  remove: k => { delete __cache[k]; }, removeAll: ks => ks.forEach(k => { delete __cache[k]; }) }; },
+  getUserCache() { return { get: () => null, put() { } }; } }; // per-user cache: always a miss here
 var __lockBusy = false; // a test sets it to make the script lock refuse
 var __docLockBusy = false; // the same for the document lock (members' edits)
 var LockService = { getScriptLock() { return { tryLock: () => !__lockBusy, waitLock: () => true, releaseLock: () => { } }; },

@@ -14,16 +14,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar"
 import { signInUrl, signOut } from "@/lib/vic/api"
-import { displayName, initials } from "@/lib/vic/format"
+import { displayName } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
-
-function Avatar({ email }: { email: string }) {
-  return (
-    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-vic-aqua text-xs font-bold text-vic-ink" aria-hidden="true">
-      {initials(email)}
-    </span>
-  )
-}
+import { UserAvatar } from "@/components/user-avatar"
 
 export function NavUser() {
   const { isMobile } = useSidebar()
@@ -37,7 +30,7 @@ export function NavUser() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" className="cursor-pointer data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
-              <Avatar email={email} />
+              <UserAvatar email={email} photo={access?.photo} />
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-bold">{displayName(email)}</span>
                 <span className="truncate text-xs font-normal text-sidebar-foreground/70">{role} · {email || "…"}</span>
@@ -48,7 +41,7 @@ export function NavUser() {
           <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width) min-w-60 rounded-xl" side={isMobile ? "bottom" : "right"} align="end" sideOffset={6}>
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar email={email} />
+                <UserAvatar email={email} photo={access?.photo} />
                 <div className="grid flex-1 text-left leading-tight">
                   <span className="truncate font-bold">{displayName(email)}</span>
                   <span className="truncate text-xs text-muted-foreground">{email}</span>
