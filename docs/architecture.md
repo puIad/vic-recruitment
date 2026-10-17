@@ -32,8 +32,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | `Screening.gs` | screening ([launch-features.md](launch-features.md#2-screening-hold-low-effort-applications-decline-vic-members)): the VIC members sheet through the script cache, `screenWaiting_` each run, Approve / Decline / Restore (`reviewRow_`), Send rejections |
 | `QuickFix.gs` | the Alerts page's quick actions (`webRun('quick', {op, ids})`): fixes, snooze / mute, emails, links to the exact row or cell |
 | `Integrity.gs` | manual-edit detection (baseline), odd values, full binome-sheet check |
-| `WebApp.gs` | `webAccess` / `webState` / `webPulse` / `webRun`, the API the dashboard calls; `API_VERSION`; `doGet`. `webState` serves a snapshot from the script cache, republished (`publishState_`) at the end of every sync and every dashboard action that writes; `webPulse` returns its version. A hand edit in the Master shows after the next sync |
-| `Index.html`, `NoAccess.html` | the Apps Script web app's old dashboard (`doGet`), kept as a read-only fallback |
+| `WebApp.gs` | `webAccess` / `webState` / `webPulse` / `webRun`, the API the dashboard calls; `API_VERSION`; `doGet` (the old web app URL: a link to the Vercel dashboard). `webState` serves a snapshot from the script cache, republished (`publishState_`) at the end of every sync and every dashboard action that writes; `webPulse` returns its version. A hand edit in the Master shows after the next sync |
 | `frontend/` | the dashboard UI: [frontend.md](frontend.md) |
 | `web/` | the Vercel project: `api/{login,callback,run,logout}.js`, `lib/session.js`, `vercel.json`: [vercel.md](vercel.md) |
 

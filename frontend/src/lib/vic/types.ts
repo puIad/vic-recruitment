@@ -230,7 +230,6 @@ export interface WebState {
   user: string
   owner: boolean
   v: number
-  switchUrl: string
   updated: string
   links: { master: string; registrationForm: string; interviewForm: string; binomeFolder: string }
   settings: {
@@ -315,7 +314,6 @@ export interface MemberState {
   /** they can edit their binome sheet (an admin gave edit access): the gold columns are editable here */
   edit: boolean
   user: string
-  switchUrl: string
 }
 
 /** What webRun returns: messages for the activity log and toast, plus an action-specific result. */

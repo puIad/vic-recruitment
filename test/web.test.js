@@ -526,7 +526,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert.deepStrictEqual(open(), [], 'baseline intact after the round trip');
 }
 // ---- the dashboard served from a cached snapshot (load-test task 5) ----
-const shared = st => { const o = Object.assign({}, st); ['user', 'owner', 'switchUrl', 'updated'].forEach(k => delete o[k]); return o; };
+const shared = st => { const o = Object.assign({}, st); ['user', 'owner', 'updated'].forEach(k => delete o[k]); return o; };
 const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'))));
 {
   const ver = () => call('webPulse'), cached = () => run('readSnap_() !== null');
@@ -535,7 +535,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert(cached(), 'the sync published the snapshot');
   st = call('webState');
   assert.deepStrictEqual(shared(st), liveOf(run), 'from the cache = a live build');
-  assert(/^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(st.updated) && st.user && st.switchUrl && st.owner === true, 'per-request fields added');
+  assert(/^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(st.updated) && st.user && st.owner === true, 'per-request fields added');
   call('webRun', 'sync');
   assert.strictEqual(ver(), v0, 'a sync with nothing new keeps the version: no screen reloads');
 
@@ -627,7 +627,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   as(mem);
   assert.deepStrictEqual(m.call('webAccess'), { ok: true, role: 'member', email: mem, reason: '', owner: false, binome: b1.code, cover: false, v: 3, photo: PHOTO });
   let st = m.call('webState');
-  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'members', 'role', 'status', 'switchUrl', 'tag', 'user', 'v'],
+  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'members', 'role', 'status', 'tag', 'user', 'v'],
     'no settings, team, history, other binomes or admin lists');
   assert.strictEqual(st.edit, true);
   assert.deepStrictEqual([st.binome, st.role, st.fromSheet, st.candidates.map(c => c.Code).sort()], [b1.code, 'member', false, ivOf(b1.code)]);
@@ -635,7 +635,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert(st.alerts.length && st.alerts.every(a => ivOf(b1.code).includes(a.code) && ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'ODD_VALUE'].includes(a.type)), J(st.alerts));
   ivOf(b2.code).forEach(c => assert(!J(st).includes('"' + c + '"'), 'nothing of ' + b2.code + ': ' + c));
   assert.strictEqual(typeof m.call('webPulse'), 'number');
-  assert.deepStrictEqual([m.run('isAdmin_()'), m.run('doGet()._file')], [false, 'NoAccess'], 'the old dashboard is for admins only');
+  assert.strictEqual(m.run('isAdmin_()'), false);
 
   // every admin action: Not allowed, and nothing written
   const before = tabs(), props0 = m.run('JSON.stringify(__props)');
@@ -859,24 +859,22 @@ assert.throws(() => call('webRun', 'nope'), /Unknown action/);
 assert.strictEqual(run('_webOut'), null, 'buffer reset after a throw');
 
 // access control: the web app runs as the visitor, so access = can this account edit the Master
-assert.strictEqual(run('doGet()._file'), 'Index', 'owner gets the dashboard');
-assert(/AccountChooser\?continue=https%3A%2F%2Fscript.google.com/.test(call('webState').switchUrl), 'switch-account link');
+// the old web app URL only links to the Vercel dashboard, for anyone (it reads nothing)
+assert(/href="https:\/\/vic-recruitment\.vercel\.app" target="_top"/.test(run('doGet()._html')), 'link to the dashboard');
+assert(!('switchUrl' in call('webState')), 'no switch-account link any more');
 run('var __realSession = Session; var __as = e => { Session = { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }; __as("stranger@g.enp.edu.dz")');
 assert.throws(() => call('webState'), /Not allowed/);
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
 assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, role: '', email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY', owner: false }));
-let page = run('doGet()');
-assert.deepStrictEqual([page._file, page._vars.email, page._vars.reason], ['NoAccess', 'stranger@g.enp.edu.dz', 'READ_ONLY'], 'no-access screen');
+assert(/vic-recruitment\.vercel\.app/.test(run('doGet()._html')), 'the same link page for an account without access');
 run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { throw new Error("You do not have permission to access the requested document.") }');
 assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'an account that cannot open the Master');
-assert.strictEqual(run('doGet()._vars.reason'), 'NO_PROJECT');
 run('SpreadsheetApp.openById = __open');
 run('var __drive = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("No item with the given ID could be found.") }');
 assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'bound Master handed back to an account Drive says has no access → not "view only"');
 run('DriveApp.getFileById = __drive');
 run('ss_().addEditor("helper@g.enp.edu.dz"); __as("Helper@g.enp.edu.dz")');
 assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of the Master gets in, no extra deployment');
-assert.strictEqual(run('doGet()._file'), 'Index');
 
 // Vercel front (scripts.run): webAccess never throws, domain + owner rules, setup owner-only, trigger owner guard
 assert.deepStrictEqual(call('webAccess'), { ok: true, role: 'admin', email: 'helper@g.enp.edu.dz', reason: '', owner: false, binome: '', cover: false, v: 3, photo: PHOTO });

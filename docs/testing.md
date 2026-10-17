@@ -23,7 +23,6 @@ The mock can't catch Apps Script quirks (protections, validations, locale parsin
   entries of `.claude/launch.json`) → http://localhost:5173/dev-login?as=admin@g.enp.edu.dz. `?as=stranger@g.enp.edu.dz`
   = no-access view, `?as=` = signed out, `npm run mock -- --empty` = before team import. The mock seeds 40
   registrations, two hand edits, an unpaired member, a replacement and a swap. Restarting it signs everyone out.
-- Old Apps Script dashboard (`Index.html`): `node test/devserver.js` → http://localhost:8787.
 - Screenshots: Obscura doesn't draw Tailwind v4's `rounded-full` (pills come out square), so use Chrome
   (`playwright-chrome`). Wait until the loading skeleton is gone: the dev server serves ~140 unbundled modules.
 
