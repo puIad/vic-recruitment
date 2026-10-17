@@ -127,7 +127,7 @@ function quickInfo_(ctx, r, look) {
 /** Snoozed and muted alerts, for the dashboard's Muted filter (newest first). */
 function heldAlerts_(ctx) {
   const A = ctx.alerts.table.I;
-  return ctx.alerts.table.data.filter(r => HELD_STATUSES.indexOf(r[A.Status]) >= 0).reverse().slice(0, 200).map(r => ({
+  return ctx.alerts.table.data.filter(r => HELD_STATUSES.indexOf(r[A.Status]) >= 0).reverse().map(r => ({
     id: String(r[A.ID]), created: fmt_(r[A.Created], 'dd/MM HH:mm'), severity: r[A.Severity], type: r[A.Type], code: String(r[A.Interviewee]),
     binome: String(r[A.Binome]), msg: String(r[A.Message]), status: r[A.Status], until: r[A.Status] === 'SNOOZED' ? fmt_(r[A['Resolved At']], 'dd/MM HH:mm') : '' }));
 }
