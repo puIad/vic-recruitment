@@ -276,4 +276,21 @@ run(`(function(){ var c = loadCtx_(); binomeSheet_(c, c.binByCode["${flB}"]); })
 const fl = run(`__files["${flFile}"].obj.sheets[0].getDataRange().getValues()`).find(r => r[BFI.Code] === 'FLER.01');
 assert.strictEqual(fl[BFI.Notes], 'met at the stand', 'recovered from the copy');
 assert.strictEqual(run(`__files["${flFile}"].obj.getSheets().length`), 1, 'copy removed after the recovery');
+
+// ---- text a candidate typed that a sheet would run as a formula is written as text, everywhere it lands ----
+run(`__formulas = [];
+  reg.cells.push(regRow(new Date(), 'evil@g.enp.edu.dz', '=HYPERLINK("https://x","y")', 'Evil', 'evil@g.enp.edu.dz', '01/01/2005', '0555000222', 'IT', 'HR'));
+  reg.cells[reg.cells.length - 1][REG_H.indexOf('Anything to add?')] = '=1+1';
+  reg.cells[reg.cells.length - 1][REG_H.indexOf('Discord Username  ')] = '-evil-';
+  reg.cells.push(regRow(new Date(Date.now() + 1000), 'evil@g.enp.edu.dz', '=HYPERLINK("https://x","y")', 'Evil', 'evil@g.enp.edu.dz', '01/01/2005', '0555000222', 'COMM', 'HR'));`);
+run('syncAll()');
+const evil = run('master.getSheetByName("Interviewees").getDataRange().getValues()').find(r => r[IVX.Email] === 'evil@g.enp.edu.dz' && r[IVX.Binome]);
+assert.deepStrictEqual([evil[IVX['First Name']], evil[IVX['Anything to add']]], ['=HYPERLINK("https://x","y")', '=1+1'], 'read back as typed');
+const evilFile = bins.find(r => r[0] === evil[IVX.Binome])[8];
+const evilRow = run(`__files["${evilFile}"].obj.sheets[0].getDataRange().getValues()`).find(r => r[BFI.Code] === evil[IVX.Code]);
+assert(evilRow, 'in the binome sheet');
+// Discord is plain text in Interviewees (written as it is: no formula runs there, an apostrophe would show), not in the sheet
+assert.deepStrictEqual([evil[IVX.Discord], evilRow[BFI.Discord]], ['-evil-', '-evil-'], 'no apostrophe left in a plain-text cell');
+assert(run('master.getSheetByName("Alerts").getDataRange().getValues()').some(a => a[3] === 'DUPLICATE_REGISTRATION' && /HYPERLINK/.test(a[6])), 'in an alert');
+assert.strictEqual(run('JSON.stringify(__formulas)'), '[]', 'written as live formulas');
 console.log('\nE2E OK');

@@ -81,7 +81,7 @@ function ensureTabs_(ss) {
   // Interviewees (script-managed)
   const iv = mk(TAB.IV, IV_H);
   const I = idx_(IV_H);
-  ['Code', 'Phone', 'Facebook', 'Discord', 'Year', 'Interview Date', 'Interview Time', 'Response Key'].forEach(h => {
+  IV_TEXT_COLS.forEach(h => {
     iv.getRange(2, I[h] + 1, iv.getMaxRows() - 1, 1).setNumberFormat('@');
   });
   ['Registered At', 'Assigned At', 'Contacted Seen At', 'Interview At', 'Interview Submitted At'].forEach(h => {

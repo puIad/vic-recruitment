@@ -61,7 +61,16 @@ function loadPropChunks_(name) {
   for (let i = 0; i < n; i++) s += all[name + '_' + i] || '';
   return s;
 }
-function txt_(v) { const s = String(v == null ? '' : v); return s === '' ? '' : "'" + s; } // force plain text
+// text a candidate typed that the sheet would run as a formula keeps a leading apostrophe (shown and read back without it).
+// shortcut: '@' is left out (not a formula in Sheets; Discord handles start with it)
+function plain_(v) { return typeof v === 'string' && /^[=+\-]/.test(v) ? "'" + v : v; }
+/** plain_ on every cell of rows laid out as H, except H's plain-text ('@') columns: they never run a formula, and an apostrophe
+ *  written there stays in the cell. shortcut: by header name, as Setup / formatBinomeSheet_ format them; a column re-formatted
+ *  by hand is not seen. */
+function plainRows_(rows, H) {
+  const keep = (H === IV_H ? IV_TEXT_COLS : H === BF_H ? BF_TEXT_COLS : []).map(h => H.indexOf(h));
+  return rows.map(r => r.map((v, j) => (keep.indexOf(j) >= 0 ? v : plain_(v))));
+}
 /** A Drive error, readable. "enabling APIs" = the Drive API is off in the script's Cloud project: no sharing fix helps. */
 function driveErr_(e) {
   const m = String(e && e.message || e);
@@ -91,7 +100,7 @@ function addMissingColumns_(sh, headers) {
   return headers.slice();
 }
 function sameVal_(a, b) { return a === b || (a instanceof Date && b instanceof Date && a.getTime() === b.getTime()); }
-/** v (about to be written) equals cell (read from the tab) only when sure: sameVal_, or text forced with txt_ against that text
+/** v (about to be written) equals cell (read from the tab) only when sure: sameVal_, or text forced with an apostrophe against that text
  *  read back. A number against the same number as text is different: a doubt costs a useless write, never a lost one. */
 function sameCell_(v, cell) {
   return sameVal_(v, cell) || (typeof v === 'string' && typeof cell === 'string' && v[0] === "'" && v.slice(1) === cell);
@@ -122,7 +131,7 @@ function saveTable_(t) {
   for (let i = 0; i <= all.length; i++) {
     const differs = i < all.length && (i >= now.length || all[i].some((v, j) => !sameCell_(v, now[i][j])));
     if (differs && from < 0) from = i;
-    if (!differs && from >= 0) { t.sh.getRange(2 + from, 1, i - from, t.H.length).setValues(all.slice(from, i)); from = -1; }
+    if (!differs && from >= 0) { t.sh.getRange(2 + from, 1, i - from, t.H.length).setValues(plainRows_(all.slice(from, i), t.H)); from = -1; }
   }
 }
 
@@ -256,7 +265,7 @@ function alertBuffer_(ctx) {
         return ['A-' + ('0000' + n).slice(-4), ctx.now, a.severity, a.type, a.code || '', a.binome || '', a.msg,
           to.join(', '), a.status || 'OPEN', a.status && a.status !== 'OPEN' ? ctx.now : '', a.key || ''];
       });
-      t.sh.getRange(t.sh.getLastRow() + 1, 1, rows.length, ALERT_H.length).setValues(rows);
+      t.sh.getRange(t.sh.getLastRow() + 1, 1, rows.length, ALERT_H.length).setValues(plainRows_(rows));
       rows.forEach(r => { t.data.push(r); t.orig.push(r.slice()); }); // written: a later save merges them like loaded rows
       Object.keys(perRecipient).forEach(email => {
         const list = perRecipient[email];
