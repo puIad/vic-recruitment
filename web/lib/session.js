@@ -1,6 +1,7 @@
 // Session cookie + Google OAuth helpers shared by the api/ functions. No dependencies (node:crypto + fetch).
 // Cookie vic_s = AES-256-GCM{ email, rt, at, ate, iat }. The key lives only in SESSION_KEY (Vercel env):
-// rotating it signs everyone out.
+// rotating it signs everyone out. Refresh tokens stay live at Google past the 48h, so the kill switch is SESSION_KEY
+// plus the OAuth client secret.
 const crypto = require('crypto');
 
 const SESSION_HOURS = 48;            // fixed from sign-in, never extended
@@ -57,7 +58,7 @@ function addCookie(res, c) {
   const prev = res.getHeader('Set-Cookie');
   res.setHeader('Set-Cookie', [].concat(prev || [], c));
 }
-const sessionCookie = s => cookie(COOKIE, seal(s), 30 * 24 * 3600); // 30d so an expired session can still be revoked
+const sessionCookie = s => cookie(COOKIE, seal(s), 30 * 24 * 3600); // 30d: a later sign-in on this browser reuses its refresh token (no consent screen)
 const clearSession = () => cookie(COOKIE, '', 0);
 
 const expired = (s, now) => (now || Date.now()) - s.iat > SESSION_HOURS * 3600e3;
