@@ -45,6 +45,12 @@ Production deploys `main` on every push; previews are SSO-protected and sign-in 
 proves the build, not the sign-in. **Rollback:** Vercel › Deployments › a previous production deployment › Instant
 Rollback (seconds, no git).
 
+**Doc-only pushes don't build.** `ignoreCommand` in `web/vercel.json` runs in `web/` and skips the build (exit 0, the
+deployment shows CANCELED, production stays put) when nothing under `web/` or `frontend/` changed since
+`$VERCEL_GIT_PREVIOUS_SHA`, the last successful deployment of the branch. An empty or unknown SHA (a branch's first
+deployment, a shallow clone) builds. So on Hobby an Instant Rollback after a doc push still lands on the last real
+release. Any other path a build reads must be added to the `git diff` paths.
+
 ## Rules worth knowing
 
 - **Access is re-checked by the script on every call** (`access_()` in WebApp.gs): ENP account + editor/owner of the
