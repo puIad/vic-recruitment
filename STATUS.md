@@ -9,7 +9,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-One PR is open: the emails ([#45](https://github.com/puIad/vic-recruitment-2026/pull/45)).
+No PR or issue is open.
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
@@ -19,10 +19,13 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   / one decent application in TEST_MODE, then Send rejections… once).
 - Not built: **change a binome's department** from the dashboard (launch-features section 3; a hand edit of the Tag
   plus Accept works meanwhile).
-- In review: **emails** ([#45](https://github.com/puIad/vic-recruitment-2026/pull/45)), one HTML template in the VIC look for every mail the script sends, and a
-  confirmation with their code to every registrant (launch-features section 4). Needed before the form opens. Left:
-  the confirmation's language and wording (English placeholder in `CONFIRM_MAIL`, Mail.gs), a preview in the owner's
-  inbox, then merge (Vercel serves the logo) before `npm run deploy`.
+- Done: **emails** ([#45](https://github.com/puIad/vic-recruitment-2026/pull/45), live 2026-10-17 as @85/@86 from `0ea1fa1`): one HTML template in the VIC look for
+  every mail the script sends, and a confirmation with their code to every registrant. The owner's inbox preview
+  passed (confirmation, alert mail, digest). Left: the confirmation's language and wording (English placeholder in
+  `CONFIRM_MAIL`, Mail.gs), and removing the preview registration with the other test candidates.
+- Known, not a bug: **Send digest** from the dashboard takes 3+ minutes, because it runs the full 8 AM cycle (lock
+  wait up to 2 min, every binome sheet pulled, full integrity check up to 200 s). Possible fix: skip the integrity
+  check when it comes from the dashboard. Not planned yet.
 - Not built, small: `SAME_CHOICES` from MEDIUM to INFO, and its quick-action hint no longer treats it as a mistake
   ([decisions.md](docs/decisions.md#open-questions), question 5). Code PR.
 - Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
@@ -48,7 +51,7 @@ Left, owner (in order):
 7. Load-test task 10: load test again and sign off before members get the dashboard.
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
-Left, code (in order): the emails (section 4, in review), `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
+Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
 
 ## Live now
 
