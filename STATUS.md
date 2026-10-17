@@ -186,5 +186,5 @@ In order. Each step says where to do it.
 - **Binome desk** dropped (2026-10-04); remove the page in the next UI PR.
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.
-- Retire the Apps Script web app too (`Index.html`, `NoAccess.html`, `doGet`): once the other-account checks pass,
-  make `doGet` send people to Vercel. It is the last copy of the old dashboard, kept as a read-only fallback.
+- Retired the Apps Script web app's old dashboard (2026-10-17): `Index.html` and `NoAccess.html` are deleted, and its
+  URL (`doGet`) now shows a link to the Vercel dashboard.

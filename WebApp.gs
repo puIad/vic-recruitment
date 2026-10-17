@@ -7,26 +7,17 @@
  * the Master sheet is an admin and gets the dashboard; a member of a locked binome
  * (or a live cover) who can at least view their binome sheet gets only their binome
  * (MEMBER_MAP + Drive, through the Vercel front);
- * any other account gets NoAccess.html with a switch-account button.
+ * any other account is refused. The dashboard is the Vercel one: this web app's own page only links to it.
  ******************************************************************************/
 
+const DASHBOARD_URL = 'https://vic-recruitment.vercel.app';
+/** The old Apps Script dashboard is retired: its URL now links to the Vercel one (target _top: the web app runs in an iframe). */
 function doGet() {
-  const a = access_();
-  if (a.role !== 'admin') { // the old dashboard is the admins' only
-    const t = HtmlService.createTemplateFromFile('NoAccess');
-    t.email = a.email; t.reason = a.reason; t.switchUrl = switchUrl_(); t.appUrl = appUrl_();
-    return t.evaluate()
-      .setTitle('VIC Recruitment · no access')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  }
-  return HtmlService.createHtmlOutputFromFile('Index')
+  return HtmlService.createHtmlOutput('<p style="font-family:Arial,sans-serif">The VIC Recruitment dashboard has moved: <a href="' +
+    DASHBOARD_URL + '" target="_top">' + DASHBOARD_URL + '</a></p>')
     .setTitle('VIC Recruitment 2026')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
-
-function appUrl_() { try { return ScriptApp.getService().getUrl(); } catch (e) { return ''; } }
-/** Google's account picker, coming back to this web app with the chosen account. */
-function switchUrl_() { return 'https://accounts.google.com/AccountChooser?continue=' + encodeURIComponent(appUrl_()); }
 
 /** Bumped when webAccess/webState/webRun change shape; the Vercel front (frontend/src/lib/vic/types.ts) checks it. */
 const API_VERSION = 3;
@@ -106,7 +97,7 @@ function webState() {
   if (a.role === 'member') return memberState_(a);
   if (a.role !== 'admin') throw new Error('Not allowed');
   const st = readSnap_() || withLock_(() => publishState_(freshCtx_()), 1) || liveState_(freshCtx_());
-  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, switchUrl: switchUrl_() });
+  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner });
 }
 
 /* ---------- members: MEMBER_MAP (who may see which binome) and their slice of the snapshot ---------- */
@@ -192,7 +183,7 @@ function memberState_(a) {
     sl.candidates = sl.candidates.filter(c => m.codes.indexOf(String(c.Code)) >= 0);
     sl.alerts = sl.alerts.filter(x => m.codes.indexOf(x.code) >= 0);
   }
-  return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail(), switchUrl: switchUrl_() });
+  return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail() });
 }
 function sliceFromSheet_(m) {
   let book = null;

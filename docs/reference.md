@@ -33,7 +33,7 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | What | Value |
 |---|---|
 | Script ID (`.clasp.json`) | `1S7GFkJplZLM9Nc9A4beZx3M5XGa0LniNiB3xeDJEr48piY6U7Aoq7Vv8` |
-| Web app deployment (`doGet`: the old read-only dashboard, a fallback) | `AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT` → https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec |
+| Web app deployment (`doGet`: a page linking to the Vercel dashboard; the old dashboard is retired) | `AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT` → https://script.google.com/macros/s/AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT/exec |
 | API executable deployment (used by Vercel) | `AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU` |
 | Google Cloud project | `vic-recruitment` (ENP org, number `444885197277`, consent screen Internal, Apps Script API + Google Drive API on (Drive enabled 2026-10-02)) |
 

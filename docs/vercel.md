@@ -67,8 +67,8 @@ Rollback (seconds, no git).
   screen), Lock near the time limit. The gate states were only exercised on the mock. Owner sign-in, the dashboard and
   Sync are verified in production (2026-10-01, old UI); the new UI with the owner account on 2026-10-03, Reset all
   binomes included (it exists only in the dashboard).
-- Share the URL with the editors; once proven, point the old web app's `doGet` at Vercel and delete `Index.html` /
-  `NoAccess.html`.
+- ~~Share the URL with the editors; once proven, point the old web app's `doGet` at Vercel and delete `Index.html` /
+  `NoAccess.html`.~~ Done 2026-10-17: `doGet` returns a link to the Vercel dashboard.
 - Optional: rotate the OAuth client secret (it was pasted in the build chat) → Cloud Console › Credentials, then update
   `GOOGLE_CLIENT_SECRET` in Vercel and redeploy.
 - After recruitment (handover): add `vic.rh@g.enp.edu.dz` as Cloud project owner, Vercel team member, consider

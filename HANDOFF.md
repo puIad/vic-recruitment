@@ -13,7 +13,6 @@ Repo: https://github.com/puIad/vic-recruitment-2026 (its own repo, not the AI-OS
 | Path | What | Ships with |
 |---|---|---|
 | `*.gs`, `appsscript.json` | the Apps Script bound to the Master | `npm run deploy` |
-| `Index.html`, `NoAccess.html` | the Apps Script web app's old read-only dashboard (`doGet`), a fallback | `npm run deploy` |
 | `frontend/` | the dashboard UI (Vite + React + shadcn) | Vercel, on push to `main` |
 | `web/` | Vercel project root: `api/` functions, `lib/session.js`, `vercel.json` (builds `frontend/` into `web/dist`) | Vercel, on push to `main` |
 | `test/` | mock Apps Script + mock Google, the suites, the local mock backend (`webdev.js`) | — |
