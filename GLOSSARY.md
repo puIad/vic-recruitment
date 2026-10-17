@@ -57,7 +57,8 @@ _Avoid_: dismissed, acknowledged
 ## Signing in
 
 **Sign-in**:
-The 48 hours, counted from when a person signs in with their ENP Google account, during which the dashboard acts as
-them; signing out keeps it, and another account signing in on that browser ends it. Pending changes saved during a
-sign-in can finish applying after it ends.
+The 48 hours, counted from a person's latest sign-in with their ENP Google account on one browser, during which the
+dashboard acts as them on that browser. Each browser has its own sign-in, and one ending leaves their sign-ins on other
+browsers running. Signing out ends it on that browser only. Another account signing in on that browser during the 48
+hours ends all of that person's sign-ins. Pending changes saved during a sign-in can finish applying after it ends.
 _Avoid_: session, login
