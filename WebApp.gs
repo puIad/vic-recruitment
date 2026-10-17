@@ -81,10 +81,14 @@ function photo_() {
 
 /** Cheap change detector for the dashboard's live refresh. Admins: the version of the cached dashboard (SNAP_VER), which goes
  *  up only when what the dashboard shows changed (publishState_); a hand edit in the Master shows after the next sync.
- *  Members: their binome's version (SNAP_BIN). Someone no longer in MEMBER_MAP gets "Not allowed" at the next poll. */
-function webPulse() {
+ *  Members: their binome's version (SNAP_BIN). Someone no longer in MEMBER_MAP gets "Not allowed" at the next poll.
+ *  withSwitch: an admin gets {v, pending} (the owner's switch, Pending.gs) instead of the bare version. */
+function webPulse(withSwitch) {
   const a = access_();
-  if (a.role === 'admin') return Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
+  if (a.role === 'admin') {
+    const ver = Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
+    return withSwitch ? { v: ver, pending: pendingOn_() } : ver; // pages before pending changes take the bare number
+  }
   if (a.role === 'member') { const b = binMeta_()[a.binome]; return b ? b.v : 0; }
   throw new Error('Not allowed');
 }
@@ -97,7 +101,7 @@ function webState() {
   if (a.role === 'member') return memberState_(a);
   if (a.role !== 'admin') throw new Error('Not allowed');
   const st = readSnap_() || withLock_(() => publishState_(freshCtx_()), 1) || liveState_(freshCtx_());
-  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner });
+  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, pending: pendingOn_() });
 }
 
 /* ---------- members: MEMBER_MAP (who may see which binome) and their slice of the snapshot ---------- */
@@ -355,7 +359,7 @@ function patchSlice_(b, code, vals) {
 }
 
 function freshCtx_() { _settings = null; return loadCtx_(); }
-function liveState_(ctx) { return Object.assign(buildState_(ctx), { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm') }); }
+function liveState_(ctx) { return Object.assign(buildState_(ctx), { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), built: ctx.now.getTime() }); }
 
 /* ---------- the cached snapshot: CacheService chunks, checked against SNAP_HASH (script properties persist, the cache doesn't) ---------- */
 
@@ -372,7 +376,7 @@ function readSnap_() {
   if (hash_(json) !== meta.h) return null;
   const st = JSON.parse(json);
   if (st.v !== API_VERSION) return null;
-  st.updated = meta.at;
+  st.updated = meta.at; st.built = meta.ms || 0;
   return st;
 }
 /** Build the snapshot from ctx; when it differs from the cached one, cache it and add 1 to SNAP_VER (the pulse). A cache that
@@ -382,8 +386,9 @@ function readSnap_() {
 function publishState_(ctx) {
   const st = buildState_(ctx), json = JSON.stringify(st), h = hash_(json), meta = snapMeta_();
   const same = !!meta && meta.h === h, cached = same && !!readSnap_(), bins = publishBins_(ctx);
-  if (cached && !bins.changed) return Object.assign(st, { updated: meta.at });
-  const at = same ? meta.at : fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), chunks = {};
+  if (cached && !bins.changed) return Object.assign(st, { updated: meta.at, built: meta.ms || 0 });
+  // built = the ms the data was read (ctx.now): a pending change's screen gives way to a snapshot built at or after its write
+  const at = same ? meta.at : fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), ms = same ? meta.ms || 0 : ctx.now.getTime(), chunks = {};
   let n = 0;
   for (let i = 0; i < json.length; n++) {
     let j = Math.min(i + SNAP_CHUNK, json.length);
@@ -394,9 +399,9 @@ function publishState_(ctx) {
   if (!cached) CacheService.getScriptCache().putAll(chunks, 21600);
   const props = PropertiesService.getScriptProperties(), ver = Number(props.getProperty('SNAP_VER') || 0);
   // ponytail: check then set, not atomic; a drop in the few ms between them is lost until the next change is published
-  if (ver !== ctx.snapVer) return Object.assign(st, { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm') });
-  props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at }), SNAP_VER: String(same ? ver : ver + 1), SNAP_BIN: JSON.stringify(bins.meta) });
-  return Object.assign(st, { updated: at });
+  if (ver !== ctx.snapVer) return Object.assign(st, { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), built: ctx.now.getTime() });
+  props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at, ms: ms }), SNAP_VER: String(same ? ver : ver + 1), SNAP_BIN: JSON.stringify(bins.meta) });
+  return Object.assign(st, { updated: at, built: ms });
 }
 /** The cache can no longer be trusted (a publish failed or could not run): the next webState builds live (a member's from
  *  their sheet), every screen reloads. */
@@ -554,7 +559,7 @@ function webRun(action, args) {
   if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false; // BUSY: nothing was changed, and the lock holder publishes
@@ -600,6 +605,7 @@ function webRun(action, args) {
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked as resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;
+      case 'pendingSwitch': result = pendingSwitch_(a, !!args.on); break;
       default: throw new Error('Unknown action: ' + action);
     }
     return { messages: _webOut.slice(), result: result };

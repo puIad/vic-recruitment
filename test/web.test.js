@@ -526,7 +526,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert.deepStrictEqual(open(), [], 'baseline intact after the round trip');
 }
 // ---- the dashboard served from a cached snapshot (load-test task 5) ----
-const shared = st => { const o = Object.assign({}, st); ['user', 'owner', 'updated'].forEach(k => delete o[k]); return o; };
+const shared = st => { const o = Object.assign({}, st); ['user', 'owner', 'updated', 'built', 'pending'].forEach(k => delete o[k]); return o; };
 const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'))));
 {
   const ver = () => call('webPulse'), cached = () => run('readSnap_() !== null');
