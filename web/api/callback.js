@@ -31,17 +31,20 @@ module.exports = async (req, res) => {
   }
   const now = Date.now();
   const old = S.open(c[S.COOKIE]);
-  // Same account back within its 48h (e.g. after signing out): reuse the stored grant, so no consent screen and the 48h keep counting.
-  const reuse = !t.body.refresh_token && old && old.rt && old.email === email && !S.expired(old, now);
+  // Same account back on this browser, signed out or past its 48h: Google sends no refresh token, so reuse the stored
+  // one (no consent screen) once one refresh proves Google still honours it.
+  let reuse = !t.body.refresh_token && old && old.rt && old.email === email;
+  if (reuse && !(await S.tokenRequest({ grant_type: 'refresh_token', refresh_token: old.rt })).ok) reuse = false;
   if (!t.body.refresh_token && !reuse) {
     // Google only issues a refresh token on consent: an earlier grant exists (e.g. a lost cookie). Ask once with consent.
     if (!o.consent) return S.redirect(res, '/api/login?consent=1');
     return S.sendPage(res, 502, 'Sign-in failed', 'Google did not return a long-lived token. Try again in a private window.');
   }
-  // Revoking ends the whole grant for that account, so only do it when another account takes over this browser.
-  if (old && old.rt && old.email !== email) await S.revoke(old.rt);
+  // Revoking ends the whole grant for that account (all its browsers), so only when another account takes over this
+  // browser inside the outgoing sign-in's 48h; past it, that sign-in already ended and its other browsers keep theirs.
+  if (old && old.rt && old.email !== email && !S.expired(old, now)) await S.revoke(old.rt);
   S.addCookie(res, S.sessionCookie({ email, rt: reuse ? old.rt : t.body.refresh_token, at: t.body.access_token,
-    ate: now + (t.body.expires_in || 3600) * 1000, iat: reuse ? old.iat : now }));
+    ate: now + (t.body.expires_in || 3600) * 1000, iat: now }));
   console.log(JSON.stringify({ at: 'login', email }));
   S.redirect(res, '/');
 };

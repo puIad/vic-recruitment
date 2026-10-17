@@ -21,8 +21,8 @@ module.exports = async (req, res) => {
   const s = S.open(S.cookies(req)[S.COOKIE]);
   if (!s || s.out) return S.sendJson(res, 401, { error: 'Signed out', code: 'SIGNED_OUT' });
   if (S.expired(s)) {
-    await S.revoke(s.rt);
-    S.addCookie(res, S.clearSession());
+    // Ends this browser's sign-in only: no revoke (other browsers share the grant), the refresh token stays for reuse.
+    S.addCookie(res, S.sessionCookie({ email: s.email, rt: s.rt, iat: s.iat }));
     return S.sendJson(res, 401, { error: 'Your 48h session ended: sign in again.', code: 'EXPIRED' });
   }
   let b;

@@ -22,9 +22,10 @@ Browser ── POST /api/run {fn, args} (same-origin, cookie, X-VIC header) ─�
 web/                the Vercel project root
   api/login.js      Google auth URL: PKCE + state in a 10-min HttpOnly cookie, hd, prompt=select_account, offline access
   api/callback.js   verifies state, exchanges the code, checks id_token hd/email_verified, writes the session cookie
+                    (reuses this browser's stored refresh token for the same account, after one test refresh)
   api/run.js        the proxy: allowlist {webAccess, webState, webPulse, webRun}, Origin + X-VIC check, 48h check,
                     token refresh, scripts.run, maps script errors to JSON, logs email/action/ms/ok
-  api/logout.js     marks the session signed out (the grant is kept until 48h so signing back in skips consent)
+  api/logout.js     marks this browser signed out; never revokes, so signing back in skips consent
   lib/session.js    AES-256-GCM seal/open (node:crypto), cookie helpers
   vercel.json       buildCommand (npm --prefix ../frontend ci && … run build), outputDirectory dist, a rewrite of every
                     non-/api/ path to /index.html (deep links and reloads), maxDuration 300 for api/run.js, security
@@ -53,8 +54,14 @@ Rollback (seconds, no git).
   checks); bump both when `webAccess` / `webState` / `webRun` change shape. Adding a field or an action doesn't need a bump.
 - **Long actions** pass a budget so they end before the 300 s limit: Lock 200 s, Sync now 150 s, Check integrity 200 s
   (counted from the call, lock wait included). Each resumes on the next press.
-- **Session:** cookie `vic_s` HttpOnly/Secure/SameSite=Lax; `now - iat > 48h` = expired. A different account signing in
-  revokes the stored grant. Rotating `SESSION_KEY` signs everyone out (kill switch).
+- **Sign-in, per browser:** cookie `vic_s` (30 days) HttpOnly/Secure/SameSite=Lax; `iat` = the latest Google sign-in on
+  that browser, `now - iat > 48h` = ended there. Ending (48 h or sign-out) never revokes: the cookie keeps
+  `{email, rt, iat}` and the person's other browsers keep running. The next sign-in on that browser reuses the stored
+  refresh token when Google sends none (same verified email, one test refresh first; refused = the consent screen) and
+  restarts the 48 h. A different account signing in revokes the outgoing grant only inside its 48 h (signed out or not),
+  which ends that person's sign-ins everywhere; past it, the cookie is overwritten with no revoke.
+- **Kill switch:** refresh tokens stay live at Google until 6 months unused, so it takes both: rotate `SESSION_KEY`
+  (every cookie unreadable) **and** the OAuth client secret (every refresh token useless).
 - **Settings pages** write through `webRun('saveSettings')` into the Settings tab. `SETTING_UI` in
   `frontend/src/app/settings/components/settings-form.tsx` maps key → friendly name/icon: add a row there when adding a
   setting to `SETTINGS_DEFAULTS`.
@@ -63,14 +70,15 @@ Rollback (seconds, no git).
 ## Still open
 
 - Manual checks with other accounts, on the new UI: an editor, a removed/non-editor ENP account ("No access", no
-  dashboard flash), a viewer ("View only"), a multi-account browser, sign-out → sign back in within 48h (no consent
-  screen), Lock near the time limit. The gate states were only exercised on the mock. Owner sign-in, the dashboard and
+  dashboard flash), a viewer ("View only"), a multi-account browser, sign-out → sign back in, within and after the 48 h (no
+  consent screen either way), Lock near the time limit. The gate states were only exercised on the mock. Owner sign-in, the dashboard and
   Sync are verified in production (2026-10-01, old UI); the new UI with the owner account on 2026-10-03, Reset all
   binomes included (it exists only in the dashboard).
 - ~~Share the URL with the editors; once proven, point the old web app's `doGet` at Vercel and delete `Index.html` /
   `NoAccess.html`.~~ Done 2026-10-17: `doGet` returns a link to the Vercel dashboard.
-- Optional: rotate the OAuth client secret (it was pasted in the build chat) → Cloud Console › Credentials, then update
-  `GOOGLE_CLIENT_SECRET` in Vercel and redeploy.
+- ~~Rotate the OAuth client secret (it was pasted in the build chat).~~ Done before sign-ins per browser went live
+  ([#65](https://github.com/puIad/vic-recruitment-2026/issues/65)): Cloud Console › Credentials, new secret in
+  `GOOGLE_CLIENT_SECRET`, redeploy, old one disabled.
 - After recruitment (handover): add `vic.rh@g.enp.edu.dz` as Cloud project owner, Vercel team member, consider
   transferring the Master. The load-test plan's task 9 ([load-test.md](load-test.md#task-9--triggers-on-the-club-account)) moves the triggers
   to `vic.rh` once the owner has done its steps (pending); the same steps hand them to any later account.
