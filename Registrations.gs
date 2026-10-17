@@ -188,8 +188,14 @@ function processRegistrations_(ctx) {
   }
 }
 
-function assignUnassigned_(ctx) {
+/** Place the waiting interviewees until stopAt (ms): each is a write to a binome sheet, and a run must end before Google's
+ *  6 minutes. The rest wait for the next sync (ctx.leftWaiting counts them). */
+function assignUnassigned_(ctx, stopAt) {
   const I = ctx.iv.I;
+  ctx.leftWaiting = 0;
   if (!bool_(S_().ASSIGNMENTS_OPEN) || !activeBinomes_(ctx).length) return;
-  ctx.iv.data.forEach(r => { if (r[I.Status] === ST.UNASSIGNED) assignRow_(ctx, r); });
+  ctx.iv.data.forEach(r => {
+    if (r[I.Status] !== ST.UNASSIGNED) return;
+    if (Date.now() < stopAt) assignRow_(ctx, r); else ctx.leftWaiting++;
+  });
 }

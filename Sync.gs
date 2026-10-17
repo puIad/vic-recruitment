@@ -233,7 +233,7 @@ function runCycle_(opts) {
     detectEdits_(ctx); lap('edits');
     processRegistrations_(ctx);
     screenWaiting_(ctx); // before the assignment: a VIC member waiting for a binome is declined, not placed
-    assignUnassigned_(ctx); lap('regs');
+    assignUnassigned_(ctx, opts.assignBy !== undefined ? opts.assignBy : Date.now() + 90000); lap('regs');
     processInterviews_(ctx); lap('forms');
     if (opts.pull) pullBinomeFiles_(ctx, opts.force); lap('pull');
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });

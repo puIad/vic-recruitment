@@ -48,7 +48,18 @@ st = call('webState');
 const drafted = st.binomes.flatMap(b => b.people.map(p => p.email));
 assert.deepStrictEqual([drafted.length, new Set(drafted).size, st.binomes.slice(0, 3).map(b => b.people.map(p => p.email.split('@')[0]).join('+'))],
   [13, 13, ['ikram+yasmine', 'zineb+aya', 'aymene+sara']], 'everyone drafted once, the hand-made pairs first and as made');
-call('webRun', 'lock');
+// out of time after creating the sheets: nobody is placed by the Lock call, the next sync places each of them once
+run('var __rc = runCycle_; runCycle_ = function (o) { return __rc(Object.assign({}, o, { assignBy: 0 })); };');
+const waiting = call('webState').interviewees.filter(i => i.status === 'UNASSIGNED').length;
+const locked = call('webRun', 'lock').messages.join(' ');
+run('runCycle_ = __rc;');
+assert(locked.includes(waiting + ' waiting registrants will be assigned by the next sync'), locked);
+st = call('webState');
+assert.deepStrictEqual([st.interviewees.filter(i => i.binome).length, st.binomes.every(b => b.status === 'ACTIVE')], [0, true], 'locked, nobody placed yet');
+call('webRun', 'sync');
+const sheetCodes = call('webState').binomes.flatMap(b => run(`__files["${b.fileUrl.split('/d/')[1]}"].obj.sheets[0].getDataRange().getValues()`)
+  .slice(1).map(r => r[run('BFI').Code]).filter(Boolean));
+assert.deepStrictEqual([sheetCodes.length, new Set(sheetCodes).size], [waiting, waiting], 'each placed once');
 st = call('webState');
 assert(st.binomes.length > 3 && st.binomes.every(b => b.status === 'ACTIVE' && /\/d\//.test(b.fileUrl)), 'Lock creates every sheet');
 assert(st.interviewees.filter(i => i.binome).length > 0, 'interviewees placed in the new binomes');
