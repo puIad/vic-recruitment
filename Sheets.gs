@@ -108,8 +108,10 @@ function sameCell_(v, cell) {
 /** Write the table back, matching rows by key (Response Key, else the first column) and writing only the cells the script
  *  changed: a cell typed while the run was going keeps the hand value, a row deleted meanwhile stays deleted and a row
  *  inserted meanwhile stays (the baseline still has the old state, so the next run flags them). New rows go at the end.
- *  Only the rows that differ from the tab are written, in contiguous blocks: nothing changed, no write. */
-function saveTable_(t) {
+ *  Only the rows that differ from the tab are written, in contiguous blocks: nothing changed, no write.
+ *  theirs: a cell the script changed but someone else also changed since the load keeps their value (the Alerts tab: a
+ *  lock-free Resolve or an applied pending change written while a sync ran is not overwritten by the sync's older view). */
+function saveTable_(t, theirs) {
   if (!t.data.length) return;
   const kc = t.I['Response Key'] !== undefined ? t.I['Response Key'] : 0;
   const key = r => String(r[kc]);
@@ -124,7 +126,7 @@ function saveTable_(t) {
     // copied onto another row is left as it is
     if (p === undefined) { if (!o) added.push(r); return; }
     if (p < 0) return;
-    out[p] = o ? r.map((v, j) => (sameVal_(v, o[j]) ? now[p][j] : v)) : r;
+    out[p] = o ? r.map((v, j) => (sameVal_(v, o[j]) || (theirs && !sameVal_(now[p][j], o[j])) ? now[p][j] : v)) : r;
   });
   const all = out.concat(added);
   let from = -1;
@@ -245,7 +247,7 @@ function alertBuffer_(ctx) {
     },
     touch: function () { dirty = true; },
     flush: function () {
-      if (dirty) saveTable_(t);
+      if (dirty) saveTable_(t, true);
       if (!fresh.length) return;
       const s = S_();
       const minRank = SEV_RANK[String(s.INSTANT_EMAIL_MIN_SEVERITY).toUpperCase()] || SEV_RANK.MEDIUM;
