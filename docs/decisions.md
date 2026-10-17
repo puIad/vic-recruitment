@@ -54,14 +54,24 @@ Why the system is built the way it is. Read before changing behaviour; add a row
 
 ## Open questions
 
-1. Should the president and other board members interview at all? (Tick Exclude if not.) The team imported on
-   2026-10-03 has no Pair As `ALL` rows, so no ALL (board-led) binomes were drafted.
+All answered by the owner on 2026-10-17 (question 2 on 2026-10-04). None is open.
+
+1. Should the president and other board members interview? **Yes, as ordinary team members** paired by their own
+   department, never as `ALL` (board-led) binomes. So no ALL binomes are drafted.
 2. ~~Leftovers of the draft~~ **Settled 2026-10-04: kept as they are for now.** B.29 and B.30 are HR + HR (tag
    `HR`, so they only get HR candidates) and B.31 is one member alone. The Team tab is the live OT list. The owner
-   will adjust these binomes with Change members as the list settles.
-3. Should ALL (board) binomes receive fewer candidates? → `ALL_BINOME_WEIGHT` (1.25 in the live Settings). Only
-   matters if ALL binomes come back.
-4. Confirmation email to registrants with their code? (Not built.)
-5. Is the interview form's "Their 1st Department Choice" meant to equal the registration choice? 28 mismatches in 2025
-   suggest interviewers use it differently — maybe drop that check.
-6. If new-interviewee emails are too chatty, turn off `NOTIFY_BINOME_ON_NEW_INTERVIEWEE` (quota is fine: ~1500/day).
+   will adjust these binomes with Change members as the list settles. (The production binomes of 2026-10-15 replaced
+   these; B.29 and B.30 are again HR + HR.)
+3. Should ALL (board) binomes receive fewer candidates? **No.** There are no ALL binomes (question 1), so
+   `ALL_BINOME_WEIGHT` changes nothing; leave it as it is.
+4. Confirmation email to registrants with their code? **Yes.** It is an HTML + CSS email in the VIC design language,
+   and the same template carries every email the script sends: binome mails, admin alerts and the daily digest.
+   Planned in [launch-features.md](launch-features.md#4-emails-one-template-and-a-confirmation-to-registrants).
+5. What do the department choices mean? The 1st choice is the department the candidate wants most. The 2nd is the one
+   the binome looks at if the candidate doesn't fit the 1st after the interview. A candidate who picks the same
+   department twice really wants it, and it's just a club, so it must never count against them. **Keep both alerts,
+   for information only:** `SAME_CHOICES` drops from MEDIUM to INFO (no instant email, not a routing fix to make) and
+   `CHOICE_MISMATCH` stays INFO. Code change still to make (see STATUS.md).
+6. Should new-interviewee emails be turned down? **No.** `NOTIFY_BINOME_ON_NEW_INTERVIEWEE` stays on: binomes should
+   get the mail as soon as the candidate is assigned (the next 1-minute sync), so they can contact the candidate while
+   the candidate is still on their phone or PC.

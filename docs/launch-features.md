@@ -1,8 +1,8 @@
-# Plans: pairing, screening, department change
+# Plans: pairing, screening, department change, emails
 
 The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); screening (section 2)
 is live since 2026-10-17 (#33, @75/@76) but stays off until the owner links the members sheet (its Rollout); the
-department change is not built yet. Unlike [plans.md](plans.md), the first two are needed
+department change and the emails (section 4, asked 2026-10-17) are not built yet. Unlike [plans.md](plans.md), 1, 2 and 4 are needed
 before launch.
 
 | # | Feature | Needed by | Size |
@@ -10,6 +10,7 @@ before launch.
 | 1 | [Pairing](#1-pairing-random-with-experience-or-by-hand): random with experience, or by hand | the production Lock, before the form opens | script + UI, one PR |
 | 2 | [Screening](#2-screening-hold-low-effort-applications-decline-vic-members): hold low-effort applications, decline VIC members silently | the registration form going live | a calibration run, then script + UI, one PR |
 | 3 | [Department change](#3-change-a-binomes-department) from the dashboard | any time (a hand edit of the Tag works until then) | small, one PR |
+| 4 | [Emails](#4-emails-one-template-and-a-confirmation-to-registrants): one HTML template for every mail, and a confirmation to registrants (asked 2026-10-17) | the registration form going live | script + a logo PNG, one PR |
 
 Each ships the usual way ([HANDOFF](../HANDOFF.md#how-changes-ship)): branch, `npm test`, PR, merge, `npm run deploy`,
 then Vercel. The script only adds fields and actions, so no `API_VERSION` bump, and the UI treats a missing field as
@@ -357,6 +358,77 @@ Binomes › ⋯ › **Change department…**, a dialog like Sheet & dashboard ac
 | WebApp.gs | `webRun('binomeTag', {binome, depts, dryRun})` |
 | frontend | `app/binomes/components/tag-dialog.tsx`, the menu item, `actions.tsx` (preview, then confirm); the history page shows TAG rows |
 | tests | the tag written, the sheet repainted (mock), the history row, no manual-edit alert on the next sync, the next registration for the new department routed there; refused for an unknown binome, an empty choice, a member's account, a sheet the admin can't edit, a busy lock; the dry run writes nothing |
+
+## 4. Emails: one template, and a confirmation to registrants
+
+Asked by the owner on 2026-10-17 ([decisions.md](decisions.md#open-questions), question 4). Needed before the form
+opens (the confirmation), in one PR with the template. Not built.
+
+### Goal
+
+Every email the script sends looks like VIC: the charter colours and logo, a clear title, one call to action. A new
+registrant gets a confirmation with their code as soon as the sync has read their registration.
+
+### Today
+
+`mail_(to, subject, html)` (Sheets.gs) sends whatever HTML it is given, from "VIC Recruitment Bot". Each caller builds
+its own inline Arial HTML:
+
+| Email | Where | To |
+|---|---|---|
+| New interviewee(s) | `sendNewIntervieweeMails_` (Sync.gs) | both binome members |
+| Instant alerts | the alerts table's `flush` (Sheets.gs) | admins; the binome and covers for alerts that concern them |
+| Daily digest | Actions.gs | admins |
+| Joined / left a binome, you are in binome B.xx, covers | Members.gs (4 places) | members |
+| Quick-action mails (please check your registration, send the interview form again) | `sendMails_` (QuickFix.gs) | candidates, interviewers; text edited in the dashboard's preview |
+| Rejections | Screening.gs | declined applicants, after recruitment |
+
+### The template
+
+- `mailHtml_({title, intro, blocks, cta, footer})` in a new `Mail.gs`, returning a full HTML document. Every caller
+  above passes its content to it instead of building HTML; `mail_` is unchanged (TEST_MODE gate, logging).
+- Built for email clients, not browsers: a 600 px table layout, inline styles only (Gmail drops most of `<style>`),
+  hex colours from DESIGN.md's charter palette (`charter-blue` #127dbb header band, `charter-aqua` #69c4af accent,
+  `charter-ink` #141e27 text, `charter-gray` #efefef page), system fonts with Gilroy first (most clients won't load
+  it), a bulletproof button (a table cell with a link) for the call to action.
+- Logo: a PNG of `vic-logo-white.svg` added to `frontend/public/brand/` and loaded from
+  `https://vic-recruitment.vercel.app/brand/…` (Gmail blocks SVG and `data:` images). Alt text "VIC" so it reads
+  with images off.
+- Blocks the callers need: a paragraph, a key/value list (code, phone, availability), an alert table with severity
+  chips (HIGH / MEDIUM / INFO in the danger / warning / info colours), a stat line (the digest's counts).
+- Candidate-facing mails (confirmation, quick-action mails, rejections) and team-facing mails share the template; only
+  the footer differs (team mails link the dashboard and the binome sheet, candidate mails don't).
+- Quick-action mails stay plain text in the dashboard's editor; the script wraps the edited text in the template.
+- Light only, with colours that survive Gmail's dark-mode inversion (no white text on a transparent background).
+
+### The confirmation
+
+- Sent in the cycle that reads the registration, after Interviewees is saved (like the new-interviewee mail), to the
+  submitting email.
+- Who gets it: every registration that got a code and is waiting, assigned or held for review. Not a duplicate, not a
+  silently declined VIC member, not a registration without a usable email or name.
+- What it says: thanks, their code, that a binome will contact them, the dates if set. It must not promise an
+  interview (screening can still decline them), the same rule as the form's own confirmation message.
+- Setting `CONFIRM_REGISTRANTS` (Settings › Sharing and email), on by default. In TEST_MODE it goes to admins only,
+  through `mail_` as today.
+- A Flags or Interviewees note `CONFIRMED <date>` so a re-run never sends twice.
+
+### Changes
+
+| Where | What |
+|---|---|
+| Mail.gs (new) | `mailHtml_` and the block helpers, `esc_` on every value |
+| Sync.gs, Sheets.gs, Actions.gs, Members.gs, QuickFix.gs, Screening.gs | build their mails through `mailHtml_` |
+| Registrations.gs / Sync.gs | the confirmation, `CONFIRM_REGISTRANTS`, the sent mark |
+| Config.gs | the setting row |
+| frontend | the PNG logo; Settings › Sharing and email shows the new setting |
+| tests | each mail renders (snapshot of the HTML in the mock), every value escaped, the confirmation sent once, skipped for duplicates / declined VIC members / held-off setting, TEST_MODE |
+
+### Open, to settle with the owner before building
+
+- The confirmation's language (English, French or both) and its exact wording.
+- A preview of the template (one confirmation, one alert mail, one digest) sent to the owner's inbox before it
+  replaces the live mails.
 
 ## Decisions (owner, 2026-10-15)
 

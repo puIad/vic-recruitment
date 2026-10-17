@@ -14,31 +14,40 @@ No PR or issue is open.
 Launch features ([launch-features.md](docs/launch-features.md)):
 
 - Done: **pairing with experience** (#32, live 2026-10-15; the 32 production binomes were made with it and locked).
-- Done in code: **screening** (#33, live 2026-10-17). Off until the owner does rollout steps 3 and 4: Setup once as
-  `vic.rh`, link and share the members sheet in Settings › Screening, turn it on, test one member / one junk / one
-  decent application in TEST_MODE, then Send rejections… once.
+- Done in code: **screening** (#33, live 2026-10-17). The owner ran Setup and linked and shared the members sheet
+  (2026-10-17). Left: check the count on Settings › Screening, turn it on, then rollout step 4 (one member / one junk
+  / one decent application in TEST_MODE, then Send rejections… once).
 - Not built: **change a binome's department** from the dashboard (launch-features section 3; a hand edit of the Tag
   plus Accept works meanwhile).
+- Not built, planned 2026-10-17: **emails**, one HTML template in the VIC look for every mail the script sends, and a
+  confirmation with their code to every registrant (launch-features section 4). Needed before the form opens. Two
+  things to settle first: the confirmation's language and wording, and a preview in the owner's inbox.
+- Not built, small: `SAME_CHOICES` from MEDIUM to INFO, and its quick-action hint no longer treats it as a mistake
+  ([decisions.md](docs/decisions.md#open-questions), question 5). Code PR.
 - Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
   weight that gives pure `HR` binomes (B.29, B.30) their share of HR candidates. The owner wants it after screening.
 
 Done since 2026-10-15: the 2026-10-17 audit fixes (#37–#43, @81/@82), the Google profile picture (#36), the Owner
 check on `TRIGGER_OWNER` (#34), the old Apps Script dashboard retired, and every open and muted alert loaded (#44).
+Owner, 2026-10-17: Setup run as `vic.rh`, the members sheet linked and shared, the B.03 email typo fixed, and every
+[open question](docs/decisions.md#open-questions) answered (board members are ordinary team members, no ALL
+binomes; the confirmation email is planned; `SAME_CHOICES` becomes INFO; new-interviewee mails stay on).
 
 Left, owner (in order):
 
-1. Setup once as `vic.rh` from the Master's menu (pairing's checkbox rule, screening's status colours).
-2. Screening rollout steps 3 and 4 (above).
-3. Fix the B.03 email typo (`enp` twice) and verify B.08's guessed email: Change members › Replace.
-4. Reword the 2026 forms (they still say 2025; the confirmation must not promise an interview).
-5. Answer the [open questions](docs/decisions.md#open-questions) (board members interviewing, confirmation email…).
-6. Give admins edit access to the Binome Sheets folder; timing limits back to 24 / 48 / 12.
-7. Live checks still open: #37 (`=1+1` in a form, a Discord handle starting with `-`), #30 (the member shared by hand
+1. Screening: turn it on and test (above).
+2. Verify B.08's guessed email `rami.ahmane@g.enp.edu.dz` (Change members › Replace if wrong).
+3. Reword the 2026 forms (they still say 2025; the confirmation must not promise an interview). Settle the
+   confirmation email's language and wording at the same time.
+4. Give admins edit access to the Binome Sheets folder; timing limits back to 24 / 48 / 12.
+5. Live checks still open: #37 (`=1+1` in a form, a Discord handle starting with `-`), #30 (the member shared by hand
    during task 8 still gets in: set that binome to No access), the other-account checks
    ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines.
-8. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
-9. Load-test task 10: load test again and sign off before members get the dashboard.
-10. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
+6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
+7. Load-test task 10: load test again and sign off before members get the dashboard.
+8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
+
+Left, code (in order): the emails (section 4), `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
 
 ## Live now
 
@@ -93,14 +102,12 @@ Left, owner (in order):
 - **Script, earlier:** web app **@75**, API **@76**, deployed from `9aaad16` (2026-10-17,
   [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): screening (`Screening.gs`), the silent VIC-member decline, the
   rejection email, the name swap. `npm test` passed, 19 files pushed; the live project pulled back afterwards: all 19 equal to
-  `main`. **To do (owner):** run Setup once as `vic.rh` from the Master's menu, then link the members sheet in Settings ›
-  Screening and turn screening on.
+  `main`. The owner ran Setup as `vic.rh` and linked and shared the members sheet (2026-10-17); turning screening on is left.
 - **Script, before that:** web app **@73**, API **@74**, deployed from `87a7871` (2026-10-15,
   [#32](https://github.com/puIad/vic-recruitment-2026/pull/32)): pairing with experience. Team column G **Experienced**
   (Import ticks the 2025 team), the draw gives new members an experienced partner when there are enough, and the draft
   actions `draftPair` / `draftUnpair` / `draft {keep}` / `teamSet`. No `API_VERSION` bump. 18 files pushed; the live project
-  pulled back afterwards: all 18 equal to `main`. **To do (owner):** run Setup once as `vic.rh` from the Master's menu (the
-  checkbox rule on column G), then the production pairing: [launch-features.md](docs/launch-features.md#rollout).
+  pulled back afterwards: all 18 equal to `main`. Setup run and the production pairing done (2026-10-15 / 2026-10-17).
   Versions @71 / @72 were cut after @69 / @70 without an entry here (most likely #31's deploy on 2026-10-10); this deploy
   pushed all of `main`, so #31's Interview Day fix is live either way.
 - **Script, before that:** web app **@69**, API **@70**, deployed from `6b690e5` (2026-10-07,
@@ -160,8 +167,8 @@ Left, owner (in order):
   - 32 binomes locked, every one a pair, sheets created, **not shared**: B.01–B.10, B.31, B.32 `IT & HR` (12);
     B.11–B.19 `COMM & HR` (9); B.20–B.28 `FLER & HR` (9); B.29, B.30 `HR` (2, two HR members). Mix: 21 experienced
     with new, 8 both experienced, **3 both new** (B.10, B.11, B.18).
-  - **B.03 still has the typo email** `mohamed_louai.bahlouli@g.enp.enp.edu.dz` (`enp` twice), in Binomes and Team.
-    B.08 has the guessed `rami.ahmane@g.enp.edu.dz`. Fix before launch (Change members › Replace).
+  - B.03's typo email (`enp` twice) was fixed by the owner on 2026-10-17. B.08 still has the guessed
+    `rami.ahmane@g.enp.edu.dz`: verify before launch (Change members › Replace).
   - Registration Responses and Interviewees still hold the 273 applications of 2025 fed in on 2026-10-04. The Reset
     put them back to waiting and the Lock **assigned all 273 to the production binomes** (Assigned At 15/10 13:07), so
     the new binome sheets hold test candidates and the test timing limits will raise NOT_CONTACTED alerts to the
@@ -193,16 +200,16 @@ Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with expe
 (@73/@74 and Vercel from `87a7871`) and the owner used it for the production binomes on 2026-10-15 (above). Screening
 (hold low-effort applications for review, decline VIC members silently, the rejection email, plus the name swap) is
 merged and deployed ([#33](https://github.com/puIad/vic-recruitment-2026/pull/33), @75/@76 and Vercel from `9aaad16`, 2026-10-17),
-calibrated with the owner on the 273 applications of 2025 (11 held at 50). Still to do (owner): Setup once, then link the
-members sheet in Settings › Screening and turn it on. Not built yet: changing a binome's department from the dashboard.
+calibrated with the owner on the 273 applications of 2025 (11 held at 50). The owner ran Setup and linked the
+members sheet (2026-10-17); turning it on is left. Not built yet: changing a binome's department from the dashboard.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
 In order. Each step says where to do it.
 
 1. ~~**Fix the two IT members without an email.**~~ Done 2026-10-04: emails added, paired with Pair two… (#15) as
-   B.32. **One of the two emails has a typo:** `mohamed_louai.bahlouli@g.enp.enp.edu.dz` (`enp` twice), now in B.03
-   of the production binomes. Fix it before launch (Change members › Replace with the right address, or edit the Binomes cell and Apply).
+   B.32. One of the two emails had a typo (`enp` twice), later in B.03 of the production binomes; the owner fixed it on
+   2026-10-17.
 2. ~~**Settle the leftovers of the draft.**~~ Settled: B.29 / B.30 (HR + HR) and B.31 (alone) stay as they are for
    now. The Team tab is the live OT list; the owner adjusts them with Change members as it settles
    ([decisions.md](docs/decisions.md#open-questions), question 2).
@@ -211,8 +218,8 @@ In order. Each step says where to do it.
    editor, a removed ENP account ("No access", no flash of the dashboard), a viewer ("View only"), a multi-account
    browser, sign-out then sign-in within 48 h. Then share the URL with the editors.
 5. **Before launch, by about 2026-10-20:** reword the 2026 forms (they still say 2025 in places); verify the guessed
-   email `rami.ahmane@g.enp.edu.dz` (now in B.08); fix the B.03 email (step 1); answer the
-   [open questions](docs/decisions.md#open-questions); give admins edit access to the Binome Sheets folder (Change
+   email `rami.ahmane@g.enp.edu.dz` (now in B.08); ~~fix the B.03 email~~ (done 2026-10-17); ~~answer the
+   [open questions](docs/decisions.md#open-questions)~~ (done 2026-10-17); give admins edit access to the Binome Sheets folder (Change
    members / Cover / Apply need it); timing limits back to 24 / 48 / 12 in Settings › Alerts and timing.
 6. **Full simulation on real data, before TEST_MODE goes off.** Feed the 273 applications of 2025 (Drive: VIC
    Recruitment 2026 › "Last Year Registration Applications", tab RAW, same 34 columns as Registration Responses) into
