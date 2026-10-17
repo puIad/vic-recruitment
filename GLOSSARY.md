@@ -24,6 +24,11 @@ A change someone made on the dashboard to one value (one alert's status, one set
 that has been accepted but is not yet in the Master or the binome sheet. Only its author sees it before it is applied.
 _Avoid_: queued write, cached write, draft
 
+**Direct write**:
+A change made on the dashboard that is written into the Master or the binome sheet while its author waits, without
+becoming a pending change. Every change is a direct write while the owner has pending changes switched off.
+_Avoid_: slow path, legacy write, sync write
+
 **Applying**:
 Writing a pending change into the Master or the binome sheet as the person who made it.
 _Avoid_: flushing, syncing, saving
