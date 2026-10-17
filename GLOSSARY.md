@@ -17,6 +17,12 @@ _Avoid_: binome file, binome tab
 The timed cycle that reads the forms and the binome sheets into the Master and raises alerts.
 _Avoid_: refresh, flush
 
+**Snapshot**:
+The copy of the Master that every dashboard screen shows, published again when the data changed (mostly by the sync).
+A change in the sheet reaches other people's screens only when a snapshot that includes it is published; until then its
+author's screen keeps showing their value.
+_Avoid_: cache, live data, state
+
 ## Changes made on the dashboard
 
 **Pending change**:
