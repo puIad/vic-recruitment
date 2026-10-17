@@ -29,11 +29,25 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@79**, API **@80**, deployed from `6cec554` (2026-10-17,
+- **Script, latest:** web app **@81**, API **@82**, deployed from `e80e7fd` (2026-10-17, the 2026-10-17 audit fixes
+  [#37](https://github.com/puIad/vic-recruitment-2026/pull/37)–[#43](https://github.com/puIad/vic-recruitment-2026/pull/43)):
+  candidate text starting with `=` `+` `-` written as text (plain-text columns left as they are); the Interview Log written
+  after Interviewees is saved; alert IDs numbered from the highest one; placing waiting candidates stops before the 6-min
+  limit; row deletes in binome sheets take the members' lock; the old Apps Script dashboard retired (`doGet` = a link to
+  Vercel, `Index.html` / `NoAccess.html` deleted, `switchUrl` gone); My binome saves every changed field in one `memberSet`
+  call. 17 files pushed, all equal to `main` when pulled back. Vercel production from `e80e7fd` (real build: npm install +
+  Vite, 3,458 modules), no runtime errors. The new page went live ~20 s before the script (17:20:15 vs ~17:20:36 UTC): a
+  My binome Save in that window would have said "Not allowed".
+  Live load test after the deploy (`vic.rh`, read-only, 3 min): 15 editors, 1,141 calls, 2 failed (Google's per-account
+  limit, right after the 25-editor run), first dashboard p50 4.9 s, `webState` p50 1.7 s. 25 editors on one account hit
+  that limit 319 times (12.3 calls/s), a test artifact: people use their own accounts. First dashboard p50 5.2 s against
+  11.6 s on 2026-10-05. Still open: the live checks in #37 (`=1+1` in a form, a Discord handle starting with `-`) and the
+  old web app URL showing the link.
+- **Script, before that:** web app **@79**, API **@80**, deployed from `6cec554` (2026-10-17,
   [#36](https://github.com/puIad/vic-recruitment-2026/pull/36)): `webAccess` returns `photo` (Drive `about.get` photoLink,
   per-user cache 6h); the sidebar, Account page and no-access gate show it, initials as fallback. CSP `img-src` allows
   `*.googleusercontent.com`. Vercel production from `6cec554`.
-- **Script, before that:** web app **@77**, API **@78**, deployed from `634193a` (2026-10-17,
+- **Script, earlier:** web app **@77**, API **@78**, deployed from `634193a` (2026-10-17,
   [#34](https://github.com/puIad/vic-recruitment-2026/pull/34)): the dashboard's **Owner** (role badge, Setup button, the
   `webRun('setup')` gate) is now `TRIGGER_OWNER` (`vic.rh`), or the Master's Drive owner while it is unset. Drive still lists
   `mourad_islam.fernane@` as the Master's owner and `vic.rh@` as a writer; re-protecting binome sheets still needs that Drive
