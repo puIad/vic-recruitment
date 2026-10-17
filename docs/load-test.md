@@ -582,8 +582,9 @@ partner's is stopped and shown.
   `7,5`; an Interview Day that rolls over, like 31/02, is refused; Time is strict `HH:mm`). Opens `MEMBER_MAP`'s `f` with the
   member's own access ("isn't shared with you yet" otherwise), refuses a sheet whose header isn't the current layout.
 - **Lock:** `memberLock_()` = `LockService.getDocumentLock()`, or the script lock when that is null; `tryLock(10000)`, refused
-  → `BUSY:` (the page shows it as not saved, Try again). **Live check still to do:** whether the document lock is null under
-  `scripts.run` (either way it works; with the script lock members queue behind the sync).
+  → `BUSY:` (the page shows it as not saved, Try again). **Checked live 2026-10-17 ([#59](https://github.com/puIad/vic-recruitment-2026/issues/59)):** under
+  `scripts.run` the document lock is never null, for admins and for members, so members never fall back to the script lock
+  (see the last note).
 - **Write:** Interview Day as a `Date` (midnight in `TIMEZONE`: a real date whatever the sheet's locale), Time as the
   string `HH:mm` (Sheets parses it as a time in every locale), Rating a number, Done a boolean, Notes with a leading `'` (stay
   text: no formula, no date). **Live check:** the date and time land as real date / time in the fr_FR sheet.
@@ -663,6 +664,12 @@ partner's is stopped and shown.
   edits each kind of field; check the date and time land as real date / time in the fr_FR sheet, the Master after the next
   sync, a conflict, and in Apps Script › Executions whether `memberSet` ran under the document lock (no `BUSY` while a sync
   runs). Put everything back after. Same session as task 7's real member sign-in ([member-access-tests.md](member-access-tests.md)).
+- **Document lock under `scripts.run` (2026-10-17, [#59](https://github.com/puIad/vic-recruitment-2026/issues/59)):** not null, and
+  `tryLock(1000)` succeeds, for the Master's owner (vic.rh), an editor (admin), and a binome member who is not an editor.
+  It is one lock for everyone: while the member held it, three admin calls each waited 1 s and were refused, and so was a
+  second member call. Method: a throwaway read-only `lockProbe` pushed with origin/main to a temporary API deployment (@87),
+  called through `scripts.run` with each person's token from a local copy of the sign-in (localhost:3000); then origin/main
+  pushed back, the deployment deleted, and a `clasp pull` confirmed the live files equal main.
 
 ---
 
