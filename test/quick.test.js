@@ -276,4 +276,14 @@ let oddCode;
   assert(ids.every(id => open().some(a => a.id === id)), 'a nudge does not close the alerts');
 }
 
+// ---- alert IDs: numbered from the highest one there is (rows deleted by hand never free an ID), and past A-9999 ----
+{
+  const raise = ids => run(`(function () { var sh = master.getSheetByName('Alerts');
+    sh.cells = [sh.cells[0]].concat(${JSON.stringify(ids)}.map(function (id, i) { var r = sh.cells[1].slice(); r[0] = id; r[10] = 'OLD|' + i; return r; }));
+    var ctx = loadCtx_(); ctx.alerts.add({ severity: 'INFO', type: 'ODD_VALUE', msg: 'test', key: 'ID-TEST|' + Math.random() }); ctx.alerts.flush();
+    return sh.cells[sh.cells.length - 1][0]; })()`);
+  assert.strictEqual(raise(['A-0100', 'A-0051']), 'A-0101', 'after A-0001 to A-0050 were deleted');
+  assert.strictEqual(raise(['A-9999']), 'A-10000');
+}
+
 console.log('QUICK OK');
