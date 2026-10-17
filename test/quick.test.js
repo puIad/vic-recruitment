@@ -111,6 +111,7 @@ let oddCode;
   const a = find('ODD_VALUE', x => x.code === oddCode);
   const iso = yy => yy + '-' + p2(wk.getMonth() + 1) + '-' + p2(wk.getDate());
   assert.deepStrictEqual([a.q.check, a.q.date, a.q.time, a.q.regYear], ['YEAR', iso(y - 1), '14:00', String(new Date(Date.now() - 3 * 864e5).getFullYear())]);
+  assert.strictEqual(run(`fmt_(new Date(${a.q.atMs}), 'yyyy-MM-dd HH:mm')`), iso(y - 1) + ' 14:00', 'atMs: the interview as a timestamp, for a pending snooze');
   assert.throws(() => quick('setCell', a.id, { date: y + '-02-31', time: '14:00' }), /not a real date/);
   const out = quick('setCell', a.id, { date: iso(y), time: '14:00' });
   assert(out.messages[0].includes('interview on ' + dd + '/' + y + ' at 14:00, written in the sheet of'), out.messages[0]);
