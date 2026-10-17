@@ -9,7 +9,9 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-No PR or issue is open.
+No PR is open. Open issues: [#64](https://github.com/puIad/vic-recruitment-2026/issues/64) and
+[#65](https://github.com/puIad/vic-recruitment-2026/issues/65) (before task 10), and next season's pending-changes
+slices #66–#70 (`needs-triage`).
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
@@ -30,6 +32,12 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   ([decisions.md](docs/decisions.md#open-questions), question 5). Code PR.
 - Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
   weight that gives pure `HR` binomes (B.29, B.30) their share of HR candidates. The owner wants it after screening.
+- Moved to next season (2026-10-17): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
+  settings and My binome. The build doesn't fit before task 10 (by 2026-10-20), so every save stays a direct write
+  this season. Two pieces ship now: skip Vercel builds on doc-only pushes
+  ([#64](https://github.com/puIad/vic-recruitment-2026/issues/64)) and sign-ins per browser
+  ([#65](https://github.com/puIad/vic-recruitment-2026/issues/65): no revoke at the 48 h end, no consent screen when
+  signing back in). Plan: [plans.md](docs/plans.md#pending-changes-the-build-plan).
 
 Done since 2026-10-15: the 2026-10-17 audit fixes (#37–#43, @81/@82), the Google profile picture (#36), the Owner
 check on `TRIGGER_OWNER` (#34), the old Apps Script dashboard retired, and every open and muted alert loaded (#44).
@@ -39,6 +47,9 @@ binomes; the confirmation email is planned; `SAME_CHOICES` becomes INFO; new-int
 
 Left, owner (in order):
 
+0. Rotate the OAuth client secret (Cloud Console › Credentials: add a new secret, set `GOOGLE_CLIENT_SECRET` in
+   Vercel, redeploy, disable the old one). It was pasted in a build chat, and sign-ins per browser (#65) can't go live
+   before it.
 1. Screening: turn it on and test (above).
 2. Verify B.08's guessed email `rami.ahmane@g.enp.edu.dz` (Change members › Replace if wrong).
 3. Reword the 2026 forms (they still say 2025; the confirmation must not promise an interview). Settle the
@@ -48,10 +59,12 @@ Left, owner (in order):
    during task 8 still gets in: set that binome to No access), the other-account checks
    ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines.
 6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
-7. Load-test task 10: load test again and sign off before members get the dashboard.
+7. Load-test task 10: load test again and sign off before members get the dashboard, with the sign-in checks of #65
+   ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)).
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
 Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
+Side by side with these, before task 10: skip doc-only builds (#64), then sign-ins per browser (#65) once the secret is rotated.
 
 ## Live now
 
@@ -246,6 +259,8 @@ In order. Each step says where to do it.
 
 - **Schedule** (calendar of the interviews set, plus admin events saved in the Master) and **Analytics** (a profile
   for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).
+- **Pending changes** (near-instant saves), next season: slices 0 and 2–5 in
+  [docs/plans.md](docs/plans.md#pending-changes-the-build-plan), issues #66–#70, starting with the re-check.
 - **Binome desk** dropped (2026-10-04); remove the page in the next UI PR.
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.

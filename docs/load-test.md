@@ -727,7 +727,8 @@ editor of the protections; make sure the Master's owner stays able to edit the p
 
 ## Task 10 — Load test again, then sign off
 
-**Read first.** `test/load.js`, this file's [appendix](#appendix-the-evidence), tasks 1–9's Notes.
+**Read first.** `test/load.js`, this file's [appendix](#appendix-the-evidence), tasks 1–9's Notes, and
+[slice 1 of the pending-changes plan](plans.md#slice-1-sign-ins-per-browser) for the sign-in checks below.
 
 **Do.**
 - Update the model in `test/load.js` to the new behaviour: Google's per-account limit on execution requests
@@ -746,6 +747,35 @@ editor of the protections; make sure the Master's owner stays able to edit the p
 - Vercel Usage on track for the month on Hobby.
 
 Then the owner decides to open the dashboard to the binomes (STATUS.md, launch steps).
+
+**Sign-ins per browser (this season).** Before this run, the OAuth client secret is rotated and
+[slice 1](plans.md#slice-1-sign-ins-per-browser) is live. Check live, with real ENP accounts:
+- Signing back in on a browser whose sign-in is past its 48 h: one account picker, no consent screen, and the same
+  person's other browser keeps working throughout. To have such a browser on the day, sign in on a spare browser profile
+  at least 48 h before and don't open the dashboard there until slice 1 is live (today's code revokes on the first call
+  after the 48 h, which signs that person out everywhere).
+- A switch onto a cookie past its 48 h: a second account signs in on that browser. The first person's other browser
+  keeps working, and nothing of theirs is revoked.
+- A reused token Google refuses goes to the consent screen: person X is signed in on browsers A and B, removes the
+  dashboard's access in their Google account (Security › third-party connections), signs in on B (consent, a new
+  grant), then signs in on A: one consent screen, then in, and B keeps working.
+
+**Pending changes (next season, not part of this season's run).** Pending changes moved to next season
+([the build plan](plans.md#pending-changes-the-build-plan)). When this task runs again after slices 2 to 5 are live,
+with pending changes switched on, it adds:
+- The model: the pending path in `test/load.js` (the accept step inside `/api/run`, the consumer's invocations and its
+  `scripts.run` calls, about 3 Redis commands per change plus the reads that ride on the poll, Queues operations).
+- An account switch with changes pending: no revoke until the earlier person's last change ends, then the revoke. A
+  save in the last minutes of a sign-in still applies.
+- A deploy with changes pending (the old deployment's consumer applies them); an Instant Rollback with changes queued on
+  the newer deployment (they drain there); an old tab after a change-format bump (refused, direct write, reload prompt);
+  a deleted deployment's change ending dropped ("retries ran out") at its token end.
+- Redis reads per click while changes are pending, riding on the poll: about 6 a click, no extra invocations.
+- Pass marks, switch on: click to screen p95 < 200 ms; safe (the accept step answered) p95 ≤ 1 s on a page that is
+  polling; in the sheet (applied or already met) p95 ≤ 2 min from the click; every accepted change ends applied, already
+  met or dropped, none lost and none applied twice; Redis ≤ 500K commands and Queues ≤ 1M operations a month at the
+  load-test rate; Vercel invocations still on track for Hobby.
+- Then switch pending changes off mid-run: queued changes drain, new saves are direct writes.
 
 **Notes.**
 

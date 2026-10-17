@@ -1,5 +1,5 @@
 ---
-status: accepted (provisional on the accept-step spike)
+status: accepted (the accept-step spike held with the accept step inside api/run.js; built next season, docs/plans.md)
 ---
 
 # Dashboard saves become pending changes on Vercel Queues
