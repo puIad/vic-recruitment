@@ -243,7 +243,8 @@ function alertBuffer_(ctx) {
       const perRecipient = {};
       // one copy of each alert per person, even if they are admin + member + cover, or cover the same interviewee twice
       const push = (email, a) => { const list = perRecipient[email] = perRecipient[email] || []; if (list.indexOf(a) < 0) list.push(a); };
-      let n = t.data.length;
+      // numbered from the highest ID there is: rows deleted by hand never free an ID (two rows with one ID can't be saved or closed)
+      let n = t.data.reduce((m, r) => Math.max(m, Number(String(r[I.ID]).replace(/^A-/, '')) || 0), 0);
       const rows = fresh.map(a => {
         n++;
         const to = [];
@@ -253,7 +254,7 @@ function alertBuffer_(ctx) {
           ctx.binByCode[a.binome].members.forEach(m => { if (m.email) { push(m.email, a); if (to.indexOf(m.email) < 0) to.push(m.email); } });
           (ctx.coverMap[a.code] || []).forEach(e => { push(e, a); if (to.indexOf(e) < 0) to.push(e); }); // whoever covers that interviewee
         }
-        return ['A-' + ('0000' + n).slice(-4), ctx.now, a.severity, a.type, a.code || '', a.binome || '', a.msg,
+        return ['A-' + String(n).padStart(4, '0'), ctx.now, a.severity, a.type, a.code || '', a.binome || '', a.msg,
           to.join(', '), a.status || 'OPEN', a.status && a.status !== 'OPEN' ? ctx.now : '', a.key || ''];
       });
       t.sh.getRange(t.sh.getLastRow() + 1, 1, rows.length, ALERT_H.length).setValues(rows);
