@@ -362,7 +362,7 @@ Binomes › ⋯ › **Change department…**, a dialog like Sheet & dashboard ac
 ## 4. Emails: one template, and a confirmation to registrants
 
 Asked by the owner on 2026-10-17 ([decisions.md](decisions.md#open-questions), question 4). Needed before the form
-opens (the confirmation), in one PR with the template. Built in PR_LINK, in review, not deployed.
+opens (the confirmation), in one PR with the template. Built in [#45](https://github.com/puIad/vic-recruitment-2026/pull/45), in review, not deployed.
 
 ### Goal
 
@@ -432,7 +432,7 @@ its own inline Arial HTML:
 
 ### Notes
 
-- 2026-10-17: built in PR_LINK, in review, not deployed. All suites pass, typecheck clean. Mails checked as rendered
+- 2026-10-17: built in [#45](https://github.com/puIad/vic-recruitment-2026/pull/45), in review, not deployed. All suites pass, typecheck clean. Mails checked as rendered
   HTML at 680 px and 375 px (logo loaded, and with images off: the alt text "VIC" shows in the blue band), and the new
   setting on the mock's Settings › Sharing and email.
   - `Mail.gs`: `mailHtml_({title, intro, blocks, cta, footer})` and the blocks `mailP_` (escaped text; a blank line is a
