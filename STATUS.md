@@ -9,7 +9,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-No PR or issue is open.
+One PR is open: the emails (PR_LINK).
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
@@ -19,9 +19,10 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   / one decent application in TEST_MODE, then Send rejections… once).
 - Not built: **change a binome's department** from the dashboard (launch-features section 3; a hand edit of the Tag
   plus Accept works meanwhile).
-- Not built, planned 2026-10-17: **emails**, one HTML template in the VIC look for every mail the script sends, and a
-  confirmation with their code to every registrant (launch-features section 4). Needed before the form opens. Two
-  things to settle first: the confirmation's language and wording, and a preview in the owner's inbox.
+- In review: **emails** (PR_LINK), one HTML template in the VIC look for every mail the script sends, and a
+  confirmation with their code to every registrant (launch-features section 4). Needed before the form opens. Left:
+  the confirmation's language and wording (English placeholder in `CONFIRM_MAIL`, Mail.gs), a preview in the owner's
+  inbox, then merge (Vercel serves the logo) before `npm run deploy`.
 - Not built, small: `SAME_CHOICES` from MEDIUM to INFO, and its quick-action hint no longer treats it as a mistake
   ([decisions.md](docs/decisions.md#open-questions), question 5). Code PR.
 - Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
@@ -47,7 +48,7 @@ Left, owner (in order):
 7. Load-test task 10: load test again and sign off before members get the dashboard.
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
-Left, code (in order): the emails (section 4), `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
+Left, code (in order): the emails (section 4, in review), `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
 
 ## Live now
 

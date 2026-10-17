@@ -567,7 +567,8 @@ function sendMails_(ctx, rows, to, drafts) {
   if (!gs.length) throw new Error('Nothing to send: the alerts are closed or have nobody to email.');
   if (gs.some(g => !by[g.id].subject || !by[g.id].body)) throw new Error('Every email needs a subject and a text.');
   gs.forEach(g => {
-    const d = by[g.id], html = '<div style="font-family:Arial;font-size:13px;line-height:1.5">' + esc_(d.body).replace(/\n/g, '<br>') + '</div>';
+    // the edited plain text, wrapped in the template; candidate footer (no internal links): some go to candidates
+    const d = by[g.id], html = mailHtml_({ title: d.subject.replace(/^\[VIC Recruitment\]\s*/, ''), blocks: [mailP_(d.body)] });
     g.emails.forEach(e => mail_(e, d.subject, html));
     g.alerts.forEach(r => {
       const had = String(r[A['Emailed To']] || '').split(/,\s*/).filter(Boolean);

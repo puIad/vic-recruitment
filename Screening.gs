@@ -222,15 +222,15 @@ function rejectionsCore_(a) {
       subject: REJECT_SUBJECT, body: REJECT_BODY, testMode: bool_(S_().TEST_MODE) };
   }
   if (!subject || !body) throw new Error('The email needs a subject and a text.');
-  const html = first => '<div style="font-family:Arial;font-size:14px">' + esc_(body.replace(/\{first\}/g, first)).replace(/\n/g, '<br>') + '</div>';
+  const html = (first, note) => mailHtml_({ title: subject, blocks: (note ? [mailP_(note)] : []).concat(mailP_(body.replace(/\{first\}/g, () => first))) });
   const t0 = Date.now(), budget = Number(a.budgetMs) || 240000;
   const res = withLock_(() => {
     const ctx = loadCtx_(), I = ctx.iv.I, list = rejectionList_(ctx);
     detectEdits_(ctx);
     if (bool_(S_().TEST_MODE)) {
       const me = Session.getActiveUser().getEmail();
-      if (list.length) mail_(me, '[TEST] ' + subject, '<p><i>Test mode: this copy went to you only. With test mode off it goes to ' +
-        list.length + ' declined applicant(s).</i></p>' + html(String(list[0][I['First Name']]).trim() || 'there'));
+      if (list.length) mail_(me, '[TEST] ' + subject, html(String(list[0][I['First Name']]).trim() || 'there',
+        'Test mode: this copy went to you only. With test mode off it goes to ' + list.length + ' declined applicant(s).'));
       return { sent: 0, left: list.length, test: true };
     }
     let i = 0, sent = 0, failed = 0;

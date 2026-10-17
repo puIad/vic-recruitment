@@ -77,7 +77,7 @@ function driveErr_(e) {
   return /enabling APIs/i.test(m) ? 'the Google Drive API is off in the Cloud project of the script: its owner must enable it' +
     ' (Cloud Console › APIs & Services › Library › Google Drive API) — ' + m : m;
 }
-function esc_(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function esc_(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function idx_(headers) { const o = {}; headers.forEach((h, i) => { o[h] = i; }); return o; }
 
@@ -167,6 +167,7 @@ function loadCtx_() {
     files: {},          // fileId -> first Sheet (cache)
     books: {},          // fileId -> Spreadsheet (cache)
     mailNew: {},        // binomeCode -> [iv rows] newly assigned this run
+    confirm: [],        // iv rows of the registrations read this run: the confirmation candidates
     alerts: null,
     snapVer: Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0), // publishState_: was it dropped since?
   };
@@ -271,12 +272,12 @@ function alertBuffer_(ctx) {
       Object.keys(perRecipient).forEach(email => {
         const list = perRecipient[email];
         const isAdmin = admins.indexOf(email) >= 0;
-        const html = '<p>' + (isAdmin ? 'New recruitment alert(s):' : 'Hi! Something needs your attention in the recruitment process:') + '</p>' +
-          '<table cellpadding="6" style="border-collapse:collapse;font-family:Arial;font-size:13px">' +
-          list.map(a => '<tr style="border-bottom:1px solid #ddd"><td><b style="color:' + (a.severity === 'HIGH' ? '#c62828' : a.severity === 'MEDIUM' ? '#ef6c00' : '#555') + '">' +
-            a.severity + '</b></td><td>' + esc_(a.type) + '</td><td>' + esc_(a.code || '') + '</td><td>' + esc_(a.msg) + '</td></tr>').join('') +
-          '</table>' + (isAdmin ? '<p><a href="' + ss_().getUrl() + '">Open the master sheet</a></p>' :
-          (ctx.binByCode[list[0].binome] && ctx.binByCode[list[0].binome].fileUrl ? '<p><a href="' + ctx.binByCode[list[0].binome].fileUrl + '">Open your binome sheet</a></p>' : ''));
+        const sheet = !isAdmin && ctx.binByCode[list[0].binome] ? ctx.binByCode[list[0].binome].fileUrl : '';
+        const html = mailHtml_({ title: list.length + ' new alert' + (list.length > 1 ? 's' : ''),
+          intro: isAdmin ? 'New recruitment alert(s):' : 'Hi! Something needs your attention in the recruitment process:',
+          blocks: [mailAlerts_(list.map(a => [a.severity, a.type, a.code || '', a.msg]))],
+          cta: isAdmin ? { label: 'Open the master sheet', url: ss_().getUrl() } : { label: 'Open your binome sheet', url: sheet },
+          footer: mailTeamFooter_(sheet) });
         mail_(email, '[VIC Recruitment] ' + list.length + ' alert' + (list.length > 1 ? 's' : '') + (list.some(a => a.severity === 'HIGH') ? ' (HIGH)' : ''), html);
       });
       fresh.length = 0;

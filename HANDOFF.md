@@ -53,7 +53,8 @@ mock reseeds it and signs everyone out: open `/dev-login?as=…` again. More: [d
 
 - Every write to the Master happens inside `withLock_`. A run that writes Binomes or Interviewees calls
   `detectEdits_(ctx)` after `loadCtx_()` and `commitBase_(ctx)` after writing, or its own writes get flagged as manual edits.
-- Mail goes through `mail_()` and sharing checks TEST_MODE: never call `MailApp` / `addEditor` directly.
+- Mail goes through `mail_()` and sharing checks TEST_MODE: never call `MailApp` / `addEditor` directly. Build the HTML
+  with `mailHtml_()` (Mail.gs); the tests fail on any mail that skips it.
 - Pure logic lives in Matching.gs / Rules.gs (unit-tested); everything touching Google services is tested on the mock
   (`test/mockgas.js`); extend the mock when you use a new Apps Script API.
 - Dashboard actions go through `webRun(action, args)`; long ones take a time budget so they end before Vercel's 300 s.

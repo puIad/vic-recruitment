@@ -1,6 +1,7 @@
 // Minimal in-memory mock of the Apps Script services used by the .gs files (evaluated inside the same vm realm)
 var __files = {};     // id -> {kind, obj, lastUpdated, parent, editors}
 var __outbox = [];
+var __untemplated = []; // subjects of mails not built by mailHtml_ (test/gs.js fails the suite)
 var __uiQueue = [];   // scripted answers for prompts/alerts
 var __uiLog = [];
 var __idc = 0;
@@ -231,7 +232,7 @@ var __lockBusy = false; // a test sets it to make the script lock refuse
 var __docLockBusy = false; // the same for the document lock (members' edits)
 var LockService = { getScriptLock() { return { tryLock: () => !__lockBusy, waitLock: () => true, releaseLock: () => { } }; },
   getDocumentLock() { return { tryLock: () => !__docLockBusy, waitLock: () => true, releaseLock: () => { } }; } };
-var MailApp = { sendEmail(o) { __outbox.push(o); } };
+var MailApp = { sendEmail(o) { if (!/^<!DOCTYPE html>[\s\S]*vic-logo-white\.png/.test(o.htmlBody)) __untemplated.push(o.subject); __outbox.push(o); } };
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };
 var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { } };
 var HtmlService = { createHtmlOutput: h => chain({ _html: h }) };

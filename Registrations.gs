@@ -157,6 +157,7 @@ function processRegistrations_(ctx) {
       continue;
     }
 
+    ctx.confirm.push(out); // the confirmation filters by the status this run ends with
     const named = (rec.first + ' ' + rec.family).trim();
     if (scr && scr.member) {
       // a VIC member: out, silently (no alert mail, no binome mail); one line in the history so admins can audit it
@@ -198,4 +199,27 @@ function assignUnassigned_(ctx, stopAt) {
     if (r[I.Status] !== ST.UNASSIGNED) return;
     if (Date.now() < stopAt) assignRow_(ctx, r); else ctx.leftWaiting++;
   });
+}
+
+/* ---------- the registrant's confirmation (owner, 2026-10-17) ---------- */
+
+const CONFIRM_STATUSES = [ST.UNASSIGNED, ST.HELD].concat(PENDING_STATUSES);
+
+/** Before the save: keeps in ctx.confirm the registrations read this run that get a confirmation (a code, waiting, assigned
+ *  or held, a usable email and first name) and stamps them "CONFIRMED <date>" in Flags, so a re-run never mails them twice.
+ *  shortcut: stamped before the send, so a send that fails (quota) is not retried; mail_ logs it. */
+function stampConfirmations_(ctx) {
+  const I = ctx.iv.I;
+  ctx.confirm = !bool_(S_().CONFIRM_REGISTRANTS) ? [] : ctx.confirm.filter(r => r[I.Code] && CONFIRM_STATUSES.indexOf(r[I.Status]) >= 0 &&
+    /[a-z]/i.test(normText(r[I['First Name']])) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(r[I.Email]).trim()) &&
+    !/\bCONFIRMED\b/.test(r[I.Flags]));
+  ctx.confirm.forEach(r => { r[I.Flags] = (r[I.Flags] ? r[I.Flags] + ', ' : '') + 'CONFIRMED ' + fmt_(ctx.now, 'dd/MM/yyyy'); });
+}
+
+/** After the save, like the new-interviewee mail. TEST_MODE: mail_ keeps it to the admins. */
+function sendConfirmations_(ctx) {
+  const I = ctx.iv.I;
+  ctx.confirm.forEach(r => mail_(String(r[I.Email]).trim(), CONFIRM_MAIL.subject,
+    confirmHtml_(String(r[I['First Name']]).trim(), String(r[I.Code]))));
+  ctx.confirm = [];
 }
