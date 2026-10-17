@@ -79,15 +79,27 @@ function fileCarry_(vals, disp, F) {
     rating: vals[F.Rating], affect: disp[F['Final Affectation']], form: disp[F['Interview Form']], notes: disp[F.Notes] };
 }
 
+/** Run fn (which finds rows of b's sheet and deletes some) holding the members' lock too: memberSet_ finds and writes a row
+ *  under it, and a row deleted meanwhile would shift its target onto the next candidate. The caller holds the script lock;
+ *  members take it only when there is no document lock, and then it is held here already, so this can't deadlock. */
+function withMemberLock_(b, fn) {
+  let doc = null;
+  try { doc = LockService.getDocumentLock(); } catch (e) { /* no document */ }
+  if (doc && !doc.tryLock(10000)) throw new Error('A member is saving in the sheet of ' + b.code + ': nothing was changed, try again.');
+  try { return fn(); } finally { if (doc) doc.releaseLock(); }
+}
+
 function removeFromBinomeFile_(ctx, b, code) {
   const sh = binomeSheet_(ctx, b);
   if (!sh) return {};
-  const row = findFileRow_(sh, code);
-  if (row < 0) return {};
-  const rng = sh.getRange(row, BF_COL, 1, BF_H.length);
-  const carry = fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H));
-  sh.deleteRow(row);
-  return carry;
+  return withMemberLock_(b, () => {
+    const row = findFileRow_(sh, code);
+    if (row < 0) return {};
+    const rng = sh.getRange(row, BF_COL, 1, BF_H.length);
+    const carry = fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H));
+    sh.deleteRow(row);
+    return carry;
+  });
 }
 
 /** The interview form arrived: show it in the sheet and tick Interview Done. */

@@ -119,6 +119,11 @@ assert.strictEqual(good[IV.Status], 'ASSIGNED', 'not pulled out');
 a = find('VIC_MEMBER', good[IV.Code]);
 assert(a && a.binome === good[IV.Binome] && /on the VIC members list but is with B\.\d\d/.test(a.msg), 'VIC_MEMBER alert');
 assert.throws(() => quick('approve', a.id), /declined or kept, not approved/);
+// a member is saving in a binome sheet (they hold the document lock): no row is deleted under them, so theirs can't shift
+run('__docLockBusy = true');
+assert.throws(() => quick('decline', a.id), /A member is saving in the sheet of B\.\d\d: nothing was changed/);
+run('__docLockBusy = false');
+assert(ivRow('good.one@g.enp.edu.dz')[IV.Status] === 'ASSIGNED' && inSheets(good[IV.Code]), 'refused: still assigned, row still there');
 out = quick('decline', a.id);
 assert(/declined, taken out of the sheet of B\.\d\d/.test(out.messages[0]), out.messages[0]);
 r = ivRow('good.one@g.enp.edu.dz');

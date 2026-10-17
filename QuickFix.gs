@@ -433,22 +433,24 @@ function repair_(ctx, r, ref, dry) {
 function dropRows_(ctx, b, code, kind, dry) {
   const I = ctx.iv.I;
   if (kind === 'remove' && ctx.ivByCode[code] && ctx.ivByCode[code][I.Binome] === b.code) throw new Error(code + ' belongs to ' + b.code + ' now: nothing to remove.');
-  const sh = binomeSheet_(ctx, b), n = bfLastRow_(sh), F = idx_(BF_H);
-  const vals = n >= 2 ? sh.getRange(2, BF_COL, n - 1, BF_H.length).getDisplayValues() : [];
-  const rows = [];
-  vals.forEach((v, k) => { if (String(v[F.Code]).trim() === code) rows.push({ row: k + 2, v: v }); });
-  if (!rows.length) throw new Error(code + ' is not in the sheet of ' + b.code + ' any more.');
-  const typed = v => BF_EDITABLE.filter(h => (h === 'Interview Done' ? String(v[F[h]]).toUpperCase() === 'TRUE' : String(v[F[h]]).trim() && v[F[h]] !== 'Not yet'));
-  const desc = x => 'row ' + x.row + ' (' + (typed(x.v).map(h => (BF_LABEL[h] || h) + ' ' + x.v[F[h]]).join(', ') || 'nothing typed by the binome') + ')';
-  let drop = rows;
-  if (kind === 'dedupe') {
-    if (rows.length < 2) throw new Error(code + ' is listed only once now.');
-    const keep = rows.reduce((best, x) => (typed(x.v).length > typed(best.v).length ? x : best), rows[0]);
-    drop = rows.filter(x => x !== keep);
-    if (dry) return code + ' in ' + b.code + ': keep ' + desc(keep) + ', delete ' + drop.map(desc).join('; ') + '.';
-  } else if (dry) return 'delete ' + code + ' from the sheet of ' + b.code + ': ' + drop.map(desc).join('; ') + '.';
-  drop.slice().reverse().forEach(x => sh.deleteRow(x.row));
-  return code + ': ' + drop.map(x => 'row ' + x.row).join(', ') + ' deleted from the sheet of ' + b.code + '.';
+  const sh = binomeSheet_(ctx, b), F = idx_(BF_H);
+  return withMemberLock_(b, () => {
+    const n = bfLastRow_(sh), vals = n >= 2 ? sh.getRange(2, BF_COL, n - 1, BF_H.length).getDisplayValues() : [];
+    const rows = [];
+    vals.forEach((v, k) => { if (String(v[F.Code]).trim() === code) rows.push({ row: k + 2, v: v }); });
+    if (!rows.length) throw new Error(code + ' is not in the sheet of ' + b.code + ' any more.');
+    const typed = v => BF_EDITABLE.filter(h => (h === 'Interview Done' ? String(v[F[h]]).toUpperCase() === 'TRUE' : String(v[F[h]]).trim() && v[F[h]] !== 'Not yet'));
+    const desc = x => 'row ' + x.row + ' (' + (typed(x.v).map(h => (BF_LABEL[h] || h) + ' ' + x.v[F[h]]).join(', ') || 'nothing typed by the binome') + ')';
+    let drop = rows;
+    if (kind === 'dedupe') {
+      if (rows.length < 2) throw new Error(code + ' is listed only once now.');
+      const keep = rows.reduce((best, x) => (typed(x.v).length > typed(best.v).length ? x : best), rows[0]);
+      drop = rows.filter(x => x !== keep);
+      if (dry) return code + ' in ' + b.code + ': keep ' + desc(keep) + ', delete ' + drop.map(desc).join('; ') + '.';
+    } else if (dry) return 'delete ' + code + ' from the sheet of ' + b.code + ': ' + drop.map(desc).join('; ') + '.';
+    drop.slice().reverse().forEach(x => sh.deleteRow(x.row));
+    return code + ': ' + drop.map(x => 'row ' + x.row).join(', ') + ' deleted from the sheet of ' + b.code + '.';
+  });
 }
 
 /** Make every member of the binome an editor of its sheet (as Re-share does for all of them). */
