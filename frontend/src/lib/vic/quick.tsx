@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useConfirm } from "./confirm"
 import { useVic } from "./store"
+import { acceptAlerts } from "./pending"
 import type { Alert, MailDraft, QuickOut, RepairKind } from "./types"
 
 /**
@@ -32,6 +33,9 @@ export const REPAIR_LABEL: Record<Exclude<RepairKind, "">, string> = {
 const RISKY: RepairKind[] = ["dedupe", "remove", "unshare", "reshare"]
 
 export const repairOf = (a: Alert): RepairKind => (a.q && (a.q.kind === "integ" || a.q.kind === "file") ? a.q.repair : "")
+
+/** what snooze / mute / unmute return when they went down the pending path (nothing ran on the script yet) */
+const pending = (ids: string[]): QuickOut => ({ lines: [], done: ids })
 
 const noId = (l: string) => l.replace(/^A-\d+: /, "").replace(/^./, (c) => c.toUpperCase())
 
@@ -115,9 +119,10 @@ export function useQuick() {
         return !!sent
       },
 
-      snooze: (ids: string[], dur: SnoozeFor) => q("snooze", ids, { for: dur }, "Snooze"),
-      mute: (ids: string[]) => q("mute", ids, {}, "Mute"),
-      unmute: (ids: string[]) => q("unmute", ids, {}, "Unmute"),
+      // pending changes first when the owner's switch is on; otherwise (or if the accept step fails) today's direct write
+      snooze: async (ids: string[], dur: SnoozeFor) => ((await acceptAlerts(ids, "snooze", dur)) ? pending(ids) : q("snooze", ids, { for: dur }, "Snooze")),
+      mute: async (ids: string[]) => ((await acceptAlerts(ids, "mute")) ? pending(ids) : q("mute", ids, {}, "Mute")),
+      unmute: async (ids: string[]) => ((await acceptAlerts(ids, "unmute")) ? pending(ids) : q("unmute", ids, {}, "Unmute")),
 
       /** values: Interviewees fields. assigns = this places an unassigned candidate in a binome (it gets emailed). */
       async edit(a: Alert, values: Record<string, string>, assigns = false) {

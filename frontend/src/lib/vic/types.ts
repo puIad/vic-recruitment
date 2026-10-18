@@ -87,7 +87,7 @@ export interface AppView {
 
 export type QuickInfo =
   | { kind: "reg"; iv: RegView; old?: RegView; app?: AppView }
-  | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean }
+  | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean; atMs?: number }
   | { kind: "log"; check: string; form: FormView; first?: FormView }
   | { kind: "integ"; check: string; subject: string; repair: RepairKind }
   | { kind: "member"; email: string }
@@ -231,6 +231,10 @@ export interface WebState {
   owner: boolean
   v: number
   updated: string
+  /** ms the snapshot's data was read (moves only with its content); absent on an older script */
+  built?: number
+  /** the owner's switch: saves become pending changes (docs/plans.md › Slice 2); absent on an older script = off */
+  pending?: boolean
   links: { master: string; registrationForm: string; interviewForm: string; binomeFolder: string }
   settings: {
     assignmentsOpen: boolean
@@ -375,4 +379,39 @@ export interface CoverCheck {
   done?: boolean
   inn: { name: string }
   groups: { binome: string; codes: string[]; out: { name: string } | null }[]
+}
+
+/** One cell in the author's pending-changes record (web/lib/pending.js). value = what they want, seen = what they saw. */
+export interface PendingEntry {
+  id: string
+  cell: string
+  kind: "alert"
+  alert: string
+  op: "resolve" | "snooze" | "mute" | "unmute"
+  value: "RESOLVED" | "SNOOZED" | "MUTED" | "OPEN"
+  seen: "OPEN" | "SNOOZED" | "MUTED"
+  at: number
+  until?: number
+  state: "pending" | "applied" | "met" | "dropped"
+  /** Google's write (or check) time */
+  wrote?: number
+  /** the sheet's value when it was dropped */
+  sheet?: string
+  reason?: string
+  /** Apply mine anyway is offered */
+  again?: boolean
+  shown?: number
+  addressed?: number
+}
+/** cell ("alert:A-0012") → entry */
+export type PendingRec = Record<string, PendingEntry>
+/** A change as the page sends it to the accept step. */
+export interface PendingChange {
+  kind: "alert"
+  alert: string
+  op: PendingEntry["op"]
+  seen: PendingEntry["seen"]
+  at: number
+  until?: number
+  built?: number
 }

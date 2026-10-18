@@ -2,6 +2,7 @@ import * as React from "react"
 import { toast } from "sonner"
 import { useConfirm } from "./confirm"
 import { useVic } from "./store"
+import { acceptAlerts } from "./pending"
 import { signInUrl } from "./api"
 import { MemberName, MemberNames } from "@/components/member-name"
 import { Input } from "@/components/ui/input"
@@ -279,6 +280,7 @@ export function useActions() {
 
       async resolve(ids: string[]) {
         if (!ids.length) return false
+        if (await acceptAlerts(ids, "resolve")) return true // a pending change: the rows show it, no wait
         const out = await go("resolve", { ids }, "Resolve alerts")
         if (out) dropAlerts(ids)
         after()

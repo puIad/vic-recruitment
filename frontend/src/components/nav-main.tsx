@@ -16,7 +16,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import type { NavItem } from "@/config/nav"
-import { useVic } from "@/lib/vic/store"
+import { useAlertView } from "@/lib/vic/pending"
 import { cn } from "@/lib/utils"
 
 /** A dashed pill marks a page that is a placeholder for a feature idea (charter: dashed pill = space still to fill). */
@@ -30,8 +30,9 @@ function Soon() {
 
 export function NavMain({ label, items }: { label: string; items: NavItem[] }) {
   const location = useLocation()
-  const alerts = useVic((s) => s.state?.alerts.length ?? 0)
-  const high = useVic((s) => s.state?.alertCounts.HIGH ?? 0)
+  const view = useAlertView() // with the author's pending changes over the snapshot
+  const alerts = view.alerts.length
+  const high = view.counts.HIGH
 
   const isActive = (url: string) => (url === "/" ? location.pathname === "/" : location.pathname === url || location.pathname.startsWith(url + "/"))
 
