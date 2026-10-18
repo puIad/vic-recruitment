@@ -102,14 +102,20 @@ function unpairedMembers(team, binomes) {
     .map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: !!m.experienced, draft: draft[m.email] || '' }));
 }
 
-/** Pick the binome for a new interviewee of department `dep`. binomes: [{code, tag, load}] */
-function pickBinome(dep, binomes, allWeight) {
+/** Pick the binome for a new interviewee of department `dep`. binomes: [{code, tag, load}]. For an HR candidate an
+ *  HR-only binome's load is divided by hrOnlyWeight, and it wins a tie (launch-features.md section 5). */
+function pickBinome(dep, binomes, allWeight, hrOnlyWeight) {
   const w = Number(allWeight) > 0 ? Number(allWeight) : 1;
-  let best = null, bestLoad = Infinity;
+  const k = Number(hrOnlyWeight) > 0 ? Number(hrOnlyWeight) : 1;
+  let best = null, bestLoad = Infinity, bestOnly = false;
   binomes.forEach(b => {
-    if (tagDepts(b.tag).indexOf(dep) < 0) return;
-    const load = (b.load || 0) * (/\ball\b/i.test(b.tag) ? w : 1);
-    if (load < bestLoad || (load === bestLoad && best && b.code < best.code)) { best = b; bestLoad = load; }
+    const depts = tagDepts(b.tag);
+    if (depts.indexOf(dep) < 0) return;
+    const only = dep === 'HR' && depts.length === 1;
+    const load = (b.load || 0) * (/\ball\b/i.test(b.tag) ? w : 1) / (only ? k : 1);
+    if (load < bestLoad || (load === bestLoad && (only !== bestOnly ? only : b.code < best.code))) {
+      best = b; bestLoad = load; bestOnly = only;
+    }
   });
   return best;
 }

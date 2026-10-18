@@ -135,6 +135,8 @@ export interface Binome {
   interviewed: number
   withdrew: number
   open: number
+  /** the load the next pick compares (Balance interviewees by); absent on an older script */
+  load?: number
   /** the level an admin last opened this binome at from the dashboard ("" = never); Drive is the truth (binomeAccess) */
   access?: "" | AccessLevel
   /** a DRAFT paired by hand on the Pairing panel (Redraw all asks before it loses one); absent on an older script */

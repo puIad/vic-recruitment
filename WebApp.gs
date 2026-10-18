@@ -572,6 +572,7 @@ function buildState_(ctx) {
   const byStatus = {}; Object.keys(ST).forEach(k => { byStatus[ST[k]] = 0; });
   const byDep = {}; DEPTS.forEach(d => { byDep[d] = 0; });
   const perBin = {};
+  const loadOf = loads_(ctx); // the load pickBinome compares (BALANCE_BY), for Settings › General
   ctx.iv.data.forEach(r => {
     if (!r[I.Code] && !r[I['Response Key']]) return;
     byStatus[r[I.Status]] = (byStatus[r[I.Status]] || 0) + 1;
@@ -626,7 +627,8 @@ function buildState_(ctx) {
       return { code: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
         people: b.members.map(m => ({ name: m.name, email: m.email })), access: (opened[b.code] || {}).level || '',
         byHand: b.status === 'DRAFT' && hand.indexOf(handKey_(b.members.map(m => m.email))) >= 0,
-        assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open };
+        assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open,
+        load: loadOf[b.code] || 0 };
     }),
     alertCounts: alertCounts,
     alerts: open.sort((a, b) => (SEV_RANK[b[A.Severity]] || 0) - (SEV_RANK[a[A.Severity]] || 0) || (+new Date(b[A.Created]) || 0) - (+new Date(a[A.Created]) || 0)).map(r => ({
@@ -650,7 +652,8 @@ function historyRows_() {
   })).filter(h => h.at || h.binome).reverse().slice(0, 300);
 }
 
-const SETTING_ENUMS ={ INSTANT_EMAIL_MIN_SEVERITY: ['HIGH', 'MEDIUM', 'INFO'], BALANCE_BY: ['ACTIVE', 'TOTAL'], SYNC_EVERY_MINUTES: [1, 5, 10, 15, 30] };
+const SETTING_ENUMS ={ INSTANT_EMAIL_MIN_SEVERITY: ['HIGH', 'MEDIUM', 'INFO'], BALANCE_BY: ['ACTIVE', 'TOTAL'], SYNC_EVERY_MINUTES: [1, 5, 10, 15, 30],
+  HR_ONLY_WEIGHT: [1, 1.5, 2, 2.5, 3, 4] };
 /** How the dashboard edits a setting: bool (switch), enum (dropdown), number or text. Types come from the defaults. */
 function settingKind_(r) {
   if (SETTING_ENUMS[r[0]]) return { type: 'enum', options: SETTING_ENUMS[r[0]] };
