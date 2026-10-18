@@ -57,6 +57,7 @@ const fill = (s: Slot, f: SettingsForm) => (typeof s === "function" ? s(f) : s)
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const emails = (v: unknown) => String(v ?? "").split(/[,;\s]+/).filter(Boolean)
+// commit is reachable from render (page slots get the form), where react-hooks/purity flags a direct Date.now()
 const now = () => Date.now()
 const uiOf = (key: string): SettingUi => SETTING_UI[key] || { label: key, icon: SlidersHorizontal, help: "" }
 
