@@ -9,7 +9,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-Open PR: [#76](https://github.com/puIad/vic-recruitment-2026/pull/76) (slice 3, Vercel). Slice 3's script part ([#75](https://github.com/puIad/vic-recruitment-2026/pull/75)) is live since 2026-10-18 as web app **@90** / API **@91** from `9b9846f` (pulled back equal to `main`): the apply entry takes settings and My binome fields, and members get the switch. Open issues: pending-changes slices #68–#70 (slice 2, #67, is done), one at a time.
+No PR is open. Slice 3 ([#68](https://github.com/puIad/vic-recruitment-2026/issues/68)) is deployed with the switch off: script [#75](https://github.com/puIad/vic-recruitment-2026/pull/75) as web app **@90** / API **@91** from `9b9846f` (pulled back equal to `main`), Vercel [#76](https://github.com/puIad/vic-recruitment-2026/pull/76) live from `9825142` (real build: npm install + `tsc -b && vite build`, "Deployment completed", no runtime errors). Save settings and My binome fields now go through the accept step when the switch is on. Left: the owner's live check (a setting as an admin, a My binome field as a member, the partner's screen at their next poll). Open issues: pending-changes slices #68–#70 (slice 2, #67, is done; slice 3 waits for its live check), one at a time.
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
