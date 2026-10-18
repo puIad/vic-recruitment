@@ -100,7 +100,10 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `29c165c` (2026-10-18, [#87](https://github.com/puIad/vic-recruitment-2026/pull/87)): the interview form in
+  Latest Vercel: `2c4b45c` (2026-10-18, [#88](https://github.com/puIad/vic-recruitment-2026/pull/88)): `/api/run` answers a
+  dropped connection to Google with code `LOST` ("may have finished anyway: refresh before trying again") and logs its cause,
+  after a Sync now lost its connection at 41 s while the script finished; real build checked in the Vercel log.
+  UI before it: `29c165c` (2026-10-18, [#87](https://github.com/puIad/vic-recruitment-2026/pull/87)): the interview form in
   the dashboard (My binome's Interview form column, the form page at `/interview/:code` and `/my-binome/interview/:code`);
   real build checked in the Vercel log (316 packages installed, `tsc -b && vite build`). Before that `845bdba` (2026-10-18,
   [#85](https://github.com/puIad/vic-recruitment-2026/pull/85)): an admin in a binome gets My binome under People
