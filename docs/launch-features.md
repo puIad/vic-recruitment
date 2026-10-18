@@ -2,8 +2,8 @@
 
 The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); screening (section 2)
 is live since 2026-10-17 (#33, @75/@76) but stays off until the owner links the members sheet (its Rollout); the
-emails (section 4, asked 2026-10-17) are live since 2026-10-17 (#45); the department change (section 3) is built
-(2026-10-18) and waits for the owner's deploy. Unlike [plans.md](plans.md), 1, 2 and 4 are needed
+emails (section 4, asked 2026-10-17) are live since 2026-10-17 (#45); the department change (section 3) is live
+since 2026-10-18 (#84; its script went out with #85's deploy, @96 / @97). Unlike [plans.md](plans.md), 1, 2 and 4 are needed
 before launch.
 
 | # | Feature | Needed by | Size |
@@ -334,7 +334,8 @@ change the Tag when the members no longer fit it.
 
 ### The action
 
-Built 2026-10-18 (script and UI in one PR); live once the owner deploys the script, then Vercel.
+Built 2026-10-18 (script and UI in one PR, [#84](https://github.com/puIad/vic-recruitment-2026/pull/84)); live since
+2026-10-18 (script @96 / @97 from `845bdba`, Vercel from the same commit). No live check recorded yet.
 
 Binomes › ⋯ › **Change department…**, a dialog like Sheet & dashboard access:
 

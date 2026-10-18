@@ -29,10 +29,10 @@ Launch features ([launch-features.md](docs/launch-features.md)):
 - Done in code: **screening** (#33, live 2026-10-17). The owner ran Setup and linked and shared the members sheet
   (2026-10-17). Left: check the count on Settings › Screening, turn it on, then rollout step 4 (one member / one junk
   / one decent application in TEST_MODE, then Send rejections… once).
-- Built, not deployed: **change a binome's department** from the dashboard
+- Done: **change a binome's department** from the dashboard
   ([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), launch-features section 3): Binomes › ⋯ › Change
-  department…, and Apply on a hand-edited Tag. Owner (2026-10-18): no ALL choice, Apply on the alert. Left: merge,
-  `npm run deploy` (script first), then Vercel; until then a hand edit of the Tag plus Accept still works.
+  department…, and Apply on a hand-edited Tag. Owner (2026-10-18): no ALL choice, Apply on the alert. Live 2026-10-18:
+  the script went out with #85's deploy (@96 / @97 from `845bdba`). No live check recorded yet.
 - Done: **emails** ([#45](https://github.com/puIad/vic-recruitment-2026/pull/45), live 2026-10-17 as @85/@86 from `0ea1fa1`): one HTML template in the VIC look for
   every mail the script sends, and a confirmation with their code to every registrant. The owner's inbox preview
   passed (confirmation, alert mail, digest). Left: the confirmation's language and wording (English placeholder in
@@ -40,8 +40,13 @@ Launch features ([launch-features.md](docs/launch-features.md)):
 - Known, not a bug: **Send digest** from the dashboard takes 3+ minutes, because it runs the full 8 AM cycle (lock
   wait up to 2 min, every binome sheet pulled, full integrity check up to 200 s). Possible fix: skip the integrity
   check when it comes from the dashboard. Not planned yet.
-- Not built, small: `SAME_CHOICES` from MEDIUM to INFO, and its quick-action hint no longer treats it as a mistake
-  ([decisions.md](docs/decisions.md#open-questions), question 5). Code PR.
+- Done: `SAME_CHOICES` is INFO, and its quick-action hint no longer treats it as a mistake
+  ([#82](https://github.com/puIad/vic-recruitment-2026/pull/82), [decisions.md](docs/decisions.md#open-questions),
+  question 5). Live with @96 / @97.
+- Done (requested 2026-10-18, [interview-form.md](docs/interview-form.md)): **My binome for admins** in a binome
+  ([#85](https://github.com/puIad/vic-recruitment-2026/pull/85), @96 / @97) and the **interview form in the dashboard**
+  ([#87](https://github.com/puIad/vic-recruitment-2026/pull/87), @98 / @99, Vercel `29c165c`). Live checks open
+  (below).
 - Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
   weight that gives pure `HR` binomes (B.29, B.30) their share of HR candidates. The owner wants it after screening.
 - Pulled forward (owner, 2026-10-18): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
@@ -85,14 +90,15 @@ Left, owner (in order):
 4. Give admins edit access to the Binome Sheets folder; timing limits back to 24 / 48 / 12.
 5. Live checks still open: #37 (`=1+1` in a form, a Discord handle starting with `-`), #30 (the member shared by hand
    during task 8 still gets in: set that binome to No access), the other-account checks
-   ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines.
+   ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines, the department change (#84), and both
+   parts of [interview-form.md](docs/interview-form.md) (each part's Rollout).
 6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
 7. Load-test task 10, now that pending-changes slices 2–5 are live (switch off until the owner turns it on): load test again and sign off before members get the
    dashboard, with the sign-in checks of #65 and the pending-changes block
    ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)).
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
-Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, then `HR_ONLY_WEIGHT`. The department change is in [#84](https://github.com/puIad/vic-recruitment-2026/pull/84), waiting for merge and deploy.
+Left, code (in order): the confirmation's wording once the owner sends it, then `HR_ONLY_WEIGHT`.
 Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done; task 10 was waiting for them.
 
 ## Live now
@@ -131,7 +137,8 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   in each binome sheet, Dashboard Interviews in the Master, made by the first form; deployed from Git Bash, 19 files
   pushed). Before that web app **@96**, API **@97** from `845bdba` (2026-10-18,
   [#85](https://github.com/puIad/vic-recruitment-2026/pull/85), My binome for admins in a binome; deployed from Git Bash:
-  under PowerShell `npm test` fails at `test/vercel.test.js` 514, no `sh` on PATH). Before that web app **@94**, API **@95** from `1013333` (2026-10-18,
+  under PowerShell `npm test` failed at `test/vercel.test.js` 514, no `sh` on PATH; fixed by
+  [#86](https://github.com/puIad/vic-recruitment-2026/pull/86) the same day, so PowerShell works again). Before that web app **@94**, API **@95** from `1013333` (2026-10-18,
   [#79](https://github.com/puIad/vic-recruitment-2026/pull/79), pending-changes slice 4); @88–@93 (slices 2–3, the
   action timing line) are in the Launch checklist above.
 - **Script, before the pending-changes build:** web app **@83**, API **@84**, most likely from `75f64c4` (2026-10-17,
@@ -268,12 +275,17 @@ members sheet (2026-10-17); turning it on is left. Changing a binome's departmen
 
 ## Next: My binome for admins, interview form in the dashboard (requested 2026-10-18)
 
-Planned in [docs/interview-form.md](docs/interview-form.md), grilled with the owner on 2026-10-18.
-Part 1 is live (admins who are in a binome get My binome, People group, same rules as members): script @96 / @97 and
-Vercel from `845bdba`, 2026-10-18. Not checked live yet: an editor in a locked binome saves a gold field from My binome
-and the partner sees it at their next poll (the plan's Rollout). Part 2: a native
-interview form per candidate, saved to an Interview Answers tab in the binome sheet, copied to the Master by the sync,
-editable any time; every interview form fills Rating and Final Affectation.
+Planned in [docs/interview-form.md](docs/interview-form.md), grilled with the owner on 2026-10-18. Both parts are live:
+
+- Part 1, admins who are in a binome get My binome (People group, same rules as members): script @96 / @97 and Vercel
+  from `845bdba` ([#85](https://github.com/puIad/vic-recruitment-2026/pull/85)).
+- Part 2, a native interview form per candidate, saved to an Interview Answers tab in the binome sheet, copied to the
+  Master's Dashboard Interviews by the sync, editable any time; every interview form fills Rating and Final Affectation:
+  script @98 / @99 and Vercel from `29c165c` ([#87](https://github.com/puIad/vic-recruitment-2026/pull/87)).
+
+Not checked live yet (each part's Rollout): an editor in a locked binome saves a gold field from My binome and the
+partner sees it; a member fills a form in Test mode, then Sync now shows the Interview Log row, the status, Rating and
+Final Affectation; an edit and a second sync; a cover sees View answers and the Google Form link.
 
 ## Brief for 2026-10-04 (settled with the owner)
 

@@ -7,8 +7,8 @@ Everything runs on an in-memory mock of the Apps Script services (`test/mockgas.
 | File | Covers |
 |---|---|
 | `test/unit.test.js` | pure logic: code parsing, autocorrect, pairing, routing, registration and timing checks |
-| `test/e2e.test.js` | the whole flow through the menu: setup → import → draft → lock → registrations → sheet edits → sync → interview forms → move → digest; asserts no false manual-edit/integrity alert |
-| `test/web.test.js` | every dashboard action through `webState` / `webRun` under web-app conditions: TEST_MODE, change/swap, covers, every manual-edit fix path, odd values, the full sheet check, access control |
+| `test/e2e.test.js` | the whole flow through the menu: setup → import → draft → lock → registrations → sheet edits → sync → interview forms (Google Form and dashboard: log, Rating and Final Affectation fill, edits) → move → digest; asserts no false manual-edit/integrity alert |
+| `test/web.test.js` | every dashboard action through `webState` / `webRun` under web-app conditions: TEST_MODE, change/swap, covers, every manual-edit fix path, odd values, the full sheet check, access control (admins in a binome included), `interviewGet` / `interviewSave` |
 | `test/vercel.test.js` | the Vercel functions against a mocked Google (`test/googlemock.js`): session, proxy, refusals; the UI calls only `/api/run` and its `API_VERSION` matches the script |
 | `test/reset.test.js` | Reset all binomes: the typed phrase, what is wiped and what stays, then a new team drafted and locked |
 | `test/quick.test.js` | the Alerts page's quick actions: fixes in Master + binome sheet with no manual edit flagged, duplicates, snooze / expiry / mute / unmute, odd values, exclude, interview forms, links, every sheet repair (dry run first), sharing, the email preview and send |

@@ -5,8 +5,9 @@ Vercel (`frontend/`) calls that script **as the visitor**, so Drive sharing deci
 
 ```
 Registration form ─┐                         ┌─► one Google Sheet per binome (Binome Sheets folder)
-Interview form ────┼─► Master + Apps Script ─┤      binomes fill Contacted / Date / Time / Notes
-Team (OT list) ────┘    (sync every N min)   └─► Alerts tab + emails + daily digest
+Interview form ────┼─► Master + Apps Script ─┤      binomes fill Contacted / Date / Time / Notes,
+Team (OT list) ────┘    (sync every N min)   │      and dashboard interview forms (Interview Answers tab)
+                                             └─► Alerts tab + emails + daily digest
                               ▲
         Vercel dashboard ─────┘ scripts.run as the visitor (see vercel.md)
 ```

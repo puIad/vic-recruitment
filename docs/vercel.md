@@ -24,7 +24,9 @@ web/                the Vercel project root
   api/callback.js   verifies state, exchanges the code, checks id_token hd/email_verified, writes the session cookie
                     (reuses this browser's stored refresh token for the same account, after one test refresh)
   api/run.js        the proxy: allowlist {webAccess, webState, webPulse, webRun}, Origin + X-VIC check, 48h check,
-                    token refresh, scripts.run, maps script errors to JSON, logs email/action/ms/ok; also the
+                    token refresh, scripts.run, maps script errors to JSON, logs email/action/ms/ok; a connection to
+                    Google lost mid-run answers 502 code LOST ("it may have finished anyway: refresh before
+                    trying again") and logs its cause (#88); also the
                     pending-changes accept step (fn accept), drop answers (pendingMark) and the pulse flag (rec)
   api/apply.js      the queue consumer (topic vic-apply): applies an author's pending changes through webApply, as them
   api/drops.js      the sync's call each cycle (slice 4), guarded by DROPS_SECRET: sweeps entries past their apply-by into
