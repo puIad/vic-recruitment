@@ -60,6 +60,13 @@ function access_() {
   return { ok: false, role: '', email: email, reason: 'READ_ONLY', owner: false };
 }
 function isAdmin_() { return access_().role === 'admin'; }
+/** The member view of an access answer: a member as is; an admin in MEMBER_MAP who can open that binome sheet gets
+ *  {binome, cover, m, edit} (one Drive call, so never from webPulse: admins poll it every 2 s); anyone else null. */
+function asMember_(a) {
+  if (a.role === 'member') return a;
+  const m = a.role === 'admin' ? savedMemberMap_()[a.email] : null, can = m ? sheetAccess_(m.f) : '';
+  return can ? { binome: m.b, cover: !!m.cover, m: m, edit: can === 'edit' } : null;
+}
 
 /** First call of the Vercel front: shows the no-access view rather than throwing (a Drive hiccup on a member's sheet throws). */
 function webAccess() {
@@ -87,7 +94,10 @@ function webPulse(withSwitch) {
   const a = access_();
   if (a.role === 'admin') {
     const ver = Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
-    return withSwitch ? { v: ver, pending: pendingOn_() } : ver; // pages before pending changes take the bare number
+    if (!withSwitch) return ver; // pages before pending changes take the bare number
+    const out = { v: ver, pending: pendingOn_() }, m = savedMemberMap_()[a.email], b = m && binMeta_()[m.b];
+    if (b) out.bv = b.v; // an admin in a binome: a partner's edit refreshes their My binome (no Drive call here)
+    return out;
   }
   if (a.role === 'member') { const b = binMeta_()[a.binome], ver = b ? b.v : 0; return withSwitch ? { v: ver, pending: pendingOn_() } : ver; }
   throw new Error('Not allowed');
@@ -101,7 +111,10 @@ function webState() {
   if (a.role === 'member') return memberState_(a);
   if (a.role !== 'admin') throw new Error('Not allowed');
   const st = readSnap_() || withLock_(() => publishState_(freshCtx_()), 1) || liveState_(freshCtx_());
-  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, pending: pendingOn_() });
+  let member = null;
+  // an admin in a binome also gets My binome; a Drive hiccup there never costs them the dashboard
+  try { const mv = asMember_(a); if (mv) member = memberState_(mv); } catch (e) { console.warn('My binome for ' + a.email + ': ' + e); }
+  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, pending: pendingOn_() }, member ? { member: member } : {});
 }
 
 /* ---------- members: MEMBER_MAP (who may see which binome) and their slice of the snapshot ---------- */
@@ -295,9 +308,10 @@ function memberLock_() { let l = null; try { l = LockService.getDocumentLock(); 
  *  so the partner's next poll shows them. The one-field form {code, field, value, seen} (pages loaded before the batch) answers
  *  {code, field, value} and throws CONFLICT: <current> or the field's error, as it always did. */
 function memberSet_(a, args) {
-  if (a.role !== 'member' || a.cover) throw new Error('Not allowed');
-  if (!a.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
-  const m = a.m, code = String(args.code || '').trim(), batch = Array.isArray(args.fields);
+  const mv = asMember_(a); // a member, or an admin in a binome
+  if (!mv || mv.cover) throw new Error('Not allowed');
+  if (!mv.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
+  const m = mv.m, code = String(args.code || '').trim(), batch = Array.isArray(args.fields);
   const list = (batch ? args.fields : [args]).map(x => ({ field: String((x && x.field) || ''), value: x && x.value, seen: x && x.seen }));
   // a field twice would be checked against the row as read before the first write: refused, like an unknown field
   if (!list.length || list.some((x, i) => BF_EDITABLE.indexOf(x.field) < 0 || list.findIndex(y => y.field === x.field) !== i)) throw new Error('Not allowed');
@@ -577,7 +591,7 @@ function logAction_(action, outcome, t0, tp, ph) {
  *  ~200s so the run ends before its 300s function limit; the old dashboard and the menu keep 270s. */
 function webRun(action, args) {
   const a = access_();
-  if (action === 'memberSet') return { messages: [], result: memberSet_(a, args || {}) }; // members only; no script lock, no publish
+  if (action === 'memberSet') return { messages: [], result: memberSet_(a, args || {}) }; // members and admins in a binome; no script lock, no publish
   if (a.role !== 'admin') throw new Error('Not allowed');
   if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
   args = args || {};

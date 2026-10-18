@@ -256,8 +256,9 @@ members sheet (2026-10-17); turning it on is left. Changing a binome's departmen
 
 ## Next: My binome for admins, interview form in the dashboard (requested 2026-10-18)
 
-Planned in [docs/interview-form.md](docs/interview-form.md), grilled with the owner on 2026-10-18; nothing built yet.
-Part 1 first: admins who are in a binome get My binome (People group, same rules as members). Part 2: a native
+Planned in [docs/interview-form.md](docs/interview-form.md), grilled with the owner on 2026-10-18.
+Part 1 built (admins who are in a binome get My binome, People group, same rules as members): in review, then
+`npm run deploy` and Vercel, then the live check in the plan's Rollout. Part 2: a native
 interview form per candidate, saved to an Interview Answers tab in the binome sheet, copied to the Master by the sync,
 editable any time; every interview form fills Rating and Final Affectation.
 

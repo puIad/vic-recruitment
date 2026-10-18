@@ -29,6 +29,8 @@ export interface NavItem {
   /** a placeholder for a feature idea, not built yet */
   soon?: boolean
   items?: { title: string; url: string; soon?: boolean }[]
+  /** shown only to an admin who is in a binome (the store's member is set) */
+  inBinome?: boolean
 }
 
 export interface NavGroup {
@@ -48,7 +50,10 @@ export const navGroups: NavGroup[] = [
   },
   {
     label: "People",
-    items: [{ title: "Team", url: "/team", icon: UsersRound }],
+    items: [
+      { title: "Team", url: "/team", icon: UsersRound },
+      { title: "My binome", url: "/my-binome", icon: UserRoundCheck, inBinome: true },
+    ],
   },
   {
     label: "Coming up",
@@ -93,9 +98,13 @@ export const memberNavGroups: NavGroup[] = [
   },
 ]
 
+/** The admin sidebar's groups, My binome only for an admin in a binome. */
+export const adminNav = (inBinome: boolean): NavGroup[] =>
+  inBinome ? navGroups : navGroups.map((g) => ({ ...g, items: g.items.filter((i) => !i.inBinome) }))
+
 /** Everything the command palette can jump to (flat), with the icon the sidebar uses. */
-export const pageIndex: { title: string; url: string; group: string; icon: LucideIcon }[] = [
-  ...navGroups.flatMap((g) =>
+export const pageIndex = (inBinome: boolean): { title: string; url: string; group: string; icon: LucideIcon }[] => [
+  ...adminNav(inBinome).flatMap((g) =>
     g.items.flatMap((i) =>
       i.items
         ? i.items.map((s) => ({ title: `Settings · ${s.title}`, url: s.url, group: "Settings", icon: settingsIcon(s.url) }))

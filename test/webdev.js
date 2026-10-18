@@ -4,6 +4,7 @@
 //   ?as=helper@g.enp.edu.dz → no-access view; /dev-login?as=  → signed-out view. --empty = before team import.
 //   /dev-login?as=member → a member of the busiest binome (opened with edit: My binome only; the start-up line names them).
 //   /dev-login?as=closed → a member of a binome not opened yet (the "isn't open yet" gate).
+//   /dev-login?as=adminmember → the busiest binome's other member, made an editor of the Master: the dashboard plus My binome.
 //   --pairing = before Lock: this year's OT list (part of the 2025 team, pre-ticked Experienced), three pairs made by hand, the
 //   rest free, so the Binomes page shows the Pairing panel (npm run mock -- --pairing).
 //   Pending changes: Settings › General › Pending changes (admin@ is the owner); Redis and Queues are faked in memory. With it
@@ -97,6 +98,9 @@ const memberEmail = busiest ? busiest.people[busiest.people.length - 1].email : 
 const closed = busiest ? s.call('webState').binomes.find(b => b.code !== busiest.code && b.status !== 'DRAFT' && b.people.length) : null;
 const closedEmail = closed ? closed.people[0].email : '';
 if (busiest) { s.run('__acl = true'); s.call('webRun', 'binomeAccess', { binome: busiest.code, level: 'edit' }); }
+// an admin who is also in a binome (docs/interview-form.md part 1): My binome under People
+const adminMemberEmail = busiest && busiest.people.length > 1 ? busiest.people[0].email : '';
+if (adminMemberEmail) s.run('master.addEditor(' + JSON.stringify(adminMemberEmail) + ')');
 if (process.argv.includes('--away') && !empty) {
   s.call('webRun', 'pendingSwitch', { on: true });
   const st = s.call('webState'), a = st.alerts[0], t = Date.now() - 3600e3, rec = F.db['pc:admin@g.enp.edu.dz'] = {};
@@ -112,7 +116,7 @@ http.createServer((req, res) => {
   res.setHeader = (k, v) => set(k, /^set-cookie$/i.test(k) ? [].concat(v).map(c => c.replace('; Secure', '')) : v);
   const path = req.url.split('?')[0];
   if (path === '/dev-login') {
-    const as = new URL(req.url, 'http://x').searchParams.get('as'), email = as === 'member' ? memberEmail : as === 'closed' ? closedEmail : as;
+    const as = new URL(req.url, 'http://x').searchParams.get('as'), email = as === 'member' ? memberEmail : as === 'closed' ? closedEmail : as === 'adminmember' ? adminMemberEmail : as;
     res.setHeader('Set-Cookie', email ? S.sessionCookie({ email, rt: 'rt:' + email, at: 'at:' + email, ate: Date.now() + 3600e3, iat: Date.now() }) : S.clearSession());
     return S.redirect(res, '/');
   }
@@ -123,4 +127,5 @@ http.createServer((req, res) => {
   res.end('Mock API only. The UI: npm run dev in frontend/, then http://localhost:5173/dev-login?as=admin@g.enp.edu.dz\n');
 }).listen(port, () => console.log('Mock API on http://localhost:' + port + '. UI: npm run dev in frontend/, then http://localhost:5173/dev-login?as=admin@g.enp.edu.dz' +
   (memberEmail ? '\nMember of ' + busiest.code + ' (opened, edit): http://localhost:5173/dev-login?as=member (' + memberEmail + ')' +
-    '\nMember of ' + closed.code + ' (not opened yet): http://localhost:5173/dev-login?as=closed (' + closedEmail + ')' : '')));
+    '\nMember of ' + closed.code + ' (not opened yet): http://localhost:5173/dev-login?as=closed (' + closedEmail + ')' +
+    (adminMemberEmail ? '\nAdmin in ' + busiest.code + ': http://localhost:5173/dev-login?as=adminmember (' + adminMemberEmail + ')' : '') : '')));

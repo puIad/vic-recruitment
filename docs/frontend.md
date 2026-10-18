@@ -41,6 +41,7 @@ The sidebar has four groups: Control room, People, Coming up, System. Alerts car
 | Elsewhere | Command palette (Ctrl K: pages, candidates by code or name, binomes, alerts, Sync), Help (FAQ), Google files row in the sidebar, account menu at its foot |
 | Gate | Sign in, session expired, no access, script unreachable, set in the iris of the charter's divider disc |
 | Members | Someone in a locked binome (or a live cover) who is not an editor gets **My binome** only (`app/my-binome/`), read-only: their candidates with the sheet's columns, statuses, open alerts, a link to their sheet; Account and Appearance. Polls every 15 s. Load-test plan, task 7 |
+| Admins in a binome | An editor of the Master who is in a locked binome (or a live cover) keeps the admin dashboard and gets **My binome** under People (`/my-binome`, the same page), with member rules: gold fields editable with edit access to the binome sheet, covers read-only. `webState` carries it as `member`; `webPulse(true)` adds `bv`, their binome's version, so a partner's edit refreshes it. The item and its command-palette entry show only while `member` is set; a plain admin at `/my-binome` goes back to the Overview. [interview-form.md](interview-form.md) part 1 |
 
 **Reset all binomes** (`resetBinomesCore_` in Team.gs): trashes every binome sheet (recoverable from the owner's Drive
 trash for 30 days), empties the Binomes, Team and Member Changes tabs, puts interviewees back to Unassigned, closes the

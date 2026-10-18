@@ -29,7 +29,7 @@ function pendingSwitch_(a, on) {
  *    Snooze's end (ms), fixed at the click.
  *  - {id, kind: 'setting', key, value, seen, at} (admins): the Settings tab's column B, compared after saveSettings_'s parsing
  *    (a missing row or a blank value = the default); a missing key gets its row appended.
- *  - {id, kind: 'field', code, field, value, seen, at} (a member who can edit their binome sheet): one gold cell of one
+ *  - {id, kind: 'field', code, field, value, seen, at} (a member, or an admin in a binome, who can edit their binome sheet): one gold cell of one
  *    candidate, compared as memberSet_ does (goldText_); then the dirty:<binome> mark and patchSlice_, so the partner sees it
  *    at their next poll.
  * Each change is judged against the sheet as it is when it applies (an earlier change of the same call included):
@@ -43,11 +43,12 @@ function pendingSwitch_(a, on) {
 function webApply(call) {
   const v = call && call.v, changes = (call && Array.isArray(call.changes)) ? call.changes : [];
   if (v !== APPLY_FORMAT) return { v: APPLY_FORMAT, refused: 'Unknown change format ' + String(v).slice(0, 10) };
-  const a = access_(), admin = a.role === 'admin', member = a.role === 'member' && !a.cover && !!a.edit;
+  const a = access_(), admin = a.role === 'admin', fields = changes.some(c => c && c.kind === 'field');
+  const mv = a.role === 'member' || (admin && fields) ? asMember_(a) : null, member = !!mv && !mv.cover && !!mv.edit; // an admin's Drive call only for field changes
   if (!admin && !member) return { v: APPLY_FORMAT, lost: a.reason || (a.role === 'member' ? 'Not an editing member of the binome' : 'Not an admin') };
-  const w = { admin: admin, member: member, a: a }; // what this call has read, filled as its changes need it
-  if (member && changes.some(c => c && c.kind === 'field')) {
-    w.book = SpreadsheetApp.openById(a.m.f); // access_ just saw edit access: a failure here is Drive, and a throw is a retry
+  const w = { admin: admin, member: member, a: member ? mv : a }; // what this call has read, filled as its changes need it
+  if (member && fields) {
+    w.book = SpreadsheetApp.openById(mv.m.f); // access_ just saw edit access: a failure here is Drive, and a throw is a retry
     w.tz = w.book.getSpreadsheetTimeZone(); // opened before the lock, as memberSet_
   }
   const lock = LockService.getDocumentLock(); // shared by everyone (issue 59); the sync holds only the script lock

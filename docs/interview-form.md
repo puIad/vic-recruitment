@@ -1,12 +1,12 @@
 # Plans: My binome for admins, interview form in the dashboard
 
 The owner's requests of 2026-10-18, grilled the same day. The answers are in [Decisions](#decisions-owner-2026-10-18)
-at the end and are built into the sections below. Nothing is built yet. Part 1 ships first: part 2 needs its access
-change and touches the same page.
+at the end and are built into the sections below. Part 1 is built (PR on branch `claude/my-binome-for-admins`, not
+deployed yet); part 2 is not started. Part 1 ships first: part 2 needs its access change and touches the same page.
 
 | # | Feature | Size |
 |---|---|---|
-| 1 | [My binome for admins](#1-my-binome-for-admins-in-a-binome) who are in a binome | script + UI, one PR |
+| 1 | [My binome for admins](#1-my-binome-for-admins-in-a-binome) who are in a binome | script + UI, one PR. Built, awaiting review and deploy |
 | 2 | [Interview form in the dashboard](#2-interview-form-in-the-dashboard), editable after submit | script + UI, one PR (or script, then UI) |
 
 Each ships the usual way ([HANDOFF](../HANDOFF.md#how-changes-ship)): branch, `npm test`, PR, merge, `npm run deploy`,
@@ -62,6 +62,13 @@ UI:
   `webApply` field change work for them with edit access and are refused without; an editor in no binome gets no
   `member`; an admin who is a live cover gets a read-only slice of the covered codes; `webPulse` gives `bv`.
 - `tsc -b`; `test/webdev.js` gains a mock admin who is in a binome.
+
+### Built (2026-10-18)
+
+As planned, plus: `webState` catches a Drive error in `asMember_` or `memberState_`, so a hiccup costs the admin their
+My binome for that load, never the dashboard. `webApply` makes the Drive call only when the call holds a field change.
+A plain admin who opens `/my-binome` is sent to the Overview. Mock: `/dev-login?as=adminmember` (the busiest binome's
+other member, made an editor).
 
 ### Rollout
 
