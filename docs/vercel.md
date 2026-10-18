@@ -85,6 +85,11 @@ with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup aft
   refresh token when Google sends none (same verified email, one test refresh first; refused = the consent screen) and
   restarts the 48 h. A different account signing in revokes the outgoing grant only inside its 48 h (signed out or not),
   which ends that person's sign-ins everywhere; past it, the cookie is overwritten with no revoke.
+  With that person's changes still pending (from any device), the revoke waits ([slice 5](plans.md#slice-5-token-edges)):
+  the callback sets `pcr:<email>` ("revoke when done", 2 h) and the consumer revokes with the last change's access token
+  once none is left pending. Nothing pending, or Redis unreadable, revokes at once. Every sign-in deletes the incoming
+  person's `pcr:` key, so an old revoke never cuts a fresh sign-in. Sign out and Switch account wait for a save still
+  being accepted; with changes still pending both land on the sign-in screen, which says how many keep saving.
 - **Kill switch:** refresh tokens stay live at Google until 6 months unused, so it takes both: rotate `SESSION_KEY`
   (every cookie unreadable) **and** the OAuth client secret (every refresh token useless).
 - **Settings pages** write through `webRun('saveSettings')` into the Settings tab. `SETTING_UI` in
@@ -93,7 +98,7 @@ with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup aft
 - Tokens never reach browser JS and are never logged.
 - **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions; [slice 3](plans.md#slice-3-save-settings-and-my-binome-fields):
   Save settings for admins and My binome fields for members). Off until
-  the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message.
+  the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message (a sign-in still deletes its `pcr:` key).
   - The accept step in `api/run.js` refreshes the token when under 30 min is left, writes the author's Redis record first
     (hash `pc:<email>`, one field per cell: `alert:<id>`, `setting:<key>`, `field:<code>:<column>`), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
     carrying `seal({email, at, ate})` and the change ids. The token is never in Redis or the logs. Either write failing =

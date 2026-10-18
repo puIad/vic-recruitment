@@ -12,9 +12,9 @@ const backoff = meta => Math.min(300, 60 * 2 ** Math.max(0, ((meta && meta.deliv
 const lost = () => ({ state: 'dropped', reason: 'lost access' });
 const signedOut = () => ({ state: 'dropped', reason: 'sign-in ended before it was saved', again: true });
 
-/** End entries that are still the pending ones this delivery saw (a newer change on the cell wins). */
-async function end(email, entries, how) {
-  const now = Date.now(), rec = await P.read(email, now), w = {};
+/** End entries that are still the pending ones this delivery saw (a newer change on the cell wins). tok = the sealed token. */
+async function end(tok, entries, how) {
+  const email = tok.email, now = Date.now(), rec = await P.read(email, now), w = {};
   // shortcut: read then write, not atomic; an accept on the same cell in those few ms can be overwritten (Lua if it shows)
   entries.forEach(e => {
     const cur = rec[e.cell];
@@ -22,8 +22,13 @@ async function end(email, entries, how) {
     const x = how(cur);
     w[e.cell] = Object.assign({}, cur, x, x.state === 'dropped' ? { droppedAt: now } : { exp: now + P.ENDED_MS });
   });
-  if (Object.keys(w).length) await P.save(email, w);
+  if (!Object.keys(w).length) return;
+  await P.save(email, w);
   console.log(JSON.stringify({ at: 'apply', email, ended: Object.keys(w).map(c => w[c].state) }));
+  // another account took over a browser of theirs while these were pending (callback.js): revoke after the last one ends
+  if (Object.keys(rec).some(c => (w[c] || rec[c]).state === 'pending')) return;
+  const [mark] = await P.redis([['GETDEL', P.REVOKE + email]]).catch(() => [null]);
+  if (mark) { await S.revoke(tok.at); console.log(JSON.stringify({ at: 'apply', email, revoked: true })); }
 }
 
 async function handle(msg, meta) {
@@ -33,7 +38,7 @@ async function handle(msg, meta) {
   const pending = Object.keys(rec).map(c => rec[c]).filter(e => e.state === 'pending').sort((a, b) => a.at - b.at);
   const mine = pending.filter(e => msg.ids.indexOf(e.id) >= 0);
   if (!mine.length) return; // ended by an earlier call, replaced or cancelled
-  if (tok.ate - now < MIN_LIFE_MS) return end(email, mine, () => ({ state: 'dropped', reason: 'retries ran out', again: true }));
+  if (tok.ate - now < MIN_LIFE_MS) return end(tok, mine, () => ({ state: 'dropped', reason: 'retries ran out', again: true }));
   const [got, ttl] = await P.redis([['SET', 'pcl:' + email, '1', 'NX', 'PX', GAP_MS], ['PTTL', 'pcl:' + email]]);
   if (got !== 'OK') throw new Later(Math.max(ttl, 0) / 1000 + 1);
 
@@ -49,19 +54,19 @@ async function handle(msg, meta) {
     });
     j = await r.json().catch(() => ({}));
   } catch (e) { throw new Later(backoff(meta)); } // timeout or network: judged cell by cell on the retry
-  if (r.status === 401) return end(email, pending, signedOut);
-  if (r.status === 403) return end(email, pending, /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(JSON.stringify(j)) ? signedOut : lost); // a token from before a new scope
+  if (r.status === 401) return end(tok, pending, signedOut);
+  if (r.status === 403) return end(tok, pending, /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(JSON.stringify(j)) ? signedOut : lost); // a token from before a new scope
   if (!r.ok || j.error) {
     console.warn(JSON.stringify({ at: 'apply', email, status: r.status, msg: String((j.error && j.error.message) || '').slice(0, 200) }));
     throw new Later(r.status === 429 ? 60 : backoff(meta));
   }
   const v = (j.response && j.response.result) || {};
-  if (v.lost) return end(email, pending, lost);
-  if (v.refused) return end(email, batch, () => ({ state: 'dropped', reason: v.refused }));
+  if (v.lost) return end(tok, pending, lost);
+  if (v.refused) return end(tok, batch, () => ({ state: 'dropped', reason: v.refused }));
   if (v.retry || !Array.isArray(v.results)) throw new Later(backoff(meta));
   const by = {};
   v.results.forEach(x => { by[x.id] = x; });
-  await end(email, batch.filter(e => by[e.id]), e => {
+  await end(tok, batch.filter(e => by[e.id]), e => {
     const x = by[e.id];
     return x.end === 'dropped' ? { state: 'dropped', sheet: x.sheet, reason: x.reason, wrote: x.at, again: !x.reason } : { state: x.end, wrote: x.at };
   });

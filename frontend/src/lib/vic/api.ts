@@ -16,7 +16,9 @@ export class ApiError extends Error {
 export const hooks: {
   onAuthLost: (kind: "signin" | "expired", message: string) => void
   onSession: (endsAt: number) => void
-} = { onAuthLost: () => {}, onSession: () => {} }
+  /** waits for a save still being accepted, then says how many of this person's changes are still pending */
+  beforeSignOut: () => Promise<number>
+} = { onAuthLost: () => {}, onSession: () => {}, beforeSignOut: async () => 0 }
 
 /** Until when Google is rate-limiting this account (ms timestamp): live refresh skips its ticks till then. */
 let limitedUntil = 0
@@ -59,13 +61,35 @@ export async function callFull<T = unknown>(fn: string, args: unknown[] = [], ex
   return { value: j.value as T, rec: j.rec }
 }
 
+const SAVING_KEY = "vic:saving"
+/** How many changes were still being saved when this tab signed out (read once: the sign-in screen says so). */
+export const savingAtSignOut = (() => {
+  try {
+    const n = Number(sessionStorage.getItem(SAVING_KEY)) || 0
+    sessionStorage.removeItem(SAVING_KEY)
+    return n
+  } catch {
+    return 0
+  }
+})()
+
+/** Sign out, or Switch account (next = the sign-in). Pending changes keep saving after it (docs/plans.md › Slice 5);
+ *  with some left, both land on the sign-in screen, which says how many, before any account picker. */
 export async function signOut(next = "/") {
+  const saving = await hooks.beforeSignOut()
   try {
     await fetch("/api/logout", { method: "POST", credentials: "same-origin", headers: { "X-VIC": "1" } })
   } catch {
     /* the cookie expires on its own */
   }
-  window.location.href = next
+  if (saving) {
+    try {
+      sessionStorage.setItem(SAVING_KEY, String(saving))
+    } catch {
+      /* the screen just doesn't say it */
+    }
+  }
+  window.location.href = saving ? "/" : next
 }
 
 export const signInUrl = "/api/login"

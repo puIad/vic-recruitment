@@ -1,5 +1,5 @@
 // GET /api/callback?code&state → exchange the code, check the account is a verified @g.enp.edu.dz one, start the session.
-const S = require('../lib/session');
+const S = require('../lib/session'), P = require('../lib/pending');
 
 module.exports = async (req, res) => {
   const q = new URLSearchParams(String(req.url || '').split('?')[1] || '');
@@ -41,7 +41,10 @@ module.exports = async (req, res) => {
   }
   // Revoking ends the whole grant for that account (all its browsers), so only when another account takes over this
   // browser inside the outgoing sign-in's 48h; past it, that sign-in already ended and its other browsers keep theirs.
-  if (old && old.rt && old.email !== email && !S.expired(old, now)) await S.revoke(old.rt);
+  // With their changes still pending, the revoke waits for the last one (the consumer, api/apply.js).
+  if (old && old.rt && old.email !== email && !S.expired(old, now)) await P.revokeWhenDone(old, now);
+  // signing in again anywhere clears a "revoke when done" on this person, so an old revoke never cuts a fresh sign-in
+  await P.redis([['DEL', P.REVOKE + email]]).catch(() => { /* no mark can be set without Redis either */ });
   S.addCookie(res, S.sessionCookie({ email, rt: reuse ? old.rt : t.body.refresh_token, at: t.body.access_token,
     ate: now + (t.body.expires_in || 3600) * 1000, iat: now }));
   console.log(JSON.stringify({ at: 'login', email }));
