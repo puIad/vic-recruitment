@@ -3,7 +3,7 @@
 // whose access token is "at:<email>", like the real API running the script as the visitor.
 module.exports = function googleMock(seed) {
   const log = { token: [], revoked: [], runs: [] };
-  const opts = { timeout: false, refreshFails: null, scriptStatus: 200, refreshScope: undefined, scriptMessage: 'secret details' };
+  const opts = { timeout: false, drop: false, refreshFails: null, scriptStatus: 200, refreshScope: undefined, scriptMessage: 'secret details' };
   const realFetch = global.fetch;
   const json = (status, obj) => ({ ok: status < 300, status, json: async () => obj, headers: { get: () => null } });
 
@@ -22,6 +22,7 @@ module.exports = function googleMock(seed) {
     const m = url.match(/^https:\/\/script\.googleapis\.com\/v1\/scripts\/([^:]+):run$/);
     if (m) {
       if (opts.timeout) { const e = new Error('timed out'); e.name = 'TimeoutError'; throw e; }
+      if (opts.drop) throw new TypeError('fetch failed', { cause: Object.assign(new Error('other side closed'), { code: 'UND_ERR_SOCKET' }) }); // undici's dropped connection
       if (opts.scriptStatus !== 200) return json(opts.scriptStatus, { error: { code: opts.scriptStatus, status: opts.scriptStatus === 429 ? 'RESOURCE_EXHAUSTED' : 'PERMISSION_DENIED', message: opts.scriptMessage } });
       const email = String(init.headers.Authorization).replace(/^Bearer at:/, '');
       const b = JSON.parse(init.body);

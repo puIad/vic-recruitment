@@ -81,7 +81,10 @@ module.exports = async (req, res) => {
   } catch (e) {
     if (e.name === 'TimeoutError' || e.name === 'AbortError')
       return done(504, { error: 'Still running after ~5 minutes. It may finish on its own: refresh in a minute before trying again.', code: 'TIMEOUT' }, false);
-    return done(502, { error: 'Could not reach Google Apps Script. Try again.' }, false);
+    // the connection dropped mid-call (2026-10-18: a Sync now after 41 s): the script may still run to the end on Google's side,
+    // so the page must not tell people to press it again blind. The cause goes to the log, which had nothing on it.
+    console.warn(JSON.stringify({ at: 'run', lost: String(e.name), msg: String(e.message).slice(0, 200), cause: String((e.cause && (e.cause.code || e.cause.message)) || '').slice(0, 200), ms: Date.now() - t0 }));
+    return done(502, { error: 'Lost the connection to Google Apps Script while it ran. It may have finished anyway: refresh in a minute before trying again.', code: 'LOST' }, false);
   }
   if (r.status === 401) { S.addCookie(res, S.clearSession()); return done(401, { error: 'Google refused the session: sign in again.', code: 'SIGNED_OUT' }, false); }
   if (r.status === 403 && SCOPE_RE.test(JSON.stringify(j))) { S.addCookie(res, S.clearSession()); return done(401, { error: NEW_SCOPE, code: 'SIGNED_OUT' }, false); }
