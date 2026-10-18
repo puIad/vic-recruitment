@@ -235,6 +235,7 @@ t('registration checks', () => {
   const bad = X.checkRegistration({ ts, collected: 'kenza.a@g.enp.edu.dz', typedEmail: 'Kenza.a@g.enp edu.dz', first: 'K', family: 'A', birth: '27/10/2025', phone: '12', c1: 'IT', c1raw: 'IT', c2: 'IT' }, [], 'g.enp.edu.dz');
   const types = bad.alerts.map(a => a.type).sort();
   assert.deepStrictEqual(Array.from(types), ['BAD_BIRTHDATE', 'BAD_EMAIL', 'BAD_PHONE', 'SAME_CHOICES']);
+  assert.strictEqual(bad.alerts.find(a => a.type === 'SAME_CHOICES').severity, 'INFO', 'the same department twice is information, not a mistake');
   const mism = X.checkRegistration({ ts, collected: 'x@g.enp.edu.dz', typedEmail: 'y@g.enp.edu.dz', first: 'K', family: 'A', birth: '', phone: '0661000000', c1: 'HR', c2: 'IT' }, [], 'g.enp.edu.dz');
   assert.deepStrictEqual(Array.from(mism.alerts.map(a => a.type)), ['EMAIL_MISMATCH']);
   const dup = X.checkRegistration({ ts, collected: 'x@g.enp.edu.dz', typedEmail: 'x@g.enp.edu.dz', first: 'K', family: 'A', phone: '0661000000', c1: 'HR', c2: 'IT' }, [{ code: 'HR.02', email: 'x@g.enp.edu.dz' }], 'g.enp.edu.dz');

@@ -46,7 +46,7 @@ import { MemberName } from "@/components/member-name"
 
 export const TIMING = ["NOT_CONTACTED", "NO_DATE", "OVERDUE", "BAD_DATE"]
 const TYPO = ["BAD_PHONE", "BAD_EMAIL", "BAD_BIRTHDATE", "MISSING_NAME"]
-const ROUTING = ["INVALID_CHOICE", "SAME_CHOICES", "NO_BINOME"]
+const ROUTING = ["INVALID_CHOICE", "NO_BINOME"]
 const WHO = ["BINOME_MISMATCH", "BACKUP_INTERVIEWER", "NOT_ASSIGNED"]
 /** Screening: an application on hold, or a VIC member who already has a binome. */
 export const REVIEW = ["NEEDS_REVIEW", "VIC_MEMBER"]
@@ -65,7 +65,7 @@ export function rowAction(a: Alert): { label: string; icon: typeof Mail; kind: "
   if (TIMING.includes(a.type) && a.binome) return { label: "Nudge", icon: Send, kind: "nudge" }
   if (a.type === "UNPAIRED_MEMBER" && a.q) return { label: "Exclude", icon: UserX, kind: "exclude" }
   if (repairOf(a)) return { label: repairOf(a) === "retry" ? "Retry" : "Repair", icon: Wrench, kind: "repair" }
-  if (WHO.includes(a.type) && a.type !== "NOT_ASSIGNED") return { label: "It's fine", icon: Check, kind: "keep" }
+  if ((WHO.includes(a.type) && a.type !== "NOT_ASSIGNED") || a.type === "SAME_CHOICES") return { label: "It's fine", icon: Check, kind: "keep" }
   if (!a.q) return null
   if (TYPO.includes(a.type) || ROUTING.includes(a.type) || a.type === "UNKNOWN_INTERVIEWEE" || a.type === "EMAIL_MISMATCH" || a.type === "NOT_ASSIGNED" || (a.type === "ODD_VALUE" && a.q.kind === "iv"))
     return { label: "Fix", icon: Sparkles, kind: "open" }
@@ -614,8 +614,13 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     panel = <EmailChoice a={a} v={reg.iv} />
     links.push({ key: "form", label: "Their form response", target: "form" })
   } else if (reg && ROUTING.includes(a.type)) {
-    hint = a.type === "SAME_CHOICES" ? "Set the 2nd choice they meant." : "Set the department they belong in."
+    hint = "Set the department they belong in."
     panel = <RoutingPanel key={a.id} a={a} v={reg.iv} />
+    links.push({ key: "form", label: "Their form response", target: "form" }, { key: "iv", label: "Interviewees row", target: "iv" })
+  } else if (reg && a.type === "SAME_CHOICES") {
+    hint = "They chose this department twice because they really want it. Nothing to fix; set a 2nd choice only if they ask for one."
+    panel = <RoutingPanel key={a.id} a={a} v={reg.iv} />
+    btn("fine", Check, "It's fine", () => resolve([a.id]), "default")
     links.push({ key: "form", label: "Their form response", target: "form" }, { key: "iv", label: "Interviewees row", target: "iv" })
   } else if (reg && a.type === "DUPLICATE_REGISTRATION") {
     hint = "Compare the two submissions, then decide which answers stand."

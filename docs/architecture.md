@@ -108,7 +108,7 @@ Any missed trigger self-heals: unprocessed form rows are picked up by the next r
 |---|---|---|
 | `NOT_CONTACTED`, `NO_DATE`, `OVERDUE`, `BAD_DATE` | timing check | yes |
 | `NO_BINOME`, `UNPAIRED_MEMBER` | registration / team check | yes |
-| `SAME_CHOICES`, `INVALID_CHOICE`, `BAD_EMAIL`, `EMAIL_MISMATCH`, `EXTERNAL_EMAIL`, `BAD_PHONE`, `BAD_BIRTHDATE`, `MISSING_NAME`, `DUPLICATE_REGISTRATION` | registration check | no |
+| `SAME_CHOICES` (INFO: they really want that department), `INVALID_CHOICE`, `BAD_EMAIL`, `EMAIL_MISMATCH`, `EXTERNAL_EMAIL`, `BAD_PHONE`, `BAD_BIRTHDATE`, `MISSING_NAME`, `DUPLICATE_REGISTRATION` | registration check | no |
 | `UNKNOWN_INTERVIEWEE`, `BINOME_MISMATCH`, `BACKUP_INTERVIEWER`, `DUPLICATE_INTERVIEW`, `NOT_ASSIGNED`, `CHOICE_MISMATCH`, `AUTOCORRECTED` | interview check | no |
 | `FILE_ERROR` | any file write/share that failed | no (REVOKE one: yes) |
 | `MEMBER_CHANGED`, `COVER_ADDED`, `REASSIGNED` | the tools (INFO, AUTO-FIXED) | — |
