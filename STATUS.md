@@ -9,7 +9,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-No PR is open. Open issues: pending-changes slices #68–#70 (slice 2, #67, is done), one at a time, slice 3 next.
+Open PR: [#76](https://github.com/puIad/vic-recruitment-2026/pull/76) (slice 3, Vercel). Slice 3's script part ([#75](https://github.com/puIad/vic-recruitment-2026/pull/75)) is live since 2026-10-18 as web app **@90** / API **@91** from `9b9846f` (pulled back equal to `main`): the apply entry takes settings and My binome fields, and members get the switch. Open issues: pending-changes slices #68–#70 (slice 2, #67, is done), one at a time.
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
