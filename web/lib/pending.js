@@ -1,10 +1,11 @@
-// Pending changes (docs/plans.md › Slices 2 and 3): the author's record in Upstash Redis, the accept step and the queue publish.
+// Pending changes (docs/plans.md › Slices 2 to 4): the author's record in Upstash Redis, the accept step and the queue publish.
 // Record = hash pc:<email>, one field per cell ("alert:A-0012", "setting:DIGEST_HOUR", "field:IT.12:Rating"), each a JSON entry:
 //   {id, cell, kind (alert | setting | field), alert?, op?, until? (alerts), key? (settings), code?, field? (My binome),
 //    value (what the author wants), seen (what their screen showed), at (the click),
 //    state: pending | applied | met | dropped, by (apply-by = the sealed token's end), wrote? (Google's write or check
 //    time), sheet? (the sheet's value on a drop), reason?, again? (Apply mine anyway offered), droppedAt?, shown?,
-//    addressed?, exp?}. by and droppedAt are for slice 4's sweep and email (issues 58, 54).
+//    addressed?, exp?, seenAt? (a page showing the drop, refreshed once a minute), mailed? (the sync's email about it)}.
+//    by, droppedAt, seenAt and mailed are for slice 4's sweep, email and admin alert (issues 58, 54).
 // Every deployment shares it, so its format only ever adds fields (issue 58). No token is ever written into it.
 const crypto = require('crypto');
 const S = require('./session');
@@ -14,6 +15,7 @@ const SCRIPT_FORMAT = 1;   // webApply's call format (Pending.gs APPLY_FORMAT)
 const TOPIC = 'vic-apply';
 const RETENTION_S = 7200;  // about 2 h (issue 58)
 const ENDED_MS = 10 * 60e3, ADDRESSED_MS = 7 * 24 * 3600e3, RECORD_S = 30 * 24 * 3600;
+const AWAY_MS = 5 * 60e3, ANSWER_MS = 24 * 3600e3; // slice 4: no page showed it (email), the email went unanswered (alert)
 const VALUE = { resolve: 'RESOLVED', snooze: 'SNOOZED', mute: 'MUTED', unmute: 'OPEN' };
 const SHOWN = ['OPEN', 'SNOOZED', 'MUTED'];
 
@@ -41,14 +43,18 @@ async function publish(payload) {
 
 const key = email => 'pc:' + email;
 /** The author's entries by cell, and the cells past their expiry (left out; the next accept removes them). */
-async function readAll(email, now) {
-  const [flat] = await redis([['HGETALL', key(email)]]), rec = {}, gone = [];
+function parse(flat, now) {
+  const rec = {}, gone = [];
   for (let i = 0; i + 1 < (flat || []).length; i += 2) {
     let e = null;
     try { e = JSON.parse(flat[i + 1]); } catch (x) { /* not ours */ }
     if (e && !(e.exp <= now)) rec[flat[i]] = e; else gone.push(flat[i]);
   }
   return { rec, gone };
+}
+async function readAll(email, now) {
+  const [flat] = await redis([['HGETALL', key(email)]]);
+  return parse(flat, now);
 }
 const read = async (email, now) => (await readAll(email, now)).rec;
 /** Write entries ({cell: entry}) and remove cells, in one round trip. */
@@ -117,10 +123,12 @@ async function accept(s, changes, now) {
   return out;
 }
 
-/** The page's answers on drops: shown (it is on screen) and keep (Keep the sheet's value: addressed, gone in 7 days). */
+/** The page's answers on drops: shown (it is on screen), seen (still on screen, once a minute on the pulse) and keep
+ *  (Keep the sheet's value: addressed, gone in 7 days). */
 async function mark(email, a, now) {
   const rec = await read(email, now), w = {}, list = x => (Array.isArray(x) ? x.slice(0, 200).map(String) : []);
-  list(a.shown).forEach(c => { const e = rec[c]; if (e && e.state === 'dropped' && !e.shown) w[c] = Object.assign({}, e, { shown: now }); });
+  list(a.shown).forEach(c => { const e = rec[c]; if (e && e.state === 'dropped' && !e.shown) w[c] = Object.assign({}, e, { shown: now, seenAt: now }); });
+  list(a.seen).forEach(c => { const e = w[c] || rec[c]; if (e && e.state === 'dropped' && !e.addressed) w[c] = Object.assign({}, e, { seenAt: now }); });
   list(a.keep).forEach(c => {
     const e = w[c] || rec[c];
     if (e && e.state === 'dropped' && !e.addressed) w[c] = Object.assign({}, e, { shown: e.shown || now, addressed: now, exp: now + ADDRESSED_MS });
@@ -129,4 +137,41 @@ async function mark(email, a, now) {
   return Object.assign({}, rec, w);
 }
 
-module.exports = { FORMAT, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark };
+/**
+ * The sync's call each cycle (docs/plans.md › Slice 4, issue 54), over every author's record:
+ *  - mailed = what the last cycle emailed ([{email, cells, at}]): those drops get mailed = at;
+ *  - an entry still pending past its apply-by (its deployment died, or the queue gave up) ends dropped, "retries ran out";
+ *  - mail: per author, the unaddressed drops no page showed within 5 min and no email covered yet;
+ *  - alert: authors with an unaddressed drop shown but unseen for 5 min (the visit ended), or mailed 24 h ago unanswered;
+ *  - open: authors with any unaddressed drop (the sync resolves DROPPED|<email> for everyone else).
+ * shortcut: read then write per author like the consumer's end(), not atomic; Lua if a race ever shows.
+ */
+async function forSync(mailed, now) {
+  const keys = [];
+  let cur = '0';
+  do { const [[next, ks]] = await redis([['SCAN', cur, 'MATCH', 'pc:*', 'COUNT', 1000]]); cur = String(next); keys.push(...ks); } while (cur !== '0');
+  const flats = keys.length ? await redis(keys.map(k => ['HGETALL', k])) : [], sent = {};
+  (Array.isArray(mailed) ? mailed : []).forEach(m => { if (m && m.email && Array.isArray(m.cells)) sent[m.email] = m; });
+  const out = { mail: [], alert: [], open: [] }, writes = [];
+  keys.forEach((k, i) => {
+    const email = k.slice(3), { rec } = parse(flats[i], now), w = {}, m = sent[email];
+    Object.keys(rec).forEach(c => {
+      let e = rec[c];
+      if (e.state === 'pending' && e.by < now) e = w[c] = Object.assign({}, e, { state: 'dropped', reason: 'retries ran out', again: true, droppedAt: now });
+      if (e.state === 'dropped' && !e.mailed && m && m.cells.indexOf(c) >= 0) e = w[c] = Object.assign({}, e, { mailed: Number(m.at) || now });
+      rec[c] = e;
+    });
+    if (Object.keys(w).length) writes.push(save(email, w));
+    const drops = Object.keys(rec).map(c => rec[c]).filter(e => e.state === 'dropped' && !e.addressed);
+    if (!drops.length) return;
+    out.open.push(email);
+    const due = drops.filter(e => !e.shown && !e.mailed && now - (e.droppedAt || e.at) >= AWAY_MS);
+    if (due.length) out.mail.push({ email, drops: due.map(e => ({ cell: e.cell, kind: e.kind, alert: e.alert, op: e.op, until: e.until, key: e.key,
+      code: e.code, field: e.field, value: e.value, seen: e.seen, sheet: e.sheet, reason: e.reason, at: e.at })) });
+    if (drops.some(e => (e.shown && now - Math.max(e.shown, e.seenAt || 0) >= AWAY_MS) || (e.mailed && now - e.mailed >= ANSWER_MS))) out.alert.push(email);
+  });
+  await Promise.all(writes);
+  return out;
+}
+
+module.exports = { FORMAT, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync };

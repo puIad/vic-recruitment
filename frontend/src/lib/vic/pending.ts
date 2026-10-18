@@ -131,6 +131,10 @@ export async function acceptAlerts(ids: string[], op: AlertEntry["op"], snoozeFo
   return !!changes && (await st.accept(changes)) === "ok"
 }
 
+/** An alert's status, and an alert change, in words (the drop notices). */
+export const STATUS: Record<string, string> = { OPEN: "Open", SNOOZED: "Snoozed", MUTED: "Muted", RESOLVED: "Resolved", "AUTO-RESOLVED": "Closed by the script" }
+export const YOURS: Record<AlertEntry["op"], string> = { resolve: "Resolved", snooze: "Snoozed", mute: "Muted", unmute: "Back with the open alerts" }
+
 /** Why a change was dropped, in words (the consumer's reasons; the script's own come as sentences). */
 export const REASON: Record<string, string> = {
   "lost access": "You can no longer edit the Master, so it could not be written as you.",

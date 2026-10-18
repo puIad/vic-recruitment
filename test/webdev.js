@@ -8,6 +8,7 @@
 //   rest free, so the Binomes page shows the Pairing panel (npm run mock -- --pairing).
 //   Pending changes: Settings › General › Pending changes (admin@ is the owner); Redis and Queues are faked in memory. With it
 //   on, alert actions, Save settings and My binome saves (?as=member) take the pending path.
+//   --away = pending changes on, and three of admin@'s changes dropped while they were away: the next-visit dialog (slice 4).
 //   --screening = the default data with Screening on and a linked members sheet: applications held for review (dots, one
 //   word, a non-answer), a VIC member declined silently, one declined by an admin, one with a binome flagged (npm run mock -- --screening).
 const http = require('http'), crypto = require('crypto');
@@ -21,7 +22,7 @@ require('./googlemock')(s);
 // pending changes (docs/plans.md › Slice 2): Redis and Queues in memory; a message reaches the consumer 4 s after its
 // publish and is delivered again as the queue would (at most 10 s apart here). Turn the switch on in Settings › General.
 const P = require('../web/lib/pending'), apply = require('../web/api/apply');
-require('./fakes')(P);
+const F = require('./fakes')(P);
 const published = P.deps.send;
 const deliver = (payload, n, ms) => setTimeout(() => apply.handle(payload, { deliveryCount: n })
   .catch(e => deliver(payload, n + 1, Math.min((e && e.after) || 5, 10) * 1000)), ms);
@@ -96,6 +97,14 @@ const memberEmail = busiest ? busiest.people[busiest.people.length - 1].email : 
 const closed = busiest ? s.call('webState').binomes.find(b => b.code !== busiest.code && b.status !== 'DRAFT' && b.people.length) : null;
 const closedEmail = closed ? closed.people[0].email : '';
 if (busiest) { s.run('__acl = true'); s.call('webRun', 'binomeAccess', { binome: busiest.code, level: 'edit' }); }
+if (process.argv.includes('--away') && !empty) {
+  s.call('webRun', 'pendingSwitch', { on: true });
+  const st = s.call('webState'), a = st.alerts[0], t = Date.now() - 3600e3, rec = F.db['pc:admin@g.enp.edu.dz'] = {};
+  const put = e => { rec[e.cell] = JSON.stringify(Object.assign({ id: crypto.randomUUID(), state: 'dropped', at: t, droppedAt: t + 6e4, again: true }, e)); };
+  put({ cell: 'alert:' + a.id, kind: 'alert', alert: a.id, op: 'resolve', value: 'RESOLVED', seen: 'OPEN', sheet: 'SNOOZED' });
+  put({ cell: 'setting:DIGEST_HOUR', kind: 'setting', key: 'DIGEST_HOUR', value: 9, seen: 8, sheet: '7' });
+  put({ cell: 'alert:' + st.alerts[1].id, kind: 'alert', alert: st.alerts[1].id, op: 'mute', value: 'MUTED', seen: 'OPEN', reason: 'retries ran out' });
+}
 const api = { run: require('../web/api/run'), logout: require('../web/api/logout') };
 http.createServer((req, res) => {
   // plain http locally: drop "Secure" so every browser keeps the cookie (production is https)

@@ -2,15 +2,13 @@ import { AlertTriangle, Check, Clock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useActions } from "@/lib/vic/actions"
-import { REASON, type Mark } from "@/lib/vic/pending"
+import { REASON, STATUS, YOURS, type Mark } from "@/lib/vic/pending"
 import { useQuick } from "@/lib/vic/quick"
 import { useVic } from "@/lib/vic/store"
 import type { AlertEntry, PendingEntry } from "@/lib/vic/types"
 
 /* How an alert row shows its author's pending change (variant A of the prototype the owner chose, issue 51). */
 
-const STATUS: Record<string, string> = { OPEN: "Open", SNOOZED: "Snoozed", MUTED: "Muted", RESOLVED: "Resolved", "AUTO-RESOLVED": "Closed by the script" }
-const YOURS: Record<AlertEntry["op"], string> = { resolve: "Resolved", snooze: "Snoozed", mute: "Muted", unmute: "Back with the open alerts" }
 
 /** The pill next to the alert's name: Pending, then "In the sheet" for a moment, or Not applied. */
 export function PendingMark({ mark }: { mark?: Mark<PendingEntry> }) {

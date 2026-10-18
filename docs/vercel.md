@@ -27,7 +27,10 @@ web/                the Vercel project root
                     token refresh, scripts.run, maps script errors to JSON, logs email/action/ms/ok; also the
                     pending-changes accept step (fn accept), drop answers (pendingMark) and the pulse flag (rec)
   api/apply.js      the queue consumer (topic vic-apply): applies an author's pending changes through webApply, as them
-  lib/pending.js    the author's record in Upstash Redis (REST pipeline), the accept step, the queue publish
+  api/drops.js      the sync's call each cycle (slice 4), guarded by DROPS_SECRET: sweeps entries past their apply-by into
+                    drops, takes back what the last sync mailed, returns the drops due an email and the authors due a
+                    DROPPED|<email> admin alert
+  lib/pending.js    the author's record in Upstash Redis (REST pipeline), the accept step, the queue publish, the sync's sweep
   api/logout.js     marks this browser signed out; never revokes, so signing back in skips consent
   lib/session.js    AES-256-GCM seal/open (node:crypto), cookie helpers
   package.json      one dependency, @vercel/queue (Vercel installs it in web/)
@@ -55,6 +58,9 @@ deployment shows CANCELED, production stays put) when nothing under `web/` or `f
 `$VERCEL_GIT_PREVIOUS_SHA`, the last successful deployment of the branch. An empty or unknown SHA (a branch's first
 deployment, a shallow clone) builds. So on Hobby an Instant Rollback after a doc push still lands on the last real
 release. Any other path a build reads must be added to the `git diff` paths.
+
+**`DROPS_SECRET`** (env var, Production): a long random string, the same value as the script property `DROPS_SECRET`.
+Unset on Vercel, `api/drops.js` answers 503; unset in the script, the sync never calls it. Rotate both together.
 
 ## Rules worth knowing
 
