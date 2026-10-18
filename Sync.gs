@@ -114,7 +114,12 @@ function timingAlerts_(ctx) {
 
 /* ---------- 5) tracker ---------- */
 
+/** The Tracker tab, timed for a dashboard action's line. */
 function buildTracker_(ctx) {
+  const t0 = Date.now();
+  try { return writeTracker_(ctx); } finally { actTime_('tracker', Date.now() - t0); }
+}
+function writeTracker_(ctx) {
   const sh = ss_().getSheetByName(TAB.TRACKER);
   const I = ctx.iv.I, s = S_();
   const per = {};

@@ -138,10 +138,14 @@ function saveTable_(t, theirs) {
 }
 
 let _lockWait = 0; // ms the last withLock_ waited for the lock (runCycle_ logs it)
+/** A dashboard action's phase times in ms while webRun runs it (its 'action' line); null otherwise. The first of each counts. */
+let _act = null;
+function actTime_(k, ms) { if (_act && _act[k] === undefined) _act[k] = ms; }
 function withLock_(fn, waitMs) {
   const lock = LockService.getScriptLock(), t0 = Date.now();
   const got = lock.tryLock(waitMs || 30000);
   _lockWait = Date.now() - t0;
+  actTime_('lockWait', _lockWait);
   if (!got) { console.warn('Busy: another run holds the lock (waited ' + _lockWait + ' ms)'); return null; }
   try { return fn(); } finally { lock.releaseLock(); }
 }
@@ -160,6 +164,7 @@ function toast_(msg) { if (_webOut) { _webOut.push(msg); return; } try { ss_().t
 /* ---------- context: everything a run needs, loaded once ---------- */
 
 function loadCtx_() {
+  const t0 = Date.now();
   const ctx = {
     now: new Date(),
     iv: loadTable_(TAB.IV, IV_H),
@@ -176,6 +181,7 @@ function loadCtx_() {
   ctx.alerts = alertBuffer_(ctx);
   ctx.covers = loadCovers_();
   indexCtx_(ctx);
+  actTime_('load', Date.now() - t0);
   return ctx;
 }
 

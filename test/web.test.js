@@ -194,7 +194,12 @@ st = call('webState');
 
 const iv = st.interviewees[0];
 const target = st.binomes.find(b => b.code !== iv.binome && b.status === 'ACTIVE' && (b.tag === 'ALL' || b.tag.includes(iv.code.split('.')[0])));
-out = call('webRun', 'reassign', { code: iv.code, binome: target.code });
+const __log = console.log, lines = []; console.log = (...x) => lines.push(x.join(' ')); // the action's timing line
+try { out = call('webRun', 'reassign', { code: iv.code, binome: target.code }); } finally { console.log = __log; }
+const act = lines.map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x && x.at === 'action');
+assert.deepStrictEqual(act.map(x => [x.action, x.outcome]), [['reassign', 'ok']], 'one action line');
+assert.deepStrictEqual(Object.keys(act[0]), ['at', 'action', 'outcome', 'total', 'lockWait', 'load', 'writes', 'tracker', 'publish', 'mailsSent']);
+assert(['lockWait', 'load', 'writes', 'tracker', 'publish'].every(k => act[0][k] >= 0) && act[0].total >= act[0].lockWait + act[0].load + act[0].tracker + act[0].publish, JSON.stringify(act[0]));
 assert(/moved to/.test(out.messages[0]), out.messages[0]);
 assert.strictEqual(call('webState').interviewees.find(x => x.code === iv.code).binome, target.code);
 out = call('webRun', 'reassign', { code: 'XX.99', binome: target.code });

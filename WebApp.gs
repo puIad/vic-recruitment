@@ -565,6 +565,14 @@ function saveSettings_(values) {
   return 'Settings saved: ' + changed.join(', ') + (changed.some(k => k === 'SYNC_EVERY_MINUTES' || k === 'DIGEST_HOUR') ? '\nThe sheet owner needs to run Setup for the new schedule to take effect.' : '');
 }
 
+/** One line per dashboard action, like the sync's cycle line (Apps Script › Executions › Cloud logs): total = lockWait + load +
+ *  writes (everything else the action did: sheets opened and written, mails) + tracker + publish (the snapshot after it). */
+function logAction_(action, outcome, t0, tp, ph) {
+  const lockWait = ph.lockWait || 0, load = ph.load || 0, tracker = ph.tracker || 0, end = Date.now();
+  console.log(JSON.stringify({ at: 'action', action: String(action).slice(0, 30), outcome: outcome, total: end - t0, lockWait: lockWait, load: load,
+    writes: Math.max(0, tp - t0 - lockWait - load - tracker), tracker: tracker, publish: end - tp, mailsSent: _mailsSent }));
+}
+
 /** One entry point for every dashboard button. Returns {messages[], result}. args.budgetMs (lock): the Vercel front sends
  *  ~200s so the run ends before its 300s function limit; the old dashboard and the menu keep 270s. */
 function webRun(action, args) {
@@ -577,8 +585,10 @@ function webRun(action, args) {
   const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
-  let refused = false; // BUSY: nothing was changed, and the lock holder publishes
+  let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
   _webOut = [];
+  _act = {};
+  const t0 = Date.now();
   try {
     let result = null;
     switch (action) {
@@ -626,9 +636,13 @@ function webRun(action, args) {
     return { messages: _webOut.slice(), result: result };
   } catch (e) {
     refused = /^BUSY:/.test(e && e.message);
+    outcome = refused ? 'busy' : 'error';
     throw e;
   } finally {
     _webOut = null;
+    const tp = Date.now(), ph = _act || {};
+    _act = null; // the publish's own lock wait and load count in publish
     if (wrote && !refused) publishFresh_(); // also after a failure halfway: what was written shows
+    logAction_(action, outcome, t0, tp, ph);
   }
 }
