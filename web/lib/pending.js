@@ -2,7 +2,8 @@
 // Record = hash pc:<email>, one field per cell ("alert:A-0012"), each a JSON entry:
 //   {id, cell, kind, alert, op, value (what the author wants), seen (what their screen showed), at (the click), until?,
 //    state: pending | applied | met | dropped, by (apply-by = the sealed token's end), wrote? (Google's write or check
-//    time), sheet? (the sheet's value on a drop), reason?, again? (Apply mine anyway offered), shown?, addressed?, exp?}
+//    time), sheet? (the sheet's value on a drop), reason?, again? (Apply mine anyway offered), droppedAt?, shown?,
+//    addressed?, exp?}. by and droppedAt are for slice 4's sweep and email (issues 58, 54).
 // Every deployment shares it, so its format only ever adds fields (issue 58). No token is ever written into it.
 const crypto = require('crypto');
 const S = require('./session');
@@ -38,16 +39,17 @@ async function publish(payload) {
 }
 
 const key = email => 'pc:' + email;
-/** The author's entries by cell, marks past their expiry left out. */
-async function read(email, now) {
-  const [flat] = await redis([['HGETALL', key(email)]]), out = {};
+/** The author's entries by cell, and the cells past their expiry (left out; the next accept removes them). */
+async function readAll(email, now) {
+  const [flat] = await redis([['HGETALL', key(email)]]), rec = {}, gone = [];
   for (let i = 0; i + 1 < (flat || []).length; i += 2) {
     let e = null;
     try { e = JSON.parse(flat[i + 1]); } catch (x) { /* not ours */ }
-    if (e && !(e.exp <= now)) out[flat[i]] = e;
+    if (e && !(e.exp <= now)) rec[flat[i]] = e; else gone.push(flat[i]);
   }
-  return out;
+  return { rec, gone };
 }
+const read = async (email, now) => (await readAll(email, now)).rec;
 /** Write entries ({cell: entry}) and remove cells, in one round trip. */
 function save(email, entries, gone) {
   const k = key(email), flat = [], cmds = [];
@@ -71,7 +73,7 @@ const valid = c => !!c && c.kind === 'alert' && !!VALUE[c.op] && /^A-\d{1,7}$/.t
  * s = the session {email, at, ate}. Returns the record as it now is.
  */
 async function accept(s, changes, now) {
-  const rec = await read(s.email, now), writes = {}, cancel = [], before = {};
+  const { rec, gone: expired } = await readAll(s.email, now), writes = {}, cancel = [], before = {};
   changes.forEach(c => {
     const cell = 'alert:' + c.alert, e0 = writes[cell] || rec[cell];
     let seen = c.seen;
@@ -84,7 +86,8 @@ async function accept(s, changes, now) {
     writes[cell] = { id: crypto.randomUUID(), cell: cell, kind: 'alert', alert: String(c.alert), op: c.op, value: VALUE[c.op], seen: seen,
       at: c.at, until: c.op === 'snooze' ? c.until : undefined, state: 'pending', by: s.ate };
   });
-  const gone = cancel.filter(c => !writes[c]), ids = Object.keys(writes).map(c => writes[c].id);
+  // expired cells go here, inside the read-then-write the accept already has (a pulse never deletes)
+  const gone = cancel.concat(expired).filter(c => !writes[c]), ids = Object.keys(writes).map(c => writes[c].id);
   await save(s.email, writes, gone);
   if (ids.length) {
     try {

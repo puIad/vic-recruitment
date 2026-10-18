@@ -259,6 +259,13 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     await deliver();
     assert.strictEqual(status('A-9002'), 'RESOLVED', 'no drop against their own change');
 
+    // an expired mark is left out of reads, and the next accept removes it from the hash
+    F.db['pc:admin@g.enp.edu.dz']['alert:A-9999'] = JSON.stringify({ cell: 'alert:A-9999', state: 'applied', exp: Date.now() - 1 });
+    assert(!('alert:A-9999' in (await pulse(own, 2)).json.rec), 'expired: not read');
+    await accept(own, { alert: 'A-9003', op: 'resolve', seen: 'OPEN' });
+    assert(!('alert:A-9999' in F.db['pc:admin@g.enp.edu.dz']), 'expired: removed by the next accept');
+    await accept(own, { alert: 'A-9003', op: 'unmute', seen: 'OPEN' }); // undone: cancels it, so the next case starts clean
+
     // a hand edit before it applies: dropped with the sheet's value, shown, then Apply mine anyway / Keep the sheet's value
     await accept(own, { alert: 'A-9003', op: 'mute', seen: 'OPEN' });
     setStatus('A-9003', 'SNOOZED');
