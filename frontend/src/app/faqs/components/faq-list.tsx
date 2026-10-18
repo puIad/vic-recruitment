@@ -18,7 +18,6 @@ interface FAQ {
 
 interface Category {
   name: string
-  count: number
 }
 
 interface FAQListProps {
@@ -75,7 +74,7 @@ export function FAQList({ faqs, categories }: FAQListProps) {
                   selectedCategory === category.name && "bg-background"
                 )}
               >
-                {category.name === "All" ? faqs.length : category.count}
+                {category.name === "All" ? faqs.length : faqs.filter((f) => f.category === category.name).length}
               </Badge>
             </button>
           ))}
