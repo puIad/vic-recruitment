@@ -24,9 +24,13 @@ web/                the Vercel project root
   api/callback.js   verifies state, exchanges the code, checks id_token hd/email_verified, writes the session cookie
                     (reuses this browser's stored refresh token for the same account, after one test refresh)
   api/run.js        the proxy: allowlist {webAccess, webState, webPulse, webRun}, Origin + X-VIC check, 48h check,
-                    token refresh, scripts.run, maps script errors to JSON, logs email/action/ms/ok
+                    token refresh, scripts.run, maps script errors to JSON, logs email/action/ms/ok; also the
+                    pending-changes accept step (fn accept), drop answers (pendingMark) and the pulse flag (rec)
+  api/apply.js      the queue consumer (topic vic-apply): applies an author's pending changes through webApply, as them
+  lib/pending.js    the author's record in Upstash Redis (REST pipeline), the accept step, the queue publish
   api/logout.js     marks this browser signed out; never revokes, so signing back in skips consent
   lib/session.js    AES-256-GCM seal/open (node:crypto), cookie helpers
+  package.json      one dependency, @vercel/queue (Vercel installs it in web/)
   vercel.json       buildCommand (npm --prefix ../frontend ci && … run build), outputDirectory dist, a rewrite of every
                     non-/api/ path to /index.html (deep links and reloads), maxDuration 300 for api/run.js, security
                     headers (CSP with font-src 'self' for the self-hosted Gilroy, frame-ancestors none, no-referrer)
@@ -72,6 +76,21 @@ release. Any other path a build reads must be added to the `git diff` paths.
   `frontend/src/app/settings/components/settings-form.tsx` maps key → friendly name/icon: add a row there when adding a
   setting to `SETTINGS_DEFAULTS`.
 - Tokens never reach browser JS and are never logged.
+- **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions). Off until
+  the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message.
+  - The accept step in `api/run.js` refreshes the token when under 30 min is left, writes the author's Redis record first
+    (hash `pc:<email>`, one field per cell), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
+    carrying `seal({email, at, ate})` and the change ids. The token is never in Redis or the logs. Either write failing =
+    that save is a direct write (code `DIRECT`); another change format = code `FORMAT` (the page asks for a reload).
+  - The consumer `api/apply.js` (`experimentalTriggers` queue/v2beta in `vercel.json`, no max concurrency: it would count
+    each delivery twice) reads the changes from the record, never from the message, makes at most one `webApply` call per
+    author per minute (Redis key `pcl:<email>`) carrying all their pending changes, and marks each applied or met for
+    10 min, or dropped. Retries back off from 60 s; none starts with under 6 min of token life (then: dropped, "retries
+    ran out"). 401 = dropped "sign-in ended before it was saved"; lost access drops every pending change of that author.
+  - Store: Upstash Redis Free from the Vercel Marketplace, us-east-1 next to iad1 (recreated there on 2026-10-18 after a
+    first install in Frankfurt), connected to this project only. Env vars `KV_REST_API_URL` / `KV_REST_API_TOKEN` (the
+    code also takes `UPSTASH_REDIS_REST_*`). The record only ever adds fields: every deployment shares it.
+  - A bad script deploy: `npm run rollback -- <version>` (only versions named "apply entry").
 
 ## Still open
 
