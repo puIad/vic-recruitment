@@ -131,12 +131,14 @@ assert(/Daily digest · /.test(digest) && /New registrations <b/.test(digest) &&
   c = fetched()[1];
   assert.deepStrictEqual([c.body.mailed.length, c.body.mailed[0].email, c.body.mailed[0].cells.length], [1, 'away@g.enp.edu.dz', 2], 'the next call reports what was mailed');
   assert.strictEqual(dropAlerts().length, 1, 'raised once');
+  answer({ code: 200, body: { mail: [{ email: 'x@g.enp.edu.dz' }] } }); // a malformed answer: logged, the cycle goes on
+  assert(sync().messages, 'a bad api/drops answer never fails the sync');
   answer({ code: 502, body: {} });
   sync();
   assert.strictEqual(dropAlerts()[0][8], 'OPEN', 'api/drops down: nothing resolved');
   answer({ code: 200, body: { mail: [], alert: [], open: [] } });
   sync();
-  assert.deepStrictEqual([dropAlerts()[0][8], fetched()[3].body.mailed], ['AUTO-RESOLVED', []], 'every drop addressed: resolved; the report was taken');
+  assert.deepStrictEqual([dropAlerts()[0][8], fetched().pop().body.mailed], ['AUTO-RESOLVED', []], 'every drop addressed: resolved; the report was taken');
   run(`delete __props.DROPS_SECRET; __fetch = function () { throw new Error('no network in the mock'); }`);
 }
 

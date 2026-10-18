@@ -251,7 +251,7 @@ function runCycle_(opts) {
     if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity); lap('integrity');
     saveTable_(ctx.iv); appendLog_(ctx); lap('save');
     commitBase_(ctx); lap('base'); // before the mails: if they fail, the tabs and the baseline still agree
-    if (opts.timing) dropsSync_(ctx); lap('drops'); // dropped dashboard changes: emails and DROPPED| alerts (Pending.gs)
+    if (opts.timing) try { dropsSync_(ctx); } catch (e) { console.warn('Drops: ' + e); } lap('drops'); // dropped dashboard changes: emails and DROPPED| alerts (Pending.gs); never fails the sync
     ctx.alerts.flush(); lap('alerts');
     sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx); lap('mails');
     if (opts.tracker) buildTracker_(ctx); lap('tracker');
