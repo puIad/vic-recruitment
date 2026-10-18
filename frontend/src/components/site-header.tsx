@@ -14,8 +14,8 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
 import { alertLabel, SEVERITY } from "@/lib/vic/format"
-import type { Alert } from "@/lib/vic/types"
 import { useVic } from "@/lib/vic/store"
+import { useAlertView } from "@/lib/vic/pending"
 import { useUi } from "@/lib/vic/ui"
 import { cn } from "@/lib/utils"
 
@@ -69,11 +69,9 @@ function LiveStatus({ member }: { member?: boolean }) {
   )
 }
 
-const NO_ALERTS: Alert[] = []
 
 function AlertsBell() {
-  const alerts = useVic((s) => s.state?.alerts) ?? NO_ALERTS
-  const counts = useVic((s) => s.state?.alertCounts)
+  const { alerts, counts } = useAlertView() // with the author's pending changes over the snapshot
   const [open, setOpen] = React.useState(false)
   const top = alerts.slice(0, 5)
   return (

@@ -10,6 +10,7 @@ console.log = () => {}; console.warn = () => {}; // the functions log one line p
 const S = require('../web/lib/session');
 const seed = require('./seed')();
 const g = require('./googlemock')(seed);
+const P = require('../web/lib/pending'), F = require('./fakes')(P), apply = require('../web/api/apply');
 const handlers = { run: require('../web/api/run'), login: require('../web/api/login'), callback: require('../web/api/callback'), logout: require('../web/api/logout') };
 
 function invoke(name, { method = 'GET', url = '/', cookie = '', origin = process.env.APP_ORIGIN, xvic = '1', body } = {}) {
@@ -196,6 +197,156 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   assert.deepStrictEqual([r.status, r.json.code], [401, 'SIGNED_OUT'], 'a signed-out cookie cannot call the script');
   r = await invoke('logout', { method: 'POST', cookie: sess('admin@g.enp.edu.dz', { iat: iatOld }) });
   assert.deepStrictEqual([g.log.revoked, S.open(r.jar[S.COOKIE])], [[], { email: 'admin@g.enp.edu.dz', rt: 'rt:admin@g.enp.edu.dz', iat: iatOld, out: true }], 'past 48h: logout keeps the token, no revoke');
+
+  // --- pending changes: the switch, the accept step, the consumer, the pulse flag, drop answers (fakes for Redis and Queues)
+  {
+    const own = sess('admin@g.enp.edu.dz');
+    seed.run(`(function () { var sh = ss_().getSheetByName('Alerts'), n = sh.getLastRow() + 1, t = new Date();
+      sh.getRange(n, 1, 4, 11).setValues(['A-9001', 'A-9002', 'A-9003', 'A-9004'].map(function (id) { return [id, t, 'HIGH', 'BAD_PHONE', '', '', 'x', '', 'OPEN', '', 'K|' + id]; })); })()`);
+    const status = id => seed.run(`ss_().getSheetByName('Alerts').getDataRange().getValues().filter(function (r) { return r[0] === '${id}'; })[0][8]`);
+    const setStatus = (id, st) => seed.run(`(function () { var sh = ss_().getSheetByName('Alerts'), d = sh.getDataRange().getValues();
+      for (var i = 1; i < d.length; i++) if (d[i][0] === '${id}') sh.getRange(i + 1, 9, 1, 2).setValues([['${st}', '${st}' === 'SNOOZED' ? new Date(Date.now() + 36e5) : '']]); })()`);
+    const accept = (cookie, ...changes) => rpc(cookie, 'accept', { v: 1, changes: changes.map(c => Object.assign({ kind: 'alert', at: Date.now() }, c)) });
+    const last = () => F.sent[F.sent.length - 1].payload;
+    const deliver = async (payload, n) => { F.unthrottle(); return apply.handle(payload || last(), { deliveryCount: n || 1 }); };
+    const pulse = (cookie, rec) => invoke('run', { method: 'POST', cookie, body: { fn: 'webPulse', args: [true], rec } });
+    const recOf = async (cookie, cell) => (await pulse(cookie, 2)).json.rec[cell];
+
+    // switch off: the pulse reads no Redis, whatever the page asks with rec 1
+    r = await pulse(own, 1);
+    assert.deepStrictEqual([r.json.value.pending, 'rec' in r.json, F.log.redis], [false, false, 0], 'switch off: no Redis call');
+    assert.strictEqual(typeof (await rpc(own, 'webPulse')).json.value, 'number', 'the bare pulse is unchanged');
+    r = await rpc(own, 'webRun', 'pendingSwitch', { on: true });
+    assert.deepStrictEqual(r.json.value.result, { pending: true });
+    r = await pulse(own, 1);
+    assert.deepStrictEqual([r.json.value.pending, r.json.rec], [true, {}], 'switch on: the record rides on the pulse');
+
+    // accept → one message (token sealed, never in Redis) → the consumer applies it as the author
+    r = await accept(own, { alert: 'A-9001', op: 'resolve', seen: 'OPEN' });
+    const e1 = r.json.value['alert:A-9001'];
+    assert.deepStrictEqual([r.status, e1.state, e1.value, e1.seen, F.sent.length], [200, 'pending', 'RESOLVED', 'OPEN', 1]);
+    assert.deepStrictEqual([F.sent[0].topic, F.sent[0].opts.retentionSeconds], ['vic-apply', 7200]);
+    assert(!/at:admin/.test(JSON.stringify(F.sent[0].payload)) && !/at:admin/.test(JSON.stringify(F.db)), 'the token is sealed in the message and never in Redis');
+    assert.strictEqual(S.open(F.sent[0].payload.t).at, 'at:admin@g.enp.edu.dz');
+    assert.strictEqual(status('A-9001'), 'OPEN', 'accepted, not applied yet');
+    await deliver();
+    const done1 = await recOf(own, 'alert:A-9001');
+    assert.deepStrictEqual([status('A-9001'), done1.state, done1.wrote > 0, done1.exp > Date.now()], ['RESOLVED', 'applied', true, true]);
+    assert(g.log.runs.some(x => x.fn === 'webApply' && x.email === 'admin@g.enp.edu.dz'), 'scripts.run as the author');
+    const runs0 = g.log.runs.length;
+    await deliver(F.sent[0].payload);
+    assert.strictEqual(g.log.runs.length, runs0, 'a second delivery finds it ended: nothing called');
+    r = await accept(own, { alert: 'A-9001', op: 'mute', seen: 'OPEN' }); // a device still showing it open, before the snapshot catches up
+    assert.deepStrictEqual([r.json.value['alert:A-9001'].state, F.sent.length], ['applied', 1], 'closed by their own Resolve: already met, nothing published');
+
+    // same person, first still pending: Snooze then Unmute cancels; the queued Snooze finds no entry
+    await accept(own, { alert: 'A-9002', op: 'snooze', seen: 'OPEN', until: Date.now() + 3600e3 });
+    const snoozeMsg = last();
+    r = await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'SNOOZED' });
+    assert.deepStrictEqual(['alert:A-9002' in r.json.value, F.sent.length], [false, 2], 'typed then undone: nothing left, nothing published');
+    const runs1 = g.log.runs.length;
+    await deliver(snoozeMsg);
+    assert.deepStrictEqual([status('A-9002'), g.log.runs.length], ['OPEN', runs1], 'cancelled: never applied');
+    // Snooze then Mute: the second replaces the first and keeps its seen value
+    await accept(own, { alert: 'A-9002', op: 'snooze', seen: 'OPEN', until: Date.now() + 3600e3 });
+    r = await accept(own, { alert: 'A-9002', op: 'mute', seen: 'SNOOZED' });
+    assert.deepStrictEqual([r.json.value['alert:A-9002'].op, r.json.value['alert:A-9002'].seen], ['mute', 'OPEN']);
+    await deliver();
+    assert.strictEqual(status('A-9002'), 'MUTED');
+    // an applied mark whose old value is what another device still shows: judged against the author's own change
+    r = await accept(own, { alert: 'A-9002', op: 'resolve', seen: 'OPEN' });
+    assert.strictEqual(r.json.value['alert:A-9002'].seen, 'MUTED', 'seen taken from the applied mark');
+    await deliver();
+    assert.strictEqual(status('A-9002'), 'RESOLVED', 'no drop against their own change');
+
+    // an expired mark is left out of reads, and the next accept removes it from the hash
+    F.db['pc:admin@g.enp.edu.dz']['alert:A-9999'] = JSON.stringify({ cell: 'alert:A-9999', state: 'applied', exp: Date.now() - 1 });
+    assert(!('alert:A-9999' in (await pulse(own, 2)).json.rec), 'expired: not read');
+    await accept(own, { alert: 'A-9003', op: 'resolve', seen: 'OPEN' });
+    assert(!('alert:A-9999' in F.db['pc:admin@g.enp.edu.dz']), 'expired: removed by the next accept');
+    await accept(own, { alert: 'A-9003', op: 'unmute', seen: 'OPEN' }); // undone: cancels it, so the next case starts clean
+
+    // a hand edit before it applies: dropped with the sheet's value, shown, then Apply mine anyway / Keep the sheet's value
+    await accept(own, { alert: 'A-9003', op: 'mute', seen: 'OPEN' });
+    setStatus('A-9003', 'SNOOZED');
+    await deliver();
+    let d = await recOf(own, 'alert:A-9003');
+    assert.deepStrictEqual([d.state, d.sheet, d.again, status('A-9003')], ['dropped', 'SNOOZED', true, 'SNOOZED']);
+    r = await rpc(own, 'pendingMark', { shown: ['alert:A-9003'] });
+    assert(r.json.value['alert:A-9003'].shown > 0 && !r.json.value['alert:A-9003'].addressed);
+    r = await accept(own, { alert: 'A-9003', op: 'mute', seen: 'SNOOZED' });
+    assert.deepStrictEqual([r.json.value['alert:A-9003'].state, r.json.value['alert:A-9003'].seen], ['pending', 'SNOOZED'], 'Apply mine anyway: a fresh change, seen = the sheet as the notice showed it');
+    await deliver();
+    assert.strictEqual(status('A-9003'), 'MUTED');
+    await accept(own, { alert: 'A-9004', op: 'resolve', seen: 'OPEN' });
+    setStatus('A-9004', 'SNOOZED');
+    await deliver();
+    r = await rpc(own, 'pendingMark', { keep: ['alert:A-9004'] });
+    d = r.json.value['alert:A-9004'];
+    assert(d.addressed > 0 && d.exp - Date.now() > 6 * 864e5, "Keep the sheet's value: addressed, gone in 7 days");
+
+    // one call per author per minute: a second delivery inside the minute waits for it
+    setStatus('A-9004', 'OPEN');
+    await accept(own, { alert: 'A-9004', op: 'mute', seen: 'OPEN' });
+    await deliver();
+    setStatus('A-9004', 'OPEN');
+    await accept(own, { alert: 'A-9004', op: 'resolve', seen: 'OPEN' });
+    await assert.rejects(apply.handle(last(), { deliveryCount: 1 }), e => e instanceof apply.Later && e.after > 50 && e.after <= 61);
+    assert.deepStrictEqual(apply.retry(new apply.Later(42), { deliveryCount: 1 }), { afterSeconds: 42 });
+    // Google failing: retried with backoff; too little token life left: dropped, Apply mine anyway offered
+    g.opts.scriptStatus = 500;
+    await assert.rejects(deliver(last(), 3), e => e instanceof apply.Later && e.after === 240);
+    g.opts.scriptStatus = 200;
+    const stale = S.seal({ email: 'admin@g.enp.edu.dz', at: 'at:admin@g.enp.edu.dz', ate: Date.now() + 5 * 60e3 });
+    await deliver({ v: 1, t: stale, ids: last().ids });
+    d = await recOf(own, 'alert:A-9004');
+    assert.deepStrictEqual([d.state, d.reason, d.again, status('A-9004')], ['dropped', 'retries ran out', true, 'OPEN']);
+    // the sign-in ended at Google: every pending change of that author drops, with Apply mine anyway
+    setStatus('A-9001', 'OPEN'); // reopened since the author's Resolve, and their snapshot shows it: a real new change
+    r = await accept(own, { alert: 'A-9001', op: 'resolve', seen: 'OPEN', built: Date.now() });
+    assert.strictEqual(r.json.value['alert:A-9001'].seen, 'OPEN', 'a snapshot built after the mark: no merge');
+    g.opts.scriptStatus = 401;
+    await deliver();
+    g.opts.scriptStatus = 200;
+    d = await recOf(own, 'alert:A-9001');
+    assert.deepStrictEqual([d.state, d.reason, d.again], ['dropped', 'sign-in ended before it was saved', true]);
+    // lost access: no longer an admin when it applies
+    const stranger = sess('stranger@g.enp.edu.dz');
+    await accept(stranger, { alert: 'A-9001', op: 'resolve', seen: 'OPEN' });
+    await deliver();
+    d = (await P.read('stranger@g.enp.edu.dz', Date.now()))['alert:A-9001']; // not an admin: their pulse is refused, the record stays
+    assert.deepStrictEqual([d.state, d.reason, !!d.again, status('A-9001')], ['dropped', 'lost access', false, 'OPEN']);
+    await deliver({ t: 'forged', ids: [] }); // unreadable: acknowledged, nothing done
+
+    // the accept step's own failures: each one is a direct write for the page, and leaves nothing behind
+    r = await rpc(own, 'accept', { v: 2, changes: [] });
+    assert.deepStrictEqual([r.status, r.json.code], [400, 'FORMAT'], 'another change format: reload');
+    r = await accept(own, { alert: 'A-9001', op: 'delete', seen: 'OPEN' });
+    assert.deepStrictEqual([r.status, r.json.code], [503, 'DIRECT']);
+    r = await accept(own, { alert: 'A-9001', op: 'snooze', seen: 'OPEN' });
+    assert.strictEqual(r.json.code, 'DIRECT', 'a snooze with no end is refused');
+    F.log.fail.redis = true;
+    r = await accept(own, { alert: 'A-9001', op: 'resolve', seen: 'OPEN' });
+    F.log.fail.redis = false;
+    assert.deepStrictEqual([r.status, r.json.code], [503, 'DIRECT'], 'Redis down');
+    F.log.fail.send = true;
+    r = await accept(own, { alert: 'A-9001', op: 'resolve', seen: 'OPEN' });
+    F.log.fail.send = false;
+    assert.deepStrictEqual([r.json.code, (await recOf(own, 'alert:A-9001')).state], ['DIRECT', 'dropped'], 'queue down: the entry it wrote is put back as it was');
+    g.log.token.length = 0;
+    r = await accept(sess('admin@g.enp.edu.dz', { ate: Date.now() + 20 * 60e3, at: 'at:stale' }), { alert: 'A-9001', op: 'resolve', seen: 'OPEN' });
+    assert.deepStrictEqual([r.status, g.log.token, S.open(r.jar[S.COOKIE]).at, S.open(last().t).ate > Date.now() + 50 * 60e3], [200, ['refresh_token'], 'at:admin@g.enp.edu.dz', true], 'under 30 min left: refreshed, written back, sealed fresh');
+    g.opts.refreshFails = 'invalid_grant';
+    r = await accept(sess('admin@g.enp.edu.dz', { ate: Date.now() + 20 * 60e3 }), { alert: 'A-9001', op: 'resolve', seen: 'OPEN' });
+    g.opts.refreshFails = null;
+    assert.deepStrictEqual([r.status, r.json.code, r.jar[S.COOKIE]], [503, 'DIRECT', undefined], 'a failed refresh: direct write, the cookie untouched');
+
+    await rpc(own, 'webRun', 'pendingSwitch', { on: false });
+    F.log.redis = 0;
+    await pulse(own, 1);
+    assert.strictEqual(F.log.redis, 0, 'switched off again: no Redis call');
+    assert((await pulse(own, 2)).json.rec, 'a page still holding pending changes reads them while they drain');
+  }
 
   // --- front (frontend/): the one RPC wrapper is the proxy, version matches the script
   const front = f => require('fs').readFileSync(__dirname + '/../frontend/src/lib/vic/' + f, 'utf8');

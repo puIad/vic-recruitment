@@ -19,7 +19,9 @@ import { alertLabel, SEVERITY } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import type { Alert, HeldAlert } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { useAlertView } from "@/lib/vic/pending"
 import { AlertDetail } from "./components/alert-detail"
+import { InlineDrop, PendingMark } from "./components/pending-mark"
 import { nudgeable, REVIEW, RowQuickButton, SnoozeMenu, UnmuteButton } from "./components/quick-actions"
 
 type Filter = "ALL" | "HIGH" | "MEDIUM" | "INFO" | "EDITS" | "MUTED"
@@ -31,9 +33,8 @@ const NO_HELD: HeldAlert[] = []
  * old Alerts tab: filter by severity or manual edits, search, select several, Mark resolved / Accept edits.
  */
 export default function AlertsPage() {
-  const alerts = useVic((s) => s.state?.alerts) ?? NONE
-  const muted = useVic((s) => s.state?.muted) ?? NO_HELD
-  const counts = useVic((s) => s.state?.alertCounts)
+  // the snapshot with the author's pending changes over it (lib/vic/pending.ts)
+  const { alerts, muted, counts, marks } = useAlertView()
   const loading = useVic((s) => !s.state)
   const busy = useVic((s) => s.busy)
   const action = useVic((s) => s.busyAction)
@@ -211,7 +212,7 @@ export default function AlertsPage() {
           ) : (
             <ul className="divide-y">
               {shownMuted.map((a) => (
-                <li key={a.id} className={cn("flex gap-3 px-4 py-3", selected.has(a.id) && "bg-accent/40")}>
+                <li key={a.id} className={cn("flex gap-3 px-4 py-3", selected.has(a.id) && "bg-accent/40", marks[a.id]?.kind === "dropped" && "bg-warning-soft/30")}>
                   <Checkbox className="mt-1" checked={selected.has(a.id)} onCheckedChange={() => toggle(a.id)} aria-label={`Select ${alertLabel(a.type)} ${a.code || a.binome}`} />
                   <div className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
@@ -219,9 +220,11 @@ export default function AlertsPage() {
                         <BellOff className="size-3" /> {a.status === "MUTED" ? "Muted" : `Until ${a.until}`}
                       </span>
                       <span className="truncate text-sm font-bold">{alertLabel(a.type)}</span>
+                      <PendingMark mark={marks[a.id]} />
                       <span className="num ml-auto shrink-0 text-xs text-muted-foreground">{a.created}</span>
                     </span>
                     <span className="mt-1 line-clamp-2 block text-sm text-muted-foreground">{a.msg}</span>
+                    <InlineDrop mark={marks[a.id]} />
                   </div>
                   <UnmuteButton ids={[a.id]} />
                 </li>
@@ -243,12 +246,14 @@ export default function AlertsPage() {
               const sev = SEVERITY[a.severity]
               const on = a.id === activeId
               return (
-                <li key={a.id} className={cn("flex scroll-my-3 gap-3 px-4 py-3 transition-colors", on ? "bg-accent" : "hover:bg-muted/50", selected.has(a.id) && !on && "bg-accent/40")}>
+                <li key={a.id} className={cn("flex scroll-my-3 gap-3 px-4 py-3 transition-colors", on ? "bg-accent" : "hover:bg-muted/50", selected.has(a.id) && !on && "bg-accent/40", marks[a.id]?.kind === "dropped" && !on && "bg-warning-soft/30")}>
                   <Checkbox className="mt-1" checked={selected.has(a.id)} onCheckedChange={() => toggle(a.id)} aria-label={`Select ${alertLabel(a.type)} ${a.code || a.binome}`} />
-                  <button type="button" onClick={() => open(a.id)} className="min-w-0 flex-1 text-left" aria-current={on ? "true" : undefined}>
+                  <div className="min-w-0 flex-1">
+                  <button type="button" onClick={() => open(a.id)} className="block w-full min-w-0 text-left" aria-current={on ? "true" : undefined}>
                     <span className="flex items-center gap-2">
                       <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", sev.tone)}>{sev.label}</span>
                       <span className="truncate text-sm font-bold">{alertLabel(a.type)}</span>
+                      <PendingMark mark={marks[a.id]} />
                       <span className="num ml-auto shrink-0 text-xs text-muted-foreground">{a.created}</span>
                     </span>
                     <span className="mt-1 line-clamp-2 block text-sm text-muted-foreground">{a.msg}</span>
@@ -259,6 +264,8 @@ export default function AlertsPage() {
                       </span>
                     )}
                   </button>
+                  <InlineDrop mark={marks[a.id]} />
+                  </div>
                   <RowQuickButton alert={a} onOpen={() => open(a.id)} />
                 </li>
               )

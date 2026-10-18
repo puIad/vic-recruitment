@@ -5,7 +5,8 @@
   "ignoreCommand": "test -n \"$VERCEL_GIT_PREVIOUS_SHA\" && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../frontend",
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "functions": {
-    "api/run.js": { "maxDuration": 300 }
+    "api/run.js": { "maxDuration": 300 },
+    "api/apply.js": { "maxDuration": 300, "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "vic-apply", "retryAfterSeconds": 60 }] }
   },
   "headers": [
     {

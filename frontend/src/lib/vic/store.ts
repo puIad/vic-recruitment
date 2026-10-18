@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { toast } from "sonner"
-import { API_VERSION, type Access, type Alert, type GoldKey, type MemberSetOut, type MemberState, type RunOut, type WebState } from "./types"
-import { ApiError, call, hooks, rateLimited } from "./api"
+import { API_VERSION, type Access, type Alert, type GoldKey, type MemberSetOut, type MemberState, type PendingChange, type PendingRec, type RunOut, type WebState } from "./types"
+import { ApiError, call, callFull, hooks, rateLimited } from "./api"
 import { startNotice } from "./notice"
 
 export type Gate =
@@ -54,11 +54,30 @@ interface VicStore {
   /** Put a value the script reported into the member's slice (a save, or "Keep theirs" after a conflict). */
   patchMember: (code: string, field: GoldKey, value: string | number | boolean) => void
   setModals: (delta: number) => void
+  /** the owner's switch (docs/plans.md › Slice 2): admin saves become pending changes */
+  pendingOn: boolean
+  /** the author's pending changes, as /api/run last returned them (a view over state, never written into it) */
+  rec: PendingRec
+  /** cell → until when its pill shows "In the sheet" (about 2 s after it applied) */
+  flash: Record<string, number>
+  /** accept steps in flight: the close warning holds until they return */
+  accepting: number
+  /** The accept step. "ok" = safe as pending changes; "direct" = do today's direct write instead (switch off, or it failed). */
+  accept: (changes: PendingChange[]) => Promise<"ok" | "direct">
+  /** Answers on drops: shown (on screen), keep (Keep the sheet's value). */
+  markDrops: (a: { shown?: string[]; keep?: string[] }) => Promise<void>
+  setRec: (rec: PendingRec) => void
 }
 
 export type MemberSetResult = { ok: true; value: string | number | boolean } | { conflict: string } | { error: string; busy?: boolean }
 
 let polling = false
+let polls = 0
+/** the next pulse reads the record (the tab came back into view) */
+let wantRec = true
+const hasPending = (rec: PendingRec) => Object.values(rec).some((e) => e.state === "pending")
+/** The pulse's answer: a number from an older script, {v, pending} from one that has the switch. */
+const pulseOf = (p: number | { v: number; pending: boolean } | null) => (p === null || typeof p === "number" ? { v: p, on: null } : { v: p.v, on: p.pending })
 /** a poll stuck at Google ends after this, so the `polling` guard is released and the next tick runs */
 const POLL_TIMEOUT_MS = 20000
 let activityId = 0
@@ -84,6 +103,10 @@ export const useVic = create<VicStore>((set, get) => ({
   tick: 0,
   sessionEnds: 0,
   activity: [],
+  pendingOn: false,
+  rec: {},
+  flash: {},
+  accepting: 0,
 
   async boot() {
     let a: Access
@@ -110,7 +133,11 @@ export const useVic = create<VicStore>((set, get) => ({
   async refresh(quiet) {
     if (!quiet) set({ refreshing: true })
     try {
-      const p = await call<number>("webPulse", [], POLL_TIMEOUT_MS).catch(() => null) // read before the state, so an edit in between still shows as a change
+      // read before the state, so an edit in between still shows as a change; with the author's record when the switch is on
+      const pr = await callFull<number | { v: number; pending: boolean }>("webPulse", [true], { rec: hasPending(get().rec) ? 2 : 1 }, POLL_TIMEOUT_MS).catch(() => null)
+      const pp = pulseOf(pr ? pr.value : null)
+      if (pr?.rec) get().setRec(pr.rec)
+      const p = pp.v
       const s = await call<WebState | MemberState>("webState")
       // The shape decides the mode: an admin who lost edit access but is in a binome now gets a member slice (My binome, not
       // admin pages on the wrong shape), and a member made an editor gets the admin state. Either way the role changed: re-read access.
@@ -125,6 +152,7 @@ export const useVic = create<VicStore>((set, get) => ({
         member: member ? (s as MemberState) : null,
         memberError: null,
         pulse: p,
+        pendingOn: pp.on ?? (!member && !!(s as WebState).pending),
         loading: false,
         loadedAt: Date.now(),
         tick: cur.tick + (quiet && (cur.state || cur.member) ? 1 : 0),
@@ -152,9 +180,16 @@ export const useVic = create<VicStore>((set, get) => ({
     polling = true // at a 2 s tick a slow Apps Script call would otherwise stack up
     try {
       // webPulse rechecks access itself, so a revoked account drops to the gate at the next tick (69024a1) in one call
-      const p = await call<number>("webPulse", [], POLL_TIMEOUT_MS)
+      // the record rides on the pulse while the author has changes pending (admins every 5th 2 s poll), and on tab return
+      const held = hasPending(get().rec)
+      const rec = wantRec ? (held ? 2 : 1) : held && ++polls % 5 === 0 ? 2 : 0
+      wantRec = false
+      const r = await callFull<number | { v: number; pending: boolean }>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS)
+      const p = pulseOf(r.value)
+      if (r.rec) get().setRec(r.rec)
+      if (p.on !== null && p.on !== get().pendingOn) set({ pendingOn: p.on })
       // the pulse only advances inside a successful refresh, so a failed one is retried on the next tick
-      if (p !== pulse && !get().busy) await get().refresh(true)
+      if (p.v !== pulse && !get().busy) await get().refresh(true)
     } catch (e) {
       // "Not allowed": ask webAccess (it never throws) only for the email and reason the gate shows
       if (e instanceof ApiError && /^(?:Error: )?Not allowed$/.test(e.message)) {
@@ -237,9 +272,65 @@ export const useVic = create<VicStore>((set, get) => ({
   },
 
   setModals: (delta) => set((cur) => ({ modals: Math.max(0, cur.modals + delta) })),
+
+  async accept(changes) {
+    if (!get().pendingOn || !changes.length) return "direct"
+    set((cur) => ({ accepting: cur.accepting + 1 }))
+    try {
+      const r = await callFull<PendingRec>("accept", [{ v: 1, changes }])
+      get().setRec(r.value)
+      return "ok"
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "FORMAT")
+        toast.warning("This page is out of date", { description: "Your change is saved the usual way. Reload the page to get the new version.", duration: 12000 })
+      return "direct"
+    } finally {
+      set((cur) => ({ accepting: cur.accepting - 1 }))
+    }
+  },
+
+  async markDrops(a) {
+    try {
+      const r = await callFull<PendingRec>("pendingMark", [a])
+      get().setRec(r.value)
+    } catch {
+      /* shown is retried with the next drop; Keep the sheet's value can be clicked again */
+    }
+  },
+
+  // A new record: changes that ended since the last one flash "In the sheet"; new drops get one toast per click and are marked shown.
+  setRec(next) {
+    const prev = get().rec, now = Date.now(), flash = { ...get().flash }, drops: Record<number, number> = {}
+    const shown: string[] = []
+    Object.values(next).forEach((e) => {
+      const was = prev[e.cell]
+      if (was?.id === e.id && was.state === "pending" && (e.state === "applied" || e.state === "met")) flash[e.cell] = now + 2000
+      if (e.state === "dropped" && !e.addressed && !e.shown) {
+        shown.push(e.cell)
+        if (!(was?.id === e.id && was.state === "dropped")) drops[e.at] = (drops[e.at] || 0) + 1
+      }
+    })
+    set({ rec: next, flash })
+    Object.values(drops).forEach((n) =>
+      toast.warning(n > 1 ? `${n} of your changes were not applied` : "Your change was not applied", {
+        description: "The row shows why, and what the sheet holds now.",
+        duration: 10000,
+      })
+    )
+    if (shown.length) void get().markDrops({ shown })
+    const next2 = Math.min(...Object.values(flash).filter((t) => t > now))
+    if (Number.isFinite(next2)) setTimeout(() => set((cur) => ({ flash: Object.fromEntries(Object.entries(cur.flash).filter(([, t]) => t > Date.now())) })), next2 - now + 20)
+  },
 }))
 
 hooks.onSession = (endsAt) => useVic.setState({ sessionEnds: endsAt })
+if (typeof window !== "undefined") {
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) wantRec = true })
+  // the browser's own "leave site?" only while a save is still being accepted (about 1 s); once safe it applies with the tab closed
+  window.addEventListener("beforeunload", (e) => {
+    if (useVic.getState().accepting > 0) e.preventDefault()
+  })
+}
 hooks.onAuthLost = (kind, message) => {
   if (["ok", "member", "booting"].includes(useVic.getState().gate.mode))
     useVic.setState({ gate: { mode: kind, message }, loading: false })

@@ -6,13 +6,14 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from "@/components/ui/skeleton"
 import { alertLabel, SEVERITY } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
+import { useAlertView } from "@/lib/vic/pending"
 import { cn } from "@/lib/utils"
 
 /** What needs a human right now. "All clear" is a designed state, not an empty list. */
 export function AttentionCard() {
   const s = useVic((x) => x.state)
+  const { alerts, counts: ac } = useAlertView() // with the author's pending changes over the snapshot
   if (!s) return <Skeleton className="h-72 rounded-xl" />
-  const { alerts, alertCounts: ac } = s
   const top = alerts.slice(0, 4)
 
   return (

@@ -6,6 +6,7 @@
 //   /dev-login?as=closed → a member of a binome not opened yet (the "isn't open yet" gate).
 //   --pairing = before Lock: this year's OT list (part of the 2025 team, pre-ticked Experienced), three pairs made by hand, the
 //   rest free, so the Binomes page shows the Pairing panel (npm run mock -- --pairing).
+//   Pending changes: Settings › General › Pending changes (admin@ is the owner); Redis and Queues are faked in memory.
 //   --screening = the default data with Screening on and a linked members sheet: applications held for review (dots, one
 //   word, a non-answer), a VIC member declined silently, one declined by an admin, one with a binome flagged (npm run mock -- --screening).
 const http = require('http'), crypto = require('crypto');
@@ -16,6 +17,14 @@ process.env.SCRIPT_API_DEPLOYMENT_ID = 'LOCAL';
 const S = require('../web/lib/session');
 const s = require('./seed')();
 require('./googlemock')(s);
+// pending changes (docs/plans.md › Slice 2): Redis and Queues in memory; a message reaches the consumer 4 s after its
+// publish and is delivered again as the queue would (at most 10 s apart here). Turn the switch on in Settings › General.
+const P = require('../web/lib/pending'), apply = require('../web/api/apply');
+require('./fakes')(P);
+const published = P.deps.send;
+const deliver = (payload, n, ms) => setTimeout(() => apply.handle(payload, { deliveryCount: n })
+  .catch(e => deliver(payload, n + 1, Math.min((e && e.after) || 5, 10) * 1000)), ms);
+P.deps.send = async (topic, payload, opts) => { const out = await published(topic, payload, opts); deliver(payload, 1, 4000); return out; };
 const pairing = process.argv.includes('--pairing'), empty = process.argv.includes('--empty') || pairing;
 if (pairing) {
   s.run(`master.insertSheet('OT 2026').cells = [["Section", "First Name", "Last Name", "Email"],

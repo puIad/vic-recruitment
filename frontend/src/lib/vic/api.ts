@@ -1,5 +1,6 @@
 // Every call goes through POST /api/run (Vercel), which runs the Apps Script function as the signed-in visitor.
 // The tokens live in an HttpOnly cookie: this module never sees them.
+import type { PendingRec } from "./types"
 
 export class ApiError extends Error {
   code?: string
@@ -23,13 +24,18 @@ export const rateLimited = () => Date.now() < limitedUntil
 
 /** timeoutMs: give up on a call stuck at Google (the polls use it; webState and webRun can be long and keep none). */
 export async function call<T = unknown>(fn: string, args: unknown[] = [], timeoutMs?: number): Promise<T> {
+  return (await callFull<T>(fn, args, undefined, timeoutMs)).value
+}
+
+/** call, plus what /api/run returns next to the value (rec: the author's pending changes) and extra body fields. */
+export async function callFull<T = unknown>(fn: string, args: unknown[] = [], extra?: Record<string, unknown>, timeoutMs?: number): Promise<{ value: T; rec?: PendingRec }> {
   let r: Response
   try {
     r = await fetch("/api/run", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json", "X-VIC": "1" },
-      body: JSON.stringify({ fn, args }),
+      body: JSON.stringify({ fn, args, ...extra }),
       signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
     })
   } catch (e) {
@@ -40,6 +46,7 @@ export async function call<T = unknown>(fn: string, args: unknown[] = [], timeou
   if (exp) hooks.onSession(exp)
   const j = (await r.json().catch(() => ({ error: `Unexpected reply from the server (${r.status}).` }))) as {
     value?: T
+    rec?: PendingRec
     error?: string
     code?: string
   }
@@ -49,7 +56,7 @@ export async function call<T = unknown>(fn: string, args: unknown[] = [], timeou
   }
   if (j.code === "RATE_LIMIT") limitedUntil = Date.now() + 30000
   if (j.error) throw new ApiError(j.error, j.code, r.status)
-  return j.value as T
+  return { value: j.value as T, rec: j.rec }
 }
 
 export async function signOut(next = "/") {
