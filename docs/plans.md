@@ -188,9 +188,10 @@ sync calls an endpoint the PR adds (no secret set, no call).
 After slice 5 the owner turns pending changes on, runs each slice's live check, then load-test task 10 with its
 pending-changes block ([load-test.md](load-test.md#task-10--load-test-again-then-sign-off)).
 
-Keep until the build is done: branches `prototype/pending-changes` (the prototype the owner chose from, and the dropped-change
-email draft `frontend/public/prototype/dropped-email.html`), `pulad/spike-queues-accept-46bc93` (the accept timing
-script), `research/pending-change-store` and `research/google-apply-limits`.
+Branches kept during the build, deleted 2026-10-18 once slice 5 was live: `prototype/pending-changes` (the prototype the
+owner chose from, and the dropped-change email draft; tip `3eb7a95`), `pulad/spike-queues-accept-46bc93` (the accept timing
+script; `fcd7f2a`), `research/pending-change-store` (`8a34e94`) and `research/google-apply-limits` (`bebff0d`). Restore one
+with `git push origin <sha>:refs/heads/<name>` while GitHub still has the commit.
 
 ### Shipped first (2026-10-17)
 
