@@ -3,7 +3,6 @@
   "buildCommand": "npm --prefix ../frontend ci && npm --prefix ../frontend run build",
   "outputDirectory": "dist",
   "ignoreCommand": "test -n \"$VERCEL_GIT_PREVIOUS_SHA\" && test \"$VERCEL_GIT_PREVIOUS_SHA\" != \"$(git rev-parse HEAD)\" && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../frontend",
-  "git": { "deploymentEnabled": { "pr-screenshots/**": false } },
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "functions": {
     "api/run.js": { "maxDuration": 300 },
