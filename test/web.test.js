@@ -743,6 +743,10 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     m.call('webPulse', true);
     assert.strictEqual(m.run('__dfgN'), 0, 'the 2 s poll makes no Drive call');
     m.run('Drive.Files.get = __dfg0');
+    m.run('Drive.Files.get = () => { throw new Error("API call to drive.files.get failed with error: User Rate Limit Exceeded (403)"); }');
+    const hic = m.call('webState');
+    assert.deepStrictEqual([!!hic.settings, hic.member], [true, false], 'a Drive hiccup: the dashboard, and member false (the page keeps the last one)');
+    m.run('Drive.Files.get = __dfg0');
     assert.deepStrictEqual(m.call('webRun', 'memberSet', { code: code, field: 'Rating', value: 6, seen: c.Rating }).result, { code: code, field: 'Rating', value: 6 });
     assert.strictEqual(m.call('webPulse', true).bv, pulse.bv + 1, "their own save moves bv, as a partner's would");
     const ap = m.call('webApply', { v: 1, changes: [{ id: 'f1', kind: 'field', code: code, field: 'Rating', value: '', seen: 6, at: Date.now() }] });

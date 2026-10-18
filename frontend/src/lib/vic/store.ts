@@ -165,7 +165,7 @@ export const useVic = create<VicStore>((set, get) => ({
       set((cur) => ({
         gate: { mode: member ? "member" : "ok" },
         state: member ? null : (s as WebState),
-        member: member ? (s as MemberState) : (s as WebState).member ?? null,
+        member: member ? (s as MemberState) : (s as WebState).member === false ? cur.member : (s as WebState).member || null,
         memberError: null,
         pulse: p,
         bv: pp.bv,

@@ -112,9 +112,9 @@ function webState() {
   if (a.role !== 'admin') throw new Error('Not allowed');
   const st = readSnap_() || withLock_(() => publishState_(freshCtx_()), 1) || liveState_(freshCtx_());
   let member = null;
-  // an admin in a binome also gets My binome; a Drive hiccup there never costs them the dashboard
-  try { const mv = asMember_(a); if (mv) member = memberState_(mv); } catch (e) { console.warn('My binome for ' + a.email + ': ' + e); }
-  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, pending: pendingOn_() }, member ? { member: member } : {});
+  // an admin in a binome also gets My binome; a Drive hiccup there never costs them the dashboard: member false = keep the last one
+  try { const mv = asMember_(a); if (mv) member = memberState_(mv); } catch (e) { member = false; console.warn('My binome for ' + a.email + ': ' + e); }
+  return Object.assign(st, { user: Session.getActiveUser().getEmail(), owner: a.owner, pending: pendingOn_() }, member !== null ? { member: member } : {});
 }
 
 /* ---------- members: MEMBER_MAP (who may see which binome) and their slice of the snapshot ---------- */
