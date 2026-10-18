@@ -50,6 +50,7 @@ const SETTINGS_DEFAULTS = [
   ['ASSIGNMENTS_OPEN', true, 'FALSE = stop assigning new registrants (they stay UNASSIGNED until TRUE again)'],
   ['BALANCE_BY', 'ACTIVE', 'ACTIVE = give to the binome with fewest pending interviewees; TOTAL = fewest ever assigned'],
   ['ALL_BINOME_WEIGHT', 1, 'Load multiplier for board (ALL) binomes, e.g. 1.5 means they receive fewer interviewees'],
+  ['HR_ONLY_WEIGHT', 2.5, '1, 1.5, 2, 2.5, 3 or 4: an HR-only binome (tag HR) takes about this many times the interviewees of the lightest mixed binome; 1 = the same share'],
   ['EMAIL_DOMAIN', 'g.enp.edu.dz', 'Expected email domain of registrants'],
   ['TRUSTED_BACKUPS', '', 'Emails (comma-separated) of people who often replace interviewers, e.g. the HR head: their backup interviews are logged as INFO instead of emailed'],
   ['SYNC_EVERY_MINUTES', 15, '1, 5, 10, 15 or 30: how often the binome files are read (re-run setup after changing)'],

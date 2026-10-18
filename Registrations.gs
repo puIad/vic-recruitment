@@ -76,7 +76,7 @@ function assignRow_(ctx, r) {
   if (!bool_(s.ASSIGNMENTS_OPEN)) return false;
   const load = loads_(ctx);
   const cands = activeBinomes_(ctx).map(b => ({ code: b.code, tag: b.tag, load: load[b.code] || 0, b: b }));
-  const pick = pickBinome(dep, cands, num_(s.ALL_BINOME_WEIGHT, 1));
+  const pick = pickBinome(dep, cands, num_(s.ALL_BINOME_WEIGHT, 1), num_(s.HR_ONLY_WEIGHT, 1));
   if (!pick) return false;
   r[I.Binome] = pick.code;
   r[I.Status] = ST.ASSIGNED;

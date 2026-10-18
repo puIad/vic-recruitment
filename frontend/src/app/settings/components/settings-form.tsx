@@ -119,7 +119,8 @@ function SettingDrop({ mark, s }: { mark?: Mark<SettingEntry>; s: SettingRow }) 
 }
 
 /** One page of the old Settings form: the same settings, grouped by what they decide, saved through webRun('saveSettings'). */
-export function SettingsPage({ group, extra }: { group: SettingsGroup; extra?: React.ReactNode }) {
+/** extra: cards under the settings; a function gets each row's draft value (what the row shows, unsaved edits included). */
+export function SettingsPage({ group, extra }: { group: SettingsGroup; extra?: React.ReactNode | ((draft: (key: string) => CellValue | undefined) => React.ReactNode) }) {
   const all = useVic((s) => s.state?.settingsAll)
   const testMode = useVic((s) => s.state?.settings.testMode)
   const busy = useVic((s) => s.busy)
@@ -196,7 +197,12 @@ export function SettingsPage({ group, extra }: { group: SettingsGroup; extra?: R
           </CardContent>
         </Card>
       )}
-      {extra}
+      {typeof extra === "function"
+        ? extra((key) => {
+            const s = rows.find((r) => r.key === key)
+            return s && value(s)
+          })
+        : extra}
       <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card/95 p-3 pl-5 shadow-lg backdrop-blur-sm">
         <p className="text-sm text-muted-foreground">{dirty ? <><b className="text-foreground">{Object.keys(edits).length} unsaved change{Object.keys(edits).length > 1 ? "s" : ""}</b>. Save writes them into the Settings tab of the Master.</> : "Everything shown is saved in the Settings tab of the Master."}</p>
         <div className="flex gap-2">
@@ -216,7 +222,7 @@ const GROUP_KEYS = {
   timing: ["HOURS_NOT_CONTACTED", "HOURS_NO_INTERVIEW_DATE", "HOURS_AFTER_INTERVIEW_NO_FORM", "INSTANT_EMAIL_MIN_SEVERITY"],
   sharing: ["TEST_MODE", "SHARE_FILES_WITH_BINOME", "NOTIFY_BINOME_ON_ALERT", "NOTIFY_BINOME_ON_NEW_INTERVIEWEE", "CONFIRM_REGISTRANTS"],
   screening: ["SCREENING", "SCREEN_HOLD_AT", "VIC_MEMBERS_SHEET"],
-  general: ["ADMIN_EMAIL", "TIMEZONE", "ASSIGNMENTS_OPEN", "BALANCE_BY", "ALL_BINOME_WEIGHT", "EMAIL_DOMAIN", "TRUSTED_BACKUPS", "SYNC_EVERY_MINUTES", "DIGEST_HOUR"],
+  general: ["ADMIN_EMAIL", "TIMEZONE", "ASSIGNMENTS_OPEN", "BALANCE_BY", "ALL_BINOME_WEIGHT", "HR_ONLY_WEIGHT", "EMAIL_DOMAIN", "TRUSTED_BACKUPS", "SYNC_EVERY_MINUTES", "DIGEST_HOUR"],
 }
 
 export const GROUPS: Record<"general" | "timing" | "sharing" | "screening", SettingsGroup> = {

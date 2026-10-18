@@ -227,6 +227,24 @@ t('pick binome balances + routes HR anywhere', () => {
   assert.strictEqual(X.pickBinome('FLER', bs, 1).code, 'B.04');
   assert.strictEqual(X.pickBinome('FLER', bs.slice(0, 3), 1), null);
 });
+t('pick binome: HR-only weight on the 32 production tags (launch-features section 5)', () => {
+  const tagOf = n => n <= 10 || n >= 31 ? 'IT & HR' : n <= 19 ? 'COMM & HR' : n <= 28 ? 'FLER & HR' : 'HR';
+  const fresh = () => Array.from({ length: 32 }, (_, i) => ({ code: 'B.' + String(i + 1).padStart(2, '0'), tag: tagOf(i + 1), load: 0 }));
+  const run = (k, deps) => { const bs = fresh(); deps.forEach(d => { X.pickBinome(d, bs, 1, k).load++; }); return bs; };
+  // a steady mix of departments, HR the biggest, as in 2025
+  const stream = []; for (let i = 0; i < 40; i++) stream.push('HR', 'IT', 'HR', 'COMM', 'IT', 'HR', 'FLER');
+  const hrOnly = bs => bs.filter(b => b.tag === 'HR').map(b => b.load), mixedMin = bs => Math.min(...bs.filter(b => b.tag !== 'HR').map(b => b.load));
+  const k1 = run(1, stream);
+  assert.ok(hrOnly(k1).every(l => l <= mixedMin(k1) + 1), 'K = 1: an HR-only binome gets the same share as the lightest mixed one');
+  const k25 = run(2.5, stream);
+  hrOnly(k25).forEach(l => { const r = l / mixedMin(k25); assert.ok(r > 2.2 && r < 2.8, 'K = 2.5: about 2.5 × the lightest mixed load, got ' + r); });
+  // ties: HR-only first, then the lowest code; a non-HR candidate never sees the weight
+  const bs = fresh();
+  assert.deepStrictEqual(['HR', 'HR', 'HR'].map(d => { const b = X.pickBinome(d, bs, 1, 1); b.load++; return b.code; }), ['B.29', 'B.30', 'B.01']);
+  assert.strictEqual(X.pickBinome('IT', fresh(), 1, 4).code, 'B.01');
+  assert.strictEqual(X.pickBinome('HR', [{ code: 'B.01', tag: 'IT & HR', load: 2 }, { code: 'B.02', tag: 'HR', load: 4 }], 1, 2).code, 'B.02', '4 / 2 ties 2: HR-only wins');
+  assert.strictEqual(X.pickBinome('HR', [{ code: 'B.01', tag: 'IT & HR', load: 2 }, { code: 'B.02', tag: 'HR', load: 5 }], 1, 2).code, 'B.01');
+});
 t('next code', () => {
   assert.strictEqual(X.nextCode('IT', ['IT.01', 'IT.09', 'COMM.12']), 'IT.10');
   assert.strictEqual(X.nextCode('HR', []), 'HR.01');
