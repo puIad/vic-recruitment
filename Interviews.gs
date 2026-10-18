@@ -174,13 +174,16 @@ function answersCells_(head, vals) {
   }));
 }
 /** A Google Form response, copied into its candidate's binome tab (read-only there). A code that already has a row keeps it:
- *  the binome's own dashboard answers, or the first form. */
+ *  the binome's own dashboard answers, or the first form. Under the members' lock: a member's save appends to the same tab,
+ *  and two appends at once would land on the same row. */
 function copyFormToTab_(ctx, b, code, ts, sub, vals) {
   const sh = binomeSheet_(ctx, b);
   if (!sh || findFileRow_(sh, code) < 0) return;
-  const tab = answersTab_(sh.getParent(), true);
-  if (answersRow_(tab, code)) return;
-  tab.getRange(tab.getLastRow() + 1, 1, 1, IA_H.length).setValues([answersCells_([code, 'Google Form', ts, sub, '', ''], vals)]);
+  withMemberLock_(b, () => {
+    const tab = answersTab_(sh.getParent(), true);
+    if (answersRow_(tab, code)) return;
+    tab.getRange(tab.getLastRow() + 1, 1, 1, IA_H.length).setValues([answersCells_([code, 'Google Form', ts, sub, '', ''], vals)]);
+  });
 }
 
 /* ---------- the dashboard's forms: Interview Answers tabs → Dashboard Interviews (Master) → the Interview Log ---------- */

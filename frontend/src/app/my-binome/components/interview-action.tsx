@@ -30,7 +30,7 @@ export function InterviewAction({ c, m, wide }: { c: Candidate; m: MemberState; 
           </Link>
         </Button>
         <span className="num whitespace-nowrap text-xs text-muted-foreground">
-          Submitted {iv.at}
+          Submitted{iv.at ? " " + iv.at : ""}
           {iv.source === "Google Form" && " · Google Form"}
         </span>
       </div>

@@ -221,7 +221,12 @@ function sliceFromSheet_(m) {
   const book = memberBook_(m), sh = book.getSheets()[0], n = bfLastRow_(sh), done = tabInterviews_(book);
   const rows = n < 2 ? [] : sh.getRange(2, BF_COL, n - 1, BF_H.length).getValues().filter(r => String(r[0]).trim());
   return { v: API_VERSION, binome: m.b, tag: '', status: '', fileUrl: book.getUrl(), members: [], alerts: [], fromSheet: true,
-    candidates: rows.map(r => { const c = candidate_(r, ''), x = done[String(r[0]).trim()]; if (x) c.interview = x; return c; }) };
+    candidates: rows.map(r => {
+      const c = candidate_(r, ''), x = done[String(r[0]).trim()];
+      // a form logged before the tab existed has no row there, only its mark in the Interview Form cell
+      if (x || String(c['Interview Form']).trim()) c.interview = x || { at: '', by: '', source: 'Google Form' };
+      return c;
+    }) };
 }
 
 /* ---------- an admin opens a binome to its members: their sheet and the dashboard together, silently ---------- */
@@ -327,10 +332,7 @@ function memberSet_(a, args) {
   const list = (batch ? args.fields : [args]).map(x => ({ field: String((x && x.field) || ''), value: x && x.value, seen: x && x.seen }));
   // a field twice would be checked against the row as read before the first write: refused, like an unknown field
   if (!list.length || list.some((x, i) => BF_EDITABLE.indexOf(x.field) < 0 || list.findIndex(y => y.field === x.field) !== i)) throw new Error('Not allowed');
-  let file = null;
-  try { file = m.f ? SpreadsheetApp.openById(m.f) : null; } catch (e) { /* not shared with this account */ }
-  if (!file) throw new Error("Your binome sheet isn't shared with you yet.");
-  const sh = file.getSheets()[0], tz = file.getSpreadsheetTimeZone();
+  const file = memberBook_(m), sh = file.getSheets()[0], tz = file.getSpreadsheetTimeZone();
   list.forEach(x => { try { x.v = memberValue_(x.field, x.value, tz); } catch (e) { x.error = e.message; } });
   if (!batch && list[0].error) throw new Error(list[0].error);
   const lock = memberLock_();
@@ -448,9 +450,11 @@ function interviewGet_(a, args) {
   const book = memberBook_(m), sh = book.getSheets()[0], row = findFileRow_(sh, code);
   if (row < 0) throw new Error('This candidate is no longer in your binome.');
   const F = idx_(BF_H), v = sh.getRange(row, BF_COL, 1, BF_H.length).getValues()[0], got = answersRow_(book.getSheetByName(IA_TAB), code);
+  // no row but a mark in Interview Form: a Google Form logged before the tab existed, read-only
+  const old = !got && String(v[F['Interview Form']]).trim() ? { answers: null, source: 'Google Form', stamp: '' } : null;
   return Object.assign({ code: code, binome: m.b, name: (String(v[F['First Name']]) + ' ' + String(v[F['Family Name']])).trim(),
     firstChoice: String(v[F['1st Choice']]).trim(), edit: !!mv.edit && !mv.cover, sections: INTERVIEW_SECTIONS, questions: INTERVIEW_QUESTIONS,
-    formUrl: interviewFormUrl_(m.b) }, got ? answersView_(got.v, book.getSpreadsheetTimeZone()) : { answers: null, source: '', stamp: '' });
+    formUrl: interviewFormUrl_(m.b) }, got ? answersView_(got.v, book.getSpreadsheetTimeZone()) : old || { answers: null, source: '', stamp: '' });
 }
 
 /** webRun('interviewSave', {code, answers: {questionId: value}, seen}): a member with edit access (an admin in a binome too, never
@@ -468,9 +472,12 @@ function interviewSave_(a, args) {
   const lock = memberLock_();
   if (!lock.tryLock(10000)) throw new Error('BUSY: Your sheet is busy with another edit. Nothing was saved: try again.');
   try {
-    if (findFileRow_(sh, code) < 0) throw new Error('This candidate is no longer in your binome.');
+    const row = findFileRow_(sh, code);
+    if (row < 0) throw new Error('This candidate is no longer in your binome.');
     const tab = answersTab_(book, true), got = answersRow_(tab, code), had = got ? answersView_(got.v, tz) : null;
-    if (had && had.source !== 'Dashboard') throw new Error('These answers came from the Google Form: they can only be viewed here.');
+    // no row but a mark in Interview Form: a Google Form logged before the tab existed
+    const marked = !got && String(sh.getRange(row, bfCol_('Interview Form')).getValue()).trim();
+    if ((had && had.source !== 'Dashboard') || marked) throw new Error('These answers came from the Google Form: they can only be viewed here.');
     if (!had && seen) throw new Error('CONFLICT: These answers were removed from your sheet meanwhile.');
     if (had && had.stamp !== seen) throw new Error('CONFLICT: ' + (had.editedBy || had.submittedBy) + ' saved this form at ' + (had.editedAt || had.submittedAt) + '.');
     const now = new Date(stamp_(new Date()) * 1000), first = had && got.v[2] instanceof Date ? got.v[2] : now;

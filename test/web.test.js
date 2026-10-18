@@ -1285,6 +1285,14 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   assert.throws(() => save(c2, full('IT'), g.stamp), /came from the Google Form: they can only be viewed here/);
   // a row removed meanwhile is a conflict too, not a silent new row
   assert.throws(() => save(c3, full('IT'), '1|x@g.enp.edu.dz'), /^Error: CONFLICT: These answers were removed/);
+  // a Google Form logged before the tab existed: no row, only its mark in Interview Form. Read-only too, also in the sheet slice
+  const mark = v => m.run(`(function () { var sh = __files[${J(fid)}].obj.sheets[0]; sh.getRange(findFileRow_(sh, ${J(c3)}), bfCol_('Interview Form')).setValue(${J(v)}); })()`);
+  mark('✅ 01/10 10:00');
+  assert.deepStrictEqual([get(c3).source, get(c3).answers], ['Google Form', null]);
+  assert.throws(() => save(c3, full('IT'), ''), /came from the Google Form/);
+  m.run('__cacheClear()');
+  assert.deepStrictEqual(m.call('webState').candidates.find(c => c.Code === c3).interview, { at: '', by: '', source: 'Google Form' }, 'from the sheet, without a tab row');
+  mark('');
 
   // an admin in the binome: the same rules
   as('admin@g.enp.edu.dz'); m.run('master.addEditor(' + J(partner) + ')'); as(partner);
