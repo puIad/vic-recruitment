@@ -9,7 +9,8 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-No PR is open. Open issues: pending-changes slices #67–#70 (`ready-for-agent`, slice 2 first).
+No PR is open. Open issues: pending-changes slices #67–#70; slice 2 (#67) is deployed with the switch off and waits for the
+owner's live check, then 3, 4 and 5 one at a time.
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
@@ -40,6 +41,19 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   [#72](https://github.com/puIad/vic-recruitment-2026/pull/72): no revoke at the 48 h end or at sign-out, the next
   sign-in on that browser reuses the token with no consent screen; see [vercel.md](docs/vercel.md); its live checks
   are task 10's sign-in block). Plan: [plans.md](docs/plans.md#pending-changes-the-build-plan).
+- **Slice 2, alert actions** ([#67](https://github.com/puIad/vic-recruitment-2026/issues/67)), deployed 2026-10-18
+  with the switch **off**:
+  - Script: [#73](https://github.com/puIad/vic-recruitment-2026/pull/73), web app @88 and API @89, both named
+    "apply entry". It adds `webApply`, the owner's switch, the snapshot's `built` time, `npm run rollback -- <version>`,
+    and an Alerts save that keeps a Status changed since the sync loaded it.
+  - Vercel: [#74](https://github.com/puIad/vic-recruitment-2026/pull/74), production from `f83f66c` (the real build:
+    `web/` 30 packages, frontend `npm ci` 316, Vite 3,460 modules). It adds the accept step in `api/run.js`, the
+    consumer `api/apply.js`, the pulse flag, drop answers, the overlay and the switch on Settings › General.
+  - Store: Upstash Redis Free in us-east-1 (recreated there after a first install in Frankfurt), connected to this
+    project only, as `KV_REST_API_*`.
+  - **Owner, to do:** the live check in [plans.md](docs/plans.md#slice-2-alert-actions-end-to-end): switch on, the four
+    actions on test alerts, the pill and its flash, a drop forced by a hand edit of the Status cell before the change
+    applies (about a minute), then switch off. Then #67 closes and slice 3 (#68) starts.
 
 Done since 2026-10-15: the 2026-10-17 audit fixes (#37–#43, @81/@82), the Google profile picture (#36), the Owner
 check on `TRIGGER_OWNER` (#34), the old Apps Script dashboard retired, and every open and muted alert loaded (#44).
