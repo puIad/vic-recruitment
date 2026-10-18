@@ -319,15 +319,13 @@ function memberSet_(a, args) {
       if (x.error) return;
       const cur = goldText_(x.field, goldOf_(x.field, was[F[x.field]], wasShown[F[x.field]]));
       if (cur !== goldText_(x.field, x.seen)) { x.conflict = cur; return; }
-      sh.getRange(row, bfCol_(x.field)).setValue(x.field === 'Notes' && x.v ? "'" + x.v : x.v); // the apostrophe keeps notes as text (no formula, no date)
+      goldWrite_(sh, row, x.field, x.v);
     });
     const written = list.filter(x => !x.error && x.conflict === undefined);
     if (written.length) {
       SpreadsheetApp.flush();
-      CacheService.getScriptCache().put('dirty:' + m.b, String(Date.now()), 21600);
-      const now = rng.getValues()[0], shown = rng.getDisplayValues()[0], vals = {};
-      written.forEach(x => { x.now = vals[x.field] = goldOf_(x.field, now[F[x.field]], shown[F[x.field]]); });
-      patchSlice_(m.b, code, vals);
+      const vals = goldPatch_(m.b, sh, row, code, written.map(x => x.field));
+      written.forEach(x => { x.now = vals[x.field]; });
     }
     if (!batch) {
       if (list[0].conflict !== undefined) throw new Error('CONFLICT: ' + list[0].conflict);
@@ -336,6 +334,17 @@ function memberSet_(a, args) {
     return { code: code, fields: list.map(x => (x.error ? { field: x.field, error: x.error }
       : x.conflict !== undefined ? { field: x.field, conflict: x.conflict } : { field: x.field, value: x.now })) };
   } finally { lock.releaseLock(); }
+}
+/** One gold cell written as typing would; the apostrophe keeps notes as text (no formula, no date). */
+function goldWrite_(sh, row, field, v) { sh.getRange(row, bfCol_(field)).setValue(field === 'Notes' && v ? "'" + v : v); }
+/** After a member's write is flushed: the next sync reads binome b's sheet (dirty), and its cached slice takes the cells as
+ *  written (read back from the row). Returns {field: value} in the slice's form. memberSet_ and the apply entry share it. */
+function goldPatch_(b, sh, row, code, fields) {
+  CacheService.getScriptCache().put('dirty:' + b, String(Date.now()), 21600);
+  const rng = sh.getRange(row, BF_COL, 1, BF_H.length), F = idx_(BF_H), now = rng.getValues()[0], shown = rng.getDisplayValues()[0], vals = {};
+  fields.forEach(k => { vals[k] = goldOf_(k, now[F[k]], shown[F[k]]); });
+  patchSlice_(b, code, vals);
+  return vals;
 }
 /** The binome's cached slice takes the member's values ({field: value}, one candidate) and one new version. A slice not cached as published only gets a new
  *  version and no hash: the next webState reads the sheet. Under the member lock, so two members' patches never cross.
