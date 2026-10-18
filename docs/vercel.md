@@ -62,6 +62,12 @@ sets no variable that marks a redeploy), so a new env var such as `DROPS_SECRET`
 Redeploy the current production deployment, not a canceled doc push. Any other path a build reads must be added to
 the `git diff` paths.
 
+**`pr-screenshots/*` branches.** PR screenshots live on never-merged orphan branches that hold only images (PR bodies
+link them by sha, so never delete them). Their pushes still start a preview that fails with *Root Directory "web" does
+not exist*. `git.deploymentEnabled` in `web/vercel.json` turns off `pr-screenshots/**`, but Vercel reads that file
+from the pushed commit, and an orphan branch has no `web/`. So the rule only covers a screenshot branch cut from
+`main`; on an orphan one the failed preview is harmless noise (it never touches production).
+
 **`DROPS_SECRET`** (env var, Production): a long random string, the same value as the script property `DROPS_SECRET`.
 Unset on Vercel, `api/drops.js` answers 503; unset in the script, the sync never calls it. Rotate both together.
 

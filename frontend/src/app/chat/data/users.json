@@ -1,9 +1,0 @@
-[
-  { "id": "1", "name": "Djamila Cherifi", "email": "djamila@g.enp.edu.dz", "avatar": "", "status": "online", "lastSeen": "2026-10-03T18:30:00Z", "role": "HR · Binome B.03", "department": "HR" },
-  { "id": "2", "name": "Yasmine Ait Ahmed", "email": "yasmine@g.enp.edu.dz", "avatar": "", "status": "away", "lastSeen": "2026-10-03T17:45:00Z", "role": "IT · Binome B.03", "department": "IT" },
-  { "id": "3", "name": "Rami Ahmane", "email": "rami@g.enp.edu.dz", "avatar": "", "status": "online", "lastSeen": "2026-10-03T18:20:00Z", "role": "IT · Binome B.04", "department": "IT" },
-  { "id": "4", "name": "Sara Bouznad", "email": "sara@g.enp.edu.dz", "avatar": "", "status": "offline", "lastSeen": "2026-10-03T12:10:00Z", "role": "HR · Binome B.04", "department": "HR" },
-  { "id": "5", "name": "Aymene Khaled", "email": "aymene@g.enp.edu.dz", "avatar": "", "status": "online", "lastSeen": "2026-10-03T18:28:00Z", "role": "IT · Binome B.01", "department": "IT" },
-  { "id": "6", "name": "Marya Djalab", "email": "marya@g.enp.edu.dz", "avatar": "", "status": "away", "lastSeen": "2026-10-03T16:00:00Z", "role": "HR · Binome B.01", "department": "HR" },
-  { "id": "7", "name": "Late Member", "email": "late@g.enp.edu.dz", "avatar": "", "status": "offline", "lastSeen": "2026-10-02T21:00:00Z", "role": "IT · not paired yet", "department": "IT" }
-]

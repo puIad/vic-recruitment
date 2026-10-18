@@ -12,7 +12,6 @@ const Schedule = lazy(() => import("@/app/calendar/page"))
 const Analytics = lazy(() => import("@/app/analytics/page"))
 const MaintenancePage = lazy(() => import("@/app/maintenance/page"))
 const Help = lazy(() => import("@/app/faqs/page"))
-const Desk = lazy(() => import("@/app/chat/page"))
 const SettingsGeneral = lazy(() => import("@/app/settings/general/page"))
 const SettingsTiming = lazy(() => import("@/app/settings/timing/page"))
 const SettingsSharing = lazy(() => import("@/app/settings/sharing/page"))
@@ -39,7 +38,6 @@ export const shellRoutes: RouteConfig[] = [
   { path: "/interviewees", element: <Interviewees /> },
   { path: "/team", element: <Team /> },
   { path: "/schedule", element: <Schedule /> },
-  { path: "/desk", element: <Desk /> },
   { path: "/analytics", element: <Analytics /> },
   { path: "/maintenance", element: <MaintenancePage /> },
   { path: "/help", element: <Help /> },

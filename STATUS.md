@@ -290,7 +290,7 @@ In order. Each step says where to do it.
 
 - **Schedule** (calendar of the interviews set, plus admin events saved in the Master) and **Analytics** (a profile
   for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).
-- **Binome desk** dropped (2026-10-04); remove the page in the next UI PR (still in `nav.ts` and `routes.tsx` on 2026-10-18).
+- **Binome desk** dropped (2026-10-04) and removed from the UI (2026-10-18).
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.
 - Retired the Apps Script web app's old dashboard (2026-10-17): `Index.html` and `NoAccess.html` are deleted, and its

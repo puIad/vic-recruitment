@@ -58,11 +58,11 @@ only leave an INFO alert).
 |---|---|
 | Schedule (template calendar) | Planned: [plans.md › Schedule](plans.md#schedule) |
 | Analytics (template dashboard 2) | Planned: [plans.md › Analytics](plans.md#analytics) |
-| Binome desk (template chat) | Dropped 2026-10-04; remove it in the next UI PR ([plans.md](plans.md)) |
+| Binome desk (template chat) | Dropped 2026-10-04 and removed 2026-10-18 ([plans.md](plans.md)) |
 
 ## Still open
 
-- Schedule and Analytics ([plans.md](plans.md)); remove the Binome desk page.
+- Schedule and Analytics ([plans.md](plans.md)).
 - Members edit their binome from the dashboard: [load-test.md › task 8](load-test.md#task-8--members-edit-their-binome-from-the-dashboard).
 - Log interviewee moves and accepted hand edits in a history source, then show them in Change history.
 - No automated tests for the UI itself; `test/vercel.test.js` only checks its RPC wrapper and `API_VERSION`. The data
