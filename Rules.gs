@@ -162,7 +162,7 @@ function checkRegistration(rec, existing, domain) {
   else if (typed && collected && typed !== collected) add('MEDIUM', 'EMAIL_MISMATCH', who + ' typed "' + rec.typedEmail + '" but submitted from ' + collected + '. Use the submitting email.');
   const mainEmail = collected || typed;
   if (domain && mainEmail && emailRe.test(mainEmail) && mainEmail.split('@')[1] !== String(domain).toLowerCase()) add('INFO', 'EXTERNAL_EMAIL', who + ' uses a non-@' + domain + ' email (' + mainEmail + ').');
-  if (rec.c1 && rec.c2 && rec.c1 === rec.c2) add('MEDIUM', 'SAME_CHOICES', who + ' picked ' + rec.c1 + ' as both 1st and 2nd choice.');
+  if (rec.c1 && rec.c2 && rec.c1 === rec.c2) add('INFO', 'SAME_CHOICES', who + ' picked ' + rec.c1 + ' as both 1st and 2nd choice.');
   if (!/^0[5-7]\d{8}$/.test(phone) && !/^0[2-4]\d{7}$/.test(phone)) add('MEDIUM', 'BAD_PHONE', who + ': phone number "' + (rec.phone || '') + '" does not look like a valid Algerian number.');
   const bd = parseLooseDate(rec.birth);
   if (rec.birth && !bd) add('MEDIUM', 'BAD_BIRTHDATE', who + ': birth date "' + rec.birth + '" is unreadable.');
