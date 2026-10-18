@@ -344,6 +344,11 @@ export const useVic = create<VicStore>((set, get) => ({
 }))
 
 hooks.onSession = (endsAt) => useVic.setState({ sessionEnds: endsAt })
+// Sign out and Switch account wait only for a save still being accepted (about 1 s), like the close warning
+hooks.beforeSignOut = async () => {
+  for (let i = 0; i < 100 && useVic.getState().accepting > 0; i++) await new Promise((r) => setTimeout(r, 100))
+  return Object.values(useVic.getState().rec).filter((e) => e.state === "pending").length
+}
 if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => { if (!document.hidden) wantRec = true })
   // the browser's own "leave site?" only while a save is still being accepted (about 1 s); once safe it applies with the tab closed

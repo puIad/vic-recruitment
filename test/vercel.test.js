@@ -227,6 +227,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     const recOf = async (cookie, cell) => (await pulse(cookie, 2)).json.rec[cell];
 
     // switch off: the pulse reads no Redis, whatever the page asks with rec 1
+    F.log.redis = 0; // the callbacks above clear a "revoke when done" on every sign-in
     r = await pulse(own, 1);
     assert.deepStrictEqual([r.json.value.pending, 'rec' in r.json, F.log.redis], [false, false, 0], 'switch off: no Redis call');
     assert.strictEqual(typeof (await rpc(own, 'webPulse')).json.value, 'number', 'the bare pulse is unchanged');
@@ -441,6 +442,52 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       ['away', 'left', 'done'].forEach(n => delete F.db['pc:' + n + '@g.enp.edu.dz']);
       delete F.db['pc:admin@g.enp.edu.dz']['alert:A-7006'];
       delete process.env.DROPS_SECRET;
+    }
+
+    // slice 5: another account signs in on a browser of the admin's (inside its 48 h) while their change is pending
+    {
+      const fetch0 = global.fetch;
+      global.fetch = async (url, init) => (String(url) === 'https://oauth2.googleapis.com/token' && /authorization_code/.test(init.body)
+        ? { ok: true, status: 200, json: async () => tokenReply } : fetch0(url, init));
+      const as = (email, rt) => { tokenReply = { access_token: 'at:' + email, refresh_token: rt, expires_in: 3600, scope: allScopes, id_token: idt({ email }) }; };
+      const admin = { email: 'admin@g.enp.edu.dz', rt: 'rt:admin@g.enp.edu.dz', iat: Date.now() }, mark = 'pcr:admin@g.enp.edu.dz';
+      as('b@g.enp.edu.dz', 'rt:b');
+      setStatus('A-9002', 'OPEN');
+      await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
+      g.log.revoked.length = 0;
+      r = await cbWith(admin);
+      assert.deepStrictEqual([r.headers.location, S.open(r.jar[S.COOKIE]).email, g.log.revoked, F.db[mark]], ['/', 'b@g.enp.edu.dz', [], '1'], 'changes pending: no revoke yet, marked revoke when done');
+      await deliver();
+      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'the last one ended: revoked with its access token, mark gone');
+      // the last one cancelled from another device (typed back): its delivery finds nothing pending and revokes
+      await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
+      const cancelled = last();
+      g.log.revoked.length = 0;
+      await cbWith(admin);
+      await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
+      assert.strictEqual(F.sent[F.sent.length - 1].payload, cancelled, 'typed back: cancelled, nothing published');
+      await deliver(cancelled);
+      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'cancelled last change: revoked on its delivery');
+      // the admin signing in again anywhere clears the mark: their next change ends with no revoke
+      await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
+      await cbWith(admin);
+      as('admin@g.enp.edu.dz', 'rt:admin2');
+      await cbWith({ email: 'x@g.enp.edu.dz', rt: 'rt:x', iat: Date.now() - 49 * 3600e3 });
+      g.log.revoked.length = 0;
+      await deliver();
+      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['OPEN', [], false], 'signed in again: the mark is cleared, no revoke');
+      // nothing pending: revoked at once; Redis unreadable: revoked at once too
+      as('b@g.enp.edu.dz', 'rt:b');
+      await cbWith(admin);
+      assert.deepStrictEqual([g.log.revoked, mark in F.db], [['rt:admin@g.enp.edu.dz'], false], 'nothing pending: revoked at once');
+      await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
+      g.log.revoked.length = 0;
+      F.log.fail.redis = true;
+      r = await cbWith(admin);
+      F.log.fail.redis = false;
+      assert.deepStrictEqual([r.headers.location, g.log.revoked, mark in F.db], ['/', ['rt:admin@g.enp.edu.dz'], false], 'Redis unreadable: revoked at once, the sign-in still goes through');
+      await deliver();
+      global.fetch = fetch0;
     }
 
     await rpc(own, 'webRun', 'pendingSwitch', { on: false });

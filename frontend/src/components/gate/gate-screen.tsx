@@ -1,14 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Eye, KeyRound, Lock, LogIn, RotateCcw, Repeat, Info, type LucideIcon } from "lucide-react"
+import { CloudUpload, Eye, KeyRound, Lock, LogIn, RotateCcw, Repeat, Info, type LucideIcon } from "lucide-react"
 
 import { VicLogo } from "@/components/brand/vic-logo"
 import { RingStage } from "@/components/brand/ring-stage"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { UserAvatar } from "@/components/user-avatar"
-import { signInUrl, signOut } from "@/lib/vic/api"
+import { savingAtSignOut, signInUrl, signOut } from "@/lib/vic/api"
 import { useVic, type Gate } from "@/lib/vic/store"
 import { cn } from "@/lib/utils"
 
@@ -67,6 +67,9 @@ export function GateScreen() {
   const access = gate.mode === "noaccess" ? gate.access : undefined
   const readOnly = access?.reason === "READ_ONLY"
   const Icon = c.icon
+  // changes still pending when this sign-in ended (expired here) or was signed out (counted before the reload)
+  const pending = useVic((s) => Object.values(s.rec).filter((e) => e.state === "pending").length)
+  const saving = gate.mode === "signin" || gate.mode === "expired" ? Math.max(pending, savingAtSignOut) : 0
 
   return (
     <RingStage aria-busy={booting} aria-labelledby="gate-title">
@@ -110,6 +113,22 @@ export function GateScreen() {
               </span>
             </li>
           </ol>
+        )}
+
+        {saving > 0 && (
+          <div role="status" className="mt-5 flex items-start gap-3 rounded-2xl border bg-background/80 p-3 text-left text-sm">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-primary" aria-hidden="true">
+              <CloudUpload className="size-4" />
+            </span>
+            <span className="leading-snug">
+              <b className="block font-semibold">
+                {saving === 1 ? "1 of your changes is" : `${saving} of your changes are`} still being saved
+              </b>
+              <span className="text-muted-foreground">
+                {saving === 1 ? "It finishes" : "They finish"} on {saving === 1 ? "its" : "their"} own. If one can't be saved, you'll see it at your next sign-in and by email.
+              </span>
+            </span>
+          </div>
         )}
 
         {!booting && (

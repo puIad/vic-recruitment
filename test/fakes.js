@@ -16,6 +16,7 @@ module.exports = function fakes(P) {
       }
       case 'PTTL': return h === undefined ? -2 : ttl[k] ? ttl[k] - Date.now() : -1;
       case 'DEL': delete db[k]; delete ttl[k]; return 1;
+      case 'GETDEL': { const v = h === undefined ? null : h; delete db[k]; delete ttl[k]; return v; }
       case 'SCAN': { // SCAN cursor MATCH <prefix>* COUNT n: everything in one page
         const pre = a[1].replace(/\*$/, '');
         return ['0', Object.keys(db).filter(x => x.startsWith(pre) && live(x) !== undefined)];
