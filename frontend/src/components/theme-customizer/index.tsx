@@ -31,11 +31,6 @@ export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
     setSelectedRadius(RADIUS_DEFAULT)
     setBrandColorsValues({})
     resetTheme() // drops every inline override: the tokens in index.css apply again
-    try {
-      localStorage.removeItem("vic-palette")
-    } catch {
-      /* nothing saved */
-    }
     updateSidebarConfig({ variant: "inset", collapsible: "offcanvas", side: "left" })
   }
 

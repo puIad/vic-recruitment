@@ -38,11 +38,6 @@ export function ThemeTab({ selectedTheme, setSelectedTheme, selectedRadius, setS
     setSelectedTheme(value)
     setBrandColorsValues({})
     applyTheme(value, isDarkMode)
-    try {
-      localStorage.setItem("vic-palette", value)
-    } catch {
-      /* private mode: the choice just won't persist */
-    }
   }
 
   return (

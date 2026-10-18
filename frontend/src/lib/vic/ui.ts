@@ -45,7 +45,14 @@ export const useUi = create<UiStore>((set, get) => ({
   customizerOpen: false,
   setCustomizerOpen: (customizerOpen) => set({ customizerOpen }),
   palette: savedPalette(),
-  setPalette: (palette) => set({ palette }),
+  setPalette: (palette) => {
+    try {
+      localStorage.setItem("vic-palette", palette)
+    } catch {
+      /* private mode: the choice just won't persist */
+    }
+    set({ palette })
+  },
   radius: RADIUS_DEFAULT,
   setRadius: (radius) => set({ radius }),
   memberSheet: null,
