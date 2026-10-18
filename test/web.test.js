@@ -447,10 +447,12 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   const w = call('webState').interviewees.find(v => v.status === 'ASSIGNED' && v.binome === to.code);
   const fileSet = (code, col, v) => run(`(function(){var c=__files[${J(fileOf(to.code))}].obj.sheets[0].cells,F=BFI;
     for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}) c[i][F[${J(col)}]]=${J(v)}; __touch(${J(fileOf(to.code))});})()`);
-  fileSet(w.code, 'Contacted', 'Yes'); fileSet(w.code, 'Interview Date', '15/10/2025'); fileSet(w.code, 'Interview Time', '14:00');
+  // a week ahead, typed with last year's number (a fixed date went stale once it passed)
+  const wk = new Date(Date.now() + 7 * 864e5), day = String(wk.getDate()).padStart(2, '0') + '/' + String(wk.getMonth() + 1).padStart(2, '0') + '/';
+  fileSet(w.code, 'Contacted', 'Yes'); fileSet(w.code, 'Interview Date', day + (wk.getFullYear() - 1)); fileSet(w.code, 'Interview Time', '14:00');
   call('webRun', 'sync');
   assert(open('ODD_VALUE').some(e => e.code === w.code && /typo in the year/.test(e.msg)), J(open('ODD_VALUE')));
-  fileSet(w.code, 'Interview Date', '15/10/2026');
+  fileSet(w.code, 'Interview Date', day + wk.getFullYear());
   call('webRun', 'sync');
   assert(!open('ODD_VALUE').some(e => e.code === w.code), 'corrected: closed');
 
