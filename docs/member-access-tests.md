@@ -101,7 +101,7 @@ const actions = {
   resetBinomes: { phrase: "this is not the phrase" }, setup: {}, saveSettings: { values: {} },
   reassign: { dryRun: true }, changeMember: { dryRun: true }, swapMembers: { dryRun: true },
   newBinome: { dryRun: true }, addCover: { dryRun: true }, endCover: { dryRun: true }, quick: { op: "locate" },
-  binomeAccess: { binome: "B.00" },
+  binomeAccess: { binome: "B.00" }, binomeTag: { binome: "B.00", depts: ["IT"], dryRun: true },
 }
 const out = []
 for (const [a, args] of Object.entries(actions)) {
@@ -109,12 +109,12 @@ for (const [a, args] of Object.entries(actions)) {
   out.push({ action: a, refused: /Not allowed/.test(r.error || ""), answer: r.error || JSON.stringify(r.value).slice(0, 80) })
 }
 console.table(out)
-console.log(out.every((x) => x.refused) ? "PASS: all 23 refused" : "FAIL: see the rows with refused=false")
+console.log(out.every((x) => x.refused) ? "PASS: all 24 refused" : "FAIL: see the rows with refused=false")
 ```
 
 | Expect | ✓ |
 |---|---|
-| All 23 rows `refused: true` with `Not allowed`, and the log says **PASS** | ☐ |
+| All 24 rows `refused: true` with `Not allowed`, and the log says **PASS** | ☐ |
 
 **C3. Functions the proxy doesn't expose:**
 

@@ -46,8 +46,7 @@ function tagWarnings_(ctx, b, members) {
   const has = p => members.some(m => side[m.email] === p);
   if (/\ball\b/.test(normText(b.tag))) return has('ALL') ? [] : [b.code + ' is tagged "ALL" but no member is a board lead (Pair As ALL).'];
   const missing = tagDepts(b.tag).filter(d => !has(d));
-  return missing.length ? [b.code + ' is tagged "' + b.tag + '" but no member is on the ' + missing.join(' / ') +
-    ' side any more. It keeps receiving those interviewees until you change its Tag in the Binomes tab.'] : [];
+  return missing.length ? [b.code + ' tagged "' + b.tag + '" has no member on the ' + missing.join(' / ') + ' side (Pair As).'] : [];
 }
 
 /**
@@ -84,7 +83,7 @@ function memberPlan_(ctx, binomeText, outEmail, inName, inEmail, swapWith) {
   if (!errors.length) { const e = editCheck_(b); if (e) errors.push(e); }
   if (!errors.length) {
     const after = [1, 2].map(k => (k === slot ? inn : used(k) ? seat(k) : null)).filter(Boolean);
-    tagWarnings_(ctx, b, after).forEach(w => warnings.push(w));
+    tagWarnings_(ctx, b, after).forEach(w => warnings.push(w + ' It keeps receiving those interviewees until you change its department (Binomes › ⋯ › Change department…).'));
   }
   return { errors: errors, warnings: warnings, b: b, slot: slot, out: out, inn: inn };
 }
@@ -283,6 +282,64 @@ function report_(res) {
   if (res.done) say_(res.done.join('\n'));
   else if (res.errors.length) say_(res.errors.join('\n'));
   return res;
+}
+
+/* ---------- a binome's department: its Tag decides which interviewees it receives (pickBinome) ---------- */
+
+/** Check a tag change. Writes nothing. Interviewees in progress that the new tag doesn't cover stay with the binome (stranded). */
+function tagPlan_(ctx, b, tag) {
+  const errors = [], warnings = [], I = ctx.iv.I, takes = tagDepts(tag);
+  if (!takes.length) errors.push('Choose at least one department.');
+  else if (tag === b.tag) errors.push(b.code + ' already receives ' + tag + '.');
+  if (!errors.length) { const e = editCheck_(b); if (e) errors.push(e); }
+  if (!errors.length) tagWarnings_(ctx, { code: b.code, tag: tag }, b.members).forEach(w => warnings.push(w));
+  const stranded = errors.length ? [] : ctx.iv.data.filter(r => r[I.Binome] === b.code && PENDING_STATUSES.indexOf(r[I.Status]) >= 0 &&
+    takes.indexOf(String(r[I['1st Choice']]).trim()) < 0).map(r => ({ code: String(r[I.Code]).trim(),
+    name: (r[I['First Name']] + ' ' + r[I['Family Name']]).trim(), dept: String(r[I['1st Choice']]).trim() }));
+  return { errors: errors, warnings: warnings, b: b, from: b.tag, to: tag, stranded: stranded };
+}
+
+/** Write the new tag, repaint the binome sheet in its house, log it. The caller flushes alerts, rebuilds the Tracker, commits the base. */
+function applyTag_(ctx, p, reason) {
+  const b = p.b, B = ctx.bin.I, by = Session.getActiveUser().getEmail();
+  b.row[B.Tag] = p.to;
+  ctx.bin.sh.getRange(ctx.bin.data.indexOf(b.row) + 2, B.Tag + 1).setValue(p.to);
+  indexCtx_(ctx);
+  const nb = ctx.binByCode[b.code], issues = [], what = b.code + ': ' + (p.from || '(no tag)') + ' → ' + p.to;
+  if (nb.status === 'DRAFT') return what; // a draft is scratch until Lock: no sheet, no history
+  // the tag is written from here on: a sheet that can't be repainted is reported, never thrown
+  if (nb.fileId) { try { paintHouse_(binomeSheet_(ctx, nb), nb, nb.members); } catch (e) { issues.push('sheet colours not updated (' + e.message + ')'); } }
+  try {
+    changesSheet_().appendRow([ctx.now, by, 'TAG', b.code, p.from, '', p.to, '', p.stranded.map(x => x.code).join(', '), reason || '',
+      issues.length ? 'FILE NOT UPDATED: ' + issues.join('; ') : 'DONE']);
+  } catch (e) { issues.push('Member Changes history not written (' + e.message + ')'); }
+  ctx.alerts.add({ severity: 'INFO', type: 'TAG_CHANGED', status: 'AUTO-FIXED', code: '', binome: b.code,
+    msg: what + ' by ' + by + (reason ? ' (' + reason + ')' : '') + '. It receives ' + p.to + ' interviewees from now on.', key: '' });
+  if (issues.length) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: b.code, key: '',
+    msg: 'Department of ' + b.code + ' changed, but ' + issues.join('; ') + '.' });
+  return what + (issues.length ? ' (note: ' + issues.join('; ') + ')' : '');
+}
+
+/** Change which departments a binome receives. a: {binome, depts: ['IT', 'HR'], reason, dryRun}. DRAFT, ACTIVE and PAUSED binomes. */
+function binomeTagCore_(a) {
+  a = a || {};
+  const res = withLock_(() => {
+    const ctx = loadCtx_();
+    detectEdits_(ctx);
+    const pb = parseBinomeCode(a.binome), b = pb && ctx.binByCode[pb.code];
+    if (!b) return { errors: ['Binome "' + (a.binome || '') + '" not found.'], warnings: [] };
+    const depts = [].concat(a.depts || []).map(d => String(d).trim().toUpperCase());
+    const bad = depts.filter(d => DEPTS.indexOf(d) < 0);
+    if (bad.length) return { errors: ['Unknown department: ' + bad.join(', ') + '.'], warnings: [] };
+    const p = tagPlan_(ctx, b, tagFor(depts));
+    if (p.errors.length || a.dryRun) return { errors: p.errors, warnings: p.warnings, binome: b.code, from: p.from, to: p.to, stranded: p.stranded };
+    const done = applyTag_(ctx, p, a.reason);
+    ctx.alerts.flush();
+    buildTracker_(ctx);
+    commitBase_(ctx);
+    return { done: [done] };
+  }, 60000);
+  return report_(res);
 }
 
 /* ---------- temporary cover: someone stands in for a few interviews, linked by interviewee code ---------- */

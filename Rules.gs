@@ -81,6 +81,11 @@ function pairTag(a, b) {
   return a + ' & ' + b;
 }
 
+/** Tag of a set of departments, as the draft writes them: other departments in order, then HR ('IT & HR', 'IT & COMM', 'HR'). */
+function tagFor(depts) {
+  return DEPTS.filter(d => depts.indexOf(d) >= 0).join(' & '); // DEPTS ends with HR
+}
+
 /**
  * Team members who should interview but sit in no ACTIVE/PAUSED binome (after lock nobody is auto-paired again).
  * team: [{name,email,pairAs,exclude,experienced}] ; binomes: [{code,status,members:[{email}]}]

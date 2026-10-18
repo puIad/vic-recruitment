@@ -22,6 +22,13 @@ assert(/Drafted \d+ binomes/.test(out.messages[0]), out.messages[0]);
 out = call('webRun', 'lockCheck');
 assert(out.result.drafts > 0 && out.result.share === false, 'TEST_MODE (default) means no sharing');
 const drafts = out.result.drafts;
+{ // Change department on a DRAFT binome: the cell only (no sheet yet, no history); Lock then uses it
+  const dr = call('webState').binomes.find(b => b.status === 'DRAFT'), was = run('tagDepts(' + JSON.stringify(dr.tag) + ')');
+  const hist = () => run("ss_().getSheetByName('Member Changes') ? ss_().getSheetByName('Member Changes').getLastRow() : 1");
+  out = call('webRun', 'binomeTag', { binome: dr.code, depts: ['COMM'] });
+  assert.deepStrictEqual([out.messages[0], call('webState').binomes.find(b => b.code === dr.code).tag, hist()], [dr.code + ': ' + dr.tag + ' → COMM', 'COMM', 1]);
+  call('webRun', 'binomeTag', { binome: dr.code, depts: was });
+}
 out = call('webRun', 'lock');
 assert(/Locked \d+ binomes/.test(out.messages[0]), out.messages[0]);
 st = call('webState');
@@ -440,6 +447,65 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   binSet(c.code, 'Status', 'ACTIVE');
   call('webRun', 'sync');
 
+  // Change department (Binomes › ⋯ › Change department…): preview, refusals, then the tag, the sheet's house, the history, no
+  // manual-edit alert, and the routing; a Tag typed by hand gets Apply, which does the same
+  {
+    const pending = code => call('webState').interviewees.filter(v => v.binome === code && /^(ASSIGNED|CONTACTED|SCHEDULED)$/.test(v.status));
+    const d = active.find(b => b.tag !== 'FLER' && pending(b.code).length);
+    const tagOf = code => call('webState').binomes.find(b => b.code === code).tag;
+    const nCh = () => run("ss_().getSheetByName('Member Changes').getLastRow()");
+    const banner = () => run(`__files[${J(fileOf(d.code))}].obj.sheets[0].cells[7][0]`);
+    const tag = (depts, more) => call('webRun', 'binomeTag', Object.assign({ binome: d.code, depts: depts }, more));
+    assert(/not found/.test(call('webRun', 'binomeTag', { binome: 'B.98', depts: ['IT'], dryRun: true }).result.errors[0]));
+    assert(/at least one department/.test(tag([], { dryRun: true }).result.errors[0]));
+    assert(/Unknown department: XX/.test(tag(['IT', 'xx'], { dryRun: true }).result.errors[0]));
+    const n0 = nCh();
+    out = tag(['fler'], { dryRun: true });
+    const stranded = pending(d.code).filter(v => !/^FLER\./.test(v.code)).map(v => v.code).sort();
+    assert(stranded.length, 'the test needs interviewees the new tag no longer covers');
+    assert.deepStrictEqual([out.result.errors, out.result.from, out.result.to, out.result.stranded.map(x => x.code).sort(), out.messages],
+      [[], d.tag, 'FLER', stranded, []], J(out));
+    assert(out.result.stranded.every(x => x.name && x.dept !== 'FLER'), J(out.result.stranded));
+    assert.deepStrictEqual([tagOf(d.code), nCh()], [d.tag, n0], 'the dry run writes nothing');
+    run(`__files[${J(fileOf(d.code))}].obj.rename = () => { throw new Error("You do not have permission") }`);
+    assert(/Cannot edit the sheet/.test(tag(['FLER']).messages[0]), 'a sheet the admin cannot edit: refused');
+    run(`delete __files[${J(fileOf(d.code))}].obj.rename`);
+    assert.deepStrictEqual([tagOf(d.code), nCh()], [d.tag, n0], 'refused: nothing written');
+
+    out = tag(['FLER'], { reason: 'more FLER applicants' });
+    assert(/→ FLER/.test(out.messages[0]), out.messages[0]);
+    assert.deepStrictEqual([tagOf(d.code), banner(), nCh()], ['FLER', 'Hufflepuff · FLER', n0 + 1], 'tag written, sheet repainted, one history row');
+    assert(/\(FLER\)/.test(run(`__files[${J(fileOf(d.code))}].obj.sheets[0].notes["1:1"]`)), 'banner note names the new tag');
+    const h = call('webState').history[0];
+    assert.deepStrictEqual([h.type, h.binome, h.out, h.inn, h.codes.slice().sort(), h.reason, h.status],
+      ['TAG', d.code, d.tag, 'FLER', stranded, 'more FLER applicants', 'DONE'], J(h));
+    assert(/already receives FLER/.test(tag(['FLER'], { dryRun: true }).result.errors[0]));
+    call('webRun', 'sync');
+    assert.deepStrictEqual([open(), tagOf(d.code)], [[], 'FLER'], 'its own write is not a manual edit');
+    // the next FLER registration goes to it (every other binome that takes FLER paused for the check)
+    const others = call('webState').binomes.filter(b => b.code !== d.code && b.status === 'ACTIVE' && run(`tagDepts(${J(b.tag)})`).includes('FLER'));
+    others.forEach(b => binSet(b.code, 'Status', 'PAUSED'));
+    run(`master.getSheetByName('Registration Responses').cells.push(regRow(new Date(), 'fler.route@g.enp.edu.dz', 'Farida', 'Route', 'fler.route@g.enp.edu.dz', '01/03/2005', '0555123987', 'FLER', 'HR'))`);
+    call('webRun', 'sync');
+    assert.strictEqual(ivRows().find(r => r[IVI.Email] === 'fler.route@g.enp.edu.dz')[IVI.Binome], d.code, 'routed by the new tag');
+    others.forEach(b => binSet(b.code, 'Status', 'ACTIVE'));
+    call('webRun', 'sync');
+
+    // typed by hand: Apply keeps the typed tag and repaints like the dialog; Revert / Accept stay
+    binSet(d.code, 'Tag', 'COMM & HR');
+    call('webRun', 'sync');
+    a = open().find(e => e.binome === d.code && /Tag of/.test(e.msg));
+    assert(a && J(a.fix) === J(['apply', 'revert', 'accept']), J(open()));
+    out = fix('Apply', [a.id]);
+    assert(/FLER → COMM & HR/.test(out.messages[0]), out.messages[0]);
+    assert.deepStrictEqual([tagOf(d.code), banner(), call('webState').history[0].reason], ['COMM & HR', 'Gryffindor · COMM & HR', 'manual edit applied']);
+    binSet(d.code, 'Tag', d.tag);
+    call('webRun', 'sync');
+    fix('Apply', open().filter(e => e.binome === d.code).map(e => e.id));
+    call('webRun', 'sync');
+    assert.deepStrictEqual([tagOf(d.code), open()], [d.tag, []], 'back to its first tag, nothing open');
+  }
+
   // Team tab: a duplicated email is flagged, and closes itself once fixed
   run("(function(){var sh=ss_().getSheetByName('Team');sh.appendRow(['Copy','sara@g.enp.edu.dz','IT','IT',false,'']);})()");
   call('webRun', 'sync');
@@ -653,7 +719,8 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     ['addCover', { codes: ivOf(b2.code)[0], inEmail: mem }], ['endCover', { row: 2 }], ['quick', { op: 'snooze', ids: ['A-0001'], for: '4h' }],
     ['resolve', { ids: st.alerts.map(a => a.id) }], ['saveSettings', { values: { TEST_MODE: false } }], ['setup'],
     ['binomeAccess', { binome: b2.code, level: 'edit' }], ['binomeAccess', { binome: b1.code }], ['draft', { keep: true }],
-    ['draftPair', { emailA: mem, emailB: partner }], ['draftUnpair', { binome: b1.code }], ['teamSet', { email: mem, experienced: true }]].forEach(([action, args]) =>
+    ['draftPair', { emailA: mem, emailB: partner }], ['draftUnpair', { binome: b1.code }], ['teamSet', { email: mem, experienced: true }],
+    ['binomeTag', { binome: b1.code, depts: ['FLER'] }]].forEach(([action, args]) =>
     assert.throws(() => m.call('webRun', action, args), /^Error: Not allowed$/, action + ' must be refused'));
   assert.deepStrictEqual([tabs(), m.run('JSON.stringify(__props)')], [before, props0], 'a member changed nothing');
 
@@ -1088,7 +1155,7 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
     ['changeMember', { binome: 'B.01', outEmail: 'a@x.dz', inEmail: 'b@x.dz' }], ['swapMembers', { binomeA: 'B.01', emailA: 'a@x.dz', binomeB: 'B.02', emailB: 'b@x.dz' }],
     ['newBinome', { emailA: 'a@x.dz', emailB: 'b@x.dz' }], ['addCover', { codes: ['IT.1'], inEmail: 'a@x.dz' }], ['endCover', { row: 2 }],
     ['quick', { op: 'snooze', ids: ['A-1'], for: '4h' }], ['draft', { keep: true }], ['draftPair', { emailA: 'a@x.dz', emailB: 'b@x.dz' }],
-    ['draftUnpair', { binome: 'B.01' }], ['teamSet', { email: 'a@x.dz', experienced: true }]].forEach(([action, args]) =>
+    ['draftUnpair', { binome: 'B.01' }], ['teamSet', { email: 'a@x.dz', experienced: true }], ['binomeTag', { binome: 'B.01', depts: ['IT'] }]].forEach(([action, args]) =>
     assert.throws(() => call('webRun', action, args), /^Error: BUSY: Another update is running\. Nothing was changed/, action + ' must fail with BUSY'));
   run('__lockBusy = false');
   assert.strictEqual(tabs(), before, 'a refused action changes nothing');

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowRightLeft, Repeat, Search, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
+import { ArrowRightLeft, Building2, Repeat, Search, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,12 +11,13 @@ import { useVic } from "@/lib/vic/store"
 import type { HistoryRow } from "@/lib/vic/types"
 import { MemberName } from "@/components/member-name"
 
-type Kind = "replace" | "swap" | "cover"
+type Kind = "replace" | "swap" | "cover" | "tag"
 
 const KINDS: Record<Kind, { label: string }> = {
   replace: { label: "Replaced" },
   swap: { label: "Swapped" },
   cover: { label: "Cover" },
+  tag: { label: "Department" },
 }
 
 /** What a Member Changes row means: a swap is two PERMANENT rows whose reason the script writes as "swap B.01 ↔ B.02". */
@@ -31,6 +32,16 @@ function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon;
       icon: UsersRound,
       what: <>{inn} covers {codes}{out && <> instead of {out}</>}</>,
       text: `${h.inn} covers ${codes}${h.out ? ` instead of ${h.out}` : ""}`,
+    }
+  }
+  if (h.type === "TAG") {
+    const kept = h.codes.length ? ` · kept ${h.codes.join(", ")}` : ""
+    return {
+      kind: "tag",
+      title: "Department",
+      icon: Building2,
+      what: <>{h.out || "no tag"} → <b>{h.inn}</b>{kept && <span className="text-muted-foreground">{kept}</span>}</>,
+      text: `${h.out} → ${h.inn}${kept}`,
     }
   }
   const arrow = { what: <>{out} → {inn}</>, text: `${h.out} → ${h.inn}` }
@@ -65,19 +76,19 @@ export default function HistorySettings() {
 
   if (!history)
     return (
-      <BaseLayout title="Change history" description="Who changed which binome or cover, and when." watermark="History">
+      <BaseLayout title="Change history" description="Who changed which binome, cover or department, and when." watermark="History">
         <Skeleton className="h-96 w-full rounded-2xl" />
       </BaseLayout>
     )
 
   return (
-    <BaseLayout title="Change history" description="Who changed which binome or cover, and when." watermark="History">
+    <BaseLayout title="Change history" description="Who changed which binome, cover or department, and when." watermark="History">
       <Card>
         <CardHeader className="gap-4">
           <div>
             <CardTitle className="text-lg font-bold">Timeline</CardTitle>
             <CardDescription>
-              Every member change, swap and cover made after lock, newest first. Read from the Member Changes tab, so it is the same record the script checks.
+              Every member change, swap, cover and department change made after lock, newest first. Read from the Member Changes tab, so it is the same record the script checks.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -104,7 +115,7 @@ export default function HistorySettings() {
             <div className="space-y-1 py-10 text-center">
               <p className="font-bold">{history.length ? "No match" : "Nothing changed yet"}</p>
               <p className="text-sm text-muted-foreground">
-                {history.length ? "Nothing fits this search." : "Replacing, swapping or covering members after lock (Binomes page) will show up here."}
+                {history.length ? "Nothing fits this search." : "Replacing, swapping or covering members, or changing a department, after lock (Binomes page) will show up here."}
               </p>
             </div>
           ) : (
