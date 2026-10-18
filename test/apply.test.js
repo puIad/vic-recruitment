@@ -151,4 +151,117 @@ const H = 3.6e6;
   assert(call('webState').built > 0, 'a live build has one too');
 }
 
+// ---- settings (slice 3): compared after saveSettings_'s parsing, a missing row or blank value = the default ----
+{
+  const setting = k => call('webState').settingsAll.find(s => s.key === k).value;
+  const cellOf = k => run(`(function () { var d = master.getSheetByName('Settings').getDataRange().getValues();
+    for (var i = 1; i < d.length; i++) if (d[i][0] === '${k}') return JSON.stringify(d[i][1]); return 'none'; })()`);
+  const setCell = (k, v) => run(`(function () { var sh = master.getSheetByName('Settings'), d = sh.getDataRange().getValues();
+    for (var i = 1; i < d.length; i++) if (d[i][0] === '${k}') sh.getRange(i + 1, 2).setValue(${JSON.stringify(v)}); _settings = null; })()`);
+  const st = (key, value, seen) => ({ kind: 'setting', key, value, seen });
+  const h0 = setting('HOURS_NOT_CONTACTED'), ver = run('__props.SNAP_VER');
+  assert.deepStrictEqual(ends(apply(st('HOURS_NOT_CONTACTED', '30', h0))), ['applied']);
+  assert.strictEqual(cellOf('HOURS_NOT_CONTACTED'), '30', 'written as a number');
+  assert.strictEqual(run('S_().HOURS_NOT_CONTACTED'), 30, 'the next read in this run sees it');
+  assert.strictEqual(run('__props.SNAP_VER'), ver, 'no publish');
+  assert.deepStrictEqual(ends(apply(st('HOURS_NOT_CONTACTED', 30, h0))), ['met'], 'a retry finds its own value');
+  setCell('HOURS_NOT_CONTACTED', 36);
+  assert.deepStrictEqual(ends(apply(st('HOURS_NOT_CONTACTED', 40, 30), st('ASSIGNMENTS_OPEN', false, true))), ['dropped:36', 'applied'],
+    'another admin changed one key: only that one drops');
+  assert.strictEqual(cellOf('HOURS_NOT_CONTACTED'), '36');
+  // a bool typed in the sheet as text, a blank cell, a missing row: read as S_() reads them
+  setCell('ASSIGNMENTS_OPEN', 'TRUE');
+  assert.deepStrictEqual(ends(apply(st('ASSIGNMENTS_OPEN', false, true))), ['applied']);
+  setCell('BALANCE_BY', '');
+  assert.deepStrictEqual(ends(apply(st('BALANCE_BY', 'TOTAL', 'ACTIVE'))), ['applied'], 'blank = the default');
+  assert.deepStrictEqual(ends(apply(st('BALANCE_BY', 'ACTIVE', 'TOTAL'))), ['applied']);
+  run(`(function () { var sh = master.getSheetByName('Settings'), d = sh.getDataRange().getValues();
+    for (var i = d.length - 1; i >= 1; i--) if (d[i][0] === 'SCREEN_HOLD_AT') sh.deleteRow(i + 1); _settings = null; })()`);
+  assert.strictEqual(cellOf('SCREEN_HOLD_AT'), 'none');
+  assert.deepStrictEqual(ends(apply(st('SCREEN_HOLD_AT', 60, 50))), ['applied'], 'a missing row is the default');
+  assert.strictEqual(cellOf('SCREEN_HOLD_AT'), '60', 'its row appended');
+  // values the sheet refuses drop at once, with saveSettings_'s reason
+  const bad = apply(st('DIGEST_HOUR', 25, 8), st('HOURS_NO_INTERVIEW_DATE', 'abc', 48), st('BALANCE_BY', 'NOPE', 'ACTIVE'),
+    st('ADMIN_EMAIL', 'not an email', ''), st('NOT_A_KEY', 1, 1));
+  assert.deepStrictEqual(bad.results.map(r => r.end), ['dropped', 'dropped', 'dropped', 'dropped', 'dropped']);
+  assert(/0 to 23/.test(bad.results[0].reason) && /number/.test(bad.results[1].reason) && /one of/.test(bad.results[2].reason) &&
+    /invalid email/.test(bad.results[3].reason) && bad.results[4].reason, bad.results.map(r => r.reason).join(' | '));
+  assert.deepStrictEqual([cellOf('DIGEST_HOUR'), cellOf('BALANCE_BY')], ['8', '"ACTIVE"'], 'nothing written');
+  setCell('ASSIGNMENTS_OPEN', true); setCell('HOURS_NOT_CONTACTED', 24);
+}
+
+// ---- My binome fields (slice 3): a member's own sheet, as memberSet_ compares; the partner sees it at their next poll ----
+{
+  const J = JSON.stringify, admin = call('webState');
+  const b = admin.binomes.find(x => x.people.length === 2 && admin.interviewees.filter(i => i.binome === x.code).length >= 2);
+  const codes = admin.interviewees.filter(i => i.binome === b.code).map(i => i.code).sort();
+  const other = admin.interviewees.find(i => i.binome && i.binome !== b.code).code;
+  const mem = b.people[0].email, partner = b.people[1].email, fid = b.fileUrl.split('/d/')[1];
+  run('var __adminS = Session; var __asM = e => { Session = e ? { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) } : __adminS; }');
+  const as = e => run('__asM(' + J(e || '') + ')');
+  const cell = (code, k) => run(`(function(){var sh=__files[${J(fid)}].obj.sheets[0]; return sh.getRange(findFileRow_(sh, ${J(code)}), bfCol_(${J(k)})).getDisplayValue();})()`);
+  const setCell = (code, k, v) => run(`(function(){var sh=__files[${J(fid)}].obj.sheets[0]; sh.getRange(findFileRow_(sh, ${J(code)}), bfCol_(${J(k)})).setValue(${J(v)});})()`);
+  const fd = (code, field, value, seen) => ({ kind: 'field', code, field, value, seen });
+  call('webRun', 'sync'); // a warm slice
+  as(mem);
+  const c0 = call('webState').candidates.find(c => c.Code === codes[0]), pv0 = call('webPulse');
+  as(partner);
+  const ppv = call('webPulse');
+  as(mem);
+  let out = apply(fd(codes[0], 'Contacted', 'Yes', c0.Contacted), fd(codes[0], 'Rating', '7,5', c0.Rating), fd(codes[0], 'Notes', '=1+1 called', c0.Notes),
+    fd(codes[1], 'Interview Date', '15/11/2026', ''));
+  assert.deepStrictEqual(ends(out), ['applied', 'applied', 'applied', 'applied']);
+  assert.deepStrictEqual([cell(codes[0], 'Contacted'), cell(codes[0], 'Rating'), cell(codes[0], 'Notes'), cell(codes[1], 'Interview Date')],
+    ['Yes', '7.5', '=1+1 called', '15/11/2026'], 'written into their sheet, notes as text');
+  assert(run(`CacheService.getScriptCache().get('dirty:${b.code}')`) > 0, 'the next sync reads this sheet');
+  as(partner);
+  assert(call('webPulse') > ppv, 'the partner gets a new version');
+  const seen = call('webState').candidates.find(c => c.Code === codes[0]);
+  assert.deepStrictEqual([seen.Contacted, seen.Rating, seen.Notes], ['Yes', 7.5, '=1+1 called'], 'from the patched slice');
+  as(mem);
+  assert(call('webPulse') > pv0);
+  // a retry, the partner typing the same, the partner typing something else
+  assert.deepStrictEqual(ends(apply(fd(codes[0], 'Contacted', 'Yes', c0.Contacted))), ['met']);
+  setCell(codes[0], 'Final Affectation', 'IT');
+  assert.deepStrictEqual(ends(apply(fd(codes[0], 'Final Affectation', 'IT', ''), fd(codes[0], 'Rating', 9, 7.5), fd(codes[0], 'Contacted', 'No answer', 'Not yet'))),
+    ['met', 'applied', 'dropped:Yes'], 'the partner set the same: met; changed it: dropped with the sheet value');
+  // gone from the binome, values the sheet refuses, fields members may not edit
+  const gone = apply(fd(other, 'Contacted', 'Yes', 'Not yet'), fd(codes[0], 'Rating', 11, 9), fd(codes[0], 'Interview Time', '25:00', ''), fd(codes[0], 'Email', 'a@b.dz', ''));
+  assert.deepStrictEqual(gone.results.map(r => r.end), ['dropped', 'dropped', 'dropped', 'dropped']);
+  assert(/no longer in your binome/.test(gone.results[0].reason) && /0 to 10/.test(gone.results[1].reason) && /HH:mm/.test(gone.results[2].reason) &&
+    gone.results[3].reason, gone.results.map(r => r.reason).join(' | '));
+  assert.strictEqual(cell(codes[0], 'Rating'), '9');
+  // a member's alert or setting change, an admin's field change: dropped with a reason
+  const odd = apply({ alert: ids[0], op: 'resolve', seen: 'OPEN' }, { kind: 'setting', key: 'TEST_MODE', value: false, seen: true });
+  assert(odd.results.every(r => r.end === 'dropped' && /Only an admin/.test(r.reason)));
+  // the switch reaches members, in the pulse (asked for) and the state
+  assert.deepStrictEqual([typeof call('webPulse'), Object.keys(call('webPulse', true)).sort(), call('webState').pending], ['number', ['pending', 'v'], false]);
+  as('');
+  call('webRun', 'pendingSwitch', { on: true });
+  as(mem);
+  assert.deepStrictEqual([call('webPulse', true).pending, call('webState').pending], [true, true]);
+  as('');
+  call('webRun', 'pendingSwitch', { on: false });
+  const af = apply(fd(codes[0], 'Contacted', 'Yes', 'Yes'));
+  assert(/Only the binome's members/.test(af.results[0].reason), 'an admin edits the Master, not a binome sheet');
+  // Drive failing on the open (after access_ saw edit access): thrown, so the consumer retries; nothing dropped
+  as(mem);
+  run("var __obf = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id !== __props.MASTER_ID) throw new Error('Service Spreadsheets timed out'); return __obf.call(SpreadsheetApp, id); }");
+  assert.throws(() => apply(fd(codes[0], 'Rating', 5, 9)), /timed out/);
+  run('SpreadsheetApp.openById = __obf');
+  as('');
+  // lost: view only, a cover, not shared
+  call('webRun', 'binomeAccess', { binome: b.code, level: 'view' });
+  run('__acl = true');
+  as(mem);
+  assert(apply(fd(codes[0], 'Rating', 5, 9)).lost, 'view access only');
+  as('');
+  call('webRun', 'binomeAccess', { binome: b.code, level: 'none' });
+  as(mem);
+  assert(apply(fd(codes[0], 'Rating', 5, 9)).lost, 'not shared any more');
+  run('__acl = false');
+  as('');
+  assert.strictEqual(cell(codes[0], 'Rating'), '9', 'nothing written');
+}
+
 console.log('apply tests passed');
