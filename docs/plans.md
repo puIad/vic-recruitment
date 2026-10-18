@@ -437,4 +437,6 @@ Menu order and dividers (`config/nav.ts`), Connections, Account, Appearance inli
 
 Built 2026-10-19 on `claude/settings-cleanup-2`. The palette and corner radius moved into the `useUi` store so the
 page and the header drawer show the same choice. The sidebar's user card also said Editor; it now says Admin too. The
-layout choices use plain names (Standard / Floating / Inset, Hide / Icons only / Always open).
+layout choices use plain names (Standard / Floating / Inset, Hide / Icons only / Always open). Merged as
+[#92](https://github.com/puIad/vic-recruitment-2026/pull/92) (`73652b5`) and live on Vercel on 2026-10-19. Both PRs of
+the settings cleanup are done; no script deploy was needed.

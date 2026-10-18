@@ -37,7 +37,7 @@ The sidebar has four groups: Control room, People, Coming up, System. Alerts car
 | Move interviewee | Dialog, from Binomes, an interviewee row or a binome row menu |
 | Interviewees, Team | Tables of the two tabs. Interviewees: Risk column, On hold in the status filter with a Review link, a Declined toggle with Restore |
 | Maintenance | Check integrity, Send me the digest now, Re-share binome sheets, Send rejections (editable preview), Run setup again (owner only); Danger zone: Reset all binomes (phrase "I confirm to reset the binomes") |
-| Settings | General, Alerts and timing, Sharing and email (turning Test mode off asks first), Screening (the members list's count, last read and Refresh now, the rules), Change history, Connections (Google files), Account (session time left), Appearance (charter palettes: VIC, SPARK, English Bubble, Training) |
+| Settings | Three groups in the menu ([plans.md](plans.md#settings-cleanup-the-build-plan)): General, Alerts and timing, Sharing and email (turning Test mode off asks first), Screening (the members list's count, last read and Refresh now, the rules); then Connections (Google files; the Services card for the owner only) and Change history; then Account (session time left; role Owner / Admin / Member / Cover) and Appearance (mode, charter palettes VIC, SPARK, English Bubble, Training, corner radius and sidebar layout on the page, shared with the header's customizer) |
 | Elsewhere | Command palette (Ctrl K: pages, candidates by code or name, binomes, alerts, Sync), Help (FAQ), Google files row in the sidebar, account menu at its foot |
 | Gate | Sign in, session expired, no access, script unreachable, set in the iris of the charter's divider disc |
 | Members | Someone in a locked binome (or a live cover) who is not an editor gets **My binome** only (`app/my-binome/`): their candidates with the sheet's columns, statuses, open alerts, a link to their sheet; gold fields editable with edit access to the sheet, covers read-only; the interview form (below); Account and Appearance. Polls every 15 s. Load-test plan, tasks 7 and 8 |
@@ -52,7 +52,7 @@ stay remembered. Used live on 2026-10-03 to redo the binomes.
 ## Placeholders (sample data, each labelled) and what makes them real
 
 **Change history is real**: `webState.history` reads the Member Changes tab (`historyRows_` in WebApp.gs, newest first,
-last 300); Settings › Change history shows it with search and a Replaced / Swapped / Cover filter. It only knows what
+last 300); Settings › Change history shows it with search, a Replaced / Swapped / Cover / Department filter and a Binome dropdown. It only knows what
 that tab logs: member replacements, swaps and covers. Interviewee moves and accepted hand edits are not in it (they
 only leave an INFO alert).
 

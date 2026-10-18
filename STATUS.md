@@ -94,7 +94,7 @@ Left, owner (in order):
 5. Live checks still open: #37 (`=1+1` in a form, a Discord handle starting with `-`), #30 (the member shared by hand
    during task 8 still gets in: set that binome to No access), the other-account checks
    ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines, the department change (#84), the HR share
-   card on Settings › General (#89), and both
+   card on Settings › General (#89), the settings cleanup pages (#91, #92, live 2026-10-19), and both
    parts of [interview-form.md](docs/interview-form.md) (each part's Rollout).
 6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
 7. Load-test task 10, now that pending-changes slices 2–5 are live (switch off until the owner turns it on): load test again and sign off before members get the
