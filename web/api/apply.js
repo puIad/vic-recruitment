@@ -38,7 +38,8 @@ async function handle(msg, meta) {
   if (got !== 'OK') throw new Later(Math.max(ttl, 0) / 1000 + 1);
 
   const batch = pending.slice(0, BATCH);
-  const changes = batch.map(e => ({ id: e.id, kind: e.kind, alert: e.alert, op: e.op, seen: e.seen, at: e.at, until: e.until }));
+  const changes = batch.map(e => ({ id: e.id, kind: e.kind, alert: e.alert, op: e.op, until: e.until, key: e.key, code: e.code, field: e.field,
+    value: e.value, seen: e.seen, at: e.at }));
   let r, j;
   try {
     r = await fetch(S.runUrl(), {

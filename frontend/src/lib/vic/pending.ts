@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useVic } from "./store"
-import type { Alert, HeldAlert, PendingChange, PendingEntry, PendingRec, Severity, WebState } from "./types"
+import type { Alert, AlertEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
 
 /**
  * The author's view of the alerts: the snapshot with their pending changes over it (docs/plans.md › Slice 2, issue 61).
@@ -10,7 +10,7 @@ import type { Alert, HeldAlert, PendingChange, PendingEntry, PendingRec, Severit
  *    (built at or after the write, or already showing it), or the mark expires after 10 min
  *  - dropped: the row turns amber where they clicked it, showing the sheet's value now, until they answer
  */
-export type Mark = { kind: "pending" | "flash" | "dropped"; entry: PendingEntry }
+export type Mark<E extends PendingEntry = AlertEntry> = { kind: "pending" | "flash" | "dropped"; entry: E }
 type Status = "OPEN" | "SNOOZED" | "MUTED" | "CLOSED"
 export interface AlertView {
   alerts: Alert[]
@@ -37,7 +37,7 @@ export function alertView(state: WebState | null, rec: PendingRec, flash: Record
   // per alert: the status it shows, the list its row sits in, its mark
   const over: Record<string, { shows: Status; sits: Status; mark?: Mark; until?: number }> = {}
   const statusOf = (id: string): Status => over[id]?.shows ?? snap[id] ?? "CLOSED"
-  const entries = Object.values(rec).filter((e) => e.kind === "alert")
+  const entries = Object.values(rec).filter((e): e is AlertEntry => e.kind === "alert")
   if (!entries.length) return { alerts, muted, counts: state?.alertCounts ?? ZERO, marks: {}, statusOf }
   const built = state?.built ?? 0
   entries.forEach((e) => {
@@ -101,7 +101,7 @@ export function useAlertView(): AlertView {
 }
 
 /** The changes one click makes, with what the author's screen showed for each alert. */
-export function alertChanges(view: AlertView, ids: string[], op: PendingChange["op"], built?: number, until?: (id: string) => number | undefined): PendingChange[] | null {
+export function alertChanges(view: AlertView, ids: string[], op: AlertEntry["op"], built?: number, until?: (id: string) => number | undefined): PendingChange[] | null {
   const at = Date.now(), out: PendingChange[] = []
   for (const id of ids) {
     const seen = view.statusOf(id)
@@ -118,7 +118,7 @@ const SNOOZE_MS: Record<string, number> = { "4h": 4 * 3600e3, "24h": 24 * 3600e3
  * Resolve, Snooze, Mute or Unmute as pending changes. true = accepted (the rows show it); false = do today's direct write
  * (switch off, a change the pending path can't take, or the accept step failed). Snooze's end is fixed here, at the click.
  */
-export async function acceptAlerts(ids: string[], op: PendingChange["op"], snoozeFor?: string): Promise<boolean> {
+export async function acceptAlerts(ids: string[], op: AlertEntry["op"], snoozeFor?: string): Promise<boolean> {
   const st = useVic.getState()
   if (!st.pendingOn || st.gate.mode !== "ok" || !ids.length) return false
   const now = Date.now()
@@ -129,4 +129,75 @@ export async function acceptAlerts(ids: string[], op: PendingChange["op"], snooz
   }
   const changes = alertChanges(alertView(st.state, st.rec, st.flash), ids, op, st.state?.built, until)
   return !!changes && (await st.accept(changes)) === "ok"
+}
+
+/** Why a change was dropped, in words (the consumer's reasons; the script's own come as sentences). */
+export const REASON: Record<string, string> = {
+  "lost access": "You can no longer edit the Master, so it could not be written as you.",
+  "sign-in ended before it was saved": "Your sign-in ended before it reached the sheet.",
+  "retries ran out": "Google kept refusing it until your sign-in ran out.",
+}
+
+/* ---------- settings and My binome fields (docs/plans.md › Slice 3) ---------- */
+
+const same = (a: unknown, b: unknown) => String(a ?? "") === String(b ?? "")
+/** What one cell shows over the snapshot (value undefined = the snapshot's own), and its mark: the same rules as alerts. */
+export type CellOver<E extends PendingEntry> = { value?: CellValue; mark?: Mark<E> }
+function cellOver<E extends SettingEntry | FieldEntry>(e: E, snap: unknown, caught: boolean, flashing: boolean): CellOver<E> {
+  if (e.state === "pending") return { value: e.value, mark: { kind: "pending", entry: e } }
+  if (e.state === "applied" || e.state === "met") {
+    if (flashing) return { value: e.value, mark: { kind: "flash", entry: e } }
+    return caught || same(snap, e.value) ? {} : { value: e.value }
+  }
+  if (!e.addressed) return { value: e.sheet, mark: { kind: "dropped", entry: e } } // a drop with a reason never read the sheet: the snapshot
+  return e.sheet !== undefined && !caught && !same(snap, e.sheet) ? { value: e.sheet } : {}
+}
+
+/** key → its row's overlay on the Settings page. Only that row shows it (issue 61): the rest of the dashboard follows the sheet. */
+export function settingsView(state: WebState | null, rec: PendingRec, flash: Record<string, number>, now = Date.now()): Record<string, CellOver<SettingEntry>> {
+  const out: Record<string, CellOver<SettingEntry>> = {}, built = state?.built ?? 0
+  Object.values(rec).forEach((e) => {
+    if (e.kind !== "setting") return
+    const snap = state?.settingsAll.find((s) => s.key === e.key)?.value
+    out[e.key] = cellOver(e, snap, e.wrote !== undefined && built >= e.wrote, (flash[e.cell] ?? 0) > now)
+  })
+  return out
+}
+export function useSettingsView() {
+  const state = useVic((s) => s.state)
+  const rec = useVic((s) => s.rec)
+  const flash = useVic((s) => s.flash)
+  return React.useMemo(() => settingsView(state, rec, flash), [state, rec, flash])
+}
+
+export interface MemberView {
+  /** the slice with the member's own values over it */
+  member: MemberState | null
+  /** cell ("field:IT.12:Rating") → its mark */
+  marks: Record<string, Mark<FieldEntry>>
+  /** drops on candidates no longer in the slice: shown on the page with what they typed */
+  gone: FieldEntry[]
+}
+/** My binome needs no clock: an ended value gives way to the first slice loaded after the page saw it end (issue 61). */
+export function memberView(member: MemberState | null, rec: PendingRec, flash: Record<string, number>, ended: Record<string, number>, loadedAt: number, now = Date.now()): MemberView {
+  const fields = Object.values(rec).filter((e): e is FieldEntry => e.kind === "field")
+  if (!member || !fields.length) return { member, marks: {}, gone: [] }
+  const marks: Record<string, Mark<FieldEntry>> = {}, gone: FieldEntry[] = [], over: Record<string, Record<string, CellValue>> = {}
+  fields.forEach((e) => {
+    const c = member.candidates.find((x) => String(x.Code) === e.code)
+    if (!c) { if (e.state === "dropped" && !e.addressed) gone.push(e); return }
+    const o = cellOver(e, c[e.field], (ended[e.id] ?? Infinity) < loadedAt, (flash[e.cell] ?? 0) > now)
+    if (o.value !== undefined) (over[e.code] ??= {})[e.field] = o.value
+    if (o.mark) marks[e.cell] = o.mark
+  })
+  const candidates = member.candidates.map((c) => (over[String(c.Code)] ? { ...c, ...over[String(c.Code)] } : c))
+  return { member: { ...member, candidates }, marks, gone }
+}
+export function useMemberView(): MemberView {
+  const member = useVic((s) => s.member)
+  const rec = useVic((s) => s.rec)
+  const flash = useVic((s) => s.flash)
+  const ended = useVic((s) => s.ended)
+  const loadedAt = useVic((s) => s.loadedAt)
+  return React.useMemo(() => memberView(member, rec, flash, ended, loadedAt), [member, rec, flash, ended, loadedAt])
 }

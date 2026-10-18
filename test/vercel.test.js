@@ -341,6 +341,51 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     g.opts.refreshFails = null;
     assert.deepStrictEqual([r.status, r.json.code, r.jar[S.COOKIE]], [503, 'DIRECT', undefined], 'a failed refresh: direct write, the cookie untouched');
 
+    // settings (slice 3): one cell per key, applied as the admin; typed then undone cancels; a refused value drops with no Apply mine anyway
+    const set = (key, value, seen) => ({ kind: 'setting', key, value, seen });
+    const cellOf = k => seed.run(`String(ss_().getSheetByName('Settings').getDataRange().getValues().filter(function (r) { return r[0] === '${k}'; })[0][1])`);
+    r = await accept(own, set('HOURS_NOT_CONTACTED', 30, 24));
+    assert.deepStrictEqual([r.json.value['setting:HOURS_NOT_CONTACTED'].state, r.json.value['setting:HOURS_NOT_CONTACTED'].key], ['pending', 'HOURS_NOT_CONTACTED']);
+    await deliver();
+    assert.deepStrictEqual([(await recOf(own, 'setting:HOURS_NOT_CONTACTED')).state, cellOf('HOURS_NOT_CONTACTED')], ['applied', '30']);
+    await accept(own, set('DIGEST_HOUR', 9, 8));
+    r = await accept(own, set('DIGEST_HOUR', 8, 9));
+    assert(!('setting:DIGEST_HOUR' in r.json.value), 'typed then undone: cancelled');
+    await accept(own, set('DIGEST_HOUR', 25, 8));
+    await deliver();
+    d = await recOf(own, 'setting:DIGEST_HOUR');
+    assert.deepStrictEqual([d.state, /0 to 23/.test(d.reason), !!d.again, cellOf('DIGEST_HOUR')], ['dropped', true, false, '8']);
+    await accept(own, set('HOURS_NOT_CONTACTED', 24, 30));
+    await deliver();
+    assert.strictEqual(cellOf('HOURS_NOT_CONTACTED'), '24');
+    r = await accept(own, set('HOURS_NOT_CONTACTED', { x: 1 }, 24));
+    assert.strictEqual(r.json.code, 'DIRECT', 'not a plain value: not taken');
+
+    // My binome fields (slice 3): a member's change, applied as them in their own sheet; the partner's next poll has it
+    seed.run('__as("admin@g.enp.edu.dz")');
+    ['importTeam', 'draft', 'lock'].forEach(a => seed.call('webRun', a, { link: '' }));
+    seed.addRegistrations(12, 1);
+    seed.call('webRun', 'sync');
+    const st = seed.call('webState'), bin = st.binomes.find(b => b.people.length === 2 && st.interviewees.some(i => i.binome === b.code));
+    const code = st.interviewees.find(i => i.binome === bin.code).code, other = st.interviewees.find(i => i.binome && i.binome !== bin.code).code;
+    const mem = sess(bin.people[0].email), partner = sess(bin.people[1].email);
+    const fd = (c, field, value, seen) => ({ kind: 'field', code: c, field, value, seen });
+    r = await pulse(mem, 1);
+    assert.deepStrictEqual([r.json.value.pending, r.json.rec], [true, {}], 'members get the switch, and the record rides on their pulse');
+    r = await accept(mem, fd(code, 'Contacted', 'Yes', 'Not yet'), fd(code, 'Rating', '7,5', ''), fd(other, 'Notes', 'typed for a candidate gone', ''));
+    assert.deepStrictEqual(Object.keys(r.json.value).sort(), ['field:' + code + ':Contacted', 'field:' + code + ':Rating', 'field:' + other + ':Notes'].sort());
+    await deliver();
+    const rec = (await pulse(mem, 2)).json.rec;
+    assert.deepStrictEqual([rec['field:' + code + ':Contacted'].state, rec['field:' + code + ':Rating'].state], ['applied', 'applied']);
+    const gone = rec['field:' + other + ':Notes'];
+    assert.deepStrictEqual([gone.state, /no longer in your binome/.test(gone.reason), !!gone.again, gone.value], ['dropped', true, false, 'typed for a candidate gone'],
+      'the candidate left: dropped with the typed text, no Apply mine anyway');
+    assert(g.log.runs.some(x => x.fn === 'webApply' && x.email === bin.people[0].email), 'scripts.run as the member');
+    const theirs = (await rpc(partner, 'webState')).json.value.candidates.find(c => c.Code === code);
+    assert.deepStrictEqual([theirs.Contacted, theirs.Rating], ['Yes', 7.5], "the partner's next read has it");
+    r = await accept(mem, fd(code, 'Email', 'a@b.dz', ''));
+    assert.strictEqual(r.json.code, 'DIRECT', 'not a column members fill in');
+
     await rpc(own, 'webRun', 'pendingSwitch', { on: false });
     F.log.redis = 0;
     await pulse(own, 1);

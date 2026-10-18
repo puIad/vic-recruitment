@@ -1,14 +1,15 @@
 import * as React from "react"
-import { ArrowUpRight, CalendarClock, CircleCheck, Database, Lock, PanelRightOpen, PauseCircle, RotateCcw, UserRoundCheck } from "lucide-react"
+import { AlertTriangle, ArrowUpRight, CalendarClock, CircleCheck, Database, Lock, PanelRightOpen, PauseCircle, RotateCcw, UserRoundCheck } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { DotGrid, RingSlot } from "@/components/brand/motifs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { alertLabel, cellText, initials, SEVERITY, sheetTime, STAGES } from "@/lib/vic/format"
+import { alertLabel, cellText, initials, SEVERITY, SHEET_LABEL, sheetTime, STAGES } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
-import type { Candidate, MemberAlert, MemberState } from "@/lib/vic/types"
+import { REASON, useMemberView } from "@/lib/vic/pending"
+import type { Candidate, FieldEntry, MemberAlert, MemberState } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { CandidateSheet, CandidatesTable, fullName } from "./components/candidates"
 
@@ -21,6 +22,30 @@ function Note({ icon: Icon, tone, children }: { icon: React.ElementType; tone: "
       <Icon className={cn("mt-0.5 size-4 shrink-0", tone === "info" ? "text-info" : "text-warning")} />
       <div className="min-w-0 text-foreground/90">{children}</div>
     </div>
+  )
+}
+
+/** Changes that could not reach the sheet because their candidate left the binome: what was typed, so it isn't lost (only OK). */
+function GoneNotice({ gone }: { gone: FieldEntry[] }) {
+  const markDrops = useVic((s) => s.markDrops)
+  if (!gone.length) return null
+  return (
+    <Note icon={AlertTriangle} tone="warning">
+      <p>
+        <b className="font-bold">{gone.length > 1 ? `${gone.length} of your changes were not saved.` : "Your change was not saved."}</b> Here is what you typed:
+      </p>
+      <ul className="mt-2 space-y-1">
+        {gone.map((e) => (
+          <li key={e.cell}>
+            <b>{e.code}</b> · {SHEET_LABEL[e.field]}: <span className="break-words">“{String(e.value)}”</span>{" "}
+            <span className="text-muted-foreground">{e.reason ? REASON[e.reason] ?? e.reason : "The sheet changed first."}</span>
+          </li>
+        ))}
+      </ul>
+      <Button size="sm" variant="outline" className="mt-3 bg-background" onClick={() => markDrops({ keep: gone.map((e) => e.cell) })}>
+        OK
+      </Button>
+    </Note>
   )
 }
 
@@ -204,7 +229,8 @@ function Unavailable({ message }: { message: string }) {
 }
 
 export default function MyBinomePage() {
-  const m = useVic((s) => s.member)
+  const view = useMemberView() // the slice with the member's own pending values over it
+  const m = view.member
   const error = useVic((s) => s.memberError)
   const [open, setOpen] = React.useState<string | null>(null)
   const openCode = React.useCallback((code: string) => setOpen(code), [])
@@ -271,6 +297,8 @@ export default function MyBinomePage() {
           <b className="font-bold">You're a cover.</b> When the cover ends, these candidates go back to the binome's own members and this page closes.
         </Note>
       )}
+
+      <GoneNotice gone={view.gone} />
 
       <div className="grid gap-6 lg:grid-cols-5">
         <ProgressCard m={m} />

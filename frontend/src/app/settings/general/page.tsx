@@ -25,7 +25,7 @@ function PendingSwitch() {
       title: next ? "Turn pending changes on?" : "Turn pending changes off?",
       body: next ? (
         <>
-          <p>Resolve, Snooze, Mute and Unmute show at once with a Pending pill and reach the sheet about a minute later, as the admin who clicked, even with the tab closed.</p>
+          <p>Resolve, Snooze, Mute, Unmute, saved settings and My binome fields show at once with a Pending pill and reach the sheet about a minute later, as the person who clicked, even with the tab closed.</p>
           <p className="text-muted-foreground">A change the sheet overtook comes back on its row as Not applied, with Keep the sheet's value or Apply mine anyway.</p>
         </>
       ) : (
@@ -44,12 +44,12 @@ function PendingSwitch() {
           <Clock className="size-4 text-primary" aria-hidden="true" /> Pending changes
           <Badge variant="info" className="ml-1">Owner only</Badge>
         </CardTitle>
-        <CardDescription>Alert actions save in under a second and go into the Master in the background. Other admins see them after the next sync.</CardDescription>
+        <CardDescription>Alert actions, settings and My binome fields save in under a second and go into the sheet in the background. Other admins see them after the next sync; a binome partner at their next refresh.</CardDescription>
       </CardHeader>
       <CardContent>
         <label className="inline-flex cursor-pointer items-center gap-3 text-sm font-semibold">
           <Switch checked={on} disabled={busy} onCheckedChange={flip} aria-label="Pending changes" />
-          {on ? "On: alert actions are pending changes" : "Off: every save is a direct write"}
+          {on ? "On: these saves are pending changes" : "Off: every save is a direct write"}
         </label>
       </CardContent>
     </Card>

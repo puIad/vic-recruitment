@@ -1,6 +1,7 @@
-// Pending changes (docs/plans.md › Slice 2): the author's record in Upstash Redis, the accept step and the queue publish.
-// Record = hash pc:<email>, one field per cell ("alert:A-0012"), each a JSON entry:
-//   {id, cell, kind, alert, op, value (what the author wants), seen (what their screen showed), at (the click), until?,
+// Pending changes (docs/plans.md › Slices 2 and 3): the author's record in Upstash Redis, the accept step and the queue publish.
+// Record = hash pc:<email>, one field per cell ("alert:A-0012", "setting:DIGEST_HOUR", "field:IT.12:Rating"), each a JSON entry:
+//   {id, cell, kind (alert | setting | field), alert?, op?, until? (alerts), key? (settings), code?, field? (My binome),
+//    value (what the author wants), seen (what their screen showed), at (the click),
 //    state: pending | applied | met | dropped, by (apply-by = the sealed token's end), wrote? (Google's write or check
 //    time), sheet? (the sheet's value on a drop), reason?, again? (Apply mine anyway offered), droppedAt?, shown?,
 //    addressed?, exp?}. by and droppedAt are for slice 4's sweep and email (issues 58, 54).
@@ -60,9 +61,19 @@ function save(email, entries, gone) {
   return redis(cmds);
 }
 
-/** A change as the page sends it: {kind: 'alert', alert, op, seen, at, until?, built? (its snapshot's build time)}. The page is not trusted for more than that. */
-const valid = c => !!c && c.kind === 'alert' && !!VALUE[c.op] && /^A-\d{1,7}$/.test(String(c.alert)) && SHOWN.indexOf(c.seen) >= 0 &&
-  Number.isFinite(c.at) && (c.op !== 'snooze' || (Number.isFinite(c.until) && c.until > c.at));
+const GOLD = ['Contacted', 'Interview Date', 'Interview Time', 'Interview Done', 'Rating', 'Final Affectation', 'Notes']; // BF_EDITABLE
+const scalar = v => typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.length <= 2100);
+/** A change as the page sends it, with at (the click) and built? (its snapshot's build time):
+ *  {kind: 'alert', alert, op, seen, until?} · {kind: 'setting', key, value, seen} · {kind: 'field', code, field, value, seen}.
+ *  The page is not trusted for more than that: the script checks every value again. */
+const valid = c => !!c && Number.isFinite(c.at) && (
+  c.kind === 'alert' ? !!VALUE[c.op] && /^A-\d{1,7}$/.test(String(c.alert)) && SHOWN.indexOf(c.seen) >= 0 &&
+    (c.op !== 'snooze' || (Number.isFinite(c.until) && c.until > c.at))
+  : c.kind === 'setting' ? /^[A-Z][A-Z0-9_]{0,40}$/.test(String(c.key)) && scalar(c.value) && scalar(c.seen)
+  : c.kind === 'field' && /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(c.code)) && GOLD.indexOf(c.field) >= 0 && scalar(c.value) && scalar(c.seen));
+const cellOf = c => (c.kind === 'alert' ? 'alert:' + c.alert : c.kind === 'setting' ? 'setting:' + c.key : 'field:' + c.code + ':' + c.field);
+const valueOf = c => (c.kind === 'alert' ? VALUE[c.op] : c.value);
+const same = (a, b) => String(a) === String(b); // the page's values: Rating 7.5 or "7.5", Done true or "true"
 
 /**
  * The accept step: merge the author's changes into their record, then publish one message for the ones left. A change on a
@@ -75,16 +86,17 @@ const valid = c => !!c && c.kind === 'alert' && !!VALUE[c.op] && /^A-\d{1,7}$/.t
 async function accept(s, changes, now) {
   const { rec, gone: expired } = await readAll(s.email, now), writes = {}, cancel = [], before = {};
   changes.forEach(c => {
-    const cell = 'alert:' + c.alert, e0 = writes[cell] || rec[cell];
+    const cell = cellOf(c), e0 = writes[cell] || rec[cell], value = valueOf(c);
     let seen = c.seen;
     if (e0 && e0.state === 'pending') seen = e0.seen;
-    else if (e0 && (e0.state === 'applied' || e0.state === 'met') && e0.seen === c.seen && !(c.built >= e0.wrote)) seen = e0.value;
+    else if (e0 && (e0.state === 'applied' || e0.state === 'met') && same(e0.seen, c.seen) && !(c.built >= e0.wrote)) seen = e0.value;
     if (!(cell in before)) before[cell] = rec[cell];
     delete writes[cell];
-    if (VALUE[c.op] === seen) { if (rec[cell] && rec[cell].state === 'pending') cancel.push(cell); return; } // typed, then undone
-    if (seen === 'RESOLVED') return; // their own Resolve closed it: any action on a closed alert is already met (issue 50)
-    writes[cell] = { id: crypto.randomUUID(), cell: cell, kind: 'alert', alert: String(c.alert), op: c.op, value: VALUE[c.op], seen: seen,
-      at: c.at, until: c.op === 'snooze' ? c.until : undefined, state: 'pending', by: s.ate };
+    if (same(value, seen)) { if (rec[cell] && rec[cell].state === 'pending') cancel.push(cell); return; } // typed, then undone
+    if (c.kind === 'alert' && seen === 'RESOLVED') return; // their own Resolve closed it: any action on a closed alert is already met (issue 50)
+    const base = { id: crypto.randomUUID(), cell: cell, kind: c.kind, value: value, seen: seen, at: c.at, state: 'pending', by: s.ate };
+    writes[cell] = Object.assign(base, c.kind === 'alert' ? { alert: String(c.alert), op: c.op, until: c.op === 'snooze' ? c.until : undefined }
+      : c.kind === 'setting' ? { key: c.key } : { code: c.code, field: c.field });
   });
   // expired cells go here, inside the read-then-write the accept already has (a pulse never deletes)
   const gone = cancel.concat(expired).filter(c => !writes[c]), ids = Object.keys(writes).map(c => writes[c].id);

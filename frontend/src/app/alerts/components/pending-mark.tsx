@@ -2,23 +2,18 @@ import { AlertTriangle, Check, Clock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useActions } from "@/lib/vic/actions"
-import type { Mark } from "@/lib/vic/pending"
+import { REASON, type Mark } from "@/lib/vic/pending"
 import { useQuick } from "@/lib/vic/quick"
 import { useVic } from "@/lib/vic/store"
-import type { PendingEntry } from "@/lib/vic/types"
+import type { AlertEntry, PendingEntry } from "@/lib/vic/types"
 
 /* How an alert row shows its author's pending change (variant A of the prototype the owner chose, issue 51). */
 
 const STATUS: Record<string, string> = { OPEN: "Open", SNOOZED: "Snoozed", MUTED: "Muted", RESOLVED: "Resolved", "AUTO-RESOLVED": "Closed by the script" }
-const YOURS: Record<PendingEntry["op"], string> = { resolve: "Resolved", snooze: "Snoozed", mute: "Muted", unmute: "Back with the open alerts" }
-const REASON: Record<string, string> = {
-  "lost access": "You can no longer edit the Master, so it could not be written as you.",
-  "sign-in ended before it was saved": "Your sign-in ended before it reached the sheet.",
-  "retries ran out": "Google kept refusing it until your sign-in ran out.",
-}
+const YOURS: Record<AlertEntry["op"], string> = { resolve: "Resolved", snooze: "Snoozed", mute: "Muted", unmute: "Back with the open alerts" }
 
 /** The pill next to the alert's name: Pending, then "In the sheet" for a moment, or Not applied. */
-export function PendingMark({ mark }: { mark?: Mark }) {
+export function PendingMark({ mark }: { mark?: Mark<PendingEntry> }) {
   if (!mark) return null
   if (mark.kind === "pending")
     return (
@@ -52,7 +47,7 @@ export function InlineDrop({ mark }: { mark?: Mark }) {
   const applyMine = async () => {
     const at = Date.now()
     // seen = the sheet's value as the notice shows it (issue 50); a drop with a reason never read the sheet: what they saw
-    const seen = (e.sheet === "OPEN" || e.sheet === "SNOOZED" || e.sheet === "MUTED" ? e.sheet : e.seen) as PendingEntry["seen"]
+    const seen = (e.sheet === "OPEN" || e.sheet === "SNOOZED" || e.sheet === "MUTED" ? e.sheet : e.seen) as AlertEntry["seen"]
     if (e.op === "snooze" && !(e.until && e.until > at)) return keep() // the snooze would already be over
     if ((await accept([{ kind: "alert", alert: e.alert, op: e.op, seen, at, until: e.until, built }])) === "ok") return
     // the pending path can't take it now: today's direct write, which reports on its own

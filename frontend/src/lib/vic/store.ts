@@ -60,6 +60,8 @@ interface VicStore {
   rec: PendingRec
   /** cell → until when its pill shows "In the sheet" (about 2 s after it applied) */
   flash: Record<string, number>
+  /** entry id → when this page first saw it end (applied, met or dropped): My binome's overlay gives way to a slice loaded after it */
+  ended: Record<string, number>
   /** accept steps in flight: the close warning holds until they return */
   accepting: number
   /** The accept step. "ok" = safe as pending changes; "direct" = do today's direct write instead (switch off, or it failed). */
@@ -106,6 +108,7 @@ export const useVic = create<VicStore>((set, get) => ({
   pendingOn: false,
   rec: {},
   flash: {},
+  ended: {},
   accepting: 0,
 
   async boot() {
@@ -152,7 +155,7 @@ export const useVic = create<VicStore>((set, get) => ({
         member: member ? (s as MemberState) : null,
         memberError: null,
         pulse: p,
-        pendingOn: pp.on ?? (!member && !!(s as WebState).pending),
+        pendingOn: pp.on ?? !!s.pending,
         loading: false,
         loadedAt: Date.now(),
         tick: cur.tick + (quiet && (cur.state || cur.member) ? 1 : 0),
@@ -180,9 +183,9 @@ export const useVic = create<VicStore>((set, get) => ({
     polling = true // at a 2 s tick a slow Apps Script call would otherwise stack up
     try {
       // webPulse rechecks access itself, so a revoked account drops to the gate at the next tick (69024a1) in one call
-      // the record rides on the pulse while the author has changes pending (admins every 5th 2 s poll), and on tab return
+      // the record rides on the pulse while the author has changes pending (admins every 5th 2 s poll, members every 15 s one), and on tab return
       const held = hasPending(get().rec)
-      const rec = wantRec ? (held ? 2 : 1) : held && ++polls % 5 === 0 ? 2 : 0
+      const rec = wantRec ? (held ? 2 : 1) : held && (gate.mode === "member" || ++polls % 5 === 0) ? 2 : 0
       wantRec = false
       const r = await callFull<number | { v: number; pending: boolean }>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS)
       const p = pulseOf(r.value)
@@ -300,17 +303,18 @@ export const useVic = create<VicStore>((set, get) => ({
 
   // A new record: changes that ended since the last one flash "In the sheet"; new drops get one toast per click and are marked shown.
   setRec(next) {
-    const prev = get().rec, now = Date.now(), flash = { ...get().flash }, drops: Record<number, number> = {}
+    const prev = get().rec, now = Date.now(), flash = { ...get().flash }, drops: Record<number, number> = {}, ended: Record<string, number> = {}
     const shown: string[] = []
     Object.values(next).forEach((e) => {
       const was = prev[e.cell]
       if (was?.id === e.id && was.state === "pending" && (e.state === "applied" || e.state === "met")) flash[e.cell] = now + 2000
+      if (e.state !== "pending") ended[e.id] = get().ended[e.id] ?? now
       if (e.state === "dropped" && !e.addressed && !e.shown) {
         shown.push(e.cell)
         if (!(was?.id === e.id && was.state === "dropped")) drops[e.at] = (drops[e.at] || 0) + 1
       }
     })
-    set({ rec: next, flash })
+    set({ rec: next, flash, ended })
     Object.values(drops).forEach((n) =>
       toast.warning(n > 1 ? `${n} of your changes were not applied` : "Your change was not applied", {
         description: "The row shows why, and what the sheet holds now.",
