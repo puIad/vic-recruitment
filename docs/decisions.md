@@ -71,7 +71,7 @@ All answered by the owner on 2026-10-17 (question 2 on 2026-10-04). None is open
    the binome looks at if the candidate doesn't fit the 1st after the interview. A candidate who picks the same
    department twice really wants it, and it's just a club, so it must never count against them. **Keep both alerts,
    for information only:** `SAME_CHOICES` drops from MEDIUM to INFO (no instant email, not a routing fix to make) and
-   `CHOICE_MISMATCH` stays INFO. Code change still to make (see STATUS.md).
+   `CHOICE_MISMATCH` stays INFO. Done in PR #82.
 6. Should new-interviewee emails be turned down? **No.** `NOTIFY_BINOME_ON_NEW_INTERVIEWEE` stays on: binomes should
    get the mail as soon as the candidate is assigned (the next 1-minute sync), so they can contact the candidate while
    the candidate is still on their phone or PC.
