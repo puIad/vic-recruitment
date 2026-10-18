@@ -131,6 +131,21 @@ export async function acceptAlerts(ids: string[], op: AlertEntry["op"], snoozeFo
   return !!changes && (await st.accept(changes)) === "ok"
 }
 
+/**
+ * Apply mine anyway: a drop again as a fresh change, seen = the sheet's value as the notice shows it (issue 50; a drop with a
+ * reason never read the sheet: what they saw). null = it can't be any more (no Apply mine anyway, or the snooze is over).
+ */
+export function again(e: PendingEntry, built: number | undefined, at: number): PendingChange | null {
+  if (!e.again) return null
+  if (e.kind === "alert") {
+    if (e.op === "snooze" && !(e.until && e.until > at)) return null
+    const seen = e.sheet === "OPEN" || e.sheet === "SNOOZED" || e.sheet === "MUTED" ? e.sheet : e.seen
+    return { kind: "alert", alert: e.alert, op: e.op, seen, at, until: e.until, built }
+  }
+  if (e.kind === "setting") return { kind: "setting", key: e.key, value: e.value, seen: e.sheet ?? e.seen, at, built }
+  return { kind: "field", code: e.code, field: e.field, value: e.value, seen: e.sheet ?? e.seen, at }
+}
+
 /** An alert's status, and an alert change, in words (the drop notices). */
 export const STATUS: Record<string, string> = { OPEN: "Open", SNOOZED: "Snoozed", MUTED: "Muted", RESOLVED: "Resolved", "AUTO-RESOLVED": "Closed by the script" }
 export const YOURS: Record<AlertEntry["op"], string> = { resolve: "Resolved", snooze: "Snoozed", mute: "Muted", unmute: "Back with the open alerts" }

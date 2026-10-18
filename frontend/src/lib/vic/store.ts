@@ -67,7 +67,7 @@ interface VicStore {
   /** The accept step. "ok" = safe as pending changes; "direct" = do today's direct write instead (switch off, or it failed). */
   accept: (changes: PendingChange[]) => Promise<"ok" | "direct">
   /** Answers on drops: shown (on screen), keep (Keep the sheet's value). */
-  markDrops: (a: { shown?: string[]; keep?: string[] }) => Promise<void>
+  markDrops: (a: { shown?: string[]; seen?: string[]; keep?: string[] }) => Promise<void>
   setRec: (rec: PendingRec) => void
   /** cells of the drops this visit found waiting (the first record it read): the must-answer dialog (slice 4) */
   awayDrops: string[]
@@ -83,7 +83,7 @@ const hasPending = (rec: PendingRec) => Object.values(rec).some((e) => e.state =
 const openDrops = (rec: PendingRec) => Object.values(rec).filter((e) => e.state === "dropped" && !e.addressed).map((e) => e.cell)
 /** the first record this visit reads opens the dialog for the drops waiting in it */
 let firstRec = true
-/** the last seen mark: while drops are on screen the pulse refreshes it once a minute, so the admins get no alert */
+/** the last seen mark: while drops are on screen it is refreshed once a minute, so the admins get no alert */
 let seenMark = 0
 const SEEN_MS = 60e3
 /** The pulse's answer: a number from an older script, {v, pending} from one that has the switch. */
@@ -185,6 +185,9 @@ export const useVic = create<VicStore>((set, get) => ({
   // Live refresh: poll the version of the dashboard's snapshot (it moves only when the data changed) and reload when it moved.
   async checkPulse() {
     const { busy, refreshing, gate, state, member, memberError, modals, pulse } = get()
+    // the seen mark only touches Redis, so it skips the guards below that spare Google: a 5-min Lock or an open dialog is still on screen
+    const drops = openDrops(get().rec)
+    if (drops.length && !document.hidden && Date.now() - seenMark >= SEEN_MS) { seenMark = Date.now(); void get().markDrops({ seen: drops }) }
     // a member whose sheet couldn't load keeps polling, so the page fills itself once the sync has published their binome
     const shown = gate.mode === "ok" ? !!state : gate.mode === "member" && !!(member || memberError)
     if (busy || refreshing || polling || document.hidden || !shown || modals > 0) return
@@ -193,12 +196,10 @@ export const useVic = create<VicStore>((set, get) => ({
     try {
       // webPulse rechecks access itself, so a revoked account drops to the gate at the next tick (69024a1) in one call
       // the record rides on the pulse while the author has changes pending (admins every 5th 2 s poll, members every 15 s one), and on tab return
-      const held = hasPending(get().rec), drops = openDrops(get().rec)
-      const seen = drops.length && Date.now() - seenMark >= SEEN_MS ? drops : null
-      const rec = wantRec || seen ? (held || drops.length ? 2 : 1) : held && (gate.mode === "member" || ++polls % 5 === 0) ? 2 : 0
+      const held = hasPending(get().rec)
+      const rec = wantRec ? (held ? 2 : 1) : held && (gate.mode === "member" || ++polls % 5 === 0) ? 2 : 0
       wantRec = false
-      if (seen) seenMark = Date.now()
-      const r = await callFull<number | { v: number; pending: boolean }>("webPulse", [true], rec ? { rec, ...(seen && { seen }) } : undefined, POLL_TIMEOUT_MS)
+      const r = await callFull<number | { v: number; pending: boolean }>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS)
       const p = pulseOf(r.value)
       if (r.rec) get().setRec(r.rec)
       if (p.on !== null && p.on !== get().pendingOn) set({ pendingOn: p.on })

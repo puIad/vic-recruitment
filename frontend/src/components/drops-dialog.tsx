@@ -5,7 +5,7 @@ import { AlertTriangle, Bell, Settings2, UserRound } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { REASON, STATUS, YOURS } from "@/lib/vic/pending"
+import { again, REASON, STATUS, YOURS } from "@/lib/vic/pending"
 import { useVic } from "@/lib/vic/store"
 import type { CellValue, PendingChange, PendingEntry, WebState } from "@/lib/vic/types"
 
@@ -24,18 +24,6 @@ function describe(e: PendingEntry, state: WebState | null) {
   }
   if (e.kind === "setting") return { icon: Settings2, what: `Setting ${e.key}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
   return { icon: UserRound, what: `${e.code} · ${e.field}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
-}
-
-/** The drop again as a fresh change; seen = the sheet's value as the dialog shows it (issue 50). null = it can't be any more. */
-function again(e: PendingEntry, built: number | undefined, at: number): PendingChange | null {
-  if (!e.again) return null
-  if (e.kind === "alert") {
-    if (e.op === "snooze" && !(e.until && e.until > at)) return null // the snooze would already be over
-    const seen = e.sheet === "OPEN" || e.sheet === "SNOOZED" || e.sheet === "MUTED" ? e.sheet : e.seen
-    return { kind: "alert", alert: e.alert, op: e.op, seen, at, until: e.until, built }
-  }
-  if (e.kind === "setting") return { kind: "setting", key: e.key, value: e.value, seen: e.sheet ?? e.seen, at, built }
-  return { kind: "field", code: e.code, field: e.field, value: e.value, seen: e.sheet ?? e.seen, at }
 }
 
 const fresh = (drops: PendingEntry[], built?: number) => { const at = Date.now(); return drops.map((e) => again(e, built, at)) }

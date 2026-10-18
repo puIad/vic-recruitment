@@ -431,10 +431,10 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       assert(of(r.json.alert, 'away@g.enp.edu.dz'), 'mailed 24 h ago and unanswered: admin alert');
       await P.mark('left@g.enp.edu.dz', { seen: ['alert:A-7004'] }, Date.now());
       assert(!of((await drops({})).json.alert, 'left@g.enp.edu.dz'), 'on screen again: no alert');
-      // the page's seen mark rides on the pulse
+      // the page's seen mark: pendingMark on its own, not behind the pulse's guards
       put('admin@g.enp.edu.dz', 'alert:A-7006', { state: 'dropped', droppedAt: now - 60e3, shown: now - 60e3 });
-      r = await invoke('run', { method: 'POST', cookie: own, body: { fn: 'webPulse', args: [true], rec: 2, seen: ['alert:A-7006'] } });
-      assert(r.json.rec['alert:A-7006'].seenAt >= now, 'pulse with seen: seenAt moves');
+      r = await rpc(own, 'pendingMark', { seen: ['alert:A-7006'] });
+      assert(r.json.value['alert:A-7006'].seenAt >= now, 'seen: seenAt moves');
       F.log.fail.redis = true;
       assert.strictEqual((await drops({})).status, 502, 'Redis down: the sync skips this cycle');
       F.log.fail.redis = false;

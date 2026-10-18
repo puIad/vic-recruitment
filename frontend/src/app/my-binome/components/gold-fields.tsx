@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Spinner } from "@/lib/vic/confirm"
 import { useVic } from "@/lib/vic/store"
-import { REASON, useMemberView, type Mark } from "@/lib/vic/pending"
+import { again, REASON, useMemberView, type Mark } from "@/lib/vic/pending"
 import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type CellValue, type FieldEntry, type GoldKey } from "@/lib/vic/types"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
 import { cn } from "@/lib/utils"
@@ -324,8 +324,8 @@ function FieldDrop({ k, mark }: { k: GoldKey; mark?: Mark<FieldEntry> }) {
   const e = mark.entry
   const keep = () => markDrops({ keep: [e.cell] })
   const applyMine = async () => {
-    // seen = the sheet's value as the notice shows it (issue 50)
-    if ((await accept([{ kind: "field", code: e.code, field: k, value: e.value, seen: e.sheet ?? e.seen, at: Date.now() }])) === "ok") return
+    const change = again(e, undefined, Date.now())
+    if (change && (await accept([change])) === "ok") return
     // the pending path can't take it now: today's direct write, which says nothing itself, so the notice stays until it lands
     const [r] = await memberSet(e.code, [{ field: k, value: e.value, seen: fromText(k, e.sheet ?? "") }])
     if ("ok" in r) void keep()

@@ -2,8 +2,8 @@
 // The script re-checks access on every call; this proxy only gates who may talk to it and never sees more than it needs.
 // Pending changes (docs/plans.md › Slice 2) live here too, so the page's polls keep it warm: fn 'accept' (the accept step:
 // Redis, then the queue, no script call), 'pendingMark' (answers on drops), and webPulse with rec set, which also returns
-// the author's record: rec 1 = only while the switch is on, 2 = always (the page still holds pending changes or drops); seen
-// with it marks the drops still on screen. The sync reads the records through api/drops.js.
+// the author's record: rec 1 = only while the switch is on, 2 = always (the page still holds pending changes). pendingMark's
+// seen marks the drops still on screen (slice 4); the sync reads the records through api/drops.js.
 const S = require('../lib/session'), P = require('../lib/pending');
 
 const ALLOWED = ['webAccess', 'webState', 'webRun', 'webPulse'], PENDING = ['accept', 'pendingMark'];
@@ -102,9 +102,7 @@ module.exports = async (req, res) => {
   }
   const out = { value: j.response ? j.response.result : null };
   if (fn === 'webPulse' && (b.rec === 2 || (b.rec === 1 && out.value && out.value.pending === true))) {
-    // seen: the drops this page still shows, once a minute (slice 4): their seenAt moves, so no admin alert while they're on screen
-    try { out.rec = Array.isArray(b.seen) && b.seen.length ? await P.mark(s.email, { seen: b.seen }, Date.now()) : await P.read(s.email, Date.now()); }
-    catch (e) { /* the next flagged pulse reads it */ }
+    try { out.rec = await P.read(s.email, Date.now()); } catch (e) { /* the next flagged pulse reads it */ }
   }
   done(200, out, true);
 };

@@ -2,10 +2,10 @@ import { AlertTriangle, Check, Clock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useActions } from "@/lib/vic/actions"
-import { REASON, STATUS, YOURS, type Mark } from "@/lib/vic/pending"
+import { again, REASON, STATUS, YOURS, type Mark } from "@/lib/vic/pending"
 import { useQuick } from "@/lib/vic/quick"
 import { useVic } from "@/lib/vic/store"
-import type { AlertEntry, PendingEntry } from "@/lib/vic/types"
+import type { PendingEntry } from "@/lib/vic/types"
 
 /* How an alert row shows its author's pending change (variant A of the prototype the owner chose, issue 51). */
 
@@ -43,11 +43,9 @@ export function InlineDrop({ mark }: { mark?: Mark }) {
   const e = mark.entry
   const keep = () => markDrops({ keep: [e.cell] })
   const applyMine = async () => {
-    const at = Date.now()
-    // seen = the sheet's value as the notice shows it (issue 50); a drop with a reason never read the sheet: what they saw
-    const seen = (e.sheet === "OPEN" || e.sheet === "SNOOZED" || e.sheet === "MUTED" ? e.sheet : e.seen) as AlertEntry["seen"]
-    if (e.op === "snooze" && !(e.until && e.until > at)) return keep() // the snooze would already be over
-    if ((await accept([{ kind: "alert", alert: e.alert, op: e.op, seen, at, until: e.until, built }])) === "ok") return
+    const at = Date.now(), change = again(e, built, at)
+    if (!change) return keep() // the snooze would already be over
+    if ((await accept([change])) === "ok") return
     // the pending path can't take it now: today's direct write, which reports on its own
     void keep()
     if (e.op === "resolve") await resolve([e.alert])
