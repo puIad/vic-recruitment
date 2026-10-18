@@ -1,5 +1,6 @@
 import * as React from "react"
 import { AlertTriangle, Check, RotateCcw, Users } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -325,8 +326,10 @@ function FieldDrop({ k, mark }: { k: GoldKey; mark?: Mark<FieldEntry> }) {
   const applyMine = async () => {
     // seen = the sheet's value as the notice shows it (issue 50)
     if ((await accept([{ kind: "field", code: e.code, field: k, value: e.value, seen: e.sheet ?? e.seen, at: Date.now() }])) === "ok") return
-    void keep() // the pending path can't take it now: today's direct write
-    await memberSet(e.code, [{ field: k, value: e.value, seen: fromText(k, e.sheet ?? "") }])
+    // the pending path can't take it now: today's direct write, which says nothing itself, so the notice stays until it lands
+    const [r] = await memberSet(e.code, [{ field: k, value: e.value, seen: fromText(k, e.sheet ?? "") }])
+    if ("ok" in r) void keep()
+    else toast.error("Not saved", { description: "conflict" in r ? "Your partner changed it again." : r.error })
   }
   return (
     <div role="alert" className="space-y-2.5 rounded-xl border border-vic-orange/40 bg-warning-soft p-3 text-sm">
