@@ -46,6 +46,8 @@ export interface SettingsGroup {
 export interface SettingsForm {
   row: (key: string) => SettingRow | undefined
   value: (key: string) => CellValue | undefined
+  /** what the row shows as saved: the author's own pending value, else the snapshot */
+  shown: (key: string) => CellValue | undefined
   change: (key: string, v: CellValue) => void
   mark: (key: string) => Mark<SettingEntry> | undefined
   commit: (edits: Record<string, CellValue>) => Promise<boolean>
@@ -427,6 +429,10 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
     value: (key) => {
       const s = rows.find((r) => r.key === key)
       return s && value(s)
+    },
+    shown: (key) => {
+      const s = rows.find((r) => r.key === key)
+      return s && shown(s)
     },
     change: (key, v) => {
       const s = rows.find((r) => r.key === key)

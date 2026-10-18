@@ -24,7 +24,7 @@ function MembersSheet({ f }: { f: SettingsForm }) {
   const s = f.row("VIC_MEMBERS_SHEET")
   if (!sc || !s) return null
   const link = String(f.value("VIC_MEMBERS_SHEET") ?? "").trim()
-  const saved = String(s.value ?? "").trim()
+  const saved = String(f.shown("VIC_MEMBERS_SHEET") ?? "").trim() // a pending link counts as saved
   const m = sc.members
   const broken = sc.linked && !!m.error
   const editing = !saved || link !== saved || editFrom === saved
