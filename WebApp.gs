@@ -155,9 +155,16 @@ function binSlices_(ctx) {
     out[b.code] = { v: API_VERSION, binome: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl,
       members: b.members.map(m => m.name || m.email), candidates: [], alerts: [], fromSheet: false };
   });
+  const L = ctx.log.I;
   ctx.iv.data.forEach(r => {
     const s = out[String(r[I.Binome]).trim()];
-    if (s && r[I.Code] && !isOut_(r[I.Status])) s.candidates.push(candidate_(ivToFileRow_(ctx, r, ivCarry_(ctx, r)), r[I.Status]));
+    if (!s || !r[I.Code] || isOut_(r[I.Status])) return;
+    const c = candidate_(ivToFileRow_(ctx, r, ivCarry_(ctx, r)), r[I.Status]), at = r[I['Interview Submitted At']];
+    // the form that counts: a dashboard one (log key DASH|…) is edited from My binome, a Google Form one only viewed there
+    const lr = at ? ctx.log.data[Number(r[I['Interview Log Row']]) - 2] : null;
+    if (at) c.interview = { at: fmt_(at, 'dd/MM HH:mm'), by: lr ? lc_(lr[L.Submitter]) : '',
+      source: lr && /^DASH\|/.test(String(lr[L['Response Key']])) ? 'Dashboard' : 'Google Form' };
+    s.candidates.push(c);
   });
   ctx.alerts.table.data.forEach(r => {
     const s = out[String(r[A.Binome]).trim()];
@@ -200,16 +207,21 @@ function memberState_(a) {
     sl.candidates = sl.candidates.filter(c => m.codes.indexOf(String(c.Code)) >= 0);
     sl.alerts = sl.alerts.filter(x => m.codes.indexOf(x.code) >= 0);
   }
-  return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail(), pending: pendingOn_() });
+  return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail(), pending: pendingOn_(),
+    interviewForm: interviewFormUrl_(m.b) });
 }
-function sliceFromSheet_(m) {
+/** The binome sheet of a member view (asMember_), opened with the signed-in account's own access. */
+function memberBook_(m) {
   let book = null;
   try { book = m.f ? SpreadsheetApp.openById(m.f) : null; } catch (e) { /* not shared with this account (TEST_MODE shares nothing) */ }
   if (!book) throw new Error("Your binome sheet isn't shared with you yet.");
-  const sh = book.getSheets()[0], n = bfLastRow_(sh);
+  return book;
+}
+function sliceFromSheet_(m) {
+  const book = memberBook_(m), sh = book.getSheets()[0], n = bfLastRow_(sh), done = tabInterviews_(book);
   const rows = n < 2 ? [] : sh.getRange(2, BF_COL, n - 1, BF_H.length).getValues().filter(r => String(r[0]).trim());
   return { v: API_VERSION, binome: m.b, tag: '', status: '', fileUrl: book.getUrl(), members: [], alerts: [], fromSheet: true,
-    candidates: rows.map(r => candidate_(r, '')) };
+    candidates: rows.map(r => { const c = candidate_(r, ''), x = done[String(r[0]).trim()]; if (x) c.interview = x; return c; }) };
 }
 
 /* ---------- an admin opens a binome to its members: their sheet and the dashboard together, silently ---------- */
@@ -379,6 +391,97 @@ function patchSlice_(b, code, vals) {
   }
   bins[b] = { h: h, v: o.v + 1 };
   PropertiesService.getScriptProperties().setProperty('SNAP_BIN', JSON.stringify(bins));
+}
+
+/* ---------- the interview form in the dashboard (docs/interview-form.md part 2) ---------- */
+
+/** The Google Form prefilled with binome code b; the page appends the interviewee code. '' while its URL is unknown (an admin's
+ *  page load looks it up). */
+function interviewFormUrl_(b) {
+  const url = formUrl_(CONFIG.INTERVIEW_FORM_ID);
+  return url ? url + '?usp=pp_url&' + INTERVIEW_ENTRY.binome + '=' + encodeURIComponent(b) + '&' + INTERVIEW_ENTRY.code + '=' : '';
+}
+/** code -> {at (dd/MM HH:mm), by, source} for every row of a binome sheet's Interview Answers tab (the slice read from the sheet). */
+function tabInterviews_(book) {
+  const tab = book.getSheetByName(IA_TAB), n = tab ? tab.getLastRow() : 0, tz = book.getSpreadsheetTimeZone(), out = {};
+  if (n >= 2) tab.getRange(2, 1, n - 1, 4).getValues().forEach(v => {
+    if (String(v[0]).trim()) out[String(v[0]).trim()] = { at: v[2] instanceof Date ? Utilities.formatDate(v[2], tz, 'dd/MM HH:mm') : '', by: lc_(v[3]), source: String(v[1]).trim() };
+  });
+  return out;
+}
+/** One row of an Interview Answers tab as the page reads it: answers by question id, its source, who and when (dd/MM/yyyy HH:mm in
+ *  the sheet's timezone: a member can't read the Master's TIMEZONE), and stamp, the `seen` a save sends back (saveToken_). */
+function answersView_(v, tz) {
+  const when = d => (d instanceof Date && !isNaN(d) ? Utilities.formatDate(d, tz, 'dd/MM/yyyy HH:mm') : '');
+  const answers = {};
+  INTERVIEW_QUESTIONS.forEach((q, i) => { const x = v[6 + i]; answers[q.id] = x instanceof Date ? when(x) : x; });
+  return { answers: answers, source: String(v[1]).trim(), submittedAt: when(v[2]), submittedBy: lc_(v[3]), editedAt: when(v[4]),
+    editedBy: String(v[5]).trim(), stamp: saveToken_(v[4], v[5], v[2], v[3]) };
+}
+/** The answers a page sent, checked like the Google Form: the 1st choice picks the department section (the other sections'
+ *  answers are dropped), the required questions of the sections in play need an answer, a score is a whole number from 1 to 10,
+ *  a choice one of its options, a paragraph text up to 5,000 characters. Returns the cells in INTERVIEW_QUESTIONS order. */
+function interviewAnswers_(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Not allowed');
+  const s = x => String(x === null || x === undefined ? '' : x).trim(), dept = s(raw[INTERVIEW_BRANCH]);
+  const name = q => '"' + q.title.trim().replace(/\s+/g, ' ') + '"';
+  return INTERVIEW_QUESTIONS.map(q => {
+    if (q.section !== 'first' && q.section !== 'final' && q.section !== dept) return '';
+    const v = s(raw[q.id]);
+    if (!v) { if (q.required) throw new Error(name(q) + ' needs an answer.'); return ''; }
+    if (q.type === 'score') { if (!/^([1-9]|10)$/.test(v)) throw new Error(name(q) + ' takes a score from 1 to 10.'); return Number(v); }
+    if (q.type === 'choice') { if (q.options.indexOf(v) < 0) throw new Error(name(q) + ' must be one of: ' + q.options.join(', ') + '.'); return v; }
+    if (v.length > 5000) throw new Error(name(q) + ' is limited to 5,000 characters.');
+    return v;
+  });
+}
+
+/** webRun('interviewGet', {code}): the interview form of one candidate of the caller's binome, read with their own access: a
+ *  member, an admin in a binome, or a cover for the codes they cover. The questions, the candidate (name, 1st choice from the
+ *  registration), the answers row if there is one (answers null if not), the prefilled Google Form. edit = they may save here
+ *  (edit access, not a cover); a Google Form row stays read-only for everyone. No lock. */
+function interviewGet_(a, args) {
+  const mv = asMember_(a);
+  if (!mv) throw new Error('Not allowed');
+  const m = mv.m, code = String(args.code || '').trim();
+  if (mv.cover && (m.codes || []).indexOf(code) < 0) throw new Error('Not allowed');
+  const book = memberBook_(m), sh = book.getSheets()[0], row = findFileRow_(sh, code);
+  if (row < 0) throw new Error('This candidate is no longer in your binome.');
+  const F = idx_(BF_H), v = sh.getRange(row, BF_COL, 1, BF_H.length).getValues()[0], got = answersRow_(book.getSheetByName(IA_TAB), code);
+  return Object.assign({ code: code, binome: m.b, name: (String(v[F['First Name']]) + ' ' + String(v[F['Family Name']])).trim(),
+    firstChoice: String(v[F['1st Choice']]).trim(), edit: !!mv.edit && !mv.cover, sections: INTERVIEW_SECTIONS, questions: INTERVIEW_QUESTIONS,
+    formUrl: interviewFormUrl_(m.b) }, got ? answersView_(got.v, book.getSpreadsheetTimeZone()) : { answers: null, source: '', stamp: '' });
+}
+
+/** webRun('interviewSave', {code, answers: {questionId: value}, seen}): a member with edit access (an admin in a binome too, never
+ *  a cover) saves one candidate's interview form into their binome sheet's Interview Answers tab (made on the first save), with
+ *  their own access, under the members' lock; the codes are never typed. Checked by interviewAnswers_. seen = the stamp the page
+ *  loaded ('': no row then): a row saved since, by the partner, refuses with CONFLICT; a Google Form row is never saved over. Then
+ *  the binome is marked dirty (the next sync logs it) and its cached slice shows the interview, so the partner sees Submitted at
+ *  their next poll. A direct write with pending changes on too: an answer set is not a one-cell change. */
+function interviewSave_(a, args) {
+  const mv = asMember_(a);
+  if (!mv || mv.cover) throw new Error('Not allowed');
+  if (!mv.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
+  const m = mv.m, code = String(args.code || '').trim(), vals = interviewAnswers_(args.answers), me = lc_(a.email), seen = String(args.seen || '');
+  const book = memberBook_(m), sh = book.getSheets()[0], tz = book.getSpreadsheetTimeZone();
+  const lock = memberLock_();
+  if (!lock.tryLock(10000)) throw new Error('BUSY: Your sheet is busy with another edit. Nothing was saved: try again.');
+  try {
+    if (findFileRow_(sh, code) < 0) throw new Error('This candidate is no longer in your binome.');
+    const tab = answersTab_(book, true), got = answersRow_(tab, code), had = got ? answersView_(got.v, tz) : null;
+    if (had && had.source !== 'Dashboard') throw new Error('These answers came from the Google Form: they can only be viewed here.');
+    if (!had && seen) throw new Error('CONFLICT: These answers were removed from your sheet meanwhile.');
+    if (had && had.stamp !== seen) throw new Error('CONFLICT: ' + (had.editedBy || had.submittedBy) + ' saved this form at ' + (had.editedAt || had.submittedAt) + '.');
+    const now = new Date(stamp_(new Date()) * 1000), first = had && got.v[2] instanceof Date ? got.v[2] : now;
+    const head = had ? [code, 'Dashboard', got.v[2], got.v[3], now, me] : [code, 'Dashboard', now, me, '', ''];
+    tab.getRange(got ? got.row : tab.getLastRow() + 1, 1, 1, IA_H.length).setValues([answersCells_(head, vals)]);
+    SpreadsheetApp.flush();
+    CacheService.getScriptCache().put('dirty:' + m.b, String(Date.now()), 21600);
+    const interview = { at: Utilities.formatDate(first, tz, 'dd/MM HH:mm'), by: had ? had.submittedBy : me, source: 'Dashboard' };
+    patchSlice_(m.b, code, { interview: interview });
+    return Object.assign({ code: code, interview: interview }, answersView_(answersRow_(tab, code).v, tz));
+  } finally { lock.releaseLock(); }
 }
 
 function freshCtx_() { _settings = null; return loadCtx_(); }
@@ -591,7 +694,10 @@ function logAction_(action, outcome, t0, tp, ph) {
  *  ~200s so the run ends before its 300s function limit; the old dashboard and the menu keep 270s. */
 function webRun(action, args) {
   const a = access_();
-  if (action === 'memberSet') return { messages: [], result: memberSet_(a, args || {}) }; // members and admins in a binome; no script lock, no publish
+  // members and admins in a binome; no script lock, no publish
+  if (action === 'memberSet') return { messages: [], result: memberSet_(a, args || {}) };
+  if (action === 'interviewGet') return { messages: [], result: interviewGet_(a, args || {}) };
+  if (action === 'interviewSave') return { messages: [], result: interviewSave_(a, args || {}) };
   if (a.role !== 'admin') throw new Error('Not allowed');
   if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
   args = args || {};

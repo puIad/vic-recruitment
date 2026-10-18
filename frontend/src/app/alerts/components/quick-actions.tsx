@@ -599,6 +599,8 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
       </ActionButton>
     )
 
+  // a form's own row: Interview Responses, or Dashboard Interviews for a form filled in the dashboard
+  const FORM_ROW: Link = { key: "form", label: "The form response", target: "form" }
   const reg = qOf(a, "reg")
   const iv = qOf(a, "iv")
   const log = qOf(a, "log")
@@ -650,7 +652,7 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     hint = "Link the form to the candidate it was about, or ask its sender to send it again."
     panel = <PickPanel key={a.id} a={a} f={log.form} />
     btn("mail", Mail, "Ask to send it again", () => quick.mail([a.id], "submitter"))
-    links.push({ key: "log", label: "Interview Log row", target: "log" })
+    links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (log && WHO.includes(a.type)) {
     const to = log.form.subBinome
     hint = a.type === "NOT_ASSIGNED" ? "Give the candidate to the binome that interviewed them." : "Keep it as it is, or move the candidate to the binome that really interviewed."
@@ -658,17 +660,17 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     if (a.type !== "NOT_ASSIGNED") btn("fine", Check, "It's fine, keep it", () => resolve([a.id]), "default")
     if (a.code && to && to !== a.binome) btn("move", MoveRight, `Move ${a.code} to ${to}…`, () => openMove({ code: a.code, binome: to, alertId: a.id }), a.type === "NOT_ASSIGNED" ? "default" : "outline")
     else if (a.code && a.type === "NOT_ASSIGNED") btn("move", MoveRight, "Pick a binome…", () => openMove({ code: a.code, alertId: a.id }), "default")
-    links.push({ key: "log", label: "Interview Log row", target: "log" })
+    links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (log && a.type === "DUPLICATE_INTERVIEW") {
     hint = "Two forms for one interview. Choose the one that counts."
     panel = <FormsPanel a={a} f={log.form} first={log.first} />
-    links.push({ key: "log", label: "Latest form in the log", target: "log" })
+    links.push({ key: "log", label: "Latest form in the log", target: "log" }, FORM_ROW)
   } else if (iv && a.type === "ODD_VALUE") {
     hint = iv.check === "CONTACT" ? "They have a date, so they were probably contacted." : "Fix the date or time the binome typed, or snooze it if it is right."
     panel = <OddPanel key={a.id} a={a} q={iv} />
     links.push({ key: "cell", label: `The cell in ${a.binome}'s sheet`, target: "cell" })
   } else if (log && a.type === "ODD_VALUE") {
-    links.push({ key: "log", label: "Interview Log row", target: "log" })
+    links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (a.type === "INTEGRITY" && qOf(a, "integ")) {
     const r = repairOf(a)
     hint = r ? "The script can put it right in the binome sheet." : "Fix it in the sheet; the alert closes at the next sheet check."

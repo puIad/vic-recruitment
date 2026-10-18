@@ -10,6 +10,15 @@ call('webRun', 'sync');
 let st = call('webState');
 const had = st.binomes.length, files = st.binomes.map(b => b.fileUrl.split('/d/')[1]);
 assert(had > 0 && st.interviewees.some(i => i.binome), 'locked, with interviewees placed');
+// a dashboard interview form (docs/interview-form.md part 2): its Master copy outlives the binome sheets the reset trashes
+const ivA = st.interviewees.find(i => i.binome), memA = st.binomes.find(b => b.code === ivA.binome).people[0].email, dept = ivA.code.split('.')[0];
+run(`var __adm = Session; Session = { getEffectiveUser: () => ({ getEmail: () => ${JSON.stringify(memA)} }), getActiveUser: () => ({ getEmail: () => ${JSON.stringify(memA)} }) };
+  (function () { var a = {}; INTERVIEW_QUESTIONS.forEach(function (q) { if (['first', 'final', ${JSON.stringify(dept)}].indexOf(q.section) >= 0) a[q.id] = q.type === 'score' ? 5 : q.type === 'choice' ? q.options[0] : 'ok'; });
+    a.firstChoice = ${JSON.stringify(dept)}; a.finalDep = ${JSON.stringify(dept)}; webRun('interviewSave', { code: ${JSON.stringify(ivA.code)}, answers: a, seen: '' }); })();
+  Session = __adm;`);
+call('webRun', 'sync');
+const dashRows = () => run('master.getSheetByName("Dashboard Interviews").getDataRange().getValues().slice(1).map(function (r) { return r[3]; }).join()');
+assert.strictEqual(dashRows(), ivA.code, 'the dashboard form is in the Master');
 assert.strictEqual(call('webRun', 'draft').messages[0].includes('already locked'), true, 'this is the refusal the reset gets around');
 
 assert.throws(() => call('webRun', 'resetBinomes', {}), /Type exactly/, 'no phrase');
@@ -22,6 +31,7 @@ assert.strictEqual(out.result.trashed, had);
 assert.deepStrictEqual(out.result.failed, []);
 assert(/Binomes reset/.test(out.messages[0]), out.messages[0]);
 files.forEach(id => assert.strictEqual(run(`__files[${JSON.stringify(id)}].trashed`), true, 'sheet trashed'));
+assert.strictEqual(dashRows(), ivA.code, 'Reset keeps the Master copy of the dashboard forms');
 
 st = call('webState');
 assert.deepStrictEqual([st.binomes.length, st.team.total, st.locked, st.history.length], [0, 0, false, 0]);

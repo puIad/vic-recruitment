@@ -149,6 +149,9 @@ let oddCode;
   const d = quick('draft', u.id, { to: 'submitter' }).result;
   assert(d.testMode && d.drafts.length === 1 && /"XX\.99"/.test(d.drafts[0].body) && d.drafts[0].to.includes(sub), JSON.stringify(d));
   assert(/Interview%20Log|#gid=\d+&range=A\d+$/.test(quick('locate', u.id, { target: 'log' }).result.url));
+  const irGid = run("String(responseSheet_('INT').getSheetId())");
+  const formUrl = quick('locate', u.id, { target: 'form' }).result.url;
+  assert(formUrl.includes('#gid=' + irGid + '&range=A') && /&range=A\d+$/.test(formUrl), 'its Interview Responses row: ' + formUrl);
   let out = quick('pickCandidate', u.id, { code: it.code.toLowerCase() });
   assert(/now interviewed/.test(out.messages[0]), out.messages[0]);
   assert.strictEqual(call('webState').interviewees.find(i => i.code === it.code).status, 'INTERVIEWED');
@@ -200,6 +203,30 @@ let oddCode;
   call('webRun', 'integrity');
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'all repaired');
   assert(run(`__files["${f2}"].obj.sheets[0].getDataRange().getValues()`).some(r => r[BFI.Code] === other.code), 'the other binome keeps its row');
+
+  // a dashboard interview form (docs/interview-form.md part 2): its tab is never an integrity problem, even put in front, and
+  // the alerts it raises link to its Dashboard Interviews row
+  const cand = call('webState').interviewees.find(i => i.binome && i.binome !== B1 && ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status));
+  const BX = cand.binome, fX = fileId(BX), sub = call('webState').binomes.find(b => b.code === BX).people[0].email;
+  const wrong = ['IT', 'COMM', 'FLER', 'HR'].find(d => d !== cand.code.split('.')[0]);
+  run(`var __adm = Session; Session = { getEffectiveUser: () => ({ getEmail: () => '${sub}' }), getActiveUser: () => ({ getEmail: () => '${sub}' }) };
+    (function () { var a = {}; INTERVIEW_QUESTIONS.forEach(function (q) { if (['first', 'final', '${wrong}'].indexOf(q.section) >= 0) a[q.id] = q.type === 'score' ? 6 : q.type === 'choice' ? q.options[0] : 'ok'; });
+      a.firstChoice = '${wrong}'; a.finalDep = '${wrong}'; webRun('interviewSave', { code: '${cand.code}', answers: a, seen: '' }); })();
+    Session = __adm;`);
+  call('webRun', 'integrity');
+  assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'the Interview Answers tab is left alone');
+  const mism = open().find(a => a.type === 'CHOICE_MISMATCH' && a.code === cand.code);
+  assert(mism, 'the dashboard form was logged and checked');
+  const dashGid = run("String(ss_().getSheetByName(TAB.DASH).getSheetId())");
+  assert(/#gid=\d+&range=A2$/.test(quick('locate', mism.id, { target: 'form' }).result.url) && quick('locate', mism.id, { target: 'form' }).result.url.includes('#gid=' + dashGid), 'its Dashboard Interviews row');
+  run(`(function () { var bk = __files["${fX}"].obj, t = bk.getSheetByName(IA_TAB); bk.sheets = [t].concat(bk.sheets.filter(x => x !== t)); })()`);
+  call('webRun', 'integrity');
+  const front = open().filter(a => a.type === 'INTEGRITY' && a.binome === BX);
+  assert.deepStrictEqual(front.map(a => a.q.repair), ['reorder'], JSON.stringify(front.map(a => a.msg)));
+  quick('repair', front[0].id);
+  assert.deepStrictEqual(run(`__files["${fX}"].obj.getSheets().map(x => x.getName())`).join('|'), BX + '|Interview Answers', 'the binome tab first again, the answers kept');
+  call('webRun', 'integrity');
+  assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired');
 
   // a protection made before the triggers moved lists only its old editor: flagged, and Repair puts the trigger account back
   run(`(function () { var sh = __files["${f1}"].obj.sheets[0]; sh.protections = []; var p = sh.protect(); p.removeEditors([__props.TRIGGER_OWNER]); p.addEditor('old.owner@g.enp.edu.dz'); })()`);

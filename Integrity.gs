@@ -409,6 +409,8 @@ function integrityCheck_(ctx, deadline) {
       seen[key] = true; problems++;
       ctx.alerts.add({ severity: x.sev, type: 'INTEGRITY', code: x.code || '', binome: b.code, msg: b.code + ': ' + x.msg, key: key });
     });
+    // the sheet is open: its dashboard interview forms too (a lost dirty mark is caught here). The tab itself is never checked.
+    if (ctx.books[b.fileId]) try { syncAnswers_(ctx, b, ctx.books[b.fileId]); } catch (e) { console.warn('Interview Answers of ' + b.code + ': ' + e); }
   }
   props.setProperty('INTEG_NEXT', list[(start + n) % list.length].code);
   const KI = ctx.alerts.table.I;

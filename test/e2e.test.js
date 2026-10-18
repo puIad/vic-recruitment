@@ -278,7 +278,7 @@ const upRow = up.find(r => r[BFI.Code] === 'HR.01');
 assert.deepStrictEqual([upRow[BFI.Contacted], upRow[BFI.Notes], upRow[BFI['First Name']], upRow[BFI['Interview Done']]],
   ['Yes', 'calls after 6pm', 'Naima', true], 'carried over, done still ticked');
 assert.strictEqual(run(`__files["${hrFile}"].obj.sheets[0].getProtections().length`), 1, 'protected again');
-assert.strictEqual(run(`__files["${hrFile}"].obj.getSheets().length`), 1, 'backup tab removed once the rebuild ends');
+assert.strictEqual(run(`__files["${hrFile}"].obj.getSheets().filter(t => t.getName() !== IA_TAB).length`), 1, 'backup tab removed once the rebuild ends');
 // a rebuild that stopped half-way (first tab cleared, copy of the old tab left) starts again from the copy
 const flB = ivs.find(r => r[0] === 'FLER.01')[1], flFile = bins.find(r => r[0] === flB)[8];
 run(`(function(){ var book = __files["${flFile}"].obj, row = BF_H_V1.map(function(){ return ''; });
@@ -288,7 +288,7 @@ run(`(function(){ var book = __files["${flFile}"].obj, row = BF_H_V1.map(functio
 run(`(function(){ var c = loadCtx_(); binomeSheet_(c, c.binByCode["${flB}"]); })()`);
 const fl = run(`__files["${flFile}"].obj.sheets[0].getDataRange().getValues()`).find(r => r[BFI.Code] === 'FLER.01');
 assert.strictEqual(fl[BFI.Notes], 'met at the stand', 'recovered from the copy');
-assert.strictEqual(run(`__files["${flFile}"].obj.getSheets().length`), 1, 'copy removed after the recovery');
+assert.strictEqual(run(`__files["${flFile}"].obj.getSheets().filter(t => t.getName() !== IA_TAB).length`), 1, 'copy removed after the recovery');
 
 // ---- text a candidate typed that a sheet would run as a formula is written as text, everywhere it lands ----
 run(`__formulas = [];
@@ -306,4 +306,133 @@ assert(evilRow, 'in the binome sheet');
 assert.deepStrictEqual([evil[IVX.Discord], evilRow[BFI.Discord]], ['-evil-', '-evil-'], 'no apostrophe left in a plain-text cell');
 assert(run('master.getSheetByName("Alerts").getDataRange().getValues()').some(a => a[3] === 'DUPLICATE_REGISTRATION' && /HYPERLINK/.test(a[6])), 'in an alert');
 assert.strictEqual(run('JSON.stringify(__formulas)'), '[]', 'written as live formulas');
+
+// ---- the interview form in the dashboard (docs/interview-form.md part 2): a save, the sync, edits, both sources fill the sheet ----
+{
+  const J = JSON.stringify, Q = run('JSON.parse(JSON.stringify(INTERVIEW_QUESTIONS))'), D = run('idx_(DASH_H)');
+  run(`var __admin0 = Session; function __asMember(e) { Session = e ? { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) } : __admin0; }`);
+  ['IT', 'HR', 'COMM', 'FLER'].forEach((d, i) => run(`reg.cells.push(regRow(new Date(Date.now() - ${i} * 1000), 'dash${i}@g.enp.edu.dz', 'Dash', 'Cand${i}', 'dash${i}@g.enp.edu.dz', '01/01/2005', '055500030${i}', '${d}', 'HR'))`));
+  run('syncAll()');
+  const binOf = code => run('loadCtx_()').binByCode[ivOf(code)[IVX.Binome]];
+  const free = run('master.getSheetByName("Interviewees").getDataRange().getValues()').slice(1)
+    .filter(r => /^dash\d@/.test(r[IVX.Email]) && r[IVX.Binome]).map(r => r[IVX.Code]);
+  assert.strictEqual(free.length, 4, 'four new candidates placed');
+  const [A, B, C, E] = free;
+  const sheetOf = code => run(`__files[${J(binOf(code).fileId)}].obj`);
+  const rowOf = code => sheetOf(code).sheets[0].getDataRange().getValues().find(r => r[BFI.Code] === code);
+  // JSON: arrays from the mock's realm fail deepStrictEqual (other prototypes)
+  const tabOf = code => { const t = sheetOf(code).getSheetByName('Interview Answers'); return t ? JSON.parse(JSON.stringify(t.getDataRange().getValues())) : []; };
+  const save = (code, answers, seen, who) => {
+    run('__asMember(' + J(who || binOf(code).members[0].email) + ')');
+    try { return run(`JSON.parse(JSON.stringify(webRun('interviewSave', ${J({ code, answers, seen })}).result))`); } finally { run('__asMember("")'); }
+  };
+  // every question of the sections in play answered; the scores of the first section given, the others 7
+  const answers = (code, extra) => {
+    const dept = ivOf(code)[IVX['1st Choice']], a = {};
+    Q.filter(q => ['first', 'final', dept].includes(q.section)).forEach(q => { a[q.id] = q.type === 'score' ? 7 : q.type === 'choice' ? q.options[0] : 'Calm and clear'; });
+    return Object.assign(a, { intro: 9, knowVic: 6, motivation: 9, firstChoice: dept, finalDep: dept }, extra || {});
+  };
+  const avg = a => { const s = Q.filter(q => q.type === 'score' && a[q.id] !== undefined && a[q.id] !== '').map(q => a[q.id]); return Math.round(s.reduce((x, y) => x + y, 0) / s.length * 10) / 10; };
+  const log = () => run('master.getSheetByName("Interview Log").getDataRange().getValues()').slice(1);
+  const dash = () => (run('master.getSheetByName("Dashboard Interviews")') ? run('master.getSheetByName("Dashboard Interviews").getDataRange().getValues()').slice(1) : []);
+  const openAlerts = code => JSON.parse(JSON.stringify(run('master.getSheetByName("Alerts").getDataRange().getValues()'))).filter(a => a[4] === code && a[8] === 'OPEN');
+
+  // a dashboard save, then the sync
+  const a1 = answers(A), logLen0 = log().length;
+  const s1 = save(A, a1, '');
+  assert.deepStrictEqual(tabOf(A).slice(1).map(r => [r[0], r[1]]), [[A, 'Dashboard']], 'the row is in the binome tab');
+  assert.strictEqual(ivOf(A)[IVX.Status] === 'INTERVIEWED', false, 'nothing reaches the Master before the sync');
+  run('syncAll()');
+  const keyA = 'DASH|' + binOf(A).code + '|' + A;
+  let dA = dash().find(r => r[D['Response Key']] === keyA), lA = log().find(r => r[9] === keyA);
+  assert(dA && lA, 'a Dashboard Interviews row and an Interview Log row');
+  assert.deepStrictEqual([dA[D['Email Address']], dA[2], dA[3], dA[D.Timestamp] instanceof run('Date')], [binOf(A).members[0].email, binOf(A).code, A, true]);
+  assert.deepStrictEqual([lA[4], lA[5], lA[6], lA[8]], [binOf(A).code, A, 'OK', a1.finalDep], 'logged OK: ' + lA[7]);
+  assert.strictEqual(log().length, logLen0 + 1);
+  assert.deepStrictEqual([ivOf(A)[IVX.Status], !!ivOf(A)[IVX['Interview Submitted At']], ivOf(A)[IVX['Interview Log Row']]], ['INTERVIEWED', true, log().findIndex(r => r[9] === keyA) + 2]);
+  let rA = rowOf(A);
+  assert(/^✅ \d\d\/\d\d \d\d:\d\d \(dashboard\)$/.test(rA[BFI['Interview Form']]), rA[BFI['Interview Form']]);
+  assert.deepStrictEqual([rA[BFI['Interview Done']], rA[BFI.Rating], rA[BFI['Final Affectation']]], [true, avg(a1), a1.finalDep], 'Rating = the average, one decimal');
+  assert.deepStrictEqual([ivOf(A)[IVX.Rating], ivOf(A)[IVX['Final Affectation']], dA[D['Filled Rating']], dA[D['Filled Affectation']]], [avg(a1), a1.finalDep, avg(a1), a1.finalDep]);
+  assert(avg(a1) % 1 !== 0, 'the test scores average to a decimal: ' + avg(a1));
+  // the member's page: Submitted, from the Master now
+  run('__asMember(' + J(binOf(A).members[1].email) + ')');
+  const slice = run('JSON.parse(JSON.stringify(webState()))');
+  run('__asMember("")');
+  assert.deepStrictEqual([slice.candidates.find(c => c.Code === A).interview.source, slice.candidates.find(c => c.Code === A).interview.by], ['Dashboard', binOf(A).members[0].email]);
+  // a sync with nothing new reads it again and changes nothing
+  run('syncAllForce()');
+  assert.deepStrictEqual([log().length, dash().length], [logLen0 + 1, 1]);
+
+  // an edit: the same log row redone, both cells refilled while they hold what the form wrote
+  const getStamp = code => { run('__asMember(' + J(binOf(code).members[0].email) + ')'); try { return run(`webRun('interviewGet', ${J({ code })}).result.stamp`); } finally { run('__asMember("")'); } };
+  const other = ['IT', 'HR', 'FLER', 'COMM'].find(d => d !== a1.finalDep);
+  const a2 = Object.assign({}, a1, { intro: 2, finalDep: other });
+  save(A, a2, getStamp(A), binOf(A).members[1].email);
+  run('syncAll()');
+  assert.deepStrictEqual([log().length, log().filter(r => r[9] === keyA).length], [logLen0 + 1, 1], 'no new log row');
+  assert.strictEqual(log().find(r => r[9] === keyA)[8], other, 'the log row redone');
+  rA = rowOf(A);
+  assert.deepStrictEqual([rA[BFI.Rating], rA[BFI['Final Affectation']]], [avg(a2), other], 'refilled');
+  dA = dash().find(r => r[D['Response Key']] === keyA);
+  assert.deepStrictEqual([dA[D['Edited By']], dA[D['Edited At']] instanceof run('Date'), dA[D['Filled Rating']]], [binOf(A).members[1].email, true, avg(a2)]);
+  // a Rating typed in the sheet stays; the affectation still holds the form's value, so it follows
+  run(`(function () { var sh = __files[${J(binOf(A).fileId)}].obj.sheets[0]; sh.getRange(findFileRow_(sh, ${J(A)}), bfCol_('Rating')).setValue(4.5); __touch(${J(binOf(A).fileId)}); })()`);
+  run('syncAll()');
+  const a3 = Object.assign({}, a2, { intro: 10, finalDep: a1.finalDep });
+  save(A, a3, getStamp(A));
+  run('syncAll()');
+  rA = rowOf(A);
+  assert.deepStrictEqual([rA[BFI.Rating], rA[BFI['Final Affectation']], ivOf(A)[IVX.Rating]], [4.5, a1.finalDep, 4.5], 'the hand-typed Rating kept');
+  assert.strictEqual(dash().find(r => r[D['Response Key']] === keyA)[D['Filled Rating']], '', 'the form no longer holds the Rating cell');
+
+  // 7ECHOH: Not accepted, and no ODD_VALUE
+  const bAns = answers(B, { finalDep: '7ECHOH' });
+  save(B, bAns, '');
+  run('syncAll()');
+  assert.deepStrictEqual([rowOf(B)[BFI['Final Affectation']], rowOf(B)[BFI.Rating]], ['Not accepted', avg(bAns)]);
+  assert.deepStrictEqual(openAlerts(B).filter(a => a[3] === 'ODD_VALUE'), [], 'no ODD_VALUE for 7ECHOH');
+
+  // a Google Form submission fills both cells too, and shows in the binome's tab (read-only there)
+  const bC = binOf(C);
+  run(`master.getSheetByName('Interview Responses').cells.push([new Date(), ${J(bC.members[0].email)}, ${J(bC.code)}, ${J(C)}, 8, ${J(ivOf(C)[IVX['1st Choice']])}, 'COMM', 'great energy'])`);
+  run('onFormSubmitHandler({})');
+  assert.deepStrictEqual([rowOf(C)[BFI.Rating], rowOf(C)[BFI['Final Affectation']], ivOf(C)[IVX.Status]], [8, 'COMM', 'INTERVIEWED']);
+  const gC = tabOf(C).find(r => r[0] === C), IAH = JSON.parse(run('JSON.stringify(IA_H)'));
+  assert.deepStrictEqual([gC[1], gC[3], gC[IAH.indexOf('Introduce yourself')], gC[IAH.indexOf('Final Main Department Affectation')], gC[IAH.indexOf('Anything to add?')]],
+    ['Google Form', bC.members[0].email, 8, 'COMM', 'great energy']);
+  assert.throws(() => save(C, answers(C), ''), /came from the Google Form/);
+  run('__asMember(' + J(bC.members[0].email) + ')');
+  const sliceC = run('JSON.parse(JSON.stringify(webState()))');
+  run('__asMember("")');
+  assert.strictEqual(sliceC.candidates.find(c => c.Code === C).interview.source, 'Google Form');
+
+  // a hand edit of the tab: an edit "by hand", stamped in the tab too
+  run(`(function () { var t = __files[${J(binOf(B).fileId)}].obj.getSheetByName(IA_TAB), r = answersRow_(t, ${J(B)}); t.getRange(r.row, IA_H.indexOf('Introduce yourself') + 1).setValue(1); })()`);
+  run('syncAllForce()');
+  const dB = dash().find(r => r[3] === B);
+  assert.deepStrictEqual([dB[D['Edited By']], dB[D[run('INTERVIEW_QUESTIONS[0].title')]], tabOf(B).find(r => r[0] === B)[5]], ['by hand', 1, 'by hand']);
+  assert.strictEqual(rowOf(B)[BFI.Rating], avg(Object.assign({}, bAns, { intro: 1 })), 'refilled: the cell held the form value');
+
+  // Move interviewee carries the row; the next edit redoes the same log row
+  const from = binOf(E), to = run('loadCtx_()').binomes.find(b => b.code !== from.code && b.status === 'ACTIVE' && (b.tag === 'ALL' || b.tag.includes(ivOf(E)[IVX['1st Choice']])));
+  save(E, answers(E), '');
+  run('syncAll()');
+  const keyE = 'DASH|' + from.code + '|' + E, logE = log().length;
+  run(`reassignCore_(${J(E)}, ${J(to.code)})`);
+  assert.deepStrictEqual([tabOf(E).some(r => r[0] === E), binOf(E).code], [true, to.code], 'the row moved with them');
+  assert(!run(`__files[${J(from.fileId)}].obj.getSheetByName(IA_TAB).getDataRange().getValues()`).some(r => r[0] === E), 'and left the old tab');
+  run('syncAllForce()');
+  assert.deepStrictEqual([log().length, dash().find(r => r[3] === E)[2]], [logE, to.code], 'no new log row; the copy follows the binome');
+  save(E, answers(E, { intro: 3 }), getStamp(E));
+  run('syncAll()');
+  assert.deepStrictEqual([log().length, log().filter(r => r[9] === keyE).length, dash().filter(r => r[3] === E).length], [logE, 1, 1], 'the same log row, redone');
+  assert.deepStrictEqual(openAlerts(E).filter(a => a[3] === 'DUPLICATE_INTERVIEW'), [], 'an edit is not a second interview');
+
+  // nothing above looks like a hand edit of the Master or a broken binome sheet
+  run('syncAllForce()');
+  const flagged2 = run('master.getSheetByName("Alerts").getDataRange().getValues().filter(r => /MANUAL_EDIT|INTEGRITY/.test(r[3]) && r[8] === "OPEN")');
+  assert.strictEqual(JSON.stringify(flagged2), '[]', 'false manual-edit / integrity alerts: ' + JSON.stringify(flagged2));
+  assert.strictEqual(run('JSON.stringify(__formulas)'), '[]', 'paragraphs written as text');
+}
 console.log('\nE2E OK');

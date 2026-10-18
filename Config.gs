@@ -63,6 +63,7 @@ const TAB = {
   SETTINGS: 'Settings', TEAM: 'Team', BINOMES: 'Binomes', IV: 'Interviewees',
   LOG: 'Interview Log', TRACKER: 'Tracker', ALERTS: 'Alerts',
   REG_RESP: 'Registration Responses', INT_RESP: 'Interview Responses', CHANGES: 'Member Changes',
+  DASH: 'Dashboard Interviews',
 };
 
 const TEAM_H = ['Full Name', 'Email', 'Department', 'Pair As', 'Exclude', 'Notes', 'Experienced'];
@@ -113,6 +114,66 @@ const HOUSE = {
   HR: { name: 'Slytherin', main: '#1A472A', accent: '#AAAAAA', light: '#DCEBDF' },
 };
 const CONTACT_OPTIONS = ['Not yet', 'Yes', 'No answer', 'Withdrew'];
+
+// Interview Form 2026, copied question by question from its public page (2026-10-18): titles exactly as the form, odd spaces
+// included, so they match the Interview Responses headers. The dashboard draws its form from this list (webRun interviewGet).
+// The two code questions come first in the form; the dashboard fills them itself (entry ids: the prefilled Google Form link).
+const INTERVIEW_CODE_TITLES = ['Your Binôme Code\n(B1 , B2 , B3 , B4,...)', 'Interviewee Code\n(COMM.12, IT.58, HR.23,...)'];
+const INTERVIEW_ENTRY = { binome: 'entry.1757583213', code: 'entry.1249446617' };
+// The 1st choice picks the department section (its id is the department); every department section then ends on 'final'.
+const INTERVIEW_SECTIONS = [
+  { id: 'first', title: 'First Impressions', help: 'This section allows the interviewer to evaluate the candidate’s first impression, attitude, and communication skills during the interview.\nPlease fill it objectively and provide comments where necessary.' },
+  { id: 'IT', title: 'Information & Technology' }, { id: 'COMM', title: 'Communication' }, { id: 'HR', title: 'Human Resources' },
+  { id: 'FLER', title: 'Finance, Logistics & External Relations' }, { id: 'final', title: 'TA9RIR AL MASIR' },
+];
+const INTERVIEW_BRANCH = 'firstChoice', INTERVIEW_FINAL = 'finalDep';
+// [id, section, title, options (a list = choice, 'text' = paragraph, none = a score from 1 to 10), 0 = optional, help]
+const INTERVIEW_QUESTIONS = [
+  ['intro', 'first', 'Introduce yourself'],
+  ['knowVic', 'first', 'Tell us what you know about VIC'],
+  ['motivation', 'first', 'What motivates you to join VIC?  '],
+  ['english', 'first', 'Rate your English Level'],
+  ['firstChoice', 'first', 'Their 1st Department Choice', ['IT', 'HR', 'FLER', 'COMM'], 1, 'NOTE: If their 2nd Dep Choice howa nefso their 1st Dep Choice ask them if they know the other choices.'],
+  ['itPurpose', 'IT', 'According to you, what are the main purposes of the IT Department?'],
+  ['itPressure', 'IT', 'Can you manage tasks when working under tight deadlines or high-pressure situations? '],
+  ['itFeedback', 'IT', 'You’ve spent many hours on a design, but your mentor or HOD says it doesn’t meet the criteria and must be redone.\nWould you accept this feedback? Do you consider yourself open to constructive criticism?'],
+  ['itDesign', 'IT', 'What is your opinion on this design? Feel free to share any thoughts, ideas, or critiques and what could be improved? ', null, 1, '#IT Designs'],
+  ['commPurpose', 'COMM', 'For you, what are the main purposes of the COMM Department?'],
+  ['commSocial', 'COMM', 'Are you following VIC’s Social Media? Share something you liked and something you think could be improved', null, 1, 'Hna also check ida rah mfollowi l vic hh'],
+  ['commIdeas', 'COMM', 'Can you come up with out-of-the-box ideas? If so, where do you draw your inspiration from? '],
+  ['commTrends', 'COMM', 'Do you follow Social Media trends? Which ones inspire you or catch your attention? '],
+  ['commTiktok', 'COMM', 'Do you have a TikTok account?', ['Yes', 'No', 'No but I would create one']],
+  ['commEnglish', 'COMM', 'Evaluate your fluency in English'],
+  ['commFrench', 'COMM', '  Evaluate your fluency in French?  '],
+  ['hrPurpose', 'HR', 'What do you know about the HR Department and its main purpose?'],
+  ['hrOrganized', 'HR', 'Do you consider yourself an organized person? Rate your organizational skills?'],
+  ['hrEntertainment', 'HR', 'Are you familiar with VIC Entertainment', ['Yes', 'No']],
+  ['hrActivity', 'HR', 'Can you suggest any ideas for a VIC Entertainment Activity?'],
+  ['hrTeam', 'HR', "How well do you work in a team? What if it's made of people you don't know?"],
+  ['hrInactive', 'HR', 'How would you deal with inactive members?'],
+  ['hrLeadership', 'HR', 'How would you rate your leadership skills?  ', null, 0],
+  ['flerPurpose', 'FLER', 'According to you, what is the main purpose of the FLER Department?'],
+  ['flerWork', 'FLER', 'Do you have any previous professional or work experience?  ', ['Yes', 'No'], 0],
+  ['flerSponsor', 'FLER', 'Are you willing to be available for sponsorship meetings or assist with club events and logistics?  ', ['Yes', 'No', 'Maybe']],
+  ['flerTraining', 'FLER', 'Are you able to attend all department training sessions and simulations?  ', ['Yes', 'No', 'Maybe']],
+  ['flerStress', 'FLER', 'How effectively do you manage stress during professional meetings?'],
+  ['flerEnglish', 'FLER', 'Evaluate your fluency in English?'],
+  ['flerFrench', 'FLER', 'Evaluate your fluency in French?'],
+  ['flerComm', 'FLER', 'Rate your communication skills'],
+  ['finalDep', 'final', 'Final Main Department Affectation', ['IT', 'HR', 'FLER', 'COMM', '7ECHOH']],
+  ['activity', 'final', 'Activity Department Affectation', ['English Bubble', 'SPARK', 'Training', 'NON-Affiliated'], 1, 'Not very important mais s9sohm brk 3lihm'],
+  ['conclusion', 'final', 'Commentaire et Conclusion du TP', 'text', 1, 'General comments and thoughts about this member\nIda bedeltolhm Dep wla 7echitoh say here why\nIda chikor bzf mention it'],
+  ['anything', 'final', 'Anything to add?', 'text', 0],
+].map(q => ({ id: q[0], section: q[1], title: q[2], type: Array.isArray(q[3]) ? 'choice' : q[3] || 'score',
+  options: Array.isArray(q[3]) ? q[3] : null, required: q[4] !== 0, help: q[5] || '', branch: q[0] === INTERVIEW_BRANCH }));
+// The binome sheet's second tab (added after the main one, so getSheets()[0] is unchanged): one row per interview of its
+// candidates, written by its members from the dashboard (Source Dashboard) or by the sync (Source Google Form, read-only).
+const IA_TAB = 'Interview Answers';
+const IA_H = ['Interviewee Code', 'Source', 'Submitted At', 'Submitted By', 'Edited At', 'Edited By'].concat(INTERVIEW_QUESTIONS.map(q => q.title));
+// The Master's lasting copy of every dashboard interview (Reset trashes the binome sheets): the Interview Responses columns
+// (Email Address = who submitted, the binome code as the form's question), then the edit and what the form last filled.
+const DASH_H = ['Timestamp', 'Email Address'].concat(INTERVIEW_CODE_TITLES, INTERVIEW_QUESTIONS.map(q => q.title),
+  ['Edited At', 'Edited By', 'Filled Rating', 'Filled Affectation', 'Response Key']);
 
 const ST = { ASSIGNED: 'ASSIGNED', CONTACTED: 'CONTACTED', SCHEDULED: 'SCHEDULED', INTERVIEWED: 'INTERVIEWED',
   WITHDRAWN: 'WITHDRAWN', UNASSIGNED: 'UNASSIGNED', DUPLICATE: 'DUPLICATE', HELD: 'HELD', DECLINED: 'DECLINED' };

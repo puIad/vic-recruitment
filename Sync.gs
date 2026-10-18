@@ -57,8 +57,11 @@ function pullBinomeFiles_(ctx, force) {
         r[I.Status] = statusOf_(ctx, r);
       });
     }
+    // a dashboard save marks its binome dirty: its interview forms are read too (Sync now reads every sheet's)
+    let answers = true;
+    if (edited(b) || force) try { syncAnswers_(ctx, b, sh.getParent()); } catch (e) { answers = false; console.warn('Interview Answers of ' + b.code + ': ' + e); }
     // read: the mark goes, unless a member wrote again after the read started (then the next run reads it again)
-    if (edited(b)) { const t = Number(cache.get('dirty:' + b.code) || 0); if (t && t <= readFrom) cache.remove('dirty:' + b.code); }
+    if (edited(b) && answers) { const t = Number(cache.get('dirty:' + b.code) || 0); if (t && t <= readFrom) cache.remove('dirty:' + b.code); }
     seen[b.fileId] = lu || ctx.now.getTime();
     if (bfLayout_(sh) === 'v2') seen['v2|' + b.fileId] = 1;
     readAt[b.fileId] = ctx.now.getTime();
@@ -249,7 +252,8 @@ function runCycle_(opts) {
     endFinishedCovers_(ctx); stampConfirmations_(ctx); lap('statuses');
     if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); } lap('timing');
     if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity); lap('integrity');
-    saveTable_(ctx.iv); appendLog_(ctx); lap('save');
+    // the dashboard forms' Master copy last: one saved before its log row would never be logged
+    saveTable_(ctx.iv); appendLog_(ctx); if (ctx.dash) saveTable_(ctx.dash); lap('save');
     commitBase_(ctx); lap('base'); // before the mails: if they fail, the tabs and the baseline still agree
     if (opts.timing) try { dropsSync_(ctx); } catch (e) { console.warn('Drops: ' + e); } lap('drops'); // dropped dashboard changes: emails and DROPPED| alerts (Pending.gs); never fails the sync
     ctx.alerts.flush(); lap('alerts');
