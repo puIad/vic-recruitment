@@ -9,9 +9,19 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
-No PR is open. Since 2026-10-18 (@92 / @93 from `f9bdecb`, [#77](https://github.com/puIad/vic-recruitment-2026/pull/77)) every dashboard action logs an `action` line (lockWait, load, writes, tracker, publish) next to the sync's `cycle` line, after a reassign took 54 s; waiting for the next slow one to read it. Slice 3 ([#68](https://github.com/puIad/vic-recruitment-2026/issues/68)) is deployed with the switch off: script [#75](https://github.com/puIad/vic-recruitment-2026/pull/75) as web app **@90** / API **@91** from `9b9846f` (pulled back equal to `main`), Vercel [#76](https://github.com/puIad/vic-recruitment-2026/pull/76) live from `9825142` (real build: npm install + `tsc -b && vite build`, "Deployment completed", no runtime errors). Save settings and My binome fields now go through the accept step when the switch is on. The owner's live check passed on 2026-10-18 (a setting as an admin, a My binome field as a member, the partner's screen). Open issues: pending-changes slices #69–#70 (slices 2 and 3, #67 and #68, are done), one at a time.
+No PR is open. Since 2026-10-18 (@92 / @93 from `f9bdecb`, [#77](https://github.com/puIad/vic-recruitment-2026/pull/77)) every dashboard action logs an `action` line (lockWait, load, writes, tracker, publish) next to the sync's `cycle` line, after a reassign took 54 s; waiting for the next slow one to read it. Slice 3 ([#68](https://github.com/puIad/vic-recruitment-2026/issues/68)) is deployed with the switch off: script [#75](https://github.com/puIad/vic-recruitment-2026/pull/75) as web app **@90** / API **@91** from `9b9846f` (pulled back equal to `main`), Vercel [#76](https://github.com/puIad/vic-recruitment-2026/pull/76) live from `9825142` (real build: npm install + `tsc -b && vite build`, "Deployment completed", no runtime errors). Save settings and My binome fields now go through the accept step when the switch is on. The owner's live check passed on 2026-10-18 (a setting as an admin, a My binome field as a member, the partner's screen). Pending-changes slices 2–5 (#67–#70) are all built and live with the switch off; task 10 is next.
 
 **Slice 4** ([#69](https://github.com/puIad/vic-recruitment-2026/issues/69)) is deployed with the switch off, 2026-10-18. Vercel [#78](https://github.com/puIad/vic-recruitment-2026/pull/78) went live from `98db5a6`: `api/drops`, the seen mark, the next-visit dialog, and the sign-in asking for `script.external_request`. `DROPS_SECRET` is set in Vercel and live from `1013333` (`api/drops` answers 403 without it). Script [#79](https://github.com/puIad/vic-recruitment-2026/pull/79) is web app **@94** / API **@95** from `1013333`, pulled back equal to `main`. Every timed sync calls `api/drops`, emails drops nobody saw and raises `DROPPED|<email>`. The new scope means every admin's next dashboard call answers "one more Google permission": sign in again once and allow it. Owner steps done 2026-10-18: Setup run as `vic.rh`, the `DROPS_SECRET` script property set. Since 18:29 UTC the timed sync calls `api/drops` about once a minute; it passes the secret check and answers mail 0 / alert 0 / open 0, and the cycle line shows `drops` around 300 ms. Live check skipped by the owner on 2026-10-18, issue #69 closed. Verified live: a drop shown and answered on the page (18:42 UTC), the sync's calls to `api/drops`. Never run live: the email, the next-visit dialog and the `DROPPED|<email>` alert; tests and the local mock (`npm run mock -- --away`) cover them. Load-test task 10's pending-changes block is the next chance to see them. An env-var-only Redeploy of the live commit used to be canceled by `ignoreCommand` (this one went out with #79's merge); [#80](https://github.com/puIad/vic-recruitment-2026/pull/80) makes it build.
+
+**Slice 5** ([#70](https://github.com/puIad/vic-recruitment-2026/issues/70), closed) is live from `f4288c4`, 2026-10-18,
+Vercel only ([#81](https://github.com/puIad/vic-recruitment-2026/pull/81)). Another account signing in on a browser
+inside the outgoing person's 48 h, with their changes still pending, sets `pcr:<email>` ("revoke when done") instead of
+revoking; the consumer revokes with the last change's access token once none is left (a cancelled last change too).
+Nothing pending or Redis unreadable revokes at once; every sign-in clears the incoming person's mark. Sign out and
+Switch account wait for a save still being accepted; with changes pending both land on the sign-in screen, which says how
+many are still saving. Owner, 2026-10-18: no refresh token on the server (#56), so a mark whose last change is swept by
+`api/drops` (no token) just expires, an accepted cost; Switch account keeps Google's own account picker. Live check:
+load-test task 10's pending-changes block (the account switch with changes pending).
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
@@ -75,13 +85,13 @@ Left, owner (in order):
    during task 8 still gets in: set that binome to No access), the other-account checks
    ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines.
 6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
-7. Load-test task 10, once pending-changes slices 2–5 are live: load test again and sign off before members get the
+7. Load-test task 10, now that pending-changes slices 2–5 are live (switch off until the owner turns it on): load test again and sign off before members get the
    dashboard, with the sign-in checks of #65 and the pending-changes block
    ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)).
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
 Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
-Side by side with these: pending-changes slices 2, then 3, 4 and 5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)); task 10 waits for them.
+Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done; task 10 was waiting for them.
 
 ## Live now
 
