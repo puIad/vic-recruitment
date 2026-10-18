@@ -67,8 +67,10 @@ interface VicStore {
   /** The accept step. "ok" = safe as pending changes; "direct" = do today's direct write instead (switch off, or it failed). */
   accept: (changes: PendingChange[]) => Promise<"ok" | "direct">
   /** Answers on drops: shown (on screen), keep (Keep the sheet's value). */
-  markDrops: (a: { shown?: string[]; keep?: string[] }) => Promise<void>
+  markDrops: (a: { shown?: string[]; seen?: string[]; keep?: string[] }) => Promise<void>
   setRec: (rec: PendingRec) => void
+  /** cells of the drops this visit found waiting (the first record it read): the must-answer dialog (slice 4) */
+  awayDrops: string[]
 }
 
 export type MemberSetResult = { ok: true; value: string | number | boolean } | { conflict: string } | { error: string; busy?: boolean }
@@ -78,6 +80,12 @@ let polls = 0
 /** the next pulse reads the record (the tab came back into view) */
 let wantRec = true
 const hasPending = (rec: PendingRec) => Object.values(rec).some((e) => e.state === "pending")
+const openDrops = (rec: PendingRec) => Object.values(rec).filter((e) => e.state === "dropped" && !e.addressed).map((e) => e.cell)
+/** the first record this visit reads opens the dialog for the drops waiting in it */
+let firstRec = true
+/** the last seen mark: while drops are on screen it is refreshed once a minute, so the admins get no alert */
+let seenMark = 0
+const SEEN_MS = 60e3
 /** The pulse's answer: a number from an older script, {v, pending} from one that has the switch. */
 const pulseOf = (p: number | { v: number; pending: boolean } | null) => (p === null || typeof p === "number" ? { v: p, on: null } : { v: p.v, on: p.pending })
 /** a poll stuck at Google ends after this, so the `polling` guard is released and the next tick runs */
@@ -110,6 +118,7 @@ export const useVic = create<VicStore>((set, get) => ({
   flash: {},
   ended: {},
   accepting: 0,
+  awayDrops: [],
 
   async boot() {
     let a: Access
@@ -176,6 +185,9 @@ export const useVic = create<VicStore>((set, get) => ({
   // Live refresh: poll the version of the dashboard's snapshot (it moves only when the data changed) and reload when it moved.
   async checkPulse() {
     const { busy, refreshing, gate, state, member, memberError, modals, pulse } = get()
+    // the seen mark only touches Redis, so it skips the guards below that spare Google: a 5-min Lock or an open dialog is still on screen
+    const drops = openDrops(get().rec)
+    if (drops.length && !document.hidden && Date.now() - seenMark >= SEEN_MS) { seenMark = Date.now(); void get().markDrops({ seen: drops }) }
     // a member whose sheet couldn't load keeps polling, so the page fills itself once the sync has published their binome
     const shown = gate.mode === "ok" ? !!state : gate.mode === "member" && !!(member || memberError)
     if (busy || refreshing || polling || document.hidden || !shown || modals > 0) return
@@ -314,8 +326,12 @@ export const useVic = create<VicStore>((set, get) => ({
         if (!(was?.id === e.id && was.state === "dropped")) drops[e.at] = (drops[e.at] || 0) + 1
       }
     })
-    set({ rec: next, flash, ended })
-    Object.values(drops).forEach((n) =>
+    // a visit that finds drops from while away asks about them all at once (the dialog), instead of a toast per click
+    const away = firstRec ? openDrops(next) : []
+    firstRec = false
+    set({ rec: next, flash, ended, ...(away.length ? { awayDrops: away } : {}) })
+    if (away.length) seenMark = now // marked shown just below
+    else Object.values(drops).forEach((n) =>
       toast.warning(n > 1 ? `${n} of your changes were not applied` : "Your change was not applied", {
         description: "The row shows why, and what the sheet holds now.",
         duration: 10000,

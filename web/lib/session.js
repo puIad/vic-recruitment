@@ -16,7 +16,10 @@ const SCOPES = [
   'https://www.googleapis.com/auth/script.scriptapp',
   'https://www.googleapis.com/auth/script.container.ui',
   'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/script.external_request', // the sync's call to api/drops (slice 4)
 ];
+/** The script's scopes a token's grant lacks (scripts.run refuses a token missing any). No scope string = not known: none. */
+const missingScopes = scope => (scope === undefined ? [] : SCOPES.filter(s => s.startsWith('https://') && String(scope).split(' ').indexOf(s) < 0));
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
 function key() {
@@ -111,5 +114,5 @@ function redirect(res, url) { res.statusCode = 302; res.setHeader('Location', ur
 
 module.exports = {
   SESSION_HOURS, COOKIE, PKCE_COOKIE, DOMAIN, SCOPES, b64u, seal, open, cookies, cookie, addCookie, sessionCookie, clearSession,
-  expired, expiresAt, origin, redirectUri, runUrl, tokenRequest, revoke, idClaims, sameOrigin, sendJson, sendPage, redirect,
+  expired, expiresAt, origin, redirectUri, runUrl, tokenRequest, revoke, idClaims, sameOrigin, sendJson, sendPage, redirect, missingScopes,
 };

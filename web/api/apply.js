@@ -50,7 +50,7 @@ async function handle(msg, meta) {
     j = await r.json().catch(() => ({}));
   } catch (e) { throw new Later(backoff(meta)); } // timeout or network: judged cell by cell on the retry
   if (r.status === 401) return end(email, pending, signedOut);
-  if (r.status === 403) return end(email, pending, lost);
+  if (r.status === 403) return end(email, pending, /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(JSON.stringify(j)) ? signedOut : lost); // a token from before a new scope
   if (!r.ok || j.error) {
     console.warn(JSON.stringify({ at: 'apply', email, status: r.status, msg: String((j.error && j.error.message) || '').slice(0, 200) }));
     throw new Later(r.status === 429 ? 60 : backoff(meta));

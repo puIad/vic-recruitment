@@ -88,6 +88,10 @@ const rpc = (cookie, fn, ...args) => invoke('run', { method: 'POST', cookie, bod
   r = await cb('s', 's'); assert.strictEqual(r.status, 403, 'unticked permissions refused'); assert(/Permissions missing/.test(r.body));
   tokenReply = Object.assign({}, tokenReply, { scope: allScopes, refresh_token: undefined });
   r = await cb('s', 's'); assert.deepStrictEqual([r.status, r.headers.location], [302, '/api/login?consent=1'], 'no refresh token → retry once with consent');
+  g.opts.refreshScope = 'openid email https://www.googleapis.com/auth/spreadsheets';
+  r = await invoke('callback', { url: '/api/callback?code=c&state=s', cookie: S.PKCE_COOKIE + '=' + encodeURIComponent(S.seal({ state: 's', verifier: 'v', consent: false })) + '; ' + S.COOKIE + '=' + encodeURIComponent(S.seal({ email: 'a@g.enp.edu.dz', rt: 'rt:old', iat: Date.now() })) });
+  assert.deepStrictEqual([r.status, r.headers.location], [302, '/api/login?consent=1'], 'a stored token from before the new scope: consent once');
+  g.opts.refreshScope = undefined;
   // same account back on this browser (signed out, inside or past 48h): Google sends no refresh token → reuse the stored one, no consent screen
   const cbWith = (sessCookie) => invoke('callback', { url: '/api/callback?code=c&state=s', cookie: S.PKCE_COOKIE + '=' + encodeURIComponent(S.seal({ state: 's', verifier: 'v', consent: false })) + '; ' + S.COOKIE + '=' + encodeURIComponent(S.seal(sessCookie)) });
   tokenReply = Object.assign({}, tokenReply, { id_token: idt({ email: 'a@g.enp.edu.dz' }) });
@@ -178,6 +182,16 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   g.opts.scriptStatus = 403;
   r = await rpc(admin, 'webAccess');
   assert.strictEqual(r.status, 502); assert(!/secret details/.test(r.body), 'Google error messages are summarized, not echoed');
+  // a token granted before script.external_request was added (slice 4): back through Google's screen once
+  g.opts.scriptMessage = 'Request had insufficient authentication scopes.';
+  r = await rpc(admin, 'webAccess');
+  assert.deepStrictEqual([r.status, r.json.code, /one more Google permission/.test(r.json.error), r.jar[S.COOKIE]], [401, 'SIGNED_OUT', true, ''], 'old scopes: signed out to consent');
+  g.opts.scriptMessage = 'secret details';
+  g.opts.scriptStatus = 200;
+  g.opts.refreshScope = allScopes.replace(' https://www.googleapis.com/auth/script.external_request', '');
+  r = await rpc(sess('admin@g.enp.edu.dz', { at: null }), 'webAccess');
+  assert.deepStrictEqual([r.status, r.json.code], [401, 'SIGNED_OUT'], 'a refresh that lacks the new scope signs out');
+  g.opts.refreshScope = undefined;
   g.opts.scriptStatus = 429;
   r = await rpc(admin, 'webPulse');
   assert.deepStrictEqual([r.status, r.json.code, /limiting requests.*Nothing was changed/.test(r.json.error)], [429, 'RATE_LIMIT', true], "Google's rate limit reaches the page as code RATE_LIMIT");
@@ -385,6 +399,49 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     assert.deepStrictEqual([theirs.Contacted, theirs.Rating], ['Yes', 7.5], "the partner's next read has it");
     r = await accept(mem, fd(code, 'Email', 'a@b.dz', ''));
     assert.strictEqual(r.json.code, 'DIRECT', 'not a column members fill in');
+
+    // slice 4: the sync's call (api/drops.js), the apply-by sweep, the seen mark on the pulse
+    {
+      const dropsApi = require('../web/api/drops');
+      const drops = (body, auth) => new Promise(resolve => {
+        const res = { statusCode: 200, setHeader() {}, end(b) { resolve({ status: res.statusCode, json: JSON.parse(b) }); } };
+        Promise.resolve(dropsApi({ method: 'POST', headers: { authorization: auth === undefined ? 'Bearer s3cret' : auth }, body }, res));
+      });
+      const now = Date.now(), put = (email, cell, e) => { (F.db['pc:' + email] = F.db['pc:' + email] || {})[cell] = JSON.stringify(Object.assign({ cell, kind: 'alert', alert: cell.slice(6), op: 'resolve', value: 'RESOLVED', seen: 'OPEN', at: now - 7 * 60e3 }, e)); };
+      const entry = (email, cell) => JSON.parse(F.db['pc:' + email][cell]);
+      assert.strictEqual((await drops({})).status, 503, 'no DROPS_SECRET on Vercel: refused');
+      process.env.DROPS_SECRET = 's3cret';
+      assert.strictEqual((await drops({}, 'Bearer nope')).status, 403, 'wrong secret');
+      assert.strictEqual((await drops({}, '')).status, 403, 'no secret');
+      put('away@g.enp.edu.dz', 'alert:A-7001', { state: 'pending', by: now - 1000 });             // stranded past its apply-by
+      put('away@g.enp.edu.dz', 'alert:A-7002', { state: 'dropped', sheet: 'SNOOZED', droppedAt: now - 6 * 60e3 }); // nobody saw it: email
+      put('away@g.enp.edu.dz', 'alert:A-7003', { state: 'dropped', sheet: 'MUTED', droppedAt: now - 60e3 });       // too fresh for the email
+      put('left@g.enp.edu.dz', 'alert:A-7004', { state: 'dropped', droppedAt: now - 20 * 60e3, shown: now - 15 * 60e3, seenAt: now - 6 * 60e3 }); // the visit ended
+      put('done@g.enp.edu.dz', 'alert:A-7005', { state: 'dropped', droppedAt: now - 20 * 60e3, addressed: now - 60e3 });
+      let r = await drops({});
+      const of = (list, email) => list.find(x => (x.email || x) === email);
+      const swept = entry('away@g.enp.edu.dz', 'alert:A-7001');
+      assert.deepStrictEqual([r.status, swept.state, swept.reason, swept.again, swept.droppedAt >= now], [200, 'dropped', 'retries ran out', true, true], 'past its apply-by: dropped');
+      assert.deepStrictEqual(of(r.json.mail, 'away@g.enp.edu.dz').drops.map(d => [d.cell, d.sheet]), [['alert:A-7002', 'SNOOZED']], 'email: only the drop unseen for 5 min');
+      assert.deepStrictEqual([!!of(r.json.alert, 'left@g.enp.edu.dz'), !!of(r.json.alert, 'away@g.enp.edu.dz'), !!of(r.json.open, 'done@g.enp.edu.dz'), !!of(r.json.open, 'away@g.enp.edu.dz')],
+        [true, false, false, true], 'alert: a shown drop unseen for 5 min; open: anyone with an unaddressed drop');
+      assert(!JSON.stringify(r.json).includes('"by"'), 'the answer carries the drops, not the apply-by');
+      r = await drops({ mailed: [{ email: 'away@g.enp.edu.dz', cells: ['alert:A-7002'], at: now - 25 * 3600e3 }] });
+      assert.deepStrictEqual([entry('away@g.enp.edu.dz', 'alert:A-7002').mailed, !!of(r.json.mail, 'away@g.enp.edu.dz')], [now - 25 * 3600e3, false], 'what the sync mailed is taken back, never mailed again');
+      assert(of(r.json.alert, 'away@g.enp.edu.dz'), 'mailed 24 h ago and unanswered: admin alert');
+      await P.mark('left@g.enp.edu.dz', { seen: ['alert:A-7004'] }, Date.now());
+      assert(!of((await drops({})).json.alert, 'left@g.enp.edu.dz'), 'on screen again: no alert');
+      // the page's seen mark: pendingMark on its own, not behind the pulse's guards
+      put('admin@g.enp.edu.dz', 'alert:A-7006', { state: 'dropped', droppedAt: now - 60e3, shown: now - 60e3 });
+      r = await rpc(own, 'pendingMark', { seen: ['alert:A-7006'] });
+      assert(r.json.value['alert:A-7006'].seenAt >= now, 'seen: seenAt moves');
+      F.log.fail.redis = true;
+      assert.strictEqual((await drops({})).status, 502, 'Redis down: the sync skips this cycle');
+      F.log.fail.redis = false;
+      ['away', 'left', 'done'].forEach(n => delete F.db['pc:' + n + '@g.enp.edu.dz']);
+      delete F.db['pc:admin@g.enp.edu.dz']['alert:A-7006'];
+      delete process.env.DROPS_SECRET;
+    }
 
     await rpc(own, 'webRun', 'pendingSwitch', { on: false });
     F.log.redis = 0;

@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch"
 import { useConfirm, Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
 import { useVic } from "@/lib/vic/store"
-import { REASON, useSettingsView, type Mark } from "@/lib/vic/pending"
+import { again, REASON, useSettingsView, type Mark } from "@/lib/vic/pending"
 import type { CellValue, SettingEntry, SettingRow } from "@/lib/vic/types"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
 
@@ -90,8 +90,8 @@ function SettingDrop({ mark, s }: { mark?: Mark<SettingEntry>; s: SettingRow }) 
   const e = mark.entry
   const keep = () => markDrops({ keep: [e.cell] })
   const applyMine = async () => {
-    // seen = the sheet's value as the notice shows it (issue 50)
-    if ((await accept([{ kind: "setting", key: e.key, value: e.value, seen: e.sheet ?? e.seen, at: Date.now(), built }])) === "ok") return
+    const change = again(e, built, Date.now())
+    if (change && (await accept([change])) === "ok") return
     void keep() // the pending path can't take it now: today's direct write, which reports on its own
     await saveSettings({ [e.key]: e.value })
   }

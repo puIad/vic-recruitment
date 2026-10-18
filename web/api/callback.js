@@ -23,9 +23,7 @@ module.exports = async (req, res) => {
     await S.revoke(t.body.refresh_token || t.body.access_token);
     return S.sendPage(res, 403, 'ENP accounts only', 'Sign in with your @' + S.DOMAIN + ' Google account.');
   }
-  const granted = String(t.body.scope || '').split(' ');
-  const missing = S.SCOPES.filter(s => s.startsWith('https://') && granted.indexOf(s) < 0);
-  if (missing.length) {
+  if (S.missingScopes(t.body.scope || '').length) {
     await S.revoke(t.body.refresh_token || t.body.access_token);
     return S.sendPage(res, 403, 'Permissions missing', 'The dashboard needs every permission on the Google screen (Sheets, Drive, Forms, mail, triggers). Sign in again and keep them all ticked.');
   }
@@ -34,7 +32,8 @@ module.exports = async (req, res) => {
   // Same account back on this browser, signed out or past its 48h: Google sends no refresh token, so reuse the stored
   // one (no consent screen) once one refresh proves Google still honours it.
   let reuse = !t.body.refresh_token && old && old.rt && old.email === email;
-  if (reuse && !(await S.tokenRequest({ grant_type: 'refresh_token', refresh_token: old.rt })).ok) reuse = false;
+  // a stored token from before a scope was added (script.external_request, 2026-10) can't call the script: consent once
+  if (reuse) { const r = await S.tokenRequest({ grant_type: 'refresh_token', refresh_token: old.rt }); if (!r.ok || S.missingScopes(r.body.scope).length) reuse = false; }
   if (!t.body.refresh_token && !reuse) {
     // Google only issues a refresh token on consent: an earlier grant exists (e.g. a lost cookie). Ask once with consent.
     if (!o.consent) return S.redirect(res, '/api/login?consent=1');

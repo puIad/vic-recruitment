@@ -398,6 +398,10 @@ interface EntryBase {
   /** Apply mine anyway is offered */
   again?: boolean
   shown?: number
+  /** a page still showing the drop (once a minute, on the pulse) */
+  seenAt?: number
+  /** the sync emailed the author about it */
+  mailed?: number
   addressed?: number
 }
 export interface AlertEntry extends EntryBase {
