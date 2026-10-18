@@ -46,6 +46,7 @@ const ALERT_LABELS: Record<string, string> = {
   NO_BINOME: "No binome for this registrant",
   UNPAIRED_MEMBER: "Member without a binome",
   SAME_CHOICES: "Same department chosen twice",
+  DROPPED: "Dashboard changes not applied",
   INVALID_CHOICE: "Invalid department choice",
   BAD_EMAIL: "Email looks wrong",
   EMAIL_MISMATCH: "Email does not match the name",

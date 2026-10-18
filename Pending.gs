@@ -1,4 +1,4 @@
-/* ---------- pending changes: the lean apply entry and the owner's switch (docs/plans.md › Slices 2 and 3) ---------- */
+/* ---------- pending changes: the lean apply entry and the owner's switch (docs/plans.md › Slices 2 to 4) ---------- */
 // A dashboard save becomes a pending change on Vercel (accepted, queued, kept in Redis); the queue consumer applies it here,
 // through scripts.run as its author. Only the consumer calls webApply: it is not in /api/run's allowlist.
 
@@ -169,4 +169,63 @@ function write_(sh, I, row, x, id, status, end) {
   sh.getRange(row, I.Status + 1, 1, 2).setValues([[status, end]]); // Status and Resolved At sit side by side (ALERT_H)
   x.status = status; x.end = end;
   return { id: id, end: 'applied' };
+}
+
+/* ---------- dropped changes away from the page (docs/plans.md › Slice 4) ---------- */
+// Each timed cycle asks Vercel's api/drops (it holds the Redis records): which drops no page showed (email their author),
+// which authors left one unanswered (alert DROPPED|<email>), who has any left (the others' alert resolves). The secret is the
+// script property DROPS_SECRET, the same value as Vercel's; unset = no call. What this cycle mailed is kept in DROPS_MAILED
+// and reported by the next call, so a lost answer means one more email, never none.
+const DROP_REASON = { // the consumer's reasons; the script's own come as sentences
+  'lost access': 'You can no longer edit the Master, so it could not be written as you.',
+  'sign-in ended before it was saved': 'Your sign-in ended before it reached the sheet.',
+  'retries ran out': 'Google kept refusing it until your sign-in ran out.',
+};
+const DROP_STATUS = { OPEN: 'Open', SNOOZED: 'Snoozed', MUTED: 'Muted', RESOLVED: 'Resolved', 'AUTO-RESOLVED': 'Closed by the script' };
+const DROP_OP = { resolve: 'Resolve', snooze: 'Snooze', mute: 'Mute', unmute: 'Unmute' };
+
+function dropsSync_(ctx) {
+  const props = PropertiesService.getScriptProperties(), secret = props.getProperty('DROPS_SECRET');
+  if (!secret) return;
+  let out;
+  try {
+    const r = UrlFetchApp.fetch(DASHBOARD_URL + '/api/drops', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + secret },
+      payload: JSON.stringify({ mailed: JSON.parse(props.getProperty('DROPS_MAILED') || '[]') }), muteHttpExceptions: true });
+    if (r.getResponseCode() !== 200) return console.warn('Drops: api/drops answered ' + r.getResponseCode());
+    out = JSON.parse(r.getContentText());
+  } catch (e) { return console.warn('Drops: ' + e); }
+  const mailed = [];
+  (out.mail || []).forEach(m => {
+    const n = m.drops.length;
+    if (mail_(m.email, '[VIC Recruitment] ' + (n === 1 ? 'Your change was' : n + ' of your changes were') + ' not applied', dropsMail_(ctx, m.drops)))
+      mailed.push({ email: m.email, cells: m.drops.map(d => d.cell), at: Date.now() });
+  });
+  if (mailed.length) props.setProperty('DROPS_MAILED', JSON.stringify(mailed)); else props.deleteProperty('DROPS_MAILED');
+  (out.alert || []).forEach(email => ctx.alerts.add({ severity: 'MEDIUM', type: 'DROPPED', code: '', binome: '', key: 'DROPPED|' + email,
+    msg: email + ' has dashboard changes that never reached the sheet and has not answered them. They are asked on their next visit; check with them.' }));
+  const open = out.open || [], KI = ctx.alerts.table.I;
+  ctx.alerts.resolveWhere(r => /^DROPPED\|/.test(r[KI.Key]) && open.indexOf(String(r[KI.Key]).slice(8)) < 0);
+}
+
+/** The email listing an author's drops (the prototype's draft, issue 51). */
+function dropsMail_(ctx, drops) {
+  const KI = ctx.alerts.table.I, rows = {};
+  ctx.alerts.table.data.forEach(r => { rows[r[KI.ID]] = r; });
+  const text = v => (v === true ? 'Yes' : v === false ? 'No' : v === undefined || v === null || v === '' ? 'empty' : String(v));
+  const blocks = drops.map(d => {
+    const a = d.kind === 'alert' ? rows[d.alert] : null;
+    const what = d.kind === 'alert' ? 'Alert ' + d.alert + (a ? ' · ' + a[KI.Type] + (a[KI.Interviewee] ? ' · ' + a[KI.Interviewee] : '') : '')
+      : d.kind === 'setting' ? 'Setting ' + d.key : d.code + ' · ' + d.field;
+    const mine = d.kind === 'alert' ? DROP_OP[d.op] || d.op : text(d.value);
+    const sheet = d.kind === 'alert' ? DROP_STATUS[d.sheet] || d.sheet : text(d.sheet);
+    return mailH_(what) + mailList_([['You asked', mine], d.reason ? ['Why', DROP_REASON[d.reason] || d.reason] : ['The sheet now', sheet]]);
+  });
+  const n = drops.length;
+  return mailHtml_({
+    title: (n === 1 ? 'Your change was' : n + ' of your changes were') + ' not applied',
+    intro: 'The sheet changed before your changes reached it, or they could not be written, so the sheet kept its value. Nothing is lost: open the dashboard to keep the sheet\'s value or apply yours anyway.',
+    blocks: blocks.concat([mailP_('If nobody answers within **24 hours**, the admins get an alert about these changes.')]),
+    cta: { label: 'Review my changes', url: DASHBOARD_URL + '/?review=dropped' },
+    footer: mailTeamFooter_(),
+  });
 }
