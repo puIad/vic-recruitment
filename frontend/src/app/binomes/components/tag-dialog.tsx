@@ -46,7 +46,7 @@ export function TagDialog({ binome, onClose }: { binome: Binome | null; onClose:
   const code = binome?.code
   const from = binome?.tag ?? ""
   const to = tagFor(pick)
-  const same = to === from
+  const same = to === tagFor(new Set(depsOf(from))) // by departments: "HR & IT" or ALL ticked as it is changes nothing
 
   React.useEffect(() => {
     if (code) setPick(new Set(depsOf(from)))

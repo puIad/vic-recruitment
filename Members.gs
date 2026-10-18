@@ -331,6 +331,8 @@ function binomeTagCore_(a) {
     const depts = [].concat(a.depts || []).map(d => String(d).trim().toUpperCase());
     const bad = depts.filter(d => DEPTS.indexOf(d) < 0);
     if (bad.length) return { errors: ['Unknown department: ' + bad.join(', ') + '.'], warnings: [] };
+    // the same departments in another spelling ("HR & IT", ALL as four ticks) is no change: never a no-op write or a lost ALL weight
+    if (tagDepts(b.tag).length && tagFor(tagDepts(b.tag)) === tagFor(depts)) return { errors: [b.code + ' already receives ' + b.tag + '.'], warnings: [] };
     const p = tagPlan_(ctx, b, tagFor(depts));
     if (p.errors.length || a.dryRun) return { errors: p.errors, warnings: p.warnings, binome: b.code, from: p.from, to: p.to, stranded: p.stranded };
     const done = applyTag_(ctx, p, a.reason);
