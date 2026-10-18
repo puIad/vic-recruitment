@@ -82,14 +82,14 @@ function photo_() {
 /** Cheap change detector for the dashboard's live refresh. Admins: the version of the cached dashboard (SNAP_VER), which goes
  *  up only when what the dashboard shows changed (publishState_); a hand edit in the Master shows after the next sync.
  *  Members: their binome's version (SNAP_BIN). Someone no longer in MEMBER_MAP gets "Not allowed" at the next poll.
- *  withSwitch: an admin gets {v, pending} (the owner's switch, Pending.gs) instead of the bare version. */
+ *  withSwitch: {v, pending} (the owner's switch, Pending.gs) instead of the bare version, for admins and members. */
 function webPulse(withSwitch) {
   const a = access_();
   if (a.role === 'admin') {
     const ver = Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
     return withSwitch ? { v: ver, pending: pendingOn_() } : ver; // pages before pending changes take the bare number
   }
-  if (a.role === 'member') { const b = binMeta_()[a.binome]; return b ? b.v : 0; }
+  if (a.role === 'member') { const b = binMeta_()[a.binome], ver = b ? b.v : 0; return withSwitch ? { v: ver, pending: pendingOn_() } : ver; }
   throw new Error('Not allowed');
 }
 
@@ -187,7 +187,7 @@ function memberState_(a) {
     sl.candidates = sl.candidates.filter(c => m.codes.indexOf(String(c.Code)) >= 0);
     sl.alerts = sl.alerts.filter(x => m.codes.indexOf(x.code) >= 0);
   }
-  return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail() });
+  return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail(), pending: pendingOn_() });
 }
 function sliceFromSheet_(m) {
   let book = null;
@@ -524,6 +524,18 @@ function settingKind_(r) {
   return { type: typeof r[1] === 'boolean' ? 'bool' : typeof r[1] === 'number' ? 'number' : 'text' };
 }
 
+/** A setting's value as it is written (bool, number, enum, trimmed text); throws why a value is refused. r = its SETTINGS_DEFAULTS row. */
+function settingValue_(r, raw) {
+  const k = r[0], kind = settingKind_(r);
+  let v = raw;
+  if (kind.type === 'bool') v = bool_(v);
+  else if (kind.type === 'number') { v = Number(v); if (String(raw).trim() === '' || isNaN(v)) throw new Error(k + ' must be a number'); }
+  else { v = String(v).trim(); if (kind.type === 'enum' && kind.options.map(String).indexOf(v) < 0) throw new Error(k + ' must be one of ' + kind.options.join(', ')); if (typeof r[1] === 'number') v = Number(v); }
+  if (k === 'ADMIN_EMAIL' && v && !String(v).split(/[,;\s]+/).filter(Boolean).every(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) throw new Error('ADMIN_EMAIL: invalid email address');
+  if (k === 'DIGEST_HOUR' && (v < 0 || v > 23 || v % 1)) throw new Error('DIGEST_HOUR must be a whole number from 0 to 23');
+  return v;
+}
+
 /** Writes changed values into the Settings tab (the single source of truth, still editable in the sheet). */
 function saveSettings_(values) {
   const sh = ss_().getSheetByName(TAB.SETTINGS);
@@ -532,13 +544,7 @@ function saveSettings_(values) {
   SETTINGS_DEFAULTS.forEach(r => {
     const k = r[0];
     if (!values || !(k in values)) return;
-    let v = values[k];
-    const kind = settingKind_(r);
-    if (kind.type === 'bool') v = bool_(v);
-    else if (kind.type === 'number') { v = Number(v); if (String(values[k]).trim() === '' || isNaN(v)) throw new Error(k + ' must be a number'); }
-    else { v = String(v).trim(); if (kind.type === 'enum' && kind.options.map(String).indexOf(v) < 0) throw new Error(k + ' must be one of ' + kind.options.join(', ')); if (typeof r[1] === 'number') v = Number(v); }
-    if (k === 'ADMIN_EMAIL' && v && !String(v).split(/[,;\s]+/).filter(Boolean).every(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) throw new Error('ADMIN_EMAIL: invalid email address');
-    if (k === 'DIGEST_HOUR' && (v < 0 || v > 23 || v % 1)) throw new Error('DIGEST_HOUR must be a whole number from 0 to 23');
+    const v = settingValue_(r, values[k]);
     if (v === cur[k] || (v === '' && cur[k] === r[1])) return;
     let i = rows.indexOf(k);
     if (i < 0) { sh.appendRow([k, '', r[2]]); rows.push(k); i = rows.length - 1; }
