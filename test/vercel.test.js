@@ -508,13 +508,19 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     const { execSync, spawnSync } = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ign-')), sh = c => execSync(c, { cwd: dir, stdio: 'pipe' }).toString().trim();
     const cmd = JSON.parse(fs.readFileSync(__dirname + '/../web/vercel.json', 'utf8')).ignoreCommand;
-    const run = sha => spawnSync('sh', ['-c', cmd], { cwd: path.join(dir, 'web'), env: Object.assign({}, process.env, { VERCEL_GIT_PREVIOUS_SHA: sha }) }).status;
+    // PowerShell often has no sh on PATH: fall back to Git for Windows' sh, else skip (npm run deploy runs these tests)
+    const gitSh = path.join(execSync('git --exec-path').toString().trim(), '../../../bin/sh.exe');
+    const shBin = !spawnSync('sh', ['-c', 'exit 0']).error ? 'sh' : fs.existsSync(gitSh) ? gitSh : null;
+    const run = sha => spawnSync(shBin, ['-c', cmd], { cwd: path.join(dir, 'web'), env: Object.assign({}, process.env, { VERCEL_GIT_PREVIOUS_SHA: sha }) }).status;
     const commit = (f, m) => { fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true }); fs.appendFileSync(path.join(dir, f), 'x'); sh('git add -A && git -c user.name=t -c user.email=t@t -c commit.gpgsign=false -c core.hooksPath=/dev/null commit -qm ' + m); return sh('git rev-parse HEAD'); };
+    if (!shBin) process.stdout.write('ignoreCommand test skipped: no sh on PATH and no Git for Windows sh.exe\n');
+    else {
     sh('git init -q'); const base = commit('web/a', 'a');
     commit('docs/x.md', 'doc'); assert.strictEqual(run(base), 0, 'doc-only push is skipped');
     const doc = commit('docs/z.md', 'doc2'); assert.strictEqual(run(doc), 1, 'a redeploy of the same commit builds');
     commit('frontend/y', 'fe'); assert.strictEqual(run(base), 1, 'a frontend change builds');
     assert.strictEqual(run(''), 1, 'no previous SHA builds'); assert.notStrictEqual(run('0'.repeat(40)), 0, 'unknown SHA builds');
+    }
     fs.rmSync(dir, { recursive: true, force: true });
   }
 
