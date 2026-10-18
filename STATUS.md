@@ -100,7 +100,8 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `f4288c4` (2026-10-18, [#81](https://github.com/puIad/vic-recruitment-2026/pull/81), pending-changes
+  Latest UI: `845bdba` (2026-10-18, [#85](https://github.com/puIad/vic-recruitment-2026/pull/85)): an admin in a binome
+  gets My binome under People (`/my-binome`); real build checked in the Vercel log. Before that `f4288c4` (2026-10-18, [#81](https://github.com/puIad/vic-recruitment-2026/pull/81), pending-changes
   slice 5); the pending-changes PRs #71–#81 are in the Launch checklist above. Before that `9aaad16` (2026-10-17, [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): **Settings › Screening**,
   plus the screening changes on Alerts (quick actions), Interviewees and the Overview Pipeline card. Vercel production
   built from `9aaad16` (`npm install` 316 packages, `tsc -b && vite build`; "Deployment completed"; no runtime errors in the
@@ -119,7 +120,9 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@94**, API **@95** from `1013333` (2026-10-18,
+- **Script, latest:** web app **@96**, API **@97** from `845bdba` (2026-10-18,
+  [#85](https://github.com/puIad/vic-recruitment-2026/pull/85), My binome for admins in a binome; deployed from Git Bash:
+  under PowerShell `npm test` fails at `test/vercel.test.js` 514, no `sh` on PATH). Before that web app **@94**, API **@95** from `1013333` (2026-10-18,
   [#79](https://github.com/puIad/vic-recruitment-2026/pull/79), pending-changes slice 4); @88–@93 (slices 2–3, the
   action timing line) are in the Launch checklist above.
 - **Script, before the pending-changes build:** web app **@83**, API **@84**, most likely from `75f64c4` (2026-10-17,
@@ -257,8 +260,9 @@ members sheet (2026-10-17); turning it on is left. Changing a binome's departmen
 ## Next: My binome for admins, interview form in the dashboard (requested 2026-10-18)
 
 Planned in [docs/interview-form.md](docs/interview-form.md), grilled with the owner on 2026-10-18.
-Part 1 built (admins who are in a binome get My binome, People group, same rules as members): in review, then
-`npm run deploy` and Vercel, then the live check in the plan's Rollout. Part 2: a native
+Part 1 is live (admins who are in a binome get My binome, People group, same rules as members): script @96 / @97 and
+Vercel from `845bdba`, 2026-10-18. Not checked live yet: an editor in a locked binome saves a gold field from My binome
+and the partner sees it at their next poll (the plan's Rollout). Part 2: a native
 interview form per candidate, saved to an Interview Answers tab in the binome sheet, copied to the Master by the sync,
 editable any time; every interview form fills Rating and Final Affectation.
 

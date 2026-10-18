@@ -1,12 +1,12 @@
 # Plans: My binome for admins, interview form in the dashboard
 
 The owner's requests of 2026-10-18, grilled the same day. The answers are in [Decisions](#decisions-owner-2026-10-18)
-at the end and are built into the sections below. Part 1 is built (PR on branch `claude/my-binome-for-admins`, not
-deployed yet); part 2 is not started. Part 1 ships first: part 2 needs its access change and touches the same page.
+at the end and are built into the sections below. Part 1 is live (#85, script @96 / @97, 2026-10-18);
+part 2 is not started. Part 1 ships first: part 2 needs its access change and touches the same page.
 
 | # | Feature | Size |
 |---|---|---|
-| 1 | [My binome for admins](#1-my-binome-for-admins-in-a-binome) who are in a binome | script + UI, one PR. Built, awaiting review and deploy |
+| 1 | [My binome for admins](#1-my-binome-for-admins-in-a-binome) who are in a binome | script + UI, one PR. Live 2026-10-18 (#85) |
 | 2 | [Interview form in the dashboard](#2-interview-form-in-the-dashboard), editable after submit | script + UI, one PR (or script, then UI) |
 
 Each ships the usual way ([HANDOFF](../HANDOFF.md#how-changes-ship)): branch, `npm test`, PR, merge, `npm run deploy`,
