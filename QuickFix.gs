@@ -606,6 +606,17 @@ function locateAlert_(id, target) {
     }
     throw new Error('their answer is not in Registration Responses any more.');
   }
+  if (target === 'form' && ref.kind === 'log') {
+    // a dashboard form (key DASH|…) has its row in Dashboard Interviews, a Google Form one in Interview Responses
+    const dash = /^DASH\|/.test(ref.lk), sh = dash ? ss.getSheetByName(TAB.DASH) : responseSheet_('INT');
+    const data = sh && sh.getLastRow() > 1 ? sh.getDataRange().getValues() : [], H = data.length ? intHeaders_(data[0]) : null;
+    const kc = DASH_H.indexOf('Response Key'), get = (row, i) => (i >= 0 ? row[i] : '');
+    for (let k = 1; k < data.length; k++) {
+      const ts = get(data[k], H.ts);
+      if (dash ? String(data[k][kc]) === ref.lk : ts && responseKey_(ts, String(get(data[k], H.collected)).trim().toLowerCase(), k + 1) === ref.lk) return at(sh, k + 1, 1);
+    }
+    throw new Error('the form is not in ' + (dash ? TAB.DASH : TAB.INT_RESP) + ' any more.');
+  }
   if (target === 'iv') {
     const x = ref.kind === 'reg' ? ivByRk_(ctx, ref.rk) : ctx.ivByCode[ref.kind === 'iv' ? ref.code : String(r[A.Interviewee]).trim()];
     if (x) return at(ctx.iv.sh, ctx.iv.data.indexOf(x) + 2, 1);

@@ -700,7 +700,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   as(mem);
   assert.deepStrictEqual(m.call('webAccess'), { ok: true, role: 'member', email: mem, reason: '', owner: false, binome: b1.code, cover: false, v: 3, photo: PHOTO });
   let st = m.call('webState');
-  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'members', 'pending', 'role', 'status', 'tag', 'user', 'v'],
+  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'interviewForm', 'members', 'pending', 'role', 'status', 'tag', 'user', 'v'],
     'no settings, team, history, other binomes or admin lists');
   assert.strictEqual(st.edit, true);
   assert.deepStrictEqual([st.binome, st.role, st.fromSheet, st.candidates.map(c => c.Code).sort()], [b1.code, 'member', false, ivOf(b1.code)]);
@@ -1202,6 +1202,121 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   run('__lockBusy = true; busy_(); __lockBusy = false'); // the menu keeps its dialog (here: the console)
   assert(/Everything is up to date/.test(call('webRun', 'sync').messages[0]), 'the same action works once the lock is free');
 }
+// ---- the interview form in the dashboard (docs/interview-form.md part 2): who may read and save, and what a save checks ----
+{
+  const m = require('./seed')(), J = JSON.stringify;
+  ['importTeam', 'draft', 'lock'].forEach(a => m.call('webRun', a, { link: '' }));
+  m.addRegistrations(30, 3);
+  m.call('webRun', 'sync');
+  m.run('var __admin = Session; var __as = e => { Session = e === "admin@g.enp.edu.dz" ? __admin : { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }');
+  const as = e => m.run('__as(' + J(e) + ')');
+  const admin = m.call('webState');
+  const ivOf = code => admin.interviewees.filter(i => i.binome === code).map(i => i.code).sort();
+  const b1 = admin.binomes.find(b => b.people.length === 2 && ivOf(b.code).length >= 3), b2 = admin.binomes.find(b => b.code !== b1.code && ivOf(b.code).length);
+  const [mem, partner] = b1.people.map(p => p.email), fid = b1.fileUrl.split('/d/')[1], [c1, c2, c3] = ivOf(b1.code);
+  m.run('__acl = true');
+  m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'edit' });
+  m.call('webRun', 'sync'); // a warm slice
+  const Q = JSON.parse(m.run('JSON.stringify(INTERVIEW_QUESTIONS)')), H = JSON.parse(m.run('JSON.stringify(IA_H)'));
+  // every question of the sections in play answered: scores 7, the first option, a sentence
+  const full = (dept, extra) => {
+    const a = {};
+    Q.filter(q => ['first', 'final', dept].includes(q.section)).forEach(q => { a[q.id] = q.type === 'score' ? 7 : q.type === 'choice' ? q.options[0] : 'Calm and clear'; });
+    return Object.assign(a, { firstChoice: dept, finalDep: dept }, extra || {});
+  };
+  const get = code => m.call('webRun', 'interviewGet', { code }).result;
+  const save = (code, answers, seen) => m.call('webRun', 'interviewSave', { code, answers, seen }).result;
+  const tab = () => JSON.parse(m.run(`JSON.stringify((__files[${J(fid)}].obj.getSheetByName(IA_TAB) || { cells: null }).cells)`));
+  const cellOf = (row, id) => row[H.indexOf(Q.find(q => q.id === id).title)];
+
+  as(mem);
+  let g = get(c1);
+  assert.deepStrictEqual([g.code, g.binome, g.edit, g.answers, g.source, g.stamp, g.questions.length, g.sections.map(s => s.id)],
+    [c1, b1.code, true, null, '', '', Q.length, ['first', 'IT', 'COMM', 'HR', 'FLER', 'final']]);
+  assert(g.name && ['IT', 'COMM', 'FLER', 'HR'].includes(g.firstChoice), 'the candidate and their registration 1st choice: ' + J([g.name, g.firstChoice]));
+  assert(/[?&]entry\.1757583213=B\.\d+&entry\.1249446617=$/.test(g.formUrl), 'the prefilled Google Form: ' + g.formUrl);
+  assert.deepStrictEqual(Q.filter(q => q.branch).map(q => [q.id, q.options.join(',')]), [['firstChoice', 'IT,HR,FLER,COMM']]);
+
+  // refused before anything opens: no tab made
+  [[full('IT', { intro: '' }), /^Error: "Introduce yourself" needs an answer\.$/], [full('IT', { intro: 11 }), /score from 1 to 10/],
+    [full('IT', { intro: 7.5 }), /score from 1 to 10/], [full('COMM', { commTiktok: 'Maybe' }), /must be one of: Yes, No, No but I would create one/],
+    [full('IT', { firstChoice: 'MATH' }), /must be one of: IT, HR, FLER, COMM/], [full('HR', { hrPurpose: '' }), /needs an answer/],
+    [full('IT', { finalDep: '' }), /"Final Main Department Affectation" needs an answer/], [full('IT', { conclusion: 'x'.repeat(5001) }), /5,000 characters/],
+    ['all good', /^Error: Not allowed$/]].forEach(([a, re]) => assert.throws(() => save(c1, a, ''), re, String(re)));
+  assert.strictEqual(tab(), null, 'a refused save makes no tab');
+  assert.throws(() => save(ivOf(b2.code)[0], full('IT'), ''), /no longer in your binome/, 'a code of another binome');
+  assert.throws(() => get(ivOf(b2.code)[0]), /no longer in your binome/);
+
+  // a save: the tab comes after the main sheet, paragraphs stay text, the department sections left behind are not saved
+  const pv = m.call('webPulse');
+  const s1 = save(c1, full('IT', { commTiktok: 'Yes', hrLeadership: 9, conclusion: '=1+1, strong', anything: '' }), '');
+  assert.deepStrictEqual([s1.source, s1.submittedBy, s1.editedAt, s1.interview.source, s1.interview.by, /^\d+\|/.test(s1.stamp)],
+    ['Dashboard', mem, '', 'Dashboard', mem, true], J(s1));
+  assert.deepStrictEqual(JSON.parse(m.run(`JSON.stringify(__files[${J(fid)}].obj.getSheets().map(s => s.getName()))`)), [b1.code, 'Interview Answers']);
+  let row = tab()[1];
+  assert.deepStrictEqual([tab()[0].join('|'), row[0], row[1], row[3], cellOf(row, 'intro'), cellOf(row, 'itDesign'), cellOf(row, 'commTiktok'),
+    cellOf(row, 'hrLeadership'), cellOf(row, 'conclusion'), cellOf(row, 'anything')], [H.join('|'), c1, 'Dashboard', mem, 7, 7, '', '', '=1+1, strong', '']);
+  assert(!m.run('__formulas').some(f => /strong/.test(f)), 'the paragraph is written as text');
+  assert(m.run(`!!__cache[${J('dirty:' + b1.code)}]`), 'dirty: the next sync reads it');
+  // the partner sees it at their next poll; their save that started before it is refused
+  as(partner);
+  assert.strictEqual(m.call('webPulse'), pv + 1);
+  assert.deepStrictEqual(m.call('webState').candidates.find(c => c.Code === c1).interview, s1.interview, 'Submitted, from the patched slice');
+  assert.throws(() => save(c1, full('HR'), ''), /^Error: CONFLICT: .+ saved this form at /);
+  g = get(c1);
+  assert.deepStrictEqual([g.source, g.answers.intro, g.answers.conclusion, g.answers.firstChoice, g.stamp], ['Dashboard', 7, '=1+1, strong', 'IT', s1.stamp]);
+  // an edit with the stamp it loaded: Submitted kept, Edited At / By set; the first author's old stamp is now stale
+  const s2 = save(c1, full('HR', { hrLeadership: '' }), g.stamp);
+  assert.deepStrictEqual([s2.submittedBy, s2.editedBy, !!s2.editedAt, s2.interview.by, s2.answers.firstChoice, s2.answers.itDesign, s2.answers.hrLeadership],
+    [mem, partner, true, mem, 'HR', '', '']);
+  assert.strictEqual(tab().length, 2, 'the same row, rewritten');
+  as(mem);
+  assert.throws(() => save(c1, full('IT'), s1.stamp), /^Error: CONFLICT: /, 'even within the same second as the first save');
+  assert.strictEqual(save(c1, full('IT'), get(c1).stamp).editedBy, mem);
+  m.run('__docLockBusy = true');
+  assert.throws(() => save(c1, full('IT'), get(c1).stamp), /^Error: BUSY: /);
+  m.run('__docLockBusy = false');
+
+  // a Google Form row is read-only for everyone
+  m.run(`(function () { var t = __files[${J(fid)}].obj.getSheetByName(IA_TAB);
+    t.getRange(t.getLastRow() + 1, 1, 1, IA_H.length).setValues([answersCells_([${J(c2)}, 'Google Form', new Date(), 'someone@g.enp.edu.dz', '', ''], INTERVIEW_QUESTIONS.map(function () { return ''; }))]); })()`);
+  g = get(c2);
+  assert.deepStrictEqual([g.source, g.edit, g.submittedBy], ['Google Form', true, 'someone@g.enp.edu.dz']);
+  assert.throws(() => save(c2, full('IT'), g.stamp), /came from the Google Form: they can only be viewed here/);
+  // a row removed meanwhile is a conflict too, not a silent new row
+  assert.throws(() => save(c3, full('IT'), '1|x@g.enp.edu.dz'), /^Error: CONFLICT: These answers were removed/);
+  // a Google Form logged before the tab existed: no row, only its mark in Interview Form. Read-only too, also in the sheet slice
+  const mark = v => m.run(`(function () { var sh = __files[${J(fid)}].obj.sheets[0]; sh.getRange(findFileRow_(sh, ${J(c3)}), bfCol_('Interview Form')).setValue(${J(v)}); })()`);
+  mark('✅ 01/10 10:00');
+  assert.deepStrictEqual([get(c3).source, get(c3).answers], ['Google Form', null]);
+  assert.throws(() => save(c3, full('IT'), ''), /came from the Google Form/);
+  m.run('__cacheClear()');
+  assert.deepStrictEqual(m.call('webState').candidates.find(c => c.Code === c3).interview, { at: '', by: '', source: 'Google Form' }, 'from the sheet, without a tab row');
+  mark('');
+
+  // an admin in the binome: the same rules
+  as('admin@g.enp.edu.dz'); m.run('master.addEditor(' + J(partner) + ')'); as(partner);
+  assert.strictEqual(m.call('webAccess').role, 'admin');
+  assert.strictEqual(save(c3, full('FLER'), '').submittedBy, partner, 'an admin in a binome saves for their binome');
+  // view-only: reads, never saves
+  m.run(`__files[${J(fid)}].editors = __files[${J(fid)}].editors.filter(e => e !== ${J(partner)}); __files[${J(fid)}].viewers = [${J(partner)}]`);
+  assert.deepStrictEqual([get(c3).edit, get(c3).answers.firstChoice], [false, 'FLER']);
+  assert.throws(() => save(c3, full('FLER'), get(c3).stamp), /can view your binome sheet but not edit it/);
+  m.run(`__files[${J(fid)}].viewers = []; __files[${J(fid)}].editors.push(${J(partner)})`);
+  // a cover: their codes only, read-only
+  as('admin@g.enp.edu.dz');
+  m.call('webRun', 'addCover', { codes: c1, inEmail: 'stand.in@g.enp.edu.dz', inName: 'Stand In' });
+  m.run(`__files[${J(fid)}].viewers = ['stand.in@g.enp.edu.dz']`);
+  as('stand.in@g.enp.edu.dz');
+  assert.deepStrictEqual([get(c1).edit, get(c1).source], [false, 'Dashboard']);
+  assert.throws(() => get(c3), /^Error: Not allowed$/, 'a code they do not cover');
+  assert.throws(() => save(c1, full('IT'), get(c1).stamp), /^Error: Not allowed$/, 'a cover is read-only');
+  as('nobody@g.enp.edu.dz');
+  assert.throws(() => get(c1), /^Error: Not allowed$/);
+  as('admin@g.enp.edu.dz');
+  assert.throws(() => get(c1), /^Error: Not allowed$/, 'an admin in no binome reads the Master instead');
+}
+
 run('__as("")');
 assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
 assert.throws(() => call('webState'), /Not allowed/);

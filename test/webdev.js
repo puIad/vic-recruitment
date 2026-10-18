@@ -98,6 +98,24 @@ const memberEmail = busiest ? busiest.people[busiest.people.length - 1].email : 
 const closed = busiest ? s.call('webState').binomes.find(b => b.code !== busiest.code && b.status !== 'DRAFT' && b.people.length) : null;
 const closedEmail = closed ? closed.people[0].email : '';
 if (busiest) { s.run('__acl = true'); s.call('webRun', 'binomeAccess', { binome: busiest.code, level: 'edit' }); }
+// the interview form in the dashboard (docs/interview-form.md part 2): in the busiest binome one candidate filled from the
+// dashboard, one with the Google Form, the rest still to fill (interviewGet / interviewSave are served like any webRun action)
+if (busiest && busiest.people.length > 1) {
+  const as = e => s.run('__as(' + JSON.stringify(e) + ')');
+  // codes from their own sheet: the seeded hand edit moved one Interviewees row to this binome, not its sheet row
+  const codes = JSON.parse(s.run(`(function () { var c = loadCtx_(), sh = binomeSheet_(c, c.binByCode[${JSON.stringify(busiest.code)}]);
+    return JSON.stringify(sh.getRange(2, BF_COL, Math.max(bfLastRow_(sh) - 1, 1), 1).getValues().map(function (r) { return String(r[0]); })
+      .filter(function (k) { return k && c.ivByCode[k] && !c.ivByCode[k][c.iv.I['Interview Submitted At']]; })); })()`));
+  if (codes.length >= 2) {
+    const dept = codes[0].split('.')[0];
+    as(memberEmail);
+    s.run(`(function () { var a = {}; INTERVIEW_QUESTIONS.forEach(function (q) { if (['first', 'final', ${JSON.stringify(dept)}].indexOf(q.section) >= 0) a[q.id] = q.type === 'score' ? 7 : q.type === 'choice' ? q.options[0] : 'Clear, calm and curious; asked good questions about the department.'; });
+      a.firstChoice = ${JSON.stringify(dept)}; a.finalDep = ${JSON.stringify(dept)}; webRun('interviewSave', { code: ${JSON.stringify(codes[0])}, answers: a, seen: '' }); })()`);
+    as('admin@g.enp.edu.dz');
+    s.run(`master.getSheetByName('Interview Responses').cells.push([new Date(), ${JSON.stringify(memberEmail)}, ${JSON.stringify(busiest.code)}, ${JSON.stringify(codes[1])}, 8, ${JSON.stringify(codes[1].split('.')[0])}, 'COMM', 'Great energy'])`);
+    s.call('webRun', 'sync');
+  }
+}
 // an admin who is also in a binome (docs/interview-form.md part 1): My binome under People
 const adminMemberEmail = busiest && busiest.people.length > 1 ? busiest.people[0].email : '';
 if (adminMemberEmail) s.run('master.addEditor(' + JSON.stringify(adminMemberEmail) + ')');

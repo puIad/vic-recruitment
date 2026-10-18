@@ -12,9 +12,10 @@ import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useConfirm } from "@/lib/vic/confirm"
 import { SHEET_LABEL, STAGES, STATUS_COLOR, STATUS_LABEL, cellText, sheetTime } from "@/lib/vic/format"
-import { GOLD_KEYS, type Candidate, type GoldKey, type SheetKey } from "@/lib/vic/types"
+import { GOLD_KEYS, type Candidate, type GoldKey, type MemberState, type SheetKey } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { GoldField, GoldForm } from "./gold-fields"
+import { InterviewAction } from "./interview-action"
 
 const STATUS_ORDER: Record<string, number> = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
 
@@ -54,7 +55,7 @@ const textCol = (key: SheetKey, wide = false): ColumnDef<Candidate> => ({
   },
 })
 
-function columns(open: (code: string) => void, fromSheet: boolean): ColumnDef<Candidate>[] {
+function columns(open: (code: string) => void, fromSheet: boolean, member?: MemberState): ColumnDef<Candidate>[] {
   return [
     {
       id: "Code",
@@ -74,6 +75,17 @@ function columns(open: (code: string) => void, fromSheet: boolean): ColumnDef<Ca
       enableHiding: false,
       cell: ({ getValue }) => <span className="block max-w-[16rem] truncate font-medium">{(getValue() as string) || "—"}</span>,
     },
+    // the interview form, next to the name so it shows on a phone without scrolling the table
+    ...(member && member.interviewForm !== undefined
+      ? [
+          {
+            id: "Interview form",
+            accessorFn: (c: Candidate) => (c.interview ? (c.interview.source === "Dashboard" ? 2 : 1) : 0),
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Interview form" />,
+            cell: ({ row }) => <InterviewAction c={row.original} m={member} />,
+          } satisfies ColumnDef<Candidate>,
+        ]
+      : []),
     ...(fromSheet
       ? []
       : [
@@ -151,9 +163,10 @@ function columns(open: (code: string) => void, fromSheet: boolean): ColumnDef<Ca
 
 const HIDDEN = { Email: false, Phone: false, "1st Choice": false, "2nd Choice": false, Field: false, Year: false, Registered: false, Availability: false, Notes: false }
 
-export function CandidatesTable({ candidates, fromSheet, onOpen }: { candidates: Candidate[]; fromSheet: boolean; onOpen: (code: string) => void }) {
+/** member: the interview form column (absent on a script without it). */
+export function CandidatesTable({ candidates, fromSheet, onOpen, member }: { candidates: Candidate[]; fromSheet: boolean; onOpen: (code: string) => void; member?: MemberState }) {
   const [q, setQ] = React.useState("")
-  const cols = React.useMemo(() => columns(onOpen, fromSheet), [onOpen, fromSheet])
+  const cols = React.useMemo(() => columns(onOpen, fromSheet, member), [onOpen, fromSheet, member])
   const data = React.useMemo(() => {
     const s = q.trim().toLowerCase()
     return candidates.filter((c) => !s || `${cellText(c.Code)} ${fullName(c)} ${cellText(c.Email)}`.toLowerCase().includes(s))
@@ -228,8 +241,9 @@ function Value({ k, v }: { k: SheetKey; v: string }) {
 
 const isGold = (k: SheetKey): k is GoldKey => (GOLD_KEYS as readonly string[]).includes(k)
 
-/** editable: a member (not a cover) fills the binome's own columns here; they are written into the binome sheet. */
-export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClose }: { candidate: Candidate | null; candidates: Candidate[]; fileUrl: string; editable: boolean; onClose: () => void }) {
+/** editable: a member (not a cover) fills the binome's own columns here; they are written into the binome sheet. member: the
+ *  interview form's button at the top. */
+export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClose, member }: { candidate: Candidate | null; candidates: Candidate[]; fileUrl: string; editable: boolean; onClose: () => void; member?: MemberState }) {
   // keep the last candidate while the sheet slides out, but only while they are still in this binome's slice:
   // someone moved away (or a cover that ended) must not linger on screen or in memory
   const [shown, setShown] = React.useState(candidate)
@@ -277,6 +291,12 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
               </SheetDescription>
             </SheetHeader>
             <div className="space-y-6 p-6">
+              {member && member.interviewForm !== undefined && (
+                <section aria-label="Interview form" className="rounded-xl border border-vic-aqua/50 bg-accent/30 p-4">
+                  <h3 className="mb-3 text-sm font-bold">Interview form</h3>
+                  <InterviewAction c={c} m={member} wide />
+                </section>
+              )}
               {GROUPS.map((g, gi) => {
                 const edits = editable && gi === 0
                 const dl = (

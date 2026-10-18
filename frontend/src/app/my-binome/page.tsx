@@ -13,18 +13,10 @@ import { REASON, useMemberView } from "@/lib/vic/pending"
 import type { Candidate, FieldEntry, MemberAlert, MemberState } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { CandidateSheet, CandidatesTable, fullName } from "./components/candidates"
+import { Note } from "./components/note"
 
 /** A binome's candidates never wait for a binome: the pipeline starts at Assigned. */
 const MEMBER_STAGES = STAGES.filter((s) => s.key !== "UNASSIGNED")
-
-function Note({ icon: Icon, tone, children }: { icon: React.ElementType; tone: "info" | "warning"; children: React.ReactNode }) {
-  return (
-    <div role="note" className={cn("flex gap-3 rounded-2xl border p-4 text-sm leading-relaxed", tone === "info" ? "border-info/20 bg-info-soft" : "border-vic-orange/40 bg-warning-soft")}>
-      <Icon className={cn("mt-0.5 size-4 shrink-0", tone === "info" ? "text-info" : "text-warning")} />
-      <div className="min-w-0 text-foreground/90">{children}</div>
-    </div>
-  )
-}
 
 /** Changes that could not reach the sheet because their candidate left the binome: what was typed, so it isn't lost (only OK). */
 function GoneNotice({ gone }: { gone: FieldEntry[] }) {
@@ -323,10 +315,10 @@ export default function MyBinomePage() {
             </p>
           )}
         </div>
-        <CandidatesTable candidates={m.candidates} fromSheet={m.fromSheet} onOpen={openCode} />
+        <CandidatesTable candidates={m.candidates} fromSheet={m.fromSheet} onOpen={openCode} member={m} />
       </section>
 
-      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} editable={m.edit && !m.cover} onClose={() => setOpen(null)} />
+      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} editable={m.edit && !m.cover} onClose={() => setOpen(null)} member={m} />
     </BaseLayout>
   )
 }

@@ -115,6 +115,8 @@ function ensureTabs_(ss) {
   ]);
   mk(TAB.CHANGES, MC_H);
   mk(TAB.TRACKER, null);
+  // the dashboard's interview forms (the sync also makes it on the first one): its header only when the tab is missing
+  if (!ss.getSheetByName(TAB.DASH)) mk(TAB.DASH, DASH_H);
 }
 
 function linkForms_(ss) {
@@ -183,7 +185,7 @@ function cleanupAndOrder_(ss) {
   ss.getSheets().forEach(sh => {
     if (/^(Sheet1|Feuille 1|Feuille1)$/.test(sh.getName()) && sh.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(sh);
   });
-  [TAB.TRACKER, TAB.ALERTS, TAB.IV, TAB.BINOMES, TAB.CHANGES, TAB.TEAM, TAB.LOG, TAB.SETTINGS, TAB.REG_RESP, TAB.INT_RESP].forEach((name, i) => {
+  [TAB.TRACKER, TAB.ALERTS, TAB.IV, TAB.BINOMES, TAB.CHANGES, TAB.TEAM, TAB.LOG, TAB.SETTINGS, TAB.REG_RESP, TAB.INT_RESP, TAB.DASH].forEach((name, i) => {
     const sh = ss.getSheetByName(name);
     if (sh) { ss.setActiveSheet(sh); ss.moveActiveSheet(i + 1); }
   });
@@ -194,7 +196,8 @@ function cleanupAndOrder_(ss) {
 
 // Tab colours: one Hogwarts colour per tab family
 const TAB_COLOR = { Tracker: '#D3A625', Alerts: '#740001', Interviewees: '#0E1A40', Binomes: '#1A472A', 'Member Changes': '#946B2D',
-  Team: '#ECB939', 'Interview Log': '#5D5D5D', Settings: '#372E29', 'Registration Responses': '#B08D57', 'Interview Responses': '#B08D57' };
+  Team: '#ECB939', 'Interview Log': '#5D5D5D', Settings: '#372E29', 'Registration Responses': '#B08D57', 'Interview Responses': '#B08D57',
+  'Dashboard Interviews': '#B08D57' };
 
 /** Montserrat, a scarlet-and-gold header row and parchment bands on one tab. Only formats: safe to re-run. */
 function styleTab_(sh, nCols) {
@@ -214,7 +217,7 @@ function styleTab_(sh, nCols) {
 /** Every tab of the Master except the Tracker (rebuilt in the theme by buildTracker_ whenever it changes). */
 function styleMaster_(ss) {
   const widths = { [TAB.IV]: IV_H.length, [TAB.BINOMES]: BIN_H.length, [TAB.TEAM]: TEAM_H.length, [TAB.LOG]: LOG_H.length,
-    [TAB.ALERTS]: ALERT_H.length, [TAB.CHANGES]: MC_H.length, [TAB.SETTINGS]: 3 };
+    [TAB.ALERTS]: ALERT_H.length, [TAB.CHANGES]: MC_H.length, [TAB.SETTINGS]: 3, [TAB.DASH]: DASH_H.length };
   ss.getSheets().forEach(sh => {
     if (sh.getName() === TAB.TRACKER) return;
     try { styleTab_(sh, widths[sh.getName()]); } catch (e) { console.warn('Style of ' + sh.getName() + ': ' + e); }

@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { toast } from "sonner"
-import { API_VERSION, type Access, type Alert, type GoldKey, type MemberSetOut, type MemberState, type PendingChange, type PendingRec, type RunOut, type WebState } from "./types"
+import { API_VERSION, type Access, type Alert, type CandidateInterview, type GoldKey, type MemberSetOut, type MemberState, type PendingChange, type PendingRec, type RunOut, type WebState } from "./types"
 import { ApiError, call, callFull, hooks, rateLimited } from "./api"
 import { startNotice } from "./notice"
 
@@ -55,6 +55,8 @@ interface VicStore {
   memberSet: (code: string, fields: { field: GoldKey; value: unknown; seen: unknown }[]) => Promise<MemberSetResult[]>
   /** Put a value the script reported into the member's slice (a save, or "Keep theirs" after a conflict). */
   patchMember: (code: string, field: GoldKey, value: string | number | boolean) => void
+  /** The interview form a save just wrote, into the member's slice (My binome shows Edit answers at once). */
+  patchInterview: (code: string, interview: CandidateInterview) => void
   setModals: (delta: number) => void
   /** the owner's switch (docs/plans.md › Slice 2): admin saves become pending changes */
   pendingOn: boolean
@@ -288,6 +290,12 @@ export const useVic = create<VicStore>((set, get) => ({
       cur.member
         ? { member: { ...cur.member, candidates: cur.member.candidates.map((c) => (String(c.Code) === code ? { ...c, [field]: value } : c)) } }
         : cur
+    )
+  },
+
+  patchInterview(code, interview) {
+    set((cur) =>
+      cur.member ? { member: { ...cur.member, candidates: cur.member.candidates.map((c) => (String(c.Code) === code ? { ...c, interview } : c)) } } : cur
     )
   },
 

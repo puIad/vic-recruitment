@@ -70,11 +70,27 @@ function moveInterviewee_(ctx, code, binomeText) {
     throw new Error('Nothing moved: could not write the sheet of ' + target.code + ' (' + e.message + ').');
   }
   r[I.Status] = statusOf_(ctx, r);
+  let kept = '';
+  if (old) try { moveAnswers_(ctx, old, target, code); } catch (e) { kept = '. Its interview answers stayed in the sheet of ' + old.code + ' (' + e.message + ').'; }
   (ctx.mailNew[target.code] = ctx.mailNew[target.code] || []).push(r);
   indexCtx_(ctx);
   ctx.alerts.add({ severity: 'INFO', type: 'REASSIGNED', status: 'AUTO-FIXED', code: code, binome: target.code,
-    msg: code + ' moved from ' + (old ? old.code : 'nobody') + ' to ' + target.code + ' by ' + Session.getActiveUser().getEmail(), key: '' });
-  return code + ' moved to ' + target.code;
+    msg: code + ' moved from ' + (old ? old.code : 'nobody') + ' to ' + target.code + ' by ' + Session.getActiveUser().getEmail() + kept, key: '' });
+  return code + ' moved to ' + target.code + kept;
+}
+
+/** code's Interview Answers row goes along to the new binome's sheet, as its gold cells do: written there first, then removed from
+ *  the old tab (under the members' lock, as a row deletion in their sheet). */
+function moveAnswers_(ctx, from, to, code) {
+  const a = binomeSheet_(ctx, from), tab = a ? a.getParent().getSheetByName(IA_TAB) : null;
+  if (!tab) return;
+  withMemberLock_(from, () => {
+    const src = answersRow_(tab, code);
+    if (!src) return;
+    const dest = answersTab_(binomeSheet_(ctx, to).getParent(), true), have = answersRow_(dest, code);
+    dest.getRange(have ? have.row : dest.getLastRow() + 1, 1, 1, IA_H.length).setValues([answersCells_(src.v.slice(0, 6), src.v.slice(6))]);
+    tab.deleteRow(src.row);
+  });
 }
 
 function resolveSelectedAlerts() {

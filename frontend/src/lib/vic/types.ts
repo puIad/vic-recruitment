@@ -270,7 +270,17 @@ export interface WebState {
 
 /** A candidate as their binome sheet holds it (WebApp.gs candidate_: the BF_H keys, plus Status from the Master;
  *  dates as dd/MM/yyyy, Interview Time HH:mm, Registered dd/MM/yyyy HH:mm). */
-export type Candidate = Record<SheetKey, string | number | boolean> & { Status: Status | "" }
+export type Candidate = Record<SheetKey, string | number | boolean> & {
+  Status: Status | ""
+  /** the interview form that counts, once one is in (absent on an older script): Dashboard = edited from My binome,
+   *  Google Form = only viewed there. at dd/MM HH:mm, by = who sent it first (an email). */
+  interview?: CandidateInterview
+}
+export interface CandidateInterview {
+  at: string
+  by: string
+  source: "Dashboard" | "Google Form"
+}
 
 /** The binome sheet's columns, in its order (Config.gs BF_H); the sheet's own header labels are in SHEET_LABEL. */
 export const SHEET_KEYS = [
@@ -325,7 +335,51 @@ export interface MemberState {
   user: string
   /** the owner's switch: My binome saves become pending changes (docs/plans.md › Slice 3); absent on an older script = off */
   pending?: boolean
+  /** the Google Form prefilled with the binome code, ending in the interviewee code's entry= (append the code); "" while the
+   *  script doesn't know its URL yet. Absent on a script without the dashboard form: the interview buttons stay hidden. */
+  interviewForm?: string
 }
+
+/** One question of Interview Form 2026 as Config.gs INTERVIEW_QUESTIONS holds it (the page draws the form from these). */
+export interface InterviewQuestion {
+  id: string
+  section: string
+  title: string
+  type: "score" | "choice" | "text"
+  options: string[] | null
+  required: boolean
+  help: string
+  /** the 1st department choice: its answer picks the department section */
+  branch: boolean
+}
+export interface InterviewSection {
+  id: string
+  title: string
+  help?: string
+}
+export type InterviewAnswer = string | number
+/** webRun interviewGet: one candidate's interview form. answers null = none yet. stamp = the `seen` a save sends back. */
+export interface InterviewData {
+  code: string
+  binome: string
+  name: string
+  /** from their registration */
+  firstChoice: string
+  /** may save here: edit access, not a cover (a Google Form row stays read-only anyway) */
+  edit: boolean
+  sections: InterviewSection[]
+  questions: InterviewQuestion[]
+  formUrl: string
+  answers: Record<string, InterviewAnswer> | null
+  source: "" | "Dashboard" | "Google Form"
+  submittedAt?: string
+  submittedBy?: string
+  editedAt?: string
+  editedBy?: string
+  stamp: string
+}
+/** webRun interviewSave: the row as saved, and the candidate's interview as the slice now holds it. */
+export type InterviewSaved = Omit<InterviewData, "binome" | "name" | "firstChoice" | "edit" | "sections" | "questions" | "formUrl"> & { interview: CandidateInterview }
 
 /** What webRun returns: messages for the activity log and toast, plus an action-specific result. */
 export interface RunOut<R = unknown> {
