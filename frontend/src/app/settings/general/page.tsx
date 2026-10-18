@@ -33,6 +33,8 @@ function HrShare({ weight, total }: { weight: number; total: boolean }) {
   // shortcut: tags matched as the dashboard writes them (IT & HR, HR); a hand-typed alias like RH is missed here, not in routing
   const words = (b: Binome) => b.tag.toUpperCase().split(/[^A-Z]+/)
   const live = (binomes ?? []).filter((b) => b.status === "ACTIVE" && words(b).includes("HR") && !words(b).includes("ALL"))
+  // board (ALL) binomes also take HR candidates but are left out of the numbers: none this year, so the card only says so
+  const board = (binomes ?? []).filter((b) => b.status === "ACTIVE" && words(b).includes("ALL")).length
   if (!binomes || binomes.some((b) => b.load === undefined)) return null // an older script: no loads to show
   const hrOnly = live.filter((b) => b.tag.trim().toUpperCase() === "HR")
   const mixed = live.filter((b) => b.tag.trim().toUpperCase() !== "HR")
@@ -92,6 +94,7 @@ function HrShare({ weight, total }: { weight: number; total: boolean }) {
             </ul>
             <p className="text-xs text-muted-foreground">
               Load right now, from the last sync. A new weight applies from the next candidate: nobody already assigned moves.
+              {board > 0 && ` Not shown: ${board} board (ALL) binome${board > 1 ? "s" : ""}, which also take HR candidates, so the lightest of them can come before this target.`}
             </p>
           </>
         )}
