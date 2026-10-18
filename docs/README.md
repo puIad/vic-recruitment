@@ -10,6 +10,7 @@ work on the project). Open these only when the task needs them:
 | [reference.md](reference.md) | you need an ID, URL, script property, env var or setting |
 | [frontend.md](frontend.md) | touching `frontend/` (the dashboard UI): decisions, where each action lives, Reset, placeholders, what is open |
 | [launch-features.md](launch-features.md) | building pairing with experience, application screening or the department change (the owner's requests of 2026-10-15) |
+| [interview-form.md](interview-form.md) | building My binome for admins or the interview form in the dashboard (the owner's requests of 2026-10-18) |
 | [plans.md](plans.md) | building Schedule or Analytics (the owner's plan of 2026-10-04); Binome desk dropped; the binome-view idea |
 | [vercel.md](vercel.md) | touching `web/` (sign-in, the `/api/run` proxy, sessions), the Vercel project settings or the Google Cloud project |
 | [testing.md](testing.md) | testing: automated suites, local previews, the manual test plan on the live Master |
