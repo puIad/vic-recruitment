@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const ctx = vm.createContext({ console });
 require('./gs')(ctx);
-vm.runInContext('globalThis.__x = {screenApplication,namesSwapped,parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,makePair,draftMix,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,normPhone,bestNameMatch,unpairedMembers};', ctx);
+vm.runInContext('globalThis.__x = {screenApplication,namesSwapped,parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,makePair,draftMix,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,tagFor,normPhone,bestNameMatch,unpairedMembers};', ctx);
 const X = ctx.__x;
 const D = iso => vm.runInContext('new Date("' + iso + '")', ctx);
 let pass = 0; const t = (name, fn) => { try { fn(); pass++; } catch (e) { console.log('FAIL', name, '\n ', e.message); process.exitCode = 1; } };
@@ -23,6 +23,9 @@ t('tags', () => {
   assert.deepStrictEqual(Array.from(X.tagDepts('IT & HR')), ['IT', 'HR']);
   assert.strictEqual(X.tagDepts('ALL').length, 4);
   assert.deepStrictEqual(Array.from(X.tagDepts('FLER & HR')), ['FLER', 'HR']);
+  assert.deepStrictEqual([['HR', 'IT'], ['COMM', 'IT'], ['HR'], ['HR', 'FLER', 'COMM', 'IT'], [], ['XX']].map(d => X.tagFor(d)),
+    ['IT & HR', 'IT & COMM', 'HR', 'IT & COMM & FLER & HR', '', '']);
+  assert.deepStrictEqual(Array.from(X.tagDepts(X.tagFor(['HR', 'FLER']))), ['FLER', 'HR'], 'tagDepts reads tagFor back');
 });
 
 const binomes = [

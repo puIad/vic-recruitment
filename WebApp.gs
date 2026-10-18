@@ -620,6 +620,7 @@ function webRun(action, args) {
       case 'changeMember': result = changeMemberCore_(args); break;
       case 'swapMembers': result = swapMembersCore_(args); break;
       case 'newBinome': result = newBinomeCore_(args); break;
+      case 'binomeTag': result = binomeTagCore_(args); break;
       case 'addCover': result = addCoverCore_(args); break;
       case 'endCover': result = endCoverCore_(args); break;
       case 'quick': result = quickCore_(String(args.op || ''), args); break;

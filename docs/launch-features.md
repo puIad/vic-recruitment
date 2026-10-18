@@ -2,7 +2,8 @@
 
 The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); screening (section 2)
 is live since 2026-10-17 (#33, @75/@76) but stays off until the owner links the members sheet (its Rollout); the
-department change and the emails (section 4, asked 2026-10-17) are not built yet. Unlike [plans.md](plans.md), 1, 2 and 4 are needed
+emails (section 4, asked 2026-10-17) are live since 2026-10-17 (#45); the department change (section 3) is built
+(2026-10-18) and waits for the owner's deploy. Unlike [plans.md](plans.md), 1, 2 and 4 are needed
 before launch.
 
 | # | Feature | Needed by | Size |
@@ -333,11 +334,13 @@ change the Tag when the members no longer fit it.
 
 ### The action
 
+Built 2026-10-18 (script and UI in one PR); live once the owner deploys the script, then Vercel.
+
 Binomes › ⋯ › **Change department…**, a dialog like Sheet & dashboard access:
 
-- "Receives candidates for": IT, COMM, FLER and HR checkboxes, or **Any department (ALL)**. The script builds the
-  tag the usual way: other departments in order, then HR (`IT & HR`, `COMM & HR`, `HR`, `IT & COMM`). ALL stays a
-  separate choice because `ALL_BINOME_WEIGHT` applies to it.
+- "Receives candidates for": IT, COMM, FLER and HR checkboxes. The script builds the tag the usual way: other
+  departments in order, then HR (`IT & HR`, `COMM & HR`, `HR`, `IT & COMM`). No ALL choice (owner, 2026-10-18: there
+  are no ALL binomes this year); an ALL tag is still possible by a hand edit of the Tag cell.
 - Preview (dry run): old and new tag; a warning when it doesn't fit the members' Pair As (`tagWarnings_`); the
   candidates it already has that the new tag no longer covers. They stay with the binome, and the dialog links each
   one to Move.
@@ -345,18 +348,24 @@ Binomes › ⋯ › **Change department…**, a dialog like Sheet & dashboard ac
   sheet's house (banner, header row, gold header cells, code column), a Member Changes row of type TAG, an INFO
   history line, the Tracker, `commitBase_` so no manual-edit alert follows, and the snapshot republished.
 - The colour lines of `formatBinomeSheet_` move into a shared `paintHouse_(sh, b)` used by both.
-- Works on DRAFT binomes (the cell only, no sheet yet), ACTIVE and PAUSED ones. Not open to members.
+- Works on DRAFT binomes (the cell only: no sheet yet, no history row), ACTIVE and PAUSED ones. Not open to members.
 - No mail to the binome: their sheet shows the new house.
+- A Tag still typed by hand in the Binomes tab: its MEDIUM alert now has **Apply** next to Revert and Accept (owner,
+  2026-10-18). Apply keeps the typed tag as it is (an `ALL` stays `ALL`) and does the rest as the dialog would:
+  repaint, TAG history row (reason `manual edit applied`), INFO line.
+- The TAG row in Member Changes: Out Name = the old tag, In Name = the new one, Interviewees = the ones in progress
+  it kept that the new tag doesn't cover. The INFO alert is `TAG_CHANGED`.
 
 ### Changes
 
 | Where | What |
 |---|---|
 | Rules.gs | `tagFor(depts)`, the tag from a set of departments, with a unit test |
-| Members.gs | `binomeTagCore_(args)` with a dry run; `tagWarnings_` points to the dashboard instead of the Binomes tab |
-| BinomeFiles.gs | `paintHouse_(sh, b)`, shared by `formatBinomeSheet_` and the action |
+| Members.gs | `binomeTagCore_(args)` with a dry run (`tagPlan_`, `applyTag_`); `tagWarnings_` points to the dashboard instead of the Binomes tab |
+| BinomeFiles.gs | `paintHouse_(sh, b, members)`, shared by `formatBinomeSheet_` and the action |
+| Integrity.gs | Apply on a hand-edited Tag (`applyEdit_` → `tagPlan_` / `applyTag_`) |
 | WebApp.gs | `webRun('binomeTag', {binome, depts, dryRun})` |
-| frontend | `app/binomes/components/tag-dialog.tsx`, the menu item, `actions.tsx` (preview, then confirm); the history page shows TAG rows |
+| frontend | `app/binomes/components/tag-dialog.tsx` (ticks, a live dry run, Move… on each interviewee kept, Apply) and the menu item; the history page shows TAG rows under a Department filter; `TAG_CHANGED` labelled |
 | tests | the tag written, the sheet repainted (mock), the history row, no manual-edit alert on the next sync, the next registration for the new department routed there; refused for an unknown binome, an empty choice, a member's account, a sheet the admin can't edit, a busy lock; the dry run writes nothing |
 
 ## 4. Emails: one template, and a confirmation to registrants
@@ -488,5 +497,7 @@ its own inline Arial HTML:
 | 11 | Names typed the wrong way round? | Swap them automatically, note `NAMES_SWAPPED` in Flags |
 | 12 | The members sheet's link | Set later in Settings › Screening; Screening stays off until then |
 | 13 | 2025 results for the calibration | Not kept: calibrated on the applications alone |
+| 14 | Change department: offer ALL? (2026-10-18) | No: IT, COMM, FLER, HR only. ALL by a hand edit if ever needed |
+| 15 | A Tag edited by hand: Apply too? (2026-10-18) | Yes: Apply keeps the typed tag, repaints the sheet and logs it, like the dialog |
 
 Still to get from the owner: the members sheet's link, after the deploy.

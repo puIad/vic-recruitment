@@ -213,11 +213,12 @@ export interface SettingRow {
   kind: SettingKind
 }
 
-/** One row of the Member Changes tab. A swap is two PERMANENT rows; a cover is TEMPORARY with the covered codes. */
+/** One row of the Member Changes tab. A swap is two PERMANENT rows; a cover is TEMPORARY with the covered codes; a department
+ *  change is TAG, out = the old tag, inn = the new one, codes = the interviewees it kept that the new tag doesn't cover. */
 export interface HistoryRow {
   at: string
   by: string
-  type: "PERMANENT" | "TEMPORARY" | string
+  type: "PERMANENT" | "TEMPORARY" | "TAG" | string
   binome: string
   out: string
   inn: string
@@ -373,6 +374,17 @@ export interface NewBinomeCheck {
   binome: string
   tag: string
   members: { name: string; email: string }[]
+}
+
+/** webRun binomeTag: the departments a binome receives. Interviewees in progress the new tag no longer covers stay (stranded). */
+export interface BinomeTagCheck {
+  errors: string[]
+  warnings: string[]
+  done?: string[]
+  binome: string
+  from: string
+  to: string
+  stranded: { code: string; name: string; dept: string }[]
 }
 
 export interface CoverCheck {

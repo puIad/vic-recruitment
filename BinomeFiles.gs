@@ -140,20 +140,26 @@ function setBinomeBanner_(sh, b, members) {
     .setFontSize(9).setHorizontalAlignment('center').setWrap(true);
 }
 
+/** The house colours of a binome sheet, from its tag: banner, header row, gold header cells, code column. Also after a tag change. */
+function paintHouse_(sh, b, members) {
+  const h = houseOf_(b.tag);
+  setBinomeBanner_(sh, b, members);
+  sh.getRange(1, BF_COL, 1, BF_H.length).setBackground(h.main).setFontColor('#FFFFFF');
+  BF_EDITABLE.forEach(k => sh.getRange(1, bfCol_(k)).setBackground(h.accent).setFontColor(h.main));
+  sh.getRange(2, bfCol_('Code'), BF_ROWS - 1, 1).setFontColor(h.main);
+}
+
 /** Lay out a blank sheet as a binome sheet: banner, header, formats, validations, colours and protection. */
 function formatBinomeSheet_(sh, b, members) {
-  const h = houseOf_(b.tag), cols = BF_COL - 1 + BF_H.length, F = idx_(BF_H);
+  const cols = BF_COL - 1 + BF_H.length, F = idx_(BF_H);
   if (sh.getMaxRows() < BF_ROWS) sh.insertRowsAfter(sh.getMaxRows(), BF_ROWS - sh.getMaxRows());
   if (sh.getMaxColumns() < cols) sh.insertColumnsAfter(sh.getMaxColumns(), cols - sh.getMaxColumns());
   sh.setName(b.code);
   sh.setHiddenGridlines(true);
   sh.getRange(1, 1, BF_ROWS, cols).setFontFamily(THEME.font).setFontSize(10).setFontColor(THEME.ink).setVerticalAlignment('middle');
-  setBinomeBanner_(sh, b, members);
   sh.setColumnWidth(1, 150);
 
-  sh.getRange(1, BF_COL, 1, BF_H.length).setValues([BF_HEAD]).setBackground(h.main).setFontColor('#FFFFFF').setFontWeight('bold')
-    .setWrap(true).setHorizontalAlignment('center');
-  BF_EDITABLE.forEach(k => sh.getRange(1, bfCol_(k)).setBackground(h.accent).setFontColor(h.main));
+  sh.getRange(1, BF_COL, 1, BF_H.length).setValues([BF_HEAD]).setFontWeight('bold').setWrap(true).setHorizontalAlignment('center');
   sh.setRowHeight(1, 46);
   sh.setFrozenRows(1); sh.setFrozenColumns(BF_COL);
 
@@ -162,7 +168,8 @@ function formatBinomeSheet_(sh, b, members) {
   body.applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY, false, false).setFirstRowColor(THEME.band1).setSecondRowColor(THEME.band2);
   body.setBorder(null, null, true, null, true, true, THEME.line, SpreadsheetApp.BorderStyle.SOLID).setWrap(false);
   const col = k => sh.getRange(2, bfCol_(k), BF_ROWS - 1, 1);
-  col('Code').setFontWeight('bold').setHorizontalAlignment('center').setFontColor(h.main);
+  col('Code').setFontWeight('bold').setHorizontalAlignment('center');
+  paintHouse_(sh, b, members);
   ['Year', '1st Choice', '2nd Choice', 'Contacted', 'Interview Date', 'Interview Time', 'Interview Done', 'Rating', 'Final Affectation']
     .forEach(k => col(k).setHorizontalAlignment('center'));
   col('Registered').setNumberFormat('dd/mm/yyyy HH:mm');

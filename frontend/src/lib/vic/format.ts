@@ -65,6 +65,7 @@ const ALERT_LABELS: Record<string, string> = {
   FILE_ERROR: "Sheet or sharing error",
   MEMBER_CHANGED: "Member changed",
   COVER_ADDED: "Cover started",
+  TAG_CHANGED: "Department changed",
   REASSIGNED: "Interviewee moved",
   MANUAL_EDIT: "Edited by hand",
   ODD_VALUE: "Odd value in a sheet",

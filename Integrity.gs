@@ -137,7 +137,8 @@ function binEdits_(ctx, p) {
       '. Its sheet, sharing and the Member Changes history were not updated. Apply does it properly (as Change members would); Revert puts the old member back.');
   });
   if (differs('Tag')) flag('Tag', 'MEDIUM', 'Tag of ' + code + ' changed by hand: "' + prev.Tag + '" → "' + cur.Tag +
-    '". It decides which interviewees ' + code + ' receives from now on. Accept if that was intended, else Revert.');
+    '". It decides which interviewees ' + code + ' receives from now on. Apply keeps it and repaints its sheet in the new house ' +
+    '(as Change department would); Accept keeps it as is; Revert puts the old tag back.');
   if (differs('Status')) {
     if (lockedStatus_(prev.Status) && lockedStatus_(cur.Status)) {
       ctx.alerts.add({ severity: 'INFO', type: 'MANUAL_EDIT', status: 'AUTO-FIXED', code: '', binome: code, key: '',
@@ -234,7 +235,7 @@ function commitBase_(ctx) {
 function editFixes_(key, base) {
   const k = parseEditKey_(key);
   if (!k || k.kind === 'team' || k.group === 'dup' || !base || !base[k.kind] || !base[k.kind][k.id]) return [];
-  const apply = (k.kind === 'bin' && /^seat[12]$/.test(k.group)) || (k.kind === 'iv' && (k.group === 'Binome' || k.group === 'Person'));
+  const apply = (k.kind === 'bin' && /^(seat[12]|Tag)$/.test(k.group)) || (k.kind === 'iv' && (k.group === 'Binome' || k.group === 'Person'));
   return (apply ? ['apply'] : []).concat(['revert', 'accept']);
 }
 
@@ -318,6 +319,14 @@ function applyEdit_(ctx, p, group) {
       throw new Error(plan.errors.join(' '));
     }
     return applyMemberPlans_(ctx, [plan], 'manual edit applied').join('; ');
+  }
+  if (p.kind === 'bin' && group === 'Tag') {
+    const B = ctx.bin.I, want = String(p.row[B.Tag]).trim(); // kept as typed: an ALL typed by hand stays ALL
+    p.row[B.Tag] = p.prev.Tag; // back to the old tag in memory, then do the change the way Change department does
+    indexCtx_(ctx);
+    const plan = tagPlan_(ctx, ctx.binomes.filter(b => b.row === p.row)[0], want);
+    if (plan.errors.length) { p.row[B.Tag] = want; indexCtx_(ctx); throw new Error(plan.errors.join(' ')); }
+    return applyTag_(ctx, plan, 'manual edit applied');
   }
   if (p.kind === 'iv' && group === 'Binome') {
     const I = ctx.iv.I, target = String(p.row[I.Binome]).trim();

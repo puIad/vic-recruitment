@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowRightLeft, ExternalLink, KeyRound, MoveRight, MoreHorizontal, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
+import { ArrowRightLeft, Building2, ExternalLink, KeyRound, MoveRight, MoreHorizontal, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { OpenChip } from "@/components/open-chip"
@@ -23,14 +23,15 @@ import { cn } from "@/lib/utils"
 import { MemberName, MemberNames } from "@/components/member-name"
 import { ACCESS_BADGE, AccessDialog } from "./components/access-dialog"
 import { PairingPanel } from "./components/pairing-panel"
+import { TagDialog } from "./components/tag-dialog"
 
 const NONE: Binome[] = []
 
-/** The access dialog's binome, shared by the table's row menus and the page. */
-const AccessCtx = React.createContext<(b: Binome) => void>(() => {})
+/** The row menus open the page's dialogs (access, department) on their binome. */
+const DialogCtx = React.createContext<{ access: (b: Binome) => void; tag: (b: Binome) => void }>({ access: () => {}, tag: () => {} })
 
 function RowActions({ b }: { b: Binome }) {
-  const openAccess = React.useContext(AccessCtx)
+  const open = React.useContext(DialogCtx)
   const openSheet = useUi((s) => s.openMemberSheet)
   const openMove = useUi((s) => s.openMoveDialog)
   const locked = b.status !== "DRAFT"
@@ -49,8 +50,11 @@ function RowActions({ b }: { b: Binome }) {
             </a>
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem disabled={!locked || !b.fileUrl} className="cursor-pointer" onSelect={() => openAccess(b)}>
+        <DropdownMenuItem disabled={!locked || !b.fileUrl} className="cursor-pointer" onSelect={() => open.access(b)}>
           <KeyRound /> Sheet &amp; dashboard access…
+        </DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer" onSelect={() => open.tag(b)}>
+          <Building2 /> Change department…
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={!locked} className="cursor-pointer" onSelect={() => openSheet({ mode: "replace", binome: b.code })}>
@@ -244,11 +248,13 @@ export default function BinomesPage() {
 
   const locked = binomes.filter((b) => b.status !== "DRAFT").length
   const [accessOf, setAccessOf] = React.useState<string | null>(null)
+  const [tagOf, setTagOf] = React.useState<string | null>(null)
   const accessBinome = binomes.find((b) => b.code === accessOf) ?? null
-  const openAccess = React.useCallback((b: Binome) => setAccessOf(b.code), [])
+  const tagBinome = binomes.find((b) => b.code === tagOf) ?? null
+  const dialogs = React.useMemo(() => ({ access: (b: Binome) => setAccessOf(b.code), tag: (b: Binome) => setTagOf(b.code) }), [])
 
   return (
-    <AccessCtx.Provider value={openAccess}>
+    <DialogCtx.Provider value={dialogs}>
     <BaseLayout
       title="Binomes"
       description={loading ? "Loading…" : `${binomes.length} pairs of interviewers, ${locked} locked. Each locked binome has its own sheet.`}
@@ -302,7 +308,8 @@ export default function BinomesPage() {
       />
       <CoversCard list={covers} />
       <AccessDialog binome={accessBinome} onClose={() => setAccessOf(null)} />
+      <TagDialog binome={tagBinome} onClose={() => setTagOf(null)} />
     </BaseLayout>
-    </AccessCtx.Provider>
+    </DialogCtx.Provider>
   )
 }
