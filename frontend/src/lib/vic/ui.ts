@@ -12,9 +12,24 @@ export interface MemberSheetOpen {
   alertId?: string
 }
 
+export const RADIUS_DEFAULT = "0.875rem"
+
+function savedPalette(): string {
+  try {
+    return localStorage.getItem("vic-palette") || "vic"
+  } catch {
+    return "vic"
+  }
+}
+
 interface UiStore {
   customizerOpen: boolean
   setCustomizerOpen: (o: boolean) => void
+  /** palette and corner radius: shared by the header's customizer drawer and the Appearance page */
+  palette: string
+  setPalette: (p: string) => void
+  radius: string
+  setRadius: (r: string) => void
   /** Change members sheet (replace / swap / new binome / cover): opened from the Binomes page, an unpaired row, a table row */
   memberSheet: (MemberSheetOpen & { open: boolean; nonce: number }) | null
   openMemberSheet: (o?: MemberSheetOpen) => void
@@ -29,6 +44,17 @@ interface UiStore {
 export const useUi = create<UiStore>((set, get) => ({
   customizerOpen: false,
   setCustomizerOpen: (customizerOpen) => set({ customizerOpen }),
+  palette: savedPalette(),
+  setPalette: (palette) => {
+    try {
+      localStorage.setItem("vic-palette", palette)
+    } catch {
+      /* private mode: the choice just won't persist */
+    }
+    set({ palette })
+  },
+  radius: RADIUS_DEFAULT,
+  setRadius: (radius) => set({ radius }),
   memberSheet: null,
   openMemberSheet: (o = {}) => set({ memberSheet: { ...o, open: true, nonce: (get().memberSheet?.nonce ?? 0) + 1 } }),
   closeMemberSheet: () => set((s) => (s.memberSheet ? { memberSheet: { ...s.memberSheet, open: false } } : s)),

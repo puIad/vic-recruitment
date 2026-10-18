@@ -22,7 +22,7 @@ export function NavUser() {
   const { isMobile } = useSidebar()
   const access = useVic((s) => s.access)
   const email = useVic((s) => s.state?.user || s.member?.user) || access?.email || ""
-  const role = access?.role === "member" ? (access.cover ? "Cover" : "Member") + (access.binome ? ` of ${access.binome}` : "") : access?.owner ? "Owner" : "Editor"
+  const role = access?.role === "member" ? (access.cover ? "Cover" : "Member") + (access.binome ? ` of ${access.binome}` : "") : access?.owner ? "Owner" : "Admin"
 
   return (
     <SidebarMenu>

@@ -43,7 +43,7 @@ export default function AccountSettings() {
                 <p className="truncate text-muted-foreground">{email}</p>
               </div>
               <Badge variant={access?.owner ? "success" : "info"} className="ml-auto self-start">
-                {member ? (access?.cover ? "Cover" : "Member") : access?.owner ? "Owner" : "Editor"}
+                {member ? (access?.cover ? "Cover" : "Member") : access?.owner ? "Owner" : "Admin"}
               </Badge>
             </div>
             {member ? (

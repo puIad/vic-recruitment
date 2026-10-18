@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useThemeManager } from "@/hooks/use-theme-manager"
 import { useSidebarConfig } from "@/contexts/sidebar-context"
+import { RADIUS_DEFAULT, useUi } from "@/lib/vic/ui"
 import { ThemeTab } from "./theme-tab"
 import { LayoutTab } from "./layout-tab"
 
@@ -15,34 +16,21 @@ interface ThemeCustomizerProps {
   onOpenChange: (open: boolean) => void
 }
 
-const RADIUS_DEFAULT = "0.875rem"
-
-function savedPalette(): string {
-  try {
-    return localStorage.getItem("vic-palette") || "vic"
-  } catch {
-    return "vic"
-  }
-}
-
 export function ThemeCustomizer({ open, onOpenChange }: ThemeCustomizerProps) {
   const { isDarkMode, resetTheme, setBrandColorsValues, applyTheme } = useThemeManager()
   const { updateConfig: updateSidebarConfig } = useSidebarConfig()
 
   const [activeTab, setActiveTab] = React.useState("theme")
-  const [selectedTheme, setSelectedTheme] = React.useState(savedPalette)
-  const [selectedRadius, setSelectedRadius] = React.useState(RADIUS_DEFAULT)
+  const selectedTheme = useUi((s) => s.palette)
+  const setSelectedTheme = useUi((s) => s.setPalette)
+  const selectedRadius = useUi((s) => s.radius)
+  const setSelectedRadius = useUi((s) => s.setRadius)
 
   const handleReset = () => {
     setSelectedTheme("vic")
     setSelectedRadius(RADIUS_DEFAULT)
     setBrandColorsValues({})
     resetTheme() // drops every inline override: the tokens in index.css apply again
-    try {
-      localStorage.removeItem("vic-palette")
-    } catch {
-      /* nothing saved */
-    }
     updateSidebarConfig({ variant: "inset", collapsible: "offcanvas", side: "left" })
   }
 

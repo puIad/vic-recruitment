@@ -1,6 +1,7 @@
-import { Monitor, Moon, SwatchBook, Sun, type LucideIcon } from "lucide-react"
+import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
-import { Button } from "@/components/ui/button"
+import { LayoutTab } from "@/components/theme-customizer/layout-tab"
+import { ThemeTab } from "@/components/theme-customizer/theme-tab"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCircularTransition } from "@/hooks/use-circular-transition"
 import { useTheme } from "@/hooks/use-theme"
@@ -39,9 +40,12 @@ function Preview({ mode }: { mode: Mode }) {
 export default function AppearanceSettings() {
   const { theme, setTheme } = useTheme()
   const { startTransition } = useCircularTransition()
-  const openCustomizer = useUi((s) => s.setCustomizerOpen)
+  const palette = useUi((s) => s.palette)
+  const setPalette = useUi((s) => s.setPalette)
+  const radius = useUi((s) => s.radius)
+  const setRadius = useUi((s) => s.setRadius)
   return (
-    <BaseLayout title="Appearance" description="Light or dark, and how the dashboard is laid out." watermark="Appearance">
+    <BaseLayout title="Appearance" description="Light or dark, colours, and how the sidebar looks." watermark="Appearance">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-bold">Mode</CardTitle>
@@ -71,17 +75,27 @@ export default function AppearanceSettings() {
           </div>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-bold">Palette and layout</CardTitle>
-          <CardDescription>The charter's colours, or one of the three activity-department palettes. Sidebar style and side live here too.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => openCustomizer(true)}>
-            <SwatchBook /> Open the customizer
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Colours</CardTitle>
+            <CardDescription>Palette and corner radius. The same choices are in the header's customizer.</CardDescription>
+          </CardHeader>
+          {/* the tabs pad themselves (p-4): px-2 lines them up with the card title */}
+          <CardContent className="px-2">
+            <ThemeTab selectedTheme={palette} setSelectedTheme={setPalette} selectedRadius={radius} setSelectedRadius={setRadius} showMode={false} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Sidebar</CardTitle>
+            <CardDescription>How the menu on the side looks and where it sits.</CardDescription>
+          </CardHeader>
+          <CardContent className="px-2">
+            <LayoutTab />
+          </CardContent>
+        </Card>
+      </div>
     </BaseLayout>
   )
 }

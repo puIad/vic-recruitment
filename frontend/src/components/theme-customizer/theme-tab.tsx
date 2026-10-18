@@ -18,6 +18,8 @@ interface ThemeTabProps {
   setSelectedTheme: (theme: string) => void
   selectedRadius: string
   setSelectedRadius: (radius: string) => void
+  /** the Light / Dark buttons: off on the Appearance page, which has its own Mode card */
+  showMode?: boolean
 }
 
 /** Swatches shown for each palette (light mode accents): [primary, deco-from, deco-to] */
@@ -28,7 +30,7 @@ const SWATCH: Record<string, string[]> = {
   training: ["#5700cf", "#7849a8", "#69c4af"],
 }
 
-export function ThemeTab({ selectedTheme, setSelectedTheme, selectedRadius, setSelectedRadius }: ThemeTabProps) {
+export function ThemeTab({ selectedTheme, setSelectedTheme, selectedRadius, setSelectedRadius, showMode = true }: ThemeTabProps) {
   const { isDarkMode, brandColorsValues, setBrandColorsValues, applyTheme, applyRadius, handleColorChange } = useThemeManager()
   const { toggleTheme } = useCircularTransition()
 
@@ -36,11 +38,6 @@ export function ThemeTab({ selectedTheme, setSelectedTheme, selectedRadius, setS
     setSelectedTheme(value)
     setBrandColorsValues({})
     applyTheme(value, isDarkMode)
-    try {
-      localStorage.setItem("vic-palette", value)
-    } catch {
-      /* private mode: the choice just won't persist */
-    }
   }
 
   return (
@@ -109,29 +106,33 @@ export function ThemeTab({ selectedTheme, setSelectedTheme, selectedRadius, setS
         </div>
       </div>
 
-      <Separator />
+      {showMode && (
+        <>
+          <Separator />
 
-      <div className="space-y-3">
-        <Label className="text-sm font-semibold">Mode</Label>
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant={!isDarkMode ? "soft" : "outline"}
-            size="sm"
-            onClick={(e) => isDarkMode && toggleTheme(e)}
-            className="mode-toggle-button relative cursor-pointer overflow-hidden"
-          >
-            <Sun /> Light
-          </Button>
-          <Button
-            variant={isDarkMode ? "soft" : "outline"}
-            size="sm"
-            onClick={(e) => !isDarkMode && toggleTheme(e)}
-            className="mode-toggle-button relative cursor-pointer overflow-hidden"
-          >
-            <Moon /> Dark
-          </Button>
-        </div>
-      </div>
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Mode</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant={!isDarkMode ? "soft" : "outline"}
+                size="sm"
+                onClick={(e) => isDarkMode && toggleTheme(e)}
+                className="mode-toggle-button relative cursor-pointer overflow-hidden"
+              >
+                <Sun /> Light
+              </Button>
+              <Button
+                variant={isDarkMode ? "soft" : "outline"}
+                size="sm"
+                onClick={(e) => !isDarkMode && toggleTheme(e)}
+                className="mode-toggle-button relative cursor-pointer overflow-hidden"
+              >
+                <Moon /> Dark
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
 
       <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="brand-colors" className="overflow-hidden rounded-xl border">

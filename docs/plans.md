@@ -434,3 +434,7 @@ has no title for it, so the card says "Linked" with Open); showing it needs a sc
 
 Menu order and dividers (`config/nav.ts`), Connections, Account, Appearance inline (reusing the customizer's
 `theme-tab` and `layout-tab`), the Change history Binome filter.
+
+Built 2026-10-19 on `claude/settings-cleanup-2`. The palette and corner radius moved into the `useUi` store so the
+page and the header drawer show the same choice. The sidebar's user card also said Editor; it now says Admin too. The
+layout choices use plain names (Standard / Floating / Inset, Hide / Icons only / Always open).
