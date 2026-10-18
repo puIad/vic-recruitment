@@ -2,12 +2,12 @@
 
 The owner's requests of 2026-10-18, grilled the same day. The answers are in [Decisions](#decisions-owner-2026-10-18)
 at the end and are built into the sections below. Part 1 is live (#85, script @96 / @97, 2026-10-18);
-part 2 is built (PR pending review, not deployed). Part 1 ships first: part 2 needs its access change and touches the same page.
+part 2 is live (#87, script @98 / @99, Vercel 29c165c, 2026-10-18); its live check is still to do (Rollout below). Part 1 ships first: part 2 needs its access change and touches the same page.
 
 | # | Feature | Size |
 |---|---|---|
 | 1 | [My binome for admins](#1-my-binome-for-admins-in-a-binome) who are in a binome | script + UI, one PR. Live 2026-10-18 (#85) |
-| 2 | [Interview form in the dashboard](#2-interview-form-in-the-dashboard), editable after submit | script + UI, one PR. Built 2026-10-18, not deployed |
+| 2 | [Interview form in the dashboard](#2-interview-form-in-the-dashboard), editable after submit | script + UI, one PR. Live 2026-10-18 (#87) |
 
 Each ships the usual way ([HANDOFF](../HANDOFF.md#how-changes-ship)): branch, `npm test`, PR, merge, `npm run deploy`,
 then Vercel. Both only add fields and actions, so no `API_VERSION` bump, and the UI treats a missing field as empty.

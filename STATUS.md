@@ -100,8 +100,11 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `845bdba` (2026-10-18, [#85](https://github.com/puIad/vic-recruitment-2026/pull/85)): an admin in a binome
-  gets My binome under People (`/my-binome`); real build checked in the Vercel log. Before that `f4288c4` (2026-10-18, [#81](https://github.com/puIad/vic-recruitment-2026/pull/81), pending-changes
+  Latest UI: `29c165c` (2026-10-18, [#87](https://github.com/puIad/vic-recruitment-2026/pull/87)): the interview form in
+  the dashboard (My binome's Interview form column, the form page at `/interview/:code` and `/my-binome/interview/:code`);
+  real build checked in the Vercel log (316 packages installed, `tsc -b && vite build`). Before that `845bdba` (2026-10-18,
+  [#85](https://github.com/puIad/vic-recruitment-2026/pull/85)): an admin in a binome gets My binome under People
+  (`/my-binome`). Before that `f4288c4` (2026-10-18, [#81](https://github.com/puIad/vic-recruitment-2026/pull/81), pending-changes
   slice 5); the pending-changes PRs #71–#81 are in the Launch checklist above. Before that `9aaad16` (2026-10-17, [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): **Settings › Screening**,
   plus the screening changes on Alerts (quick actions), Interviewees and the Overview Pipeline card. Vercel production
   built from `9aaad16` (`npm install` 316 packages, `tsc -b && vite build`; "Deployment completed"; no runtime errors in the
@@ -120,7 +123,10 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@96**, API **@97** from `845bdba` (2026-10-18,
+- **Script, latest:** web app **@98**, API **@99** from `29c165c` (2026-10-18,
+  [#87](https://github.com/puIad/vic-recruitment-2026/pull/87), the interview form in the dashboard: Interview Answers tab
+  in each binome sheet, Dashboard Interviews in the Master, made by the first form; deployed from Git Bash, 19 files
+  pushed). Before that web app **@96**, API **@97** from `845bdba` (2026-10-18,
   [#85](https://github.com/puIad/vic-recruitment-2026/pull/85), My binome for admins in a binome; deployed from Git Bash:
   under PowerShell `npm test` fails at `test/vercel.test.js` 514, no `sh` on PATH). Before that web app **@94**, API **@95** from `1013333` (2026-10-18,
   [#79](https://github.com/puIad/vic-recruitment-2026/pull/79), pending-changes slice 4); @88–@93 (slices 2–3, the
