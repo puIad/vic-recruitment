@@ -37,6 +37,8 @@ export const shellRoutes: RouteConfig[] = [
   { path: "/binomes", element: <Binomes /> },
   { path: "/interviewees", element: <Interviewees /> },
   { path: "/team", element: <Team /> },
+  /** an admin in a binome (nav shows it only then); the page reads the store's member */
+  { path: "/my-binome", element: <MyBinome /> },
   { path: "/schedule", element: <Schedule /> },
   { path: "/analytics", element: <Analytics /> },
   { path: "/maintenance", element: <MaintenancePage /> },

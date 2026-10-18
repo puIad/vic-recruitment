@@ -729,8 +729,42 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert.deepStrictEqual([m.call('webAccess').ok, m.call('webAccess').role], [false, '']);
   assert.throws(() => m.call('webState'), /Not allowed/);
   assert.throws(() => m.call('webPulse'), /Not allowed/);
+  assert(!('member' in (as('admin@g.enp.edu.dz'), m.call('webState'))), 'an admin in no binome gets no My binome');
+  assert(!('bv' in m.call('webPulse', true)), 'nor a binome version');
   m.run('master.addEditor(' + J(partner) + ')'); as(partner);
-  assert.deepStrictEqual([m.call('webAccess').role, !!m.call('webState').settings], ['admin', true], 'an editor of the Master is an admin, member or not');
+  {
+    // an admin in a binome (docs/interview-form.md part 1): the dashboard plus their binome, with member rules
+    const ast = m.call('webState'), code = ivOf(b1.code)[0], c = ast.member.candidates.find(x => x.Code === code);
+    assert.deepStrictEqual([m.call('webAccess').role, !!ast.settings, ast.member.binome, ast.member.edit, ast.member.cover, ast.member.candidates.map(x => x.Code).sort()],
+      ['admin', true, b1.code, true, false, ivOf(b1.code)], 'an editor of the Master is an admin, and their binome comes along');
+    const pulse = m.call('webPulse', true);
+    assert.deepStrictEqual(Object.keys(pulse).sort(), ['bv', 'pending', 'v']);
+    m.run('var __dfg0 = Drive.Files.get, __dfgN = 0; Drive.Files.get = function () { __dfgN++; return __dfg0.apply(this, arguments); }');
+    m.call('webPulse', true);
+    assert.strictEqual(m.run('__dfgN'), 0, 'the 2 s poll makes no Drive call');
+    m.run('Drive.Files.get = __dfg0');
+    m.run('Drive.Files.get = () => { throw new Error("API call to drive.files.get failed with error: User Rate Limit Exceeded (403)"); }');
+    const hic = m.call('webState');
+    assert.deepStrictEqual([!!hic.settings, hic.member], [true, false], 'a Drive hiccup: the dashboard, and member false (the page keeps the last one)');
+    m.run('Drive.Files.get = __dfg0');
+    assert.deepStrictEqual(m.call('webRun', 'memberSet', { code: code, field: 'Rating', value: 6, seen: c.Rating }).result, { code: code, field: 'Rating', value: 6 });
+    assert.strictEqual(m.call('webPulse', true).bv, pulse.bv + 1, "their own save moves bv, as a partner's would");
+    const ap = m.call('webApply', { v: 1, changes: [{ id: 'f1', kind: 'field', code: code, field: 'Rating', value: '', seen: 6, at: Date.now() }] });
+    assert.deepStrictEqual(ap.results.map(r => r.end), ['applied'], 'a pending field change applies for them too: ' + J(ap));
+    assert.strictEqual(m.call('webState').member.candidates.find(x => x.Code === code).Rating, '');
+    // view access only: read-only, and both save paths refuse
+    m.run(`__files[${J(fileOf(b1.code))}].editors = __files[${J(fileOf(b1.code))}].editors.filter(e => e !== ${J(partner)}); __files[${J(fileOf(b1.code))}].viewers = [${J(partner)}]`);
+    assert.strictEqual(m.call('webState').member.edit, false);
+    assert.throws(() => m.call('webRun', 'memberSet', { code: code, field: 'Rating', value: 6, seen: '' }), /can view your binome sheet but not edit it/);
+    const ap2 = m.call('webApply', { v: 1, changes: [{ id: 'f2', kind: 'field', code: code, field: 'Rating', value: 6, seen: '', at: Date.now() }] });
+    assert.deepStrictEqual([ap2.results[0].end, /members/.test(ap2.results[0].reason)], ['dropped', true], J(ap2));
+    // no access at all: no My binome, still the dashboard
+    m.run(`__files[${J(fileOf(b1.code))}].viewers = []`);
+    const none = m.call('webState');
+    assert.deepStrictEqual([!!none.settings, 'member' in none], [true, false]);
+    assert.throws(() => m.call('webRun', 'memberSet', { code: code, field: 'Rating', value: 6, seen: '' }), /^Error: Not allowed$/);
+    m.run(`__files[${J(fileOf(b1.code))}].editors.push(${J(partner)})`);
+  }
   m.run('__files[master.id].editors = __files[master.id].editors.filter(e => e !== ' + J(partner) + ')');
 
   // only the binome whose slice changed gets a new version; a quiet sync rewrites nothing
@@ -762,6 +796,12 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert.deepStrictEqual([m.call('webAccess').cover, m.call('webState').candidates.map(c => c.Code), m.call('webState').edit], [true, [ivOf(b2.code)[0]], false]);
   m.run('__cacheClear()');
   assert.deepStrictEqual(m.call('webState').candidates.map(c => c.Code), [ivOf(b2.code)[0]], 'from the sheet too');
+  // an admin who is a live cover: a read-only slice of the covered codes
+  m.run('master.addEditor("stand.in@g.enp.edu.dz")');
+  const cst = m.call('webState');
+  assert.deepStrictEqual([!!cst.settings, cst.member.cover, cst.member.edit, cst.member.candidates.map(c => c.Code)], [true, true, false, [ivOf(b2.code)[0]]]);
+  assert.throws(() => m.call('webRun', 'memberSet', { code: ivOf(b2.code)[0], field: 'Contacted', value: 'Yes', seen: 'Not yet' }), /^Error: Not allowed$/, 'a cover is read-only');
+  m.run('__files[master.id].editors = __files[master.id].editors.filter(e => e !== "stand.in@g.enp.edu.dz")');
 
   // members edit their own sheet (load-test task 8)
   {

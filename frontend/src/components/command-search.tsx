@@ -37,6 +37,7 @@ const Group = ({ className, ...props }: React.ComponentProps<typeof CommandPrimi
 export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const navigate = useNavigate()
   const state = useVic((s) => s.state)
+  const inBinome = useVic((s) => !!s.member)
   const refresh = useVic((s) => s.refresh)
   const { sync } = useActions()
   const [q, setQ] = React.useState("")
@@ -82,7 +83,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
             </Group>
 
             <Group heading="Pages">
-              {pageIndex.map((p) => (
+              {pageIndex(inBinome).map((p) => (
                 <Item key={p.url} value={`${p.title} ${p.group} page`} onSelect={() => go(p.url)}>
                   <p.icon className="size-4 text-muted-foreground" />
                   {p.title}

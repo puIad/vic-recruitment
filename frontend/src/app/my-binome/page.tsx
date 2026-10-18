@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Navigate } from "react-router-dom"
 import { AlertTriangle, ArrowUpRight, CalendarClock, CircleCheck, Database, Lock, PanelRightOpen, PauseCircle, RotateCcw, UserRoundCheck } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
@@ -235,7 +236,10 @@ export default function MyBinomePage() {
   const [open, setOpen] = React.useState<string | null>(null)
   const openCode = React.useCallback((code: string) => setOpen(code), [])
   const candidate: Candidate | null = (open && m?.candidates.find((c) => cellText(c.Code) === open)) || null
+  // an admin at /my-binome who is in no binome (any more): back to the Overview
+  const adminLoaded = useVic((s) => s.gate.mode === "ok" && !s.loading)
 
+  if (!m && adminLoaded) return <Navigate to="/" replace />
   if (!m) {
     return (
       <BaseLayout title="My binome" description={error ? undefined : "Loading your binome…"} watermark="Binome">

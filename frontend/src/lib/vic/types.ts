@@ -236,6 +236,9 @@ export interface WebState {
   built?: number
   /** the owner's switch: saves become pending changes (docs/plans.md › Slice 2); absent on an older script = off */
   pending?: boolean
+  /** an admin who is in a locked binome or a live cover: their binome, as a member gets it (My binome); false = Drive
+   *  failed this time (keep the last one) */
+  member?: MemberState | false
   links: { master: string; registrationForm: string; interviewForm: string; binomeFolder: string }
   settings: {
     assignmentsOpen: boolean

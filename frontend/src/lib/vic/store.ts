@@ -22,7 +22,7 @@ interface VicStore {
   gate: Gate
   access: Access | null
   state: WebState | null
-  /** a member's slice of the snapshot (gate "member"); state stays null for them */
+  /** a member's slice of the snapshot (gate "member"; state stays null for them), or an admin's own binome next to state */
   member: MemberState | null
   /** why a member's binome could not load (e.g. their sheet isn't shared yet): the page shows it instead of a toast */
   memberError: string | null
@@ -36,6 +36,8 @@ interface VicStore {
   /** number of confirm dialogs open: live refresh pauses while one is */
   modals: number
   pulse: number | null
+  /** an admin in a binome: their binome's version (webPulse bv), so a partner's edit refreshes My binome */
+  bv: number | null
   /** ms timestamp of the last successful state load (drives the "live" indicator) */
   loadedAt: number
   /** bumps each time the numbers actually changed: the header ring turns once */
@@ -86,8 +88,9 @@ let firstRec = true
 /** the last seen mark: while drops are on screen it is refreshed once a minute, so the admins get no alert */
 let seenMark = 0
 const SEEN_MS = 60e3
-/** The pulse's answer: a number from an older script, {v, pending} from one that has the switch. */
-const pulseOf = (p: number | { v: number; pending: boolean } | null) => (p === null || typeof p === "number" ? { v: p, on: null } : { v: p.v, on: p.pending })
+type Pulse = number | { v: number; pending: boolean; bv?: number }
+/** The pulse's answer: a number from an older script, {v, pending, bv?} from one that has the switch. */
+const pulseOf = (p: Pulse | null) => (p === null || typeof p === "number" ? { v: p, on: null, bv: null } : { v: p.v, on: p.pending, bv: p.bv ?? null })
 /** a poll stuck at Google ends after this, so the `polling` guard is released and the next tick runs */
 const POLL_TIMEOUT_MS = 20000
 let activityId = 0
@@ -109,6 +112,7 @@ export const useVic = create<VicStore>((set, get) => ({
   busyLabel: null,
   modals: 0,
   pulse: null,
+  bv: null,
   loadedAt: 0,
   tick: 0,
   sessionEnds: 0,
@@ -146,7 +150,7 @@ export const useVic = create<VicStore>((set, get) => ({
     if (!quiet) set({ refreshing: true })
     try {
       // read before the state, so an edit in between still shows as a change; with the author's record when the switch is on
-      const pr = await callFull<number | { v: number; pending: boolean }>("webPulse", [true], { rec: hasPending(get().rec) ? 2 : 1 }, POLL_TIMEOUT_MS).catch(() => null)
+      const pr = await callFull<Pulse>("webPulse", [true], { rec: hasPending(get().rec) ? 2 : 1 }, POLL_TIMEOUT_MS).catch(() => null)
       const pp = pulseOf(pr ? pr.value : null)
       if (pr?.rec) get().setRec(pr.rec)
       const p = pp.v
@@ -161,9 +165,10 @@ export const useVic = create<VicStore>((set, get) => ({
       set((cur) => ({
         gate: { mode: member ? "member" : "ok" },
         state: member ? null : (s as WebState),
-        member: member ? (s as MemberState) : null,
+        member: member ? (s as MemberState) : (s as WebState).member === false ? cur.member : (s as WebState).member || null,
         memberError: null,
         pulse: p,
+        bv: pp.bv,
         pendingOn: pp.on ?? !!s.pending,
         loading: false,
         loadedAt: Date.now(),
@@ -184,7 +189,7 @@ export const useVic = create<VicStore>((set, get) => ({
 
   // Live refresh: poll the version of the dashboard's snapshot (it moves only when the data changed) and reload when it moved.
   async checkPulse() {
-    const { busy, refreshing, gate, state, member, memberError, modals, pulse } = get()
+    const { busy, refreshing, gate, state, member, memberError, modals, pulse, bv } = get()
     // the seen mark only touches Redis, so it skips the guards below that spare Google: a 5-min Lock or an open dialog is still on screen
     const drops = openDrops(get().rec)
     if (drops.length && !document.hidden && Date.now() - seenMark >= SEEN_MS) { seenMark = Date.now(); void get().markDrops({ seen: drops }) }
@@ -199,17 +204,17 @@ export const useVic = create<VicStore>((set, get) => ({
       const held = hasPending(get().rec)
       const rec = wantRec ? (held ? 2 : 1) : held && (gate.mode === "member" || ++polls % 5 === 0) ? 2 : 0
       wantRec = false
-      const r = await callFull<number | { v: number; pending: boolean }>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS)
+      const r = await callFull<Pulse>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS)
       const p = pulseOf(r.value)
       if (r.rec) get().setRec(r.rec)
       if (p.on !== null && p.on !== get().pendingOn) set({ pendingOn: p.on })
       // the pulse only advances inside a successful refresh, so a failed one is retried on the next tick
-      if (p.v !== pulse && !get().busy) await get().refresh(true)
+      if ((p.v !== pulse || p.bv !== bv) && !get().busy) await get().refresh(true)
     } catch (e) {
       // "Not allowed": ask webAccess (it never throws) only for the email and reason the gate shows
       if (e instanceof ApiError && /^(?:Error: )?Not allowed$/.test(e.message)) {
         const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => undefined)
-        if (!a?.ok) set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, member: null, memberError: null, pulse: null, loading: false })
+        if (!a?.ok) set({ gate: { mode: "noaccess", access: a }, access: a ?? null, state: null, member: null, memberError: null, pulse: null, bv: null, loading: false })
       }
       /* anything else stays quiet: the next tick or the refresh button retries */
     } finally {
