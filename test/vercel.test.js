@@ -459,6 +459,15 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       assert.deepStrictEqual([r.headers.location, S.open(r.jar[S.COOKIE]).email, g.log.revoked, F.db[mark]], ['/', 'b@g.enp.edu.dz', [], '1'], 'changes pending: no revoke yet, marked revoke when done');
       await deliver();
       assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'the last one ended: revoked with its access token, mark gone');
+      // the last one cancelled from another device (typed back): its delivery finds nothing pending and revokes
+      await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
+      const cancelled = last();
+      g.log.revoked.length = 0;
+      await cbWith(admin);
+      await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
+      assert.strictEqual(F.sent[F.sent.length - 1].payload, cancelled, 'typed back: cancelled, nothing published');
+      await deliver(cancelled);
+      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'cancelled last change: revoked on its delivery');
       // the admin signing in again anywhere clears the mark: their next change ends with no revoke
       await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
       await cbWith(admin);
