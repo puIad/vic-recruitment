@@ -88,6 +88,10 @@ const rpc = (cookie, fn, ...args) => invoke('run', { method: 'POST', cookie, bod
   r = await cb('s', 's'); assert.strictEqual(r.status, 403, 'unticked permissions refused'); assert(/Permissions missing/.test(r.body));
   tokenReply = Object.assign({}, tokenReply, { scope: allScopes, refresh_token: undefined });
   r = await cb('s', 's'); assert.deepStrictEqual([r.status, r.headers.location], [302, '/api/login?consent=1'], 'no refresh token → retry once with consent');
+  g.opts.refreshScope = 'openid email https://www.googleapis.com/auth/spreadsheets';
+  r = await invoke('callback', { url: '/api/callback?code=c&state=s', cookie: S.PKCE_COOKIE + '=' + encodeURIComponent(S.seal({ state: 's', verifier: 'v', consent: false })) + '; ' + S.COOKIE + '=' + encodeURIComponent(S.seal({ email: 'a@g.enp.edu.dz', rt: 'rt:old', iat: Date.now() })) });
+  assert.deepStrictEqual([r.status, r.headers.location], [302, '/api/login?consent=1'], 'a stored token from before the new scope: consent once');
+  g.opts.refreshScope = undefined;
   // same account back on this browser (signed out, inside or past 48h): Google sends no refresh token → reuse the stored one, no consent screen
   const cbWith = (sessCookie) => invoke('callback', { url: '/api/callback?code=c&state=s', cookie: S.PKCE_COOKIE + '=' + encodeURIComponent(S.seal({ state: 's', verifier: 'v', consent: false })) + '; ' + S.COOKIE + '=' + encodeURIComponent(S.seal(sessCookie)) });
   tokenReply = Object.assign({}, tokenReply, { id_token: idt({ email: 'a@g.enp.edu.dz' }) });
@@ -178,6 +182,16 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   g.opts.scriptStatus = 403;
   r = await rpc(admin, 'webAccess');
   assert.strictEqual(r.status, 502); assert(!/secret details/.test(r.body), 'Google error messages are summarized, not echoed');
+  // a token granted before script.external_request was added (slice 4): back through Google's screen once
+  g.opts.scriptMessage = 'Request had insufficient authentication scopes.';
+  r = await rpc(admin, 'webAccess');
+  assert.deepStrictEqual([r.status, r.json.code, /one more Google permission/.test(r.json.error), r.jar[S.COOKIE]], [401, 'SIGNED_OUT', true, ''], 'old scopes: signed out to consent');
+  g.opts.scriptMessage = 'secret details';
+  g.opts.scriptStatus = 200;
+  g.opts.refreshScope = allScopes.replace(' https://www.googleapis.com/auth/script.external_request', '');
+  r = await rpc(sess('admin@g.enp.edu.dz', { at: null }), 'webAccess');
+  assert.deepStrictEqual([r.status, r.json.code], [401, 'SIGNED_OUT'], 'a refresh that lacks the new scope signs out');
+  g.opts.refreshScope = undefined;
   g.opts.scriptStatus = 429;
   r = await rpc(admin, 'webPulse');
   assert.deepStrictEqual([r.status, r.json.code, /limiting requests.*Nothing was changed/.test(r.json.error)], [429, 'RATE_LIMIT', true], "Google's rate limit reaches the page as code RATE_LIMIT");

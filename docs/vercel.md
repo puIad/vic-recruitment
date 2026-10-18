@@ -62,6 +62,12 @@ release. Any other path a build reads must be added to the `git diff` paths.
 **`DROPS_SECRET`** (env var, Production): a long random string, the same value as the script property `DROPS_SECRET`.
 Unset on Vercel, `api/drops.js` answers 503; unset in the script, the sync never calls it. Rotate both together.
 
+**The scope `script.external_request`** (the sync's `UrlFetchApp` call) is in the sign-in's `SCOPES` before it is in
+`appsscript.json`: `scripts.run` refuses a token missing any scope the script declares. Once the script has it, a
+token from before (the cookie's access token, a stored refresh token) is answered `SIGNED_OUT` ("one more Google
+permission"), and the next sign-in shows Google's screen once. The consumer drops such a change as "sign-in ended",
+with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup after the script deploy.
+
 ## Rules worth knowing
 
 - **Access is re-checked by the script on every call** (`access_()` in WebApp.gs): ENP account + editor/owner of the

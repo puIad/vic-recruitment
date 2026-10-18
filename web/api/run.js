@@ -9,6 +9,9 @@ const S = require('../lib/session'), P = require('../lib/pending');
 const ALLOWED = ['webAccess', 'webState', 'webRun', 'webPulse'], PENDING = ['accept', 'pendingMark'];
 const ACCEPT_LIFE_MS = 30 * 60e3; // the accept step seals a token with at least this long to live (issue 56)
 const TIMEOUT_MS = 285000; // under maxDuration 300 (vercel.json)
+// a token granted before the script gained a scope: scripts.run answers 403; signing in again shows Google's screen once
+const SCOPE_RE = /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i;
+const NEW_SCOPE = 'The dashboard needs one more Google permission: sign in again and allow it.';
 
 async function body(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -58,6 +61,7 @@ module.exports = async (req, res) => {
       if (t.body.error === 'invalid_grant') { S.addCookie(res, S.clearSession()); return done(401, { error: 'Google ended this session: sign in again.', code: 'SIGNED_OUT' }, false); }
       return done(502, { error: 'Could not renew the Google token (' + (t.body.error || t.status) + '). Try again.' }, false);
     }
+    if (S.missingScopes(t.body.scope).length) { S.addCookie(res, S.clearSession()); return done(401, { error: NEW_SCOPE, code: 'SIGNED_OUT' }, false); }
     s.at = t.body.access_token; s.ate = Date.now() + (t.body.expires_in || 3600) * 1000;
     S.addCookie(res, S.sessionCookie(s));
   }
@@ -80,6 +84,7 @@ module.exports = async (req, res) => {
     return done(502, { error: 'Could not reach Google Apps Script. Try again.' }, false);
   }
   if (r.status === 401) { S.addCookie(res, S.clearSession()); return done(401, { error: 'Google refused the session: sign in again.', code: 'SIGNED_OUT' }, false); }
+  if (r.status === 403 && SCOPE_RE.test(JSON.stringify(j))) { S.addCookie(res, S.clearSession()); return done(401, { error: NEW_SCOPE, code: 'SIGNED_OUT' }, false); }
   if (!r.ok) {
     const st = (j.error && j.error.status) || r.status;
     console.warn(JSON.stringify({ at: 'run', status: r.status, gstatus: st, msg: String(j.error && j.error.message || '').slice(0, 200) }));
