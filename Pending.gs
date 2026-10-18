@@ -47,8 +47,7 @@ function webApply(call) {
   if (!admin && !member) return { v: APPLY_FORMAT, lost: a.reason || (a.role === 'member' ? 'Not an editing member of the binome' : 'Not an admin') };
   const w = { admin: admin, member: member, a: a }; // what this call has read, filled as its changes need it
   if (member && changes.some(c => c && c.kind === 'field')) {
-    try { w.book = SpreadsheetApp.openById(a.m.f); } catch (e) { /* not shared with this account */ }
-    if (!w.book) return { v: APPLY_FORMAT, lost: "The binome sheet isn't shared with this account" };
+    w.book = SpreadsheetApp.openById(a.m.f); // access_ just saw edit access: a failure here is Drive, and a throw is a retry
     w.tz = w.book.getSpreadsheetTimeZone(); // opened before the lock, as memberSet_
   }
   const lock = LockService.getDocumentLock(); // shared by everyone (issue 59); the sync holds only the script lock
@@ -126,21 +125,15 @@ function applyField_(w, c, id) {
   const cur = x.text[field];
   if (cur === goldText_(field, c.value)) return { id: id, end: 'met' }; // a retry, or the partner typed the same
   if (cur !== goldText_(field, c.seen)) return { id: id, end: 'dropped', sheet: cur }; // the partner changed it
-  f.sh.getRange(x.row, bfCol_(field)).setValue(field === 'Notes' && v ? "'" + v : v); // the apostrophe keeps notes as text
+  goldWrite_(f.sh, x.row, field, v);
   x.text[field] = goldText_(field, c.value);
   (f.wrote[code] = f.wrote[code] || []).push(field);
   return { id: id, end: 'applied' };
 }
-/** After the flush: the next sync reads this binome's sheet (dirty), and its cached slice takes the written values. */
+/** After the flush: the next sync reads this binome's sheet, and its cached slice takes the written values. */
 function patchFields_(w) {
-  const f = w.fields, codes = Object.keys(f.wrote), F = idx_(BF_H), b = w.a.m.b;
-  if (!codes.length) return;
-  CacheService.getScriptCache().put('dirty:' + b, String(Date.now()), 21600);
-  codes.forEach(code => {
-    const rng = f.sh.getRange(f.rows[code].row, BF_COL, 1, BF_H.length), now = rng.getValues()[0], shown = rng.getDisplayValues()[0], vals = {};
-    f.wrote[code].forEach(k => { vals[k] = goldOf_(k, now[F[k]], shown[F[k]]); });
-    patchSlice_(b, code, vals);
-  });
+  const f = w.fields;
+  Object.keys(f.wrote).forEach(code => goldPatch_(w.a.m.b, f.sh, f.rows[code].row, code, f.wrote[code]));
 }
 
 /** One alert change: the cell still holds what the author saw = write their value; else issue 50's table (written for

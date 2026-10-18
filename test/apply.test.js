@@ -244,6 +244,12 @@ const H = 3.6e6;
   call('webRun', 'pendingSwitch', { on: false });
   const af = apply(fd(codes[0], 'Contacted', 'Yes', 'Yes'));
   assert(/Only the binome's members/.test(af.results[0].reason), 'an admin edits the Master, not a binome sheet');
+  // Drive failing on the open (after access_ saw edit access): thrown, so the consumer retries; nothing dropped
+  as(mem);
+  run("var __obf = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id !== __props.MASTER_ID) throw new Error('Service Spreadsheets timed out'); return __obf.call(SpreadsheetApp, id); }");
+  assert.throws(() => apply(fd(codes[0], 'Rating', 5, 9)), /timed out/);
+  run('SpreadsheetApp.openById = __obf');
+  as('');
   // lost: view only, a cover, not shared
   call('webRun', 'binomeAccess', { binome: b.code, level: 'view' });
   run('__acl = true');
