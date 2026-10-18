@@ -179,6 +179,14 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   r = await rpc(admin, 'webRun', 'lock', { budgetMs: 200000 });
   assert.deepStrictEqual([r.status, r.json.code], [504, 'TIMEOUT']); assert(/may finish on its own/i.test(r.json.error));
   g.opts.timeout = false;
+  // a connection dropped mid-call: the script may have finished, so the page is told to refresh first, and the cause is logged
+  g.opts.drop = true;
+  const warned = [], warn0 = console.warn; console.warn = (...x) => warned.push(x.join(' '));
+  r = await rpc(admin, 'webRun', 'sync');
+  console.warn = warn0;
+  g.opts.drop = false;
+  assert.deepStrictEqual([r.status, r.json.code, /may have finished anyway: refresh/.test(r.json.error)], [502, 'LOST', true], JSON.stringify(r.json));
+  assert(warned.some(l => /"lost":"TypeError"/.test(l) && /UND_ERR_SOCKET/.test(l)), 'the cause is in the log: ' + warned.join(' | '));
   g.opts.scriptStatus = 403;
   r = await rpc(admin, 'webAccess');
   assert.strictEqual(r.status, 502); assert(!/secret details/.test(r.body), 'Google error messages are summarized, not echoed');
