@@ -57,7 +57,10 @@ Rollback (seconds, no git).
 deployment shows CANCELED, production stays put) when nothing under `web/` or `frontend/` changed since
 `$VERCEL_GIT_PREVIOUS_SHA`, the last successful deployment of the branch. An empty or unknown SHA (a branch's first
 deployment, a shallow clone) builds. So on Hobby an Instant Rollback after a doc push still lands on the last real
-release. Any other path a build reads must be added to the `git diff` paths.
+release. A Redeploy of the commit that is already live also builds: HEAD equals `$VERCEL_GIT_PREVIOUS_SHA` (Vercel
+sets no variable that marks a redeploy), so a new env var such as `DROPS_SECRET` takes effect without a code change.
+Redeploy the current production deployment, not a canceled doc push. Any other path a build reads must be added to
+the `git diff` paths.
 
 **`DROPS_SECRET`** (env var, Production): a long random string, the same value as the script property `DROPS_SECRET`.
 Unset on Vercel, `api/drops.js` answers 503; unset in the script, the sync never calls it. Rotate both together.
