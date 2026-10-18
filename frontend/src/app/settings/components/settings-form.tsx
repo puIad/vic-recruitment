@@ -230,21 +230,28 @@ function EmailsControl({ label, value, onChange }: { label: string; value: CellV
   )
 }
 
-/** After a new sync interval or digest time is saved: the triggers still run the old one until the owner runs Setup. */
+/** After a new sync interval or digest time is saved: the triggers still run the old one until the owner runs Setup.
+ *  Setup reads the Settings tab, so it waits while the change is still pending (only in Redis) and is moot once dropped. */
 function SetupNote({ k }: { k: string }) {
   const on = useSetupNote((s) => s.keys.includes(k))
   const owner = useVic((s) => !!s.access?.owner)
   const busy = useVic((s) => s.busy)
+  const over = useSettingsView()
   const { setup } = useActions()
-  if (!on) return null
+  const kind = over[k]?.mark?.kind
+  if (!on || kind === "dropped") return null
+  const pending = kind === "pending"
   const run = async () => {
-    if (await setup()) useSetupNote.setState({ keys: [] })
+    // the keys still pending keep their note: Setup ran without them
+    if (await setup()) useSetupNote.setState((n) => ({ keys: n.keys.filter((x) => over[x]?.mark?.kind === "pending") }))
   }
   return (
     <div role="status" className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-info/30 bg-info-soft/60 p-3 text-sm">
       <Settings2 className="size-4 shrink-0 text-info" aria-hidden="true" />
-      <span className="min-w-0 flex-1">{owner ? "Takes effect after Setup." : "Takes effect after Setup: ask the owner to run it."}</span>
-      {owner && (
+      <span className="min-w-0 flex-1">
+        {pending ? "Saving into the sheet. Setup can run once it's there." : owner ? "Takes effect after Setup." : "Takes effect after Setup: ask the owner to run it."}
+      </span>
+      {owner && !pending && (
         <Button size="sm" variant="outline" disabled={busy} onClick={run}>
           Run Setup
         </Button>
