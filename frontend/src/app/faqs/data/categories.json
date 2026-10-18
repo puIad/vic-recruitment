@@ -1,8 +1,11 @@
 [
-  { "name": "All", "count": 15 },
+  { "name": "All", "count": 28 },
   { "name": "Launch", "count": 4 },
-  { "name": "Binomes", "count": 4 },
+  { "name": "Binomes", "count": 6 },
+  { "name": "Screening", "count": 4 },
+  { "name": "My binome", "count": 4 },
   { "name": "Alerts", "count": 3 },
+  { "name": "Pending changes", "count": 3 },
   { "name": "Access", "count": 2 },
   { "name": "Maintenance", "count": 2 }
 ]
