@@ -9,7 +9,7 @@ it ships before load-test task 10 and the launch.
 |---|---|
 | Schedule | Keep: a calendar of the interviews binomes have set, plus admin events saved in the Master. Plan below. |
 | Analytics | Keep: a profile for each applicant and stats over all of them. Plan below. |
-| Binome desk | **Dropped.** Remove it in the next UI PR: `frontend/src/app/chat/`, the `/desk` route in `config/routes.tsx`, its entry in `config/nav.ts`. |
+| Binome desk | **Dropped**, removed 2026-10-18: `frontend/src/app/chat/`, the `/desk` route and its nav entry are gone. |
 | Binome view | Idea kept, **not planned yet**: binome members get their own view of the dashboard and could use it instead of their binome sheet (the script would fill the sheet for them). Needs an access rule in WebApp.gs first (today only Master editors get in). |
 
 Both pages follow the usual order ([HANDOFF](../HANDOFF.md#how-changes-ship)): the script ships first and only

@@ -6,7 +6,6 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
-  MessagesSquare,
   Network,
   Palette,
   Settings,
@@ -55,7 +54,6 @@ export const navGroups: NavGroup[] = [
     label: "Coming up",
     items: [
       { title: "Schedule", url: "/schedule", icon: CalendarDays, soon: true },
-      { title: "Binome desk", url: "/desk", icon: MessagesSquare, soon: true },
       { title: "Analytics", url: "/analytics", icon: ChartNoAxesCombined, soon: true },
     ],
   },
