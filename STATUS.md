@@ -29,8 +29,10 @@ Launch features ([launch-features.md](docs/launch-features.md)):
 - Done in code: **screening** (#33, live 2026-10-17). The owner ran Setup and linked and shared the members sheet
   (2026-10-17). Left: check the count on Settings › Screening, turn it on, then rollout step 4 (one member / one junk
   / one decent application in TEST_MODE, then Send rejections… once).
-- Not built: **change a binome's department** from the dashboard (launch-features section 3; a hand edit of the Tag
-  plus Accept works meanwhile).
+- Built, not deployed: **change a binome's department** from the dashboard
+  ([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), launch-features section 3): Binomes › ⋯ › Change
+  department…, and Apply on a hand-edited Tag. Owner (2026-10-18): no ALL choice, Apply on the alert. Left: merge,
+  `npm run deploy` (script first), then Vercel; until then a hand edit of the Tag plus Accept still works.
 - Done: **emails** ([#45](https://github.com/puIad/vic-recruitment-2026/pull/45), live 2026-10-17 as @85/@86 from `0ea1fa1`): one HTML template in the VIC look for
   every mail the script sends, and a confirmation with their code to every registrant. The owner's inbox preview
   passed (confirmation, alert mail, digest). Left: the confirmation's language and wording (English placeholder in
@@ -90,7 +92,7 @@ Left, owner (in order):
    ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)).
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
-Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, the department change, then `HR_ONLY_WEIGHT`.
+Left, code (in order): the confirmation's wording once the owner sends it, `SAME_CHOICES` to INFO, then `HR_ONLY_WEIGHT`. The department change is in [#84](https://github.com/puIad/vic-recruitment-2026/pull/84), waiting for merge and deploy.
 Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done; task 10 was waiting for them.
 
 ## Live now
@@ -249,7 +251,8 @@ Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with expe
 (hold low-effort applications for review, decline VIC members silently, the rejection email, plus the name swap) is
 merged and deployed ([#33](https://github.com/puIad/vic-recruitment-2026/pull/33), @75/@76 and Vercel from `9aaad16`, 2026-10-17),
 calibrated with the owner on the 273 applications of 2025 (11 held at 50). The owner ran Setup and linked the
-members sheet (2026-10-17); turning it on is left. Not built yet: changing a binome's department from the dashboard.
+members sheet (2026-10-17); turning it on is left. Changing a binome's department from the dashboard is built
+([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), 2026-10-18) and waits for the owner's deploy.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
