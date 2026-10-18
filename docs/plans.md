@@ -1,9 +1,10 @@
-# Plans: Schedule, Analytics, pending changes
+# Plans: Schedule, Analytics, pending changes, settings cleanup
 
 The owner's decisions of 2026-10-04 on the three "Coming up" pages. None of this is needed for launch. The pages
 are placeholders today ([frontend.md](frontend.md#placeholders-sample-data-each-labelled-and-what-makes-them-real)).
 The build plan for pending changes (2026-10-17, pulled forward 2026-10-18) is [at the end](#pending-changes-the-build-plan);
-it ships before load-test task 10 and the launch.
+it ships before load-test task 10 and the launch. The settings cleanup (grilled with the owner 2026-10-19) is
+[the last section](#settings-cleanup-the-build-plan).
 
 | Page | Decision |
 |---|---|
@@ -371,3 +372,62 @@ Hand the store over as [Research: handing the Marketplace Redis store over to vi
 says: switch pending changes off and let the queue drain, disconnect the store, transfer the project, and the new owner
 installs their own free Upstash and redeploys. Redis data is lost by design, and a free store idle for 30 days is
 archived, so each season recreates it.
+
+## Settings cleanup: the build plan
+
+Grilled with the owner on 2026-10-19. Goal: the Settings pages read in plain words, with dropdowns and pickers instead
+of empty boxes to type in, and no code names on screen. UI only: the script, `SETTINGS_DEFAULTS` and the Settings tab
+of the Master stay as they are, and the script keeps accepting any value typed in the sheet. A value the dashboard
+has no choice for shows as "Custom" and is kept until someone picks another. Two PRs, no script deploy.
+
+### Decisions (owner, 2026-10-19)
+
+1. Scope: all eight Settings pages.
+2. Help text lives in the dashboard (`frontend/src/lib/vic/settings-ui.ts`, a plain help line per setting). The
+   sheet's help column keeps the script's technical notes.
+3. Dropdown options show words; the stored value stays the code (`ACTIVE`, `HIGH`, `15`).
+4. General is one page in titled sections: Admins and email, Assigning candidates, Schedule, and Advanced (folded shut).
+5. Alert delays (`HOURS_NOT_CONTACTED`, `HOURS_NO_INTERVIEW_DATE`, `HOURS_AFTER_INTERVIEW_NO_FORM`): a dropdown of
+   6 h, 12 h, 1 day, 36 h, 2 days, 3 days and Custom… (a number box). Today's test values 32 / 40 / 5 show as Custom.
+6. Digest hour: a dropdown of 00:00 to 23:00.
+7. Timezone: read-only text in Advanced ("Algeria (Africa/Algiers)"); changed in the sheet only.
+8. Board (ALL) weight: shown only while a locked binome is tagged ALL, then as a dropdown (1×, 1.5×, 2×, 3×).
+9. Admin emails and Trusted backups: chips with ×, and an Add box that suggests people from the Team tab
+   (`teamList`) and still takes any email. A chip shows the person's name.
+10. Registrant email domain: read-only text in Advanced ("@g.enp.edu.dz").
+11. Screening threshold (`SCREEN_HOLD_AT`): a strictness dropdown, from the scores in `Rules.gs` `screenApplication`
+    (empty 60, one word or non-answer 50, +10 under 10 words in all): **Standard (50, today)** any one weak answer
+    holds it; **Lenient (60)** an empty answer, or one weak answer in a very short application; **Only clear junk
+    (100)** both answers weak. Other values show as "Custom: N". The rules and the default stay the owner's
+    ([launch-features.md](launch-features.md) Decisions 7–13).
+12. VIC members sheet: one card. Once linked it shows the sheet with Open and Change link…, merged with the VIC members
+    list card (emails read, last read, Refresh now). Before a link, a paste box.
+13. Menu: recruitment settings (General, Alerts and timing, Sharing and email, Screening), then Connections and Change
+    history, then Account and Appearance, with a divider between the three.
+14. Connections: plain wording, "Not found" becomes "Not linked"; the Services card shows to the owner only, reworded.
+15. Appearance: palette and sidebar choices inline on the page; the header's customizer drawer stays.
+16. The sheet key on hover (`title={s.key}`) goes.
+17. Account: the Editor badge reads Admin (Owner / Admin / Member / Cover).
+18. Change history: a Binome dropdown next to the type buttons; the search box stays.
+19. Pending changes switch: inside General's Advanced section, owner only as today.
+20. Test mode: a status card at the top of Sharing and email ("Test mode is on: mail goes to admins only, nothing is
+    shared") with Go live…, which keeps today's confirmation. The switch row goes.
+21. Auto-sync and digest time: after a save the row says "Takes effect after Setup"; the owner gets Run Setup on the
+    row (the Maintenance page's `setup` action), other admins "Ask the owner to run Setup". Replaces the toast.
+22. Delivery: PR 1 the four settings-row pages (General, Alerts and timing, Sharing and email, Screening); PR 2 the
+    menu, Connections, Account, Appearance and Change history.
+
+### PR 1: the four settings pages
+
+- `settings-ui.ts`: per key a label, a help line, an icon, and a control (switch, choices with labels, hour presets,
+  time of day, email chips, read-only, strictness, members sheet). Falls back to the script's help and kind for a key
+  it doesn't know, so a new setting is never hidden.
+- `settings-form.tsx`: sections per group; Custom keeps an unknown value; the pending-changes path, the drop answers
+  and `settingOk` stay as they are.
+- Tests: the existing `npm test`, plus a check that every choice list holds the script's enum values
+  (`SETTING_ENUMS` in WebApp.gs) so a dropdown never writes a value the script refuses.
+
+### PR 2: the other pages
+
+Menu order and dividers (`config/nav.ts`), Connections, Account, Appearance inline (reusing the customizer's
+`theme-tab` and `layout-tab`), the Change history Binome filter.
