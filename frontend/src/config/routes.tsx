@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom"
 // Pages inside the app shell (sidebar + header). Lazy-loaded so the first paint stays small.
 const Overview = lazy(() => import("@/app/overview/page"))
 const MyBinome = lazy(() => import("@/app/my-binome/page"))
+const Interview = lazy(() => import("@/app/my-binome/interview/page"))
 const Alerts = lazy(() => import("@/app/alerts/page"))
 const Binomes = lazy(() => import("@/app/binomes/page"))
 const Interviewees = lazy(() => import("@/app/interviewees/page"))
@@ -39,6 +40,8 @@ export const shellRoutes: RouteConfig[] = [
   { path: "/team", element: <Team /> },
   /** an admin in a binome (nav shows it only then); the page reads the store's member */
   { path: "/my-binome", element: <MyBinome /> },
+  /** the interview form of one of their candidates, on its own page (docs/interview-form.md part 2) */
+  { path: "/my-binome/interview/:code", element: <Interview /> },
   { path: "/schedule", element: <Schedule /> },
   { path: "/analytics", element: <Analytics /> },
   { path: "/maintenance", element: <MaintenancePage /> },
@@ -61,6 +64,7 @@ export const shellRoutes: RouteConfig[] = [
 /** A binome member's whole dashboard: their binome (editable with edit access to its sheet), and their own account and appearance. */
 export const memberRoutes: RouteConfig[] = [
   { path: "/", element: <MyBinome /> },
+  { path: "/interview/:code", element: <Interview /> },
   { path: "/settings/account", element: <SettingsAccount /> },
   { path: "/settings/appearance", element: <SettingsAppearance /> },
   { path: "*", element: <Navigate to="/" replace /> },

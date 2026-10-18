@@ -323,10 +323,10 @@ export default function MyBinomePage() {
             </p>
           )}
         </div>
-        <CandidatesTable candidates={m.candidates} fromSheet={m.fromSheet} onOpen={openCode} />
+        <CandidatesTable candidates={m.candidates} fromSheet={m.fromSheet} onOpen={openCode} member={m} />
       </section>
 
-      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} editable={m.edit && !m.cover} onClose={() => setOpen(null)} />
+      <CandidateSheet candidate={candidate} candidates={m.candidates} fileUrl={m.fileUrl} editable={m.edit && !m.cover} onClose={() => setOpen(null)} member={m} />
     </BaseLayout>
   )
 }

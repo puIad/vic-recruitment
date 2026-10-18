@@ -47,9 +47,10 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | Binomes | admins before Lock, then the tools | code, 2 members, tag, status DRAFT / ACTIVE / PAUSED, sheet link |
 | Member Changes | script | PERMANENT (change/swap) and TEMPORARY (cover) rows |
 | Team | import + admins | name, email, department, Pair As, Exclude |
-| Interview Log | script | every interview form, result OK / AUTOCORRECTED / FLAGGED |
+| Interview Log | script | every interview form, result OK / AUTOCORRECTED / FLAGGED; a dashboard form's key is `DASH\|binome\|code`, and an edit rewrites its row |
 | Settings | admins / dashboard | key → value (source of truth) |
 | Registration / Interview Responses | the forms | raw answers |
+| Dashboard Interviews | the sync | the lasting copy of every interview form filled in the dashboard (Reset trashes the binome sheets, not this): the Interview Responses columns (Email Address = who submitted, the binome code as the form's question), then Edited At / By, Filled Rating / Filled Affectation (what the form last wrote in the binome sheet) and Response Key. Made by the first one, or by Setup when missing |
 
 Binome sheets (layout of 2026-10-04, modelled on the 2025 sheets): column A is a banner (members, binome code, house),
 the table starts at column B (`BF_COL`) with the friendly headers of `BF_HEAD`. Protected except the gold columns
@@ -61,6 +62,15 @@ the sheet wears the house of its non-HR side. A sheet still in the first layout 
 rebuilt the first time the script opens it (`upgradeBinomeSheet_`: keeps what the binome typed, at most
 `UPGRADE_PER_RUN` per sync). Locale fr_FR, time zone Africa/Algiers. The Master gets the same look from Setup
 (`styleMaster_`).
+
+A binome sheet can have a second tab, **Interview Answers** (`IA_TAB`, after the main one, so `getSheets()[0]` is
+unchanged), made by the first interview form that reaches it: one row per candidate (Interviewee Code, Source Dashboard or
+Google Form, Submitted At / By, Edited At / By, then one column per question of `INTERVIEW_QUESTIONS`). Members write it from
+the dashboard with their own access (`interviewSave`); the sync copies Google Form responses into it (read-only there), reads
+it for dirty binomes and on the integrity pass, and copies Dashboard rows to the Master's Dashboard Interviews. Every
+interview form, from either source, fills Rating (average of the scores answered, one decimal) and Final Affectation
+(7ECHOH = Not accepted) where the cell is empty or still holds what that form wrote; a value someone typed stays. The
+integrity check and its repairs leave the tab alone; Move interviewee carries its row. [interview-form.md](interview-form.md) part 2.
 
 ## The cycle (`runCycle_`, under the script lock)
 

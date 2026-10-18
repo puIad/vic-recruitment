@@ -2,12 +2,12 @@
 
 The owner's requests of 2026-10-18, grilled the same day. The answers are in [Decisions](#decisions-owner-2026-10-18)
 at the end and are built into the sections below. Part 1 is live (#85, script @96 / @97, 2026-10-18);
-part 2 is not started. Part 1 ships first: part 2 needs its access change and touches the same page.
+part 2 is built (PR pending review, not deployed). Part 1 ships first: part 2 needs its access change and touches the same page.
 
 | # | Feature | Size |
 |---|---|---|
 | 1 | [My binome for admins](#1-my-binome-for-admins-in-a-binome) who are in a binome | script + UI, one PR. Live 2026-10-18 (#85) |
-| 2 | [Interview form in the dashboard](#2-interview-form-in-the-dashboard), editable after submit | script + UI, one PR (or script, then UI) |
+| 2 | [Interview form in the dashboard](#2-interview-form-in-the-dashboard), editable after submit | script + UI, one PR. Built 2026-10-18, not deployed |
 
 Each ships the usual way ([HANDOFF](../HANDOFF.md#how-changes-ship)): branch, `npm test`, PR, merge, `npm run deploy`,
 then Vercel. Both only add fields and actions, so no `API_VERSION` bump, and the UI treats a missing field as empty.
@@ -175,6 +175,27 @@ Final Affectation in the binome sheet.
   both cells and appears in the binome's tab. Move carries the row; Reset keeps the Master copy.
 - No manual-edit or integrity alert from the new tab or the fills (`test/quick.test.js`, the integrity suite).
 - `tsc -b`; `test/webdev.js` serves both actions.
+
+### Built (2026-10-18)
+
+As planned, with these details settled while building:
+
+- The questions were read again from the form's public page: 35 of them (5 first, 4 IT, 7 COMM, 7 HR, 8 FLER, 4 final),
+  `INTERVIEW_QUESTIONS` in Config.gs with each title exactly as the form, odd spaces included. The two code questions are
+  `INTERVIEW_CODE_TITLES` and the prefill entry ids `INTERVIEW_ENTRY`.
+- Dashboard Interviews has no separate Binome and Submitter columns: its Email Address and Your Binôme Code columns (the
+  form's own headers, so `intHeaders_` finds them) hold the submitter and the binome. Then Edited At, Edited By, Filled
+  Rating, Filled Affectation, Response Key. A copy is found by interviewee code, so after a move its key (and log row) stay.
+- `seen` is a token, the second of the last save plus who made it (`saveToken_`), so two partners saving within one second
+  still conflict. The sync's hand-edit test compares the same token between the tab and the Master copy.
+- A Google Form response is copied into the binome tab only when the candidate has no row there yet (their dashboard
+  answers, or an earlier form, stay). Forms processed before this deploy have no copy: View answers says so.
+- The quick-fix link "The form response" on interview-form alerts opens the Interview Responses row, or the Dashboard
+  Interviews row for a dashboard form. Integrity and its Repair leave the tab alone (a tab put in front is put back by the
+  existing reorder repair). Setup adds the Master tab with its header only when it is missing.
+- The member state carries `interviewForm` (the prefilled Google Form link); the UI hides every interview button while it is
+  absent, so the UI can reach Vercel before the script deploy without broken buttons.
+- Mock: `npm run mock` seeds, in the `?as=member` binome, one form filled from the dashboard, one sent with the Google Form.
 
 ### Rollout
 
