@@ -427,6 +427,9 @@ has no choice for shows as "Custom" and is kept until someone picks another. Two
 - Tests: the existing `npm test`, plus a check that every choice list holds the script's enum values
   (`SETTING_ENUMS` in WebApp.gs) so a dropdown never writes a value the script refuses.
 
+Built 2026-10-19 on `claude/settings-cleanup`. Not available on the page: the members sheet's own name (the snapshot
+has no title for it, so the card says "Linked" with Open); showing it needs a script change.
+
 ### PR 2: the other pages
 
 Menu order and dividers (`config/nav.ts`), Connections, Account, Appearance inline (reusing the customizer's

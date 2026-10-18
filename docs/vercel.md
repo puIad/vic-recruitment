@@ -101,8 +101,9 @@ with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup aft
 - **Kill switch:** refresh tokens stay live at Google until 6 months unused, so it takes both: rotate `SESSION_KEY`
   (every cookie unreadable) **and** the OAuth client secret (every refresh token useless).
 - **Settings pages** write through `webRun('saveSettings')` into the Settings tab. `SETTING_UI` in
-  `frontend/src/app/settings/components/settings-form.tsx` maps key → friendly name/icon: add a row there when adding a
-  setting to `SETTINGS_DEFAULTS`.
+  `frontend/src/lib/vic/settings-ui.ts` maps key → label, help line, icon and control (dropdown choices in `CHOICES`, which
+  `test/vercel.test.js` checks against the script's `SETTING_ENUMS`): add a row there when adding a setting to
+  `SETTINGS_DEFAULTS`.
 - Tokens never reach browser JS and are never logged.
 - **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions; [slice 3](plans.md#slice-3-save-settings-and-my-binome-fields):
   Save settings for admins and My binome fields for members). Off until

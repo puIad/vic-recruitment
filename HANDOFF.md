@@ -62,8 +62,9 @@ mock reseeds it and signs everyone out: open `/dev-login?as=…` again. More: [d
 - Dashboard actions go through `webRun(action, args)`; long ones take a time budget so they end before Vercel's 300 s.
   In the UI they live in `frontend/src/lib/vic/actions.tsx` (`useActions()`): anything that writes, shares or mails
   previews and confirms first.
-- New setting: add it to `SETTINGS_DEFAULTS` (Config.gs) and to `SETTING_UI` in
-  `frontend/src/app/settings/components/settings-form.tsx`.
+- New setting: add it to `SETTINGS_DEFAULTS` (Config.gs), give it a label, plain help line and control in `SETTING_UI`
+  (`frontend/src/lib/vic/settings-ui.ts`; dropdown choices in `CHOICES`), and put its key in a section of `GROUPS`
+  (`frontend/src/app/settings/components/settings-form.tsx`). Unlisted, it still shows under General › Advanced.
 
 ## Gotchas
 

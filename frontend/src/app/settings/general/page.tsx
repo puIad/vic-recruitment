@@ -1,24 +1,21 @@
 import { Link } from "react-router-dom"
-import { Clock, Scale } from "lucide-react"
+import { Clock } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { useConfirm } from "@/lib/vic/confirm"
 import { useVic } from "@/lib/vic/store"
 import type { Binome } from "@/lib/vic/types"
-import { GROUPS, SettingsPage } from "../components/settings-form"
+import { GROUPS, RowShell, SettingsPage } from "../components/settings-form"
 
 export default function GeneralSettings() {
   return (
     <SettingsPage
       group={GROUPS.general}
-      extra={(draft) => (
-        <>
-          <HrShare weight={Number(draft("HR_ONLY_WEIGHT")) || 1} total={String(draft("BALANCE_BY")).toUpperCase() === "TOTAL"} />
-          <PendingSwitch />
-        </>
-      )}
+      slots={{
+        "Assigning candidates": (f) => <HrShare weight={Number(f.value("HR_ONLY_WEIGHT")) || 1} total={String(f.value("BALANCE_BY")).toUpperCase() === "TOTAL"} />,
+        Advanced: <PendingSwitch />,
+      }}
     />
   )
 }
@@ -60,18 +57,16 @@ function HrShare({ weight, total }: { weight: number; total: boolean }) {
   )
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base font-bold">
-          <Scale className="size-4 text-primary" aria-hidden="true" /> How HR candidates are shared
-        </CardTitle>
-        <CardDescription>
-          An HR candidate goes to the binome with the lowest load, counted as {total ? "every interviewee it was given" : "its pending interviewees"} in
-          every department. An HR-only binome counts as its load ÷ {one(weight)}, so it takes about {one(weight)}× the load of the lightest mixed
-          binome{weight === 1 ? ": the same share" : ""}. It wins a tie.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="py-5">
+      <div className="space-y-4 rounded-2xl border bg-muted/30 p-4 sm:p-5">
+        <div>
+          <p className="font-bold">How HR candidates are shared</p>
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+            An HR candidate goes to the binome with the lowest load, counted as {total ? "every candidate it holds, finished ones too" : "the candidates it is still working on"},
+            in every department. An HR-only binome counts as its load ÷ {one(weight)}, so it takes about {one(weight)}× the load of the lightest
+            mixed binome{weight === 1 ? ": the same share" : ""}. It wins a tie.
+          </p>
+        </div>
         {!live.length ? (
           <p className="rounded-xl border-2 border-dashed bg-muted/40 p-4 text-sm text-muted-foreground">Appears once binomes are locked.</p>
         ) : !hrOnly.length ? (
@@ -98,8 +93,8 @@ function HrShare({ weight, total }: { weight: number; total: boolean }) {
             </p>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -130,20 +125,16 @@ function PendingSwitch() {
     if (out?.result) useVic.setState({ pendingOn: out.result.pending })
   }
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base font-bold">
-          <Clock className="size-4 text-primary" aria-hidden="true" /> Pending changes
-          <Badge variant="info" className="ml-1">Owner only</Badge>
-        </CardTitle>
-        <CardDescription>Alert actions, settings and My binome fields save in under a second and go into the sheet in the background. Other admins see them after the next sync; a binome partner at their next refresh.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <label className="inline-flex cursor-pointer items-center gap-3 text-sm font-semibold">
-          <Switch checked={on} disabled={busy} onCheckedChange={flip} aria-label="Pending changes" />
-          {on ? "On: these saves are pending changes" : "Off: every save is a direct write"}
-        </label>
-      </CardContent>
-    </Card>
+    <RowShell
+      icon={Clock}
+      label="Pending changes"
+      badge={<Badge variant="info">Owner only</Badge>}
+      help="Alert actions, settings and My binome fields save in under a second and go into the sheet in the background. Other admins see them after the next sync; a binome partner at their next refresh."
+    >
+      <label className="inline-flex cursor-pointer items-center gap-3 text-sm font-semibold">
+        <Switch checked={on} disabled={busy} onCheckedChange={flip} aria-label="Pending changes" />
+        {on ? "On" : "Off: every save waits for the sheet"}
+      </label>
+    </RowShell>
   )
 }
