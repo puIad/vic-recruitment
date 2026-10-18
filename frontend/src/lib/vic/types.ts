@@ -319,6 +319,8 @@ export interface MemberState {
   /** they can edit their binome sheet (an admin gave edit access): the gold columns are editable here */
   edit: boolean
   user: string
+  /** the owner's switch: My binome saves become pending changes (docs/plans.md › Slice 3); absent on an older script = off */
+  pending?: boolean
 }
 
 /** What webRun returns: messages for the activity log and toast, plus an action-specific result. */
@@ -382,16 +384,11 @@ export interface CoverCheck {
 }
 
 /** One cell in the author's pending-changes record (web/lib/pending.js). value = what they want, seen = what they saw. */
-export interface PendingEntry {
+interface EntryBase {
   id: string
+  /** "alert:A-0012", "setting:DIGEST_HOUR", "field:IT.12:Rating" */
   cell: string
-  kind: "alert"
-  alert: string
-  op: "resolve" | "snooze" | "mute" | "unmute"
-  value: "RESOLVED" | "SNOOZED" | "MUTED" | "OPEN"
-  seen: "OPEN" | "SNOOZED" | "MUTED"
   at: number
-  until?: number
   state: "pending" | "applied" | "met" | "dropped"
   /** Google's write (or check) time */
   wrote?: number
@@ -403,15 +400,33 @@ export interface PendingEntry {
   shown?: number
   addressed?: number
 }
-/** cell ("alert:A-0012") → entry */
-export type PendingRec = Record<string, PendingEntry>
-/** A change as the page sends it to the accept step. */
-export interface PendingChange {
+export interface AlertEntry extends EntryBase {
   kind: "alert"
   alert: string
-  op: PendingEntry["op"]
-  seen: PendingEntry["seen"]
-  at: number
+  op: "resolve" | "snooze" | "mute" | "unmute"
+  value: "RESOLVED" | "SNOOZED" | "MUTED" | "OPEN"
+  seen: "OPEN" | "SNOOZED" | "MUTED"
   until?: number
-  built?: number
 }
+export type CellValue = string | number | boolean
+export interface SettingEntry extends EntryBase {
+  kind: "setting"
+  key: string
+  value: CellValue
+  seen: CellValue
+}
+export interface FieldEntry extends EntryBase {
+  kind: "field"
+  code: string
+  field: GoldKey
+  value: CellValue
+  seen: CellValue
+}
+export type PendingEntry = AlertEntry | SettingEntry | FieldEntry
+/** cell → entry */
+export type PendingRec = Record<string, PendingEntry>
+/** A change as the page sends it to the accept step. built = its snapshot's build time (admins). */
+export type PendingChange =
+  | { kind: "alert"; alert: string; op: AlertEntry["op"]; seen: AlertEntry["seen"]; at: number; until?: number; built?: number }
+  | { kind: "setting"; key: string; value: CellValue; seen: CellValue; at: number; built?: number }
+  | { kind: "field"; code: string; field: GoldKey; value: CellValue; seen: CellValue; at: number }

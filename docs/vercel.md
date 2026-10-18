@@ -76,10 +76,11 @@ release. Any other path a build reads must be added to the `git diff` paths.
   `frontend/src/app/settings/components/settings-form.tsx` maps key → friendly name/icon: add a row there when adding a
   setting to `SETTINGS_DEFAULTS`.
 - Tokens never reach browser JS and are never logged.
-- **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions). Off until
+- **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions; [slice 3](plans.md#slice-3-save-settings-and-my-binome-fields):
+  Save settings for admins and My binome fields for members). Off until
   the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message.
   - The accept step in `api/run.js` refreshes the token when under 30 min is left, writes the author's Redis record first
-    (hash `pc:<email>`, one field per cell), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
+    (hash `pc:<email>`, one field per cell: `alert:<id>`, `setting:<key>`, `field:<code>:<column>`), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
     carrying `seal({email, at, ate})` and the change ids. The token is never in Redis or the logs. Either write failing =
     that save is a direct write (code `DIRECT`); another change format = code `FORMAT` (the page asks for a reload).
   - The consumer `api/apply.js` (`experimentalTriggers` queue/v2beta in `vercel.json`, no max concurrency: it would count

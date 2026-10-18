@@ -6,7 +6,8 @@
 //   /dev-login?as=closed → a member of a binome not opened yet (the "isn't open yet" gate).
 //   --pairing = before Lock: this year's OT list (part of the 2025 team, pre-ticked Experienced), three pairs made by hand, the
 //   rest free, so the Binomes page shows the Pairing panel (npm run mock -- --pairing).
-//   Pending changes: Settings › General › Pending changes (admin@ is the owner); Redis and Queues are faked in memory.
+//   Pending changes: Settings › General › Pending changes (admin@ is the owner); Redis and Queues are faked in memory. With it
+//   on, alert actions, Save settings and My binome saves (?as=member) take the pending path.
 //   --screening = the default data with Screening on and a linked members sheet: applications held for review (dots, one
 //   word, a non-answer), a VIC member declined silently, one declined by an admin, one with a binome flagged (npm run mock -- --screening).
 const http = require('http'), crypto = require('crypto');

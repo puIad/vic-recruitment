@@ -1,5 +1,6 @@
 import * as React from "react"
 import { AlertTriangle, Check, RotateCcw, Users } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -8,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Spinner } from "@/lib/vic/confirm"
 import { useVic } from "@/lib/vic/store"
-import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type GoldKey } from "@/lib/vic/types"
+import { REASON, useMemberView, type Mark } from "@/lib/vic/pending"
+import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type CellValue, type FieldEntry, type GoldKey } from "@/lib/vic/types"
+import { PendingMark } from "@/app/alerts/components/pending-mark"
 import { cn } from "@/lib/utils"
 
 type Cell = string | number | boolean
@@ -73,6 +76,8 @@ type Form = {
   revert: (k: GoldKey) => void
   useMine: (k: GoldKey) => void
   saveAll: () => void
+  /** this candidate's pending marks, by field */
+  marks: Partial<Record<GoldKey, Mark<FieldEntry>>>
 }
 const FormCtx = React.createContext<Form | null>(null)
 
@@ -85,6 +90,8 @@ const FormCtx = React.createContext<Form | null>(null)
 export function GoldForm({ code, candidate, onDirty, children }: { code: string; candidate: Candidate; onDirty?: (n: number) => void; children: React.ReactNode }) {
   const memberSet = useVic((s) => s.memberSet)
   const patchMember = useVic((s) => s.patchMember)
+  const allMarks = useMemberView().marks
+  const marks = Object.fromEntries(GOLD_KEYS.filter((k) => allMarks[`field:${code}:${k}`]).map((k) => [k, allMarks[`field:${code}:${k}`]]))
   const [fields, setFields] = React.useState(() => fieldsOf(candidate))
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
@@ -117,6 +124,13 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
     if (!todo.length || saving || ratingProblem(String(fields.Rating.draft))) return
     setSaving(true)
     setSaved(false)
+    // pending changes: accepted at once, the fields show them with the pill; a failed accept is today's direct write
+    const st = useVic.getState(), at = Date.now()
+    if (st.pendingOn && (await st.accept(todo.map((k) => ({ kind: "field" as const, code, field: k, value: toWire(k, fields[k].draft) as CellValue, seen: fields[k].base ?? "", at })))) === "ok") {
+      todo.forEach((k) => put(k, { base: toWire(k, fields[k].draft) as CellValue, phase: { s: "idle" } }))
+      setSaving(false)
+      return
+    }
     const rs = await memberSet(code, todo.map((k) => ({ field: k, value: toWire(k, fields[k].draft), seen: fields[k].base })))
     todo.forEach((k, i) => {
       const r = rs[i]
@@ -141,6 +155,7 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
     revert: (k) => setFields((cur) => ({ ...cur, [k]: { ...cur[k], draft: toDraft(k, cur[k].base), phase: { s: "idle" } } })),
     useMine: (k) => put(k, { phase: { s: "idle" } }), // the next Save writes the draft over theirs
     saveAll,
+    marks,
   }
 
   const dirty = GOLD_KEYS.filter((k) => isDirty(k, fields[k])).length
@@ -264,6 +279,8 @@ export function GoldField({ k }: { k: GoldKey }) {
       {control}
 
       <div aria-live="polite" className="empty:hidden">
+        {form.marks[k] && form.marks[k]!.kind !== "dropped" && <PendingMark mark={form.marks[k]} />}
+        <FieldDrop k={k} mark={form.marks[k]} />
         {ratingError && <p className="text-xs font-medium text-danger">{ratingError}</p>}
         {phase.s === "error" && (
           <div role="alert" className="flex items-start gap-2 rounded-lg border border-danger/25 bg-danger-soft px-3 py-2 text-xs">
@@ -291,6 +308,50 @@ export function GoldField({ k }: { k: GoldKey }) {
               </Button>
             </div>
           </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** A dropped field, answered where it was typed: Keep theirs, or Apply mine anyway (a fresh change); a refused value: OK. */
+function FieldDrop({ k, mark }: { k: GoldKey; mark?: Mark<FieldEntry> }) {
+  const form = React.useContext(FormCtx)!
+  const markDrops = useVic((s) => s.markDrops)
+  const accept = useVic((s) => s.accept)
+  const memberSet = useVic((s) => s.memberSet)
+  if (mark?.kind !== "dropped") return null
+  const e = mark.entry
+  const keep = () => markDrops({ keep: [e.cell] })
+  const applyMine = async () => {
+    // seen = the sheet's value as the notice shows it (issue 50)
+    if ((await accept([{ kind: "field", code: e.code, field: k, value: e.value, seen: e.sheet ?? e.seen, at: Date.now() }])) === "ok") return
+    // the pending path can't take it now: today's direct write, which says nothing itself, so the notice stays until it lands
+    const [r] = await memberSet(e.code, [{ field: k, value: e.value, seen: fromText(k, e.sheet ?? "") }])
+    if ("ok" in r) void keep()
+    else toast.error("Not saved", { description: "conflict" in r ? "Your partner changed it again." : r.error })
+  }
+  return (
+    <div role="alert" className="space-y-2.5 rounded-xl border border-vic-orange/40 bg-warning-soft p-3 text-sm">
+      <p className="flex items-start gap-2">
+        {e.reason ? <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" /> : <Users className="mt-0.5 size-4 shrink-0 text-warning" />}
+        <span>
+          {e.reason ? (
+            <><b className="font-bold">Not saved.</b> {REASON[e.reason] ?? e.reason} Yours: {theirsLabel(k, String(e.value))}.</>
+          ) : (
+            <><b className="font-bold">Your partner changed this to {theirsLabel(k, e.sheet ?? "")} first.</b>{" "}
+              <span className="text-foreground/80">Yours, {theirsLabel(k, String(e.value))}, was not written.</span></>
+          )}
+        </span>
+      </p>
+      <div className="flex flex-wrap gap-2 pl-6">
+        <Button size="sm" variant="outline" className="bg-background" onClick={keep} disabled={form.saving}>
+          {e.again ? <><RotateCcw /> Keep theirs</> : "OK"}
+        </Button>
+        {e.again && (
+          <Button size="sm" onClick={applyMine} disabled={form.saving}>
+            <Check /> Apply mine anyway
+          </Button>
         )}
       </div>
     </div>
