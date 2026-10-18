@@ -12,6 +12,7 @@ before launch.
 | 2 | [Screening](#2-screening-hold-low-effort-applications-decline-vic-members): hold low-effort applications, decline VIC members silently | the registration form going live | a calibration run, then script + UI, one PR |
 | 3 | [Department change](#3-change-a-binomes-department) from the dashboard | any time (a hand edit of the Tag works until then) | small, one PR |
 | 4 | [Emails](#4-emails-one-template-and-a-confirmation-to-registrants): one HTML template for every mail, and a confirmation to registrants (asked 2026-10-17) | the registration form going live | script + a logo PNG, one PR |
+| 5 | [HR-only binomes](#5-hr-only-binomes-take-a-bigger-share-of-hr-candidates) take a bigger share of HR candidates (`HR_ONLY_WEIGHT`) | the registration form going live | small, script + UI, one PR |
 
 Each ships the usual way ([HANDOFF](../HANDOFF.md#how-changes-ship)): branch, `npm test`, PR, merge, `npm run deploy`,
 then Vercel. The script only adds fields and actions, so no `API_VERSION` bump, and the UI treats a missing field as
@@ -481,6 +482,58 @@ its own inline Arial HTML:
     setting off, TEST_MODE, member and digest mails). The mock's `MailApp` also records any mail not built by
     `mailHtml_`, and `test/gs.js` fails a suite on exit if there was one, so every suite checks every sender it reaches.
 
+## 5. HR-only binomes take a bigger share of HR candidates
+
+Planned 2026-10-15, grilled with the owner 2026-10-18 (Decisions 16–23). Not built yet.
+
+### Goal
+
+B.29 and B.30 are HR-only binomes: they only ever receive HR candidates, while the 30 mixed binomes also take IT, COMM
+or FLER ones. The owner wants the HR-only binomes to take more of the HR candidates than they do today.
+
+### Today
+
+`pickBinome` gives a candidate to the binome with the lowest load among those whose tag covers their first choice,
+ties to the lowest code. Load is counted over every department (`BALANCE_BY`: ACTIVE = pending interviewees, the
+default; TOTAL = every one not out). So a mixed binome's other-department candidates already count against its HR
+share, and in the 2025 simulation the HR-only binomes ended with 5 each, the FLER/COMM & HR binomes with 5–6: about
+equal work. B.29 and B.30 lose every tie, their codes being the highest.
+
+### The rule
+
+- A new setting `HR_ONLY_WEIGHT` = K, "HR-only binome weight", a dropdown of 1 / 1.5 / 2 / 2.5 / 3 / 4, default 2.5.
+- For an HR candidate, an HR-only binome's load is divided by K before the comparison. Load stays whatever
+  `BALANCE_BY` counts, all departments included. An HR-only binome then takes about K times the load of the lightest
+  mixed binome, and a mixed binome already busy with its other department still gets fewer HR candidates.
+- Ties: the HR-only binome first, then the lowest code. At launch every load is 0, so the first HR candidates go to
+  B.29 and B.30.
+- K = 1 shares as today, apart from the tie order.
+- Only binomes tagged exactly `HR`, only for HR candidates. A one-department binome of another department (made with
+  Change department) gets no weight.
+- New picks only: changing K never moves an interviewee already assigned (Move does that by hand).
+- `ALL_BINOME_WEIGHT` stays as it is.
+- Rejected: counting HR candidates only, (hrCount + 1) / K against (hrCount + 1), the 2026-10-15 draft. It gave a fixed
+  share per 100 HR registrants (K / (2K + 30) to each HR-only binome) but ignored a mixed binome's other-department work.
+
+### Settings › General
+
+Under the settings, a card **How HR candidates are shared**: each HR-only binome's current load next to the mixed
+binomes' average and lightest load, and a line saying that with this weight an HR-only binome takes about K times the
+lightest mixed binome's load. It follows the weight being edited before Save. With no HR-only binome it says so. The
+share per 100 HR registrants can't be a fixed number under this rule (it depends on how many candidates the other
+departments bring), so the card shows the live loads instead.
+
+### Changes
+
+| Where | What |
+|---|---|
+| Config.gs | `['HR_ONLY_WEIGHT', 2.5, …]` in `SETTINGS_DEFAULTS` (no Setup needed: a missing row reads the default, Save appends it) |
+| WebApp.gs | `HR_ONLY_WEIGHT` in `SETTING_ENUMS`; each binome in the snapshot carries `load` (from `loads_`) |
+| Rules.gs | `pickBinome(dep, binomes, allWeight, hrOnlyWeight)`: the HR-only division and the tie order |
+| Registrations.gs | `assignRow_` passes `num_(s.HR_ONLY_WEIGHT, 1)` |
+| frontend | `settings-ui.ts` label and icon; `HR_ONLY_WEIGHT` in the General group; `SettingsPage`'s `extra` may be a function of the draft values; the card on the General page; `load?` on `Binome` |
+| tests | `test/unit.test.js`: the 32 production tags (no candidate data): K = 1 shares like today, K = 2.5 gives B.29 / B.30 about 2.5 × the lightest mixed load, the tie order, a non-HR candidate unchanged |
+
 ## Decisions (owner, 2026-10-15)
 
 | # | Question | Answer |
@@ -500,5 +553,13 @@ its own inline Arial HTML:
 | 13 | 2025 results for the calibration | Not kept: calibrated on the applications alone |
 | 14 | Change department: offer ALL? (2026-10-18) | No: IT, COMM, FLER, HR only. ALL by a hand edit if ever needed |
 | 15 | A Tag edited by hand: Apply too? (2026-10-18) | Yes: Apply keeps the typed tag, repaints the sheet and logs it, like the dialog |
+| 16 | HR-only binomes: which rule? (2026-10-18) | Today's load over every department, an HR-only binome's divided by K. Not the HR-count-only draft |
+| 17 | Which binomes get the weight? | Tag exactly `HR`, for HR candidates only |
+| 18 | Ties | HR-only binome first, then the lowest code |
+| 19 | Values | Dropdown 1 / 1.5 / 2 / 2.5 / 3 / 4, default 2.5 |
+| 20 | Already assigned interviewees | Never moved by a change of K |
+| 21 | `ALL_BINOME_WEIGHT` | Left as it is |
+| 22 | Settings › General | A live card with the HR-only and mixed loads, following the draft K |
+| 23 | When | Build now, its own PR |
 
 Still to get from the owner: the members sheet's link, after the deploy.

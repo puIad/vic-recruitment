@@ -3,6 +3,29 @@
 The club's recruitment: candidates register, binomes interview them, admins watch it all from the dashboard. The
 Google Sheets hold the data; the dashboard is how people act on it.
 
+## Binomes
+
+**Binome**:
+Two VIC members who interview, together, the candidates routed to them.
+_Avoid_: pair, team, duo
+
+**Tag**:
+The departments a binome receives candidates for, for instance `IT & HR` or `HR`.
+_Avoid_: department, type, label
+
+**Mixed binome**:
+A binome whose tag names two departments, one of them HR.
+_Avoid_: double binome
+
+**HR-only binome**:
+A binome whose tag is `HR` alone, so it receives only HR candidates.
+_Avoid_: pure HR binome, HR + HR binome
+
+**Load**:
+How many interviewees a binome is counted as having when the next candidate is routed: the lightest binome whose tag
+fits the candidate's department gets them.
+_Avoid_: workload, capacity, quota
+
 ## Sheets
 
 **Master**:

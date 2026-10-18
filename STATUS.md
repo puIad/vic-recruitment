@@ -47,8 +47,9 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   ([#85](https://github.com/puIad/vic-recruitment-2026/pull/85), @96 / @97) and the **interview form in the dashboard**
   ([#87](https://github.com/puIad/vic-recruitment-2026/pull/87), @98 / @99, Vercel `29c165c`). Live checks open
   (below).
-- Not built, planned 2026-10-15 in a session note only (not yet written into launch-features): `HR_ONLY_WEIGHT`, a
-  weight that gives pure `HR` binomes (B.29, B.30) their share of HR candidates. The owner wants it after screening.
+- Not built, planned in [launch-features.md](docs/launch-features.md#5-hr-only-binomes-take-a-bigger-share-of-hr-candidates)
+  section 5 (grilled with the owner 2026-10-18): `HR_ONLY_WEIGHT`, a weight that gives the HR-only binomes (B.29, B.30)
+  a bigger share of HR candidates. Being built now.
 - Pulled forward (owner, 2026-10-18): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
   settings and My binome. Planned for next season on 2026-10-17; slice 0's re-check passed
   ([#66](https://github.com/puIad/vic-recruitment-2026/issues/66)), and slices 2–5 (#67–#70) are built now, one at a
@@ -270,8 +271,8 @@ Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with expe
 (hold low-effort applications for review, decline VIC members silently, the rejection email, plus the name swap) is
 merged and deployed ([#33](https://github.com/puIad/vic-recruitment-2026/pull/33), @75/@76 and Vercel from `9aaad16`, 2026-10-17),
 calibrated with the owner on the 273 applications of 2025 (11 held at 50). The owner ran Setup and linked the
-members sheet (2026-10-17); turning it on is left. Changing a binome's department from the dashboard is built
-([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), 2026-10-18) and waits for the owner's deploy.
+members sheet (2026-10-17); turning it on is left. Changing a binome's department from the dashboard is live
+([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), 2026-10-18, script @96 / @97); its live check is open.
 
 ## Next: My binome for admins, interview form in the dashboard (requested 2026-10-18)
 
