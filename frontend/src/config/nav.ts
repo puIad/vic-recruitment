@@ -28,7 +28,8 @@ export interface NavItem {
   badge?: "alerts"
   /** a placeholder for a feature idea, not built yet */
   soon?: boolean
-  items?: { title: string; url: string; soon?: boolean }[]
+  /** divider: a line above this sub item, starting a new group in the submenu */
+  items?: { title: string; url: string; soon?: boolean; divider?: boolean }[]
   /** shown only to an admin who is in a binome (the store's member is set) */
   inBinome?: boolean
 }
@@ -75,10 +76,10 @@ export const navGroups: NavGroup[] = [
           { title: "Alerts and timing", url: "/settings/timing" },
           { title: "Sharing and email", url: "/settings/sharing" },
           { title: "Screening", url: "/settings/screening" },
-          { title: "Connections", url: "/settings/connections" },
-          { title: "Account", url: "/settings/account" },
-          { title: "Appearance", url: "/settings/appearance" },
+          { title: "Connections", url: "/settings/connections", divider: true },
           { title: "Change history", url: "/settings/history" },
+          { title: "Account", url: "/settings/account", divider: true },
+          { title: "Appearance", url: "/settings/appearance" },
         ],
       },
       { title: "Help", url: "/help", icon: CircleHelp },

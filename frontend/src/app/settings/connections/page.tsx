@@ -43,44 +43,47 @@ function List({ items }: { items: Item[] }) {
 /** Where the dashboard's data lives and what it talks to. Read-only: the links come from the script's state. */
 export default function ConnectionSettings() {
   const s = useVic((x) => x.state)
+  const owner = useVic((x) => x.access?.owner)
   if (!s)
     return (
-      <BaseLayout title="Connections" description="What the dashboard reads and writes.">
+      <BaseLayout title="Connections" description="The Google files the dashboard works with.">
         <Skeleton className="h-96 w-full rounded-2xl" />
       </BaseLayout>
     )
   const google: Item[] = [
-    { icon: FileSpreadsheet, name: "Master sheet", text: "The single source of truth: Registrations, Interviewees, Binomes, Team, Alerts, Settings.", href: s.links.master, status: "" },
-    { icon: ClipboardList, name: "Registration form", text: "Where candidates register. Share it at launch.", href: s.links.registrationForm, status: "Not found" },
-    { icon: FormInput, name: "Interview form", text: "Filled by binomes after each interview; the script checks and autocorrects it.", href: s.links.interviewForm, status: "Not found" },
-    { icon: FolderOpen, name: "Binome sheets folder", text: "One sheet per locked binome.", href: s.links.binomeFolder, status: "Not found" },
+    { icon: FileSpreadsheet, name: "Master sheet", text: "The main spreadsheet. Registrations, interviewees, binomes, the team, alerts and settings all live here.", href: s.links.master, status: "Not linked" },
+    { icon: ClipboardList, name: "Registration form", text: "Where candidates sign up. Share its link when registration opens.", href: s.links.registrationForm, status: "Not linked" },
+    { icon: FormInput, name: "Interview form", text: "Each binome fills it in after an interview. The answers are checked and small mistakes fixed.", href: s.links.interviewForm, status: "Not linked" },
+    { icon: FolderOpen, name: "Binome sheets folder", text: "One spreadsheet per binome, made once the binomes are locked.", href: s.links.binomeFolder, status: "Not linked" },
   ]
   const services: Item[] = [
-    { icon: ScrollText, name: "Apps Script", text: `Runs as whoever is signed in. Syncs every ${s.settings.syncEvery} min, sends the daily digest at ${String(s.settings.digestHour).padStart(2, "0")}:00.`, status: "Running" },
-    { icon: Globe, name: "This dashboard", text: "Hosted on Vercel. Your sign-in lives in a sealed cookie; the page never sees the Google token.", status: "Running" },
-    { icon: Cloud, name: "Google Cloud project", text: "vic-recruitment: Drive and Apps Script APIs, consent screen limited to ENP accounts.", status: "Internal" },
+    { icon: ScrollText, name: "Background tasks", text: `Run on your Google account. They check the sheets every ${s.settings.syncEvery} min and send the daily summary email at ${String(s.settings.digestHour).padStart(2, "0")}:00.`, status: "Running" },
+    { icon: Globe, name: "This dashboard", text: "Hosted on Vercel. Your Google sign-in stays on the server: this page never handles it.", status: "Running" },
+    { icon: Cloud, name: "Google Cloud project", text: "vic-recruitment. Lets the system use Drive and Apps Script. Only ENP accounts can sign in.", status: "ENP only" },
   ]
   return (
-    <BaseLayout title="Connections" description="What the dashboard reads and writes." watermark="Connections">
-      <div className="grid gap-6 xl:grid-cols-2">
+    <BaseLayout title="Connections" description="The Google files the dashboard works with." watermark="Connections">
+      <div className={owner ? "grid gap-6 xl:grid-cols-2" : "grid gap-6"}>
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-bold">Google files</CardTitle>
-            <CardDescription>The sheets and forms the script works on.</CardDescription>
+            <CardDescription>The sheets and forms behind the dashboard. Open one to see it in Google.</CardDescription>
           </CardHeader>
           <CardContent>
             <List items={google} />
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">Services</CardTitle>
-            <CardDescription>What runs behind the buttons.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <List items={services} />
-          </CardContent>
-        </Card>
+        {owner && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-bold">Services</CardTitle>
+              <CardDescription>What keeps the dashboard running. Only you see this card.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <List items={services} />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </BaseLayout>
   )

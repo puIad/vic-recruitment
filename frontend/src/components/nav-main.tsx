@@ -57,7 +57,7 @@ export function NavMain({ label, items }: { label: string; items: NavItem[] }) {
                     <CollapsibleContent>
                       <SidebarMenuSub>
                         {item.items.map((sub) => (
-                          <SidebarMenuSubItem key={sub.title}>
+                          <SidebarMenuSubItem key={sub.title} className={cn(sub.divider && "mt-1 border-t border-sidebar-border pt-1")}>
                             <SidebarMenuSubButton asChild className="cursor-pointer" isActive={isActive(sub.url)}>
                               <Link to={sub.url}>
                                 <span>{sub.title}</span>

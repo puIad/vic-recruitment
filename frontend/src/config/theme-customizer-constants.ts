@@ -17,16 +17,16 @@ export const radiusOptions: RadiusOption[] = [
 
 // Sidebar variant options
 export const sidebarVariants: SidebarVariant[] = [
-  { name: "Default", value: "sidebar", description: "Standard sidebar layout" },
+  { name: "Standard", value: "sidebar", description: "Standard sidebar layout" },
   { name: "Floating", value: "floating", description: "Floating sidebar with border" },
   { name: "Inset", value: "inset", description: "Inset sidebar with rounded corners" },
 ]
 
 // Sidebar collapsible options
 export const sidebarCollapsibleOptions: SidebarCollapsibleOption[] = [
-  { name: "Off Canvas", value: "offcanvas", description: "Slides out of view" },
-  { name: "Icon", value: "icon", description: "Collapses to icon only" },
-  { name: "None", value: "none", description: "Always visible" },
+  { name: "Hide", value: "offcanvas", description: "Slides out of view" },
+  { name: "Icons only", value: "icon", description: "Collapses to icon only" },
+  { name: "Always open", value: "none", description: "Always visible" },
 ]
 
 // Sidebar side options

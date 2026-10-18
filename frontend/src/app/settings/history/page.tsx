@@ -4,6 +4,7 @@ import { BaseLayout } from "@/components/layouts/base-layout"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
@@ -12,6 +13,8 @@ import type { HistoryRow } from "@/lib/vic/types"
 import { MemberName } from "@/components/member-name"
 
 type Kind = "replace" | "swap" | "cover" | "tag"
+
+const ALL = "all" // the Binome dropdown's "All binomes": Select items can't hold an empty value
 
 const KINDS: Record<Kind, { label: string }> = {
   replace: { label: "Replaced" },
@@ -64,15 +67,23 @@ function outcome(h: HistoryRow): { label: string; variant: "success" | "warning"
 /** Audit trail of everything done to binome members after lock, read from the Member Changes tab. */
 export default function HistorySettings() {
   const history = useVic((x) => x.state?.history)
+  const binomes = useVic((x) => x.state?.binomes)
   const [q, setQ] = React.useState("")
   const [kind, setKind] = React.useState<Kind | "">("")
+  const [binome, setBinome] = React.useState(ALL)
+
+  // every binome of the snapshot, plus any code only the history still names
+  const codes = React.useMemo(
+    () => [...new Set([...(binomes ?? []).map((b) => b.code), ...(history ?? []).map((h) => h.binome)].filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    [binomes, history]
+  )
 
   const rows = React.useMemo(() => {
     const needle = q.trim().toLowerCase()
     return (history ?? [])
       .map((h) => ({ h, d: describe(h) }))
-      .filter(({ h, d }) => (!kind || d.kind === kind) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
-  }, [history, q, kind])
+      .filter(({ h, d }) => (!kind || d.kind === kind) && (binome === ALL || h.binome === binome) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
+  }, [history, q, kind, binome])
 
   if (!history)
     return (
@@ -101,6 +112,19 @@ export default function HistorySettings() {
                 </button>
               )}
             </div>
+            <Select value={binome} onValueChange={setBinome}>
+              <SelectTrigger size="sm" className="w-40 rounded-full" aria-label="Filter by binome">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All binomes</SelectItem>
+                {codes.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <ToggleGroup type="single" variant="outline" size="sm" value={kind} onValueChange={(v) => setKind(v as Kind | "")} aria-label="Filter by change">
               {(Object.keys(KINDS) as Kind[]).map((k) => (
                 <ToggleGroupItem key={k} value={k} className="px-3">
@@ -115,7 +139,7 @@ export default function HistorySettings() {
             <div className="space-y-1 py-10 text-center">
               <p className="font-bold">{history.length ? "No match" : "Nothing changed yet"}</p>
               <p className="text-sm text-muted-foreground">
-                {history.length ? "Nothing fits this search." : "Replacing, swapping or covering members, or changing a department, after lock (Binomes page) will show up here."}
+                {history.length ? "Nothing fits these filters." : "Replacing, swapping or covering members, or changing a department, after lock (Binomes page) will show up here."}
               </p>
             </div>
           ) : (
