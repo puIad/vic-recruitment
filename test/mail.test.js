@@ -103,5 +103,44 @@ const subjects = outbox().map(m => m.subject);
 ['You joined binome', 'You left binome', 'You cover', ' covers ', 'Daily digest'].forEach(s => assert(subjects.some(x => x.includes(s)), s + ': ' + J(subjects)));
 const digest = outbox().find(m => /Daily digest/.test(m.subject)).htmlBody;
 assert(/Daily digest · /.test(digest) && /New registrations <b/.test(digest) && /Open the master sheet/.test(digest), 'the digest: title, stat line, button');
+// ---- dropped changes away from the page (slice 4): api/drops, the email, DROPPED|<email> ----
+{
+  const answer = a => run(`__fetch = function (url, o) { var c = { url: url, auth: o.headers.Authorization, body: JSON.parse(o.payload) }; __calls.push(c); return ${J(a)}; }`);
+  run('var __calls = []');
+  const fetched = () => R('__calls.slice()');
+  const dropAlerts = () => R(`master.getSheetByName('Alerts').getDataRange().getValues().filter(function (r) { return /^DROPPED\\|/.test(r[10]); })`);
+  answer({ code: 200, body: { mail: [], alert: [], open: [] } });
+  sync();
+  assert.strictEqual(fetched().length, 0, 'no DROPS_SECRET: no call');
+  run(`__props.DROPS_SECRET = 'S3'`);
+  const anAlert = call('webState').alerts[0];
+  answer({ code: 200, body: { mail: [{ email: 'away@g.enp.edu.dz', drops: [
+    { cell: 'alert:' + anAlert.id, kind: 'alert', alert: anAlert.id, op: 'resolve', value: 'RESOLVED', seen: 'OPEN', sheet: 'SNOOZED' },
+    { cell: 'setting:DIGEST_HOUR', kind: 'setting', key: 'DIGEST_HOUR', value: 9, seen: 8, reason: 'retries ran out' }] }],
+    alert: ['left@g.enp.edu.dz'], open: ['away@g.enp.edu.dz', 'left@g.enp.edu.dz'] } });
+  run('__outbox.length = 0');
+  sync();
+  let c = fetched()[0];
+  assert.deepStrictEqual([c.url, c.auth, c.body], ['https://vic-recruitment.vercel.app/api/drops', 'Bearer S3', { mailed: [] }], 'the call: secret, nothing mailed yet');
+  const m = outbox().find(x => x.to === 'away@g.enp.edu.dz');
+  assert.strictEqual(m.subject, '[VIC Recruitment] 2 of your changes were not applied');
+  assert(m.htmlBody.includes('Alert ' + anAlert.id + ' · ' + anAlert.type) && /Snoozed/.test(m.htmlBody) && /kept refusing it/.test(m.htmlBody) && /\/\?review=dropped/.test(m.htmlBody), 'each drop with the sheet now or why');
+  assert.deepStrictEqual(dropAlerts().map(r => [r[3], r[8], r[10]]), [['DROPPED', 'OPEN', 'DROPPED|left@g.enp.edu.dz']], 'unanswered: one admin alert');
+  answer({ code: 200, body: { mail: [], alert: ['left@g.enp.edu.dz'], open: ['left@g.enp.edu.dz'] } });
+  sync();
+  c = fetched()[1];
+  assert.deepStrictEqual([c.body.mailed.length, c.body.mailed[0].email, c.body.mailed[0].cells.length], [1, 'away@g.enp.edu.dz', 2], 'the next call reports what was mailed');
+  assert.strictEqual(dropAlerts().length, 1, 'raised once');
+  answer({ code: 200, body: { mail: [{ email: 'x@g.enp.edu.dz' }] } }); // a malformed answer: logged, the cycle goes on
+  assert(sync().messages, 'a bad api/drops answer never fails the sync');
+  answer({ code: 502, body: {} });
+  sync();
+  assert.strictEqual(dropAlerts()[0][8], 'OPEN', 'api/drops down: nothing resolved');
+  answer({ code: 200, body: { mail: [], alert: [], open: [] } });
+  sync();
+  assert.deepStrictEqual([dropAlerts()[0][8], fetched().pop().body.mailed], ['AUTO-RESOLVED', []], 'every drop addressed: resolved; the report was taken');
+  run(`delete __props.DROPS_SECRET; __fetch = function () { throw new Error('no network in the mock'); }`);
+}
+
 assert.strictEqual(run('__untemplated.length'), 0, J(run('__untemplated')));
 console.log('MAIL OK');

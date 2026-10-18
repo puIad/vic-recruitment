@@ -53,6 +53,8 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | `SNAP_HASH` | The admin dashboard's cached snapshot: `{h, n, at}` = hash of its JSON, number of `snap:admin:<i>` values in the script cache, when it last changed (shown as "Master read"). Deleting it = the next `webState` builds live and publishes again |
 | `SNAP_VER` | Version of that snapshot, +1 whenever it changes: what `webPulse` returns, so screens reload only on a real change |
 | `FORM_URLS` | Published URLs of the two forms, by form ID (looked up once instead of two `FormApp.openById` per `webState`) |
+| `DROPS_SECRET` | Set by hand (owner): the same value as Vercel's `DROPS_SECRET`. Each timed sync calls `api/drops` with it (pending changes, slice 4); unset = no call |
+| `DROPS_MAILED` | Which drops the last sync emailed (`[{email, cells, at}]`), reported to `api/drops` by the next call, then replaced |
 
 ## Vercel
 
@@ -63,7 +65,8 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 
 Environment (Production, never in git): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_KEY` (32 random bytes,
 base64 — rotating it signs everyone out), `SCRIPT_API_DEPLOYMENT_ID` (the API deployment above),
-`APP_ORIGIN=https://vic-recruitment.vercel.app`.
+`APP_ORIGIN=https://vic-recruitment.vercel.app`, `DROPS_SECRET` (the sync's call to `api/drops`, same value as the script
+property), and the Upstash `KV_REST_API_*` the Marketplace set.
 
 ## Settings tab
 
