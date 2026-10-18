@@ -552,8 +552,9 @@ export function useActions() {
           body: <p>Safe to repeat: re-creates missing tabs and settings, re-checks the form links and reinstalls the triggers.</p>,
           okLabel: "Run setup",
         })
-        if (ok) await go("setup", {}, "Setup")
+        const out = ok ? await go("setup", {}, "Setup") : null
         after()
+        return !!out
       },
       async saveSettings(values: Record<string, unknown>) {
         const out = await go("saveSettings", { values }, "Save settings")

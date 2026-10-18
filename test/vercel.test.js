@@ -510,6 +510,16 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   assert(/fetch\("\/api\/run"/.test(front('api.ts')) && !/google\.script/.test(front('api.ts')), 'every call goes through /api/run');
   const gs = require('fs').readFileSync(__dirname + '/../WebApp.gs', 'utf8');
   assert.strictEqual(front('types.ts').match(/export const API_VERSION = (\d+)/)[1], gs.match(/const API_VERSION = (\d+)/)[1], 'front and script API_VERSION match');
+  // settings dropdowns (settings-ui.ts CHOICES) offer exactly the values settingValue_ accepts (WebApp.gs SETTING_ENUMS)
+  {
+    const ui = front('settings-ui.ts'), enums = eval('(' + gs.match(/const SETTING_ENUMS =\s*(\{[\s\S]*?\});/)[1] + ')');
+    Object.keys(enums).forEach(k => {
+      const block = ui.match(new RegExp('\\n  ' + k + ': \\[([\\s\\S]*?)\\n  \\],'));
+      assert(block, k + ' has its choices in settings-ui.ts');
+      const vals = [...block[1].matchAll(/^\s*\[("?)([\w.]+)\1,/gm)].map(m => (m[1] ? m[2] : Number(m[2])));
+      assert.deepStrictEqual(vals, enums[k], k + ': the dropdown offers the script values, same type and order');
+    });
+  }
 
   // --- ignoreCommand (web/vercel.json): skip (exit 0) only when web/ and frontend/ are unchanged; an empty or unknown SHA, or a redeploy of the same commit, builds
   {

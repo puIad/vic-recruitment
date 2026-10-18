@@ -18,7 +18,7 @@ const ALERT_ID = /^A-\d+: /
 /** Script wording → dashboard wording: setting names instead of their keys, real plurals instead of "alert(s)". */
 export function friendly(text: string) {
   return text
-    .replace(KEYS, (k) => `“${SETTING_UI[k][0]}”`)
+    .replace(KEYS, (k) => `“${SETTING_UI[k].label}”`)
     .replace(/\b(\d+)(\D{0,24}?)\(s\)/g, (_, n: string, mid: string) => n + mid + (n === "1" ? "" : "s"))
     .replace(/\(s\)/g, "s")
 }
