@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-17. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-18. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
@@ -98,7 +98,8 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest UI: `9aaad16` (2026-10-17, [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): **Settings › Screening**,
+  Latest UI: `f4288c4` (2026-10-18, [#81](https://github.com/puIad/vic-recruitment-2026/pull/81), pending-changes
+  slice 5); the pending-changes PRs #71–#81 are in the Launch checklist above. Before that `9aaad16` (2026-10-17, [#33](https://github.com/puIad/vic-recruitment-2026/pull/33)): **Settings › Screening**,
   plus the screening changes on Alerts (quick actions), Interviewees and the Overview Pipeline card. Vercel production
   built from `9aaad16` (`npm install` 316 packages, `tsc -b && vite build`; "Deployment completed"; no runtime errors in the
   first hour). Before that `87a7871` (2026-10-15, [#32](https://github.com/puIad/vic-recruitment-2026/pull/32)): the **Pairing** panel on the
@@ -116,7 +117,10 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@83**, API **@84**, most likely from `75f64c4` (2026-10-17,
+- **Script, latest:** web app **@94**, API **@95** from `1013333` (2026-10-18,
+  [#79](https://github.com/puIad/vic-recruitment-2026/pull/79), pending-changes slice 4); @88–@93 (slices 2–3, the
+  action timing line) are in the Launch checklist above.
+- **Script, before the pending-changes build:** web app **@83**, API **@84**, most likely from `75f64c4` (2026-10-17,
   [#44](https://github.com/puIad/vic-recruitment-2026/pull/44); not logged at deploy time, found 2026-10-17 with
   `clasp deployments`): the dashboard payload no longer cuts open alerts at 300 and snoozed / muted ones at 200. The live
   `QuickFix.gs` and `WebApp.gs` pulled back equal `main`. Vercel production from `75f64c4` ("Deployment has completed").
@@ -285,7 +289,8 @@ In order. Each step says where to do it.
 ## Later (not needed for launch)
 
 - **Schedule** (calendar of the interviews set, plus admin events saved in the Master) and **Analytics** (a profile
-  for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).- **Binome desk** dropped (2026-10-04); remove the page in the next UI PR.
+  for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).
+- **Binome desk** dropped (2026-10-04); remove the page in the next UI PR (still in `nav.ts` and `routes.tsx` on 2026-10-18).
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.
 - Retired the Apps Script web app's old dashboard (2026-10-17): `Index.html` and `NoAccess.html` are deleted, and its

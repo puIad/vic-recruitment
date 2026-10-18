@@ -126,8 +126,8 @@ with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup aft
   ([#65](https://github.com/puIad/vic-recruitment-2026/issues/65)): Cloud Console › Credentials, new secret in
   `GOOGLE_CLIENT_SECRET`, redeploy, old one disabled.
 - After recruitment (handover): add `vic.rh@g.enp.edu.dz` as Cloud project owner, Vercel team member, consider
-  transferring the Master. The load-test plan's task 9 ([load-test.md](load-test.md#task-9--triggers-on-the-club-account)) moves the triggers
-  to `vic.rh` once the owner has done its steps (pending); the same steps hand them to any later account.
+  transferring the Master. The load-test plan's task 9 ([load-test.md](load-test.md#task-9--triggers-on-the-club-account)) moved the triggers
+  to `vic.rh` (owner's steps done 2026-10-06, Setup re-run as `vic.rh` 2026-10-17); the same steps hand them to any later account.
 
 ## Rebuilding the Google Cloud side (if ever needed)
 
