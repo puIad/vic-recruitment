@@ -42,13 +42,15 @@ export function alertView(state: WebState | null, rec: PendingRec, flash: Record
   const built = state?.built ?? 0
   entries.forEach((e) => {
     const value = asStatus(e.value), seen = asStatus(e.seen)
+    // the list it was clicked in: Unmute from Muted (the hold it had), the others from Open, whatever seen the merge gave it
+    const clicked: Status = e.op === "unmute" ? (seen === "OPEN" || seen === "CLOSED" ? "MUTED" : seen) : "OPEN"
     // an ended value gives way once the snapshot holds it (or already shows the author's value)
     const caughtUp = (e.wrote !== undefined && built >= e.wrote) || snap[e.alert] === value || (snap[e.alert] === undefined && value === "CLOSED")
-    if (e.state === "pending") over[e.alert] = { shows: value, sits: seen, mark: { kind: "pending", entry: e }, until: e.until }
+    if (e.state === "pending") over[e.alert] = { shows: value, sits: clicked, mark: { kind: "pending", entry: e }, until: e.until }
     else if (e.state === "applied" || e.state === "met") {
-      if ((flash[e.cell] ?? 0) > now) over[e.alert] = { shows: value, sits: seen, mark: { kind: "flash", entry: e }, until: e.until }
+      if ((flash[e.cell] ?? 0) > now) over[e.alert] = { shows: value, sits: clicked, mark: { kind: "flash", entry: e }, until: e.until }
       else if (!caughtUp) over[e.alert] = { shows: value, sits: value, until: e.until }
-    } else if (!e.addressed) over[e.alert] = { shows: e.sheet ? asStatus(e.sheet) : snap[e.alert] ?? "CLOSED", sits: seen, mark: { kind: "dropped", entry: e } }
+    } else if (!e.addressed) over[e.alert] = { shows: e.sheet ? asStatus(e.sheet) : snap[e.alert] ?? "CLOSED", sits: clicked, mark: { kind: "dropped", entry: e } } // answered where it was clicked
     else if (e.sheet && !(e.wrote !== undefined && built >= e.wrote)) over[e.alert] = { shows: asStatus(e.sheet), sits: asStatus(e.sheet) }
   })
 
@@ -60,7 +62,14 @@ export function alertView(state: WebState | null, rec: PendingRec, flash: Record
   const sits = (id: string) => over[id]?.sits ?? snap[id]
 
   const open: Alert[] = alerts.filter((a) => sits(a.id) === "OPEN")
-  muted.forEach((h) => { if (sits(h.id) === "OPEN") open.push(asAlert(h)) }) // an Unmute that ended moves back to Open
+  const back = muted.filter((h) => sits(h.id) === "OPEN").map(asAlert) // an Unmute that ended, or a drop answered where it was clicked
+  if (back.length) {
+    // in the script's order (buildState_): worst first, then newest; created is "dd/MM HH:mm"
+    const RANK: Record<string, number> = { HIGH: 3, MEDIUM: 2, INFO: 1 }
+    const when = (c: string) => c.replace(/^(\d\d)\/(\d\d) /, "$2$1 ")
+    open.push(...back)
+    open.sort((a, b) => (RANK[b.severity] || 0) - (RANK[a.severity] || 0) || when(b.created).localeCompare(when(a.created)))
+  }
   const held: HeldAlert[] = []
   const heldRow = (id: string, status: "SNOOZED" | "MUTED", until?: number): HeldAlert => {
     const base = heldById[id] ?? byId[id]

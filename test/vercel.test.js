@@ -236,6 +236,8 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     const runs0 = g.log.runs.length;
     await deliver(F.sent[0].payload);
     assert.strictEqual(g.log.runs.length, runs0, 'a second delivery finds it ended: nothing called');
+    r = await accept(own, { alert: 'A-9001', op: 'mute', seen: 'OPEN' }); // a device still showing it open, before the snapshot catches up
+    assert.deepStrictEqual([r.json.value['alert:A-9001'].state, F.sent.length], ['applied', 1], 'closed by their own Resolve: already met, nothing published');
 
     // same person, first still pending: Snooze then Unmute cancels; the queued Snooze finds no entry
     await accept(own, { alert: 'A-9002', op: 'snooze', seen: 'OPEN', until: Date.now() + 3600e3 });

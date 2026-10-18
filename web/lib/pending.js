@@ -80,6 +80,7 @@ async function accept(s, changes, now) {
     if (!(cell in before)) before[cell] = rec[cell];
     delete writes[cell];
     if (VALUE[c.op] === seen) { if (rec[cell] && rec[cell].state === 'pending') cancel.push(cell); return; } // typed, then undone
+    if (seen === 'RESOLVED') return; // their own Resolve closed it: any action on a closed alert is already met (issue 50)
     writes[cell] = { id: crypto.randomUUID(), cell: cell, kind: 'alert', alert: String(c.alert), op: c.op, value: VALUE[c.op], seen: seen,
       at: c.at, until: c.op === 'snooze' ? c.until : undefined, state: 'pending', by: s.ate };
   });
