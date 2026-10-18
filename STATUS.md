@@ -47,9 +47,11 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   ([#85](https://github.com/puIad/vic-recruitment-2026/pull/85), @96 / @97) and the **interview form in the dashboard**
   ([#87](https://github.com/puIad/vic-recruitment-2026/pull/87), @98 / @99, Vercel `29c165c`). Live checks open
   (below).
-- Not built, planned in [launch-features.md](docs/launch-features.md#5-hr-only-binomes-take-a-bigger-share-of-hr-candidates)
-  section 5 (grilled with the owner 2026-10-18): `HR_ONLY_WEIGHT`, a weight that gives the HR-only binomes (B.29, B.30)
-  a bigger share of HR candidates. Being built now.
+- Done: **HR-only binome weight** (`HR_ONLY_WEIGHT`,
+  [launch-features.md](docs/launch-features.md#5-hr-only-binomes-take-a-bigger-share-of-hr-candidates) section 5,
+  grilled with the owner 2026-10-18), live 2026-10-18 ([#89](https://github.com/puIad/vic-recruitment-2026/pull/89),
+  script @100 / @101, Vercel `de42102`). An HR-only binome's load counts ÷ K (default 2.5) for HR candidates and it wins
+  ties, so at launch B.29 and B.30 get the first HR candidates. Settings › General shows the live loads. No live check yet.
 - Pulled forward (owner, 2026-10-18): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
   settings and My binome. Planned for next season on 2026-10-17; slice 0's re-check passed
   ([#66](https://github.com/puIad/vic-recruitment-2026/issues/66)), and slices 2–5 (#67–#70) are built now, one at a
@@ -91,7 +93,8 @@ Left, owner (in order):
 4. Give admins edit access to the Binome Sheets folder; timing limits back to 24 / 48 / 12.
 5. Live checks still open: #37 (`=1+1` in a form, a Discord handle starting with `-`), #30 (the member shared by hand
    during task 8 still gets in: set that binome to No access), the other-account checks
-   ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines, the department change (#84), and both
+   ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines, the department change (#84), the HR share
+   card on Settings › General (#89), and both
    parts of [interview-form.md](docs/interview-form.md) (each part's Rollout).
 6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
 7. Load-test task 10, now that pending-changes slices 2–5 are live (switch off until the owner turns it on): load test again and sign off before members get the
@@ -99,7 +102,7 @@ Left, owner (in order):
    ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)).
 8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
-Left, code (in order): the confirmation's wording once the owner sends it, then `HR_ONLY_WEIGHT`.
+Left, code: the confirmation's wording once the owner sends it.
 Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done; task 10 was waiting for them.
 
 ## Live now
@@ -107,7 +110,9 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest Vercel: `2c4b45c` (2026-10-18, [#88](https://github.com/puIad/vic-recruitment-2026/pull/88)): `/api/run` answers a
+  Latest Vercel: `de42102` (2026-10-18, [#89](https://github.com/puIad/vic-recruitment-2026/pull/89)): the HR-only binome
+  weight on Settings › General and its "How HR candidates are shared" card; real build checked in the Vercel log (316
+  packages, `tsc -b && vite build`, 3,457 modules, "Deployment completed"), no runtime errors. Before that `2c4b45c` (2026-10-18, [#88](https://github.com/puIad/vic-recruitment-2026/pull/88)): `/api/run` answers a
   dropped connection to Google with code `LOST` ("may have finished anyway: refresh before trying again") and logs its cause,
   after a Sync now lost its connection at 41 s while the script finished; real build checked in the Vercel log.
   UI before it: `29c165c` (2026-10-18, [#87](https://github.com/puIad/vic-recruitment-2026/pull/87)): the interview form in
@@ -133,7 +138,10 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@98**, API **@99** from `29c165c` (2026-10-18,
+- **Script, latest:** web app **@100**, API **@101** from `de42102` (2026-10-18,
+  [#89](https://github.com/puIad/vic-recruitment-2026/pull/89), `HR_ONLY_WEIGHT` in `pickBinome` and each binome's `load`
+  in the snapshot; deployed from PowerShell, 19 files pushed, all 19 equal to `main` when pulled back). Before that web
+  app **@98**, API **@99** from `29c165c` (2026-10-18,
   [#87](https://github.com/puIad/vic-recruitment-2026/pull/87), the interview form in the dashboard: Interview Answers tab
   in each binome sheet, Dashboard Interviews in the Master, made by the first form; deployed from Git Bash, 19 files
   pushed). Before that web app **@96**, API **@97** from `845bdba` (2026-10-18,
