@@ -1,7 +1,7 @@
 # Plans: pairing, screening, department change, emails
 
 The owner's requests of 2026-10-15. Pairing (section 1) is live since 2026-10-15 (its Notes); screening (section 2)
-is live since 2026-10-17 (#33, @75/@76) but stays off until the owner links the members sheet (its Rollout); the
+is live since 2026-10-17 (#33, @75/@76); the owner linked the members sheet and tested it on 2026-10-19 (its Rollout); the
 emails (section 4, asked 2026-10-17) are live since 2026-10-17 (#45); the department change (section 3) is live
 since 2026-10-18 (#84; its script went out with #85's deploy, @96 / @97). Unlike [plans.md](plans.md), 1, 2 and 4 are needed
 before launch.
@@ -283,7 +283,10 @@ Refresh now.
    Screening, then turns Screening on.
 4. Test on the live Master in TEST_MODE: one member's email, one junk application, one decent one. Then Send
    rejections… once to see the email reach the admins only.
+   Done by the owner on 2026-10-19: screening flags the good applications from the bad correctly (whether the switch is on
+   is not recorded here).
 5. During the form rewording before launch, check that the form's confirmation message doesn't promise an interview.
+   The 2026 forms are reworded (owner, 2026-10-19).
 
 ### Notes
 

@@ -136,7 +136,7 @@ with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup aft
 
 ## Still open
 
-- Manual checks with other accounts, on the new UI: an editor, a removed/non-editor ENP account ("No access", no
+- ~~Manual checks with other accounts, on the new UI~~ (done by the owner, 2026-10-19): an editor, a removed/non-editor ENP account ("No access", no
   dashboard flash), a viewer ("View only"), a multi-account browser, sign-out → sign back in, within and after the 48 h (no
   consent screen either way), Lock near the time limit. The gate states were only exercised on the mock. Owner sign-in, the dashboard and
   Sync are verified in production (2026-10-01, old UI); the new UI with the owner account on 2026-10-03, Reset all

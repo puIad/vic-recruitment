@@ -11,7 +11,7 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
 No PR is open. Since 2026-10-18 (@92 / @93 from `f9bdecb`, [#77](https://github.com/puIad/vic-recruitment-2026/pull/77)) every dashboard action logs an `action` line (lockWait, load, writes, tracker, publish) next to the sync's `cycle` line, after a reassign took 54 s; waiting for the next slow one to read it. Slice 3 ([#68](https://github.com/puIad/vic-recruitment-2026/issues/68)) is deployed with the switch off: script [#75](https://github.com/puIad/vic-recruitment-2026/pull/75) as web app **@90** / API **@91** from `9b9846f` (pulled back equal to `main`), Vercel [#76](https://github.com/puIad/vic-recruitment-2026/pull/76) live from `9825142` (real build: npm install + `tsc -b && vite build`, "Deployment completed", no runtime errors). Save settings and My binome fields now go through the accept step when the switch is on. The owner's live check passed on 2026-10-18 (a setting as an admin, a My binome field as a member, the partner's screen). Pending-changes slices 2–5 (#67–#70) are all built and live with the switch off; task 10 is next.
 
-**Audit fixes, 2026-10-19** (PR open, stacked on [#93](https://github.com/puIad/vic-recruitment-2026/pull/93)): a binome's patched slice is now kept while its dirty mark exists (`publishBins_`), so no publish without a pull (an admin action, a form submission, a cache miss) flips a member's saved value back for the partner; **needs a script deploy after merge**. Frontend: newest-refresh-wins in the store, stable table pages, My binome drafts in localStorage, preload-error reload plus an error boundary, alert messages visible on phones.
+**Audit fixes, 2026-10-19** ([#96](https://github.com/puIad/vic-recruitment-2026/pull/96), merged 2026-10-19 00:40 UTC as `16a004d`): a binome's patched slice is now kept while its dirty mark exists (`publishBins_`), so no publish without a pull (an admin action, a form submission, a cache miss) flips a member's saved value back for the partner. The script part is live in @104 / @105 (from `e76ea6e`, which contains `16a004d`), the frontend part on Vercel from `16a004d`. Frontend: newest-refresh-wins in the store, stable table pages, My binome drafts in localStorage, preload-error reload plus an error boundary, alert messages visible on phones.
 
 **Slice 4** ([#69](https://github.com/puIad/vic-recruitment-2026/issues/69)) is deployed with the switch off, 2026-10-18. Vercel [#78](https://github.com/puIad/vic-recruitment-2026/pull/78) went live from `98db5a6`: `api/drops`, the seen mark, the next-visit dialog, and the sign-in asking for `script.external_request`. `DROPS_SECRET` is set in Vercel and live from `1013333` (`api/drops` answers 403 without it). Script [#79](https://github.com/puIad/vic-recruitment-2026/pull/79) is web app **@94** / API **@95** from `1013333`, pulled back equal to `main`. Every timed sync calls `api/drops`, emails drops nobody saw and raises `DROPPED|<email>`. The new scope means every admin's next dashboard call answers "one more Google permission": sign in again once and allow it. Owner steps done 2026-10-18: Setup run as `vic.rh`, the `DROPS_SECRET` script property set. Since 18:29 UTC the timed sync calls `api/drops` about once a minute; it passes the secret check and answers mail 0 / alert 0 / open 0, and the cycle line shows `drops` around 300 ms. Live check skipped by the owner on 2026-10-18, issue #69 closed. Verified live: a drop shown and answered on the page (18:42 UTC), the sync's calls to `api/drops`. Never run live: the email, the next-visit dialog and the `DROPPED|<email>` alert; tests and the local mock (`npm run mock -- --away`) cover them. Load-test task 10's pending-changes block is the next chance to see them. An env-var-only Redeploy of the live commit used to be canceled by `ignoreCommand` (this one went out with #79's merge); [#80](https://github.com/puIad/vic-recruitment-2026/pull/80) makes it build.
 
@@ -25,22 +25,23 @@ many are still saving. Owner, 2026-10-18: no refresh token on the server (#56), 
 `api/drops` (no token) just expires, an accepted cost; Switch account keeps Google's own account picker. Live check:
 load-test task 10's pending-changes block (the account switch with changes pending).
 
-**Pipeline audit fixes (2026-10-19)**, [#95](https://github.com/puIad/vic-recruitment-2026/pull/95), live 2026-10-20 as @104 / @105 from `e76ea6e`. Not yet checked live: a protected binome sheet in TEST_MODE. One binome sheet that refuses a write no longer stops the sync (placing and the interview mark are caught: candidate stays UNASSIGNED, sheet skipped for the run, HIGH FILE_ERROR); placing a code already in the sheet adds nothing; the pull reads the first row of a code that is on two rows; a code whose row was deleted by hand is never handed out again (the baseline's codes count); Revert keeps Interview Submitted At / Log Row / Screening; the HOUR check skips an interview day saved without a time. Also carries the department-change commit `9734397` that missed #84. Tests: `test/pipeline.test.js`, web.test.js revert case.
+**Pipeline audit fixes (2026-10-19)**, [#95](https://github.com/puIad/vic-recruitment-2026/pull/95), live 2026-10-19 as @104 / @105 from `e76ea6e` (Vercel production from `e76ea6e`, 00:44 UTC; the owner checked a protected binome sheet in TEST_MODE the same day). One binome sheet that refuses a write no longer stops the sync (placing and the interview mark are caught: candidate stays UNASSIGNED, sheet skipped for the run, HIGH FILE_ERROR); placing a code already in the sheet adds nothing; the pull reads the first row of a code that is on two rows; a code whose row was deleted by hand is never handed out again (the baseline's codes count); Revert keeps Interview Submitted At / Log Row / Screening; the HOUR check skips an interview day saved without a time. Also carries the department-change commit `9734397` that missed #84. Tests: `test/pipeline.test.js`, web.test.js revert case.
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 
 - Done: **pairing with experience** (#32, live 2026-10-15; the 32 production binomes were made with it and locked).
 - Done in code: **screening** (#33, live 2026-10-17). The owner ran Setup and linked and shared the members sheet
-  (2026-10-17). Left: check the count on Settings › Screening, turn it on, then rollout step 4 (one member / one junk
-  / one decent application in TEST_MODE, then Send rejections… once).
+  (2026-10-17) and tested it on 2026-10-19: it flags the good applications from the bad correctly. Whether the switch
+  is on is not recorded here.
 - Done: **change a binome's department** from the dashboard
   ([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), launch-features section 3): Binomes › ⋯ › Change
   department…, and Apply on a hand-edited Tag. Owner (2026-10-18): no ALL choice, Apply on the alert. Live 2026-10-18:
-  the script went out with #85's deploy (@96 / @97 from `845bdba`). No live check recorded yet.
+  the script went out with #85's deploy (@96 / @97 from `845bdba`). Checked by the owner on 2026-10-19.
 - Done: **emails** ([#45](https://github.com/puIad/vic-recruitment-2026/pull/45), live 2026-10-17 as @85/@86 from `0ea1fa1`): one HTML template in the VIC look for
   every mail the script sends, and a confirmation with their code to every registrant. The owner's inbox preview
-  passed (confirmation, alert mail, digest). Left: the confirmation's language and wording (English placeholder in
-  `CONFIRM_MAIL`, Mail.gs), and removing the preview registration with the other test candidates.
+  passed (confirmation, alert mail, digest). The confirmation's wording (English placeholder in `CONFIRM_MAIL`,
+  Mail.gs) moves into the planned email templates in Settings ([plans.md](docs/plans.md)). The preview registration goes
+  with the other test candidates.
 - Known, not a bug: **Send digest** from the dashboard takes 3+ minutes, because it runs the full 8 AM cycle (lock
   wait up to 2 min, every binome sheet pulled, full integrity check up to 200 s). Possible fix: skip the integrity
   check when it comes from the dashboard. Not planned yet.
@@ -55,7 +56,7 @@ Launch features ([launch-features.md](docs/launch-features.md)):
   [launch-features.md](docs/launch-features.md#5-hr-only-binomes-take-a-bigger-share-of-hr-candidates) section 5,
   grilled with the owner 2026-10-18), live 2026-10-18 ([#89](https://github.com/puIad/vic-recruitment-2026/pull/89),
   script @100 / @101, Vercel `de42102`). An HR-only binome's load counts ÷ K (default 2.5) for HR candidates and it wins
-  ties, so at launch B.29 and B.30 get the first HR candidates. Settings › General shows the live loads. No live check yet.
+  ties, so at launch B.29 and B.30 get the first HR candidates. Settings › General shows the live loads. The HR share card was checked by the owner on 2026-10-19.
 - Pulled forward (owner, 2026-10-18): **pending changes**, near-instant saves for Resolve, Snooze, Mute, Unmute, Save
   settings and My binome. Planned for next season on 2026-10-17; slice 0's re-check passed
   ([#66](https://github.com/puIad/vic-recruitment-2026/issues/66)), and slices 2–5 (#67–#70) are built now, one at a
@@ -83,7 +84,8 @@ Launch features ([launch-features.md](docs/launch-features.md)):
     already met).
 - Audit fixes 2026-10-19 (Vercel only, see [vercel.md](docs/vercel.md)): the pending path now needs a `webAccess`-checked
   session and caps a record at 300 cells, keeps an undo made during `webApply`, retries a non-scope 403 and a busy lock
-  with jitter, sweeps expired cells in the sync's call, and logs the real revoke result. Not live until the PR merges.
+  with jitter, sweeps expired cells in the sync's call, and logs the real revoke result. Live: [#94](https://github.com/puIad/vic-recruitment-2026/pull/94),
+  Vercel production from `84a0c89` (2026-10-19 00:38 UTC).
 
 Done since 2026-10-15: the 2026-10-17 audit fixes (#37–#43, @81/@82), the Google profile picture (#36), the Owner
 check on `TRIGGER_OWNER` (#34), the old Apps Script dashboard retired, and every open and muted alert loaded (#44).
@@ -93,31 +95,37 @@ binomes; the confirmation email is planned; `SAME_CHOICES` becomes INFO; new-int
 
 Left, owner (in order):
 
-1. Screening: turn it on and test (above).
-2. Verify B.08's guessed email `rami.ahmane@g.enp.edu.dz` (Change members › Replace if wrong).
-3. Reword the 2026 forms (they still say 2025; the confirmation must not promise an interview). Settle the
-   confirmation email's language and wording at the same time.
-4. Give admins edit access to the Binome Sheets folder; timing limits back to 24 / 48 / 12.
-5. Live checks still open: #37 (`=1+1` in a form, a Discord handle starting with `-`), #30 (the member shared by hand
-   during task 8 still gets in: set that binome to No access), the other-account checks
-   ([vercel.md](docs/vercel.md#still-open)), task 1 / task 4 `cycle` lines, the department change (#84), the HR share
-   card on Settings › General (#89), the settings cleanup pages (#91, #92, live 2026-10-19), and both
-   parts of [interview-form.md](docs/interview-form.md) (each part's Rollout).
-6. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch").
-7. Load-test task 10, now that pending-changes slices 2–5 are live (switch off until the owner turns it on): load test again and sign off before members get the
-   dashboard, with the sign-in checks of #65 and the pending-changes block
-   ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)).
-8. Launch: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
+1. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch"), and the
+   preview registration with them.
+2. Final binome reset just before launch; it also settles #30's member who was shared by hand.
+3. Load-test task 10, being rewritten for the current dashboard
+   ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)). Still the gate before members get the
+   dashboard.
+4. Launch, the last step: TEST_MODE off → Re-share binome sheets → share the registration form → watch Alerts.
 
-Left, code: the confirmation's wording once the owner sends it.
-Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done; task 10 was waiting for them.
+Owner answered on 2026-10-19 and done: screening tested (flags the good from the bad), B.08's
+`rami.ahmane@g.enp.edu.dz` is correct, the 2026 forms reworded, admin edit access to the Binome Sheets folder and the
+timing limits (the owner's), and every live check: #37 (no formula injection), the other-account checks, task 1 / task 4
+`cycle` lines, the department change (#84), the HR share card (#89), the settings cleanup pages (#91, #92), both
+interview-form parts (#85, #87) and #95's protected binome sheet in TEST_MODE.
+
+Left, code: the confirmation email's wording, inside the email templates in Settings
+([plans.md](docs/plans.md)).
+Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done.
 
 ## Live now
 
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest Vercel: `de42102` (2026-10-18, [#89](https://github.com/puIad/vic-recruitment-2026/pull/89)): the HR-only binome
+  Latest Vercel: `e76ea6e` (2026-10-19 00:44 UTC, [#95](https://github.com/puIad/vic-recruitment-2026/pull/95)), the merge
+  of the pipeline audit fixes and the department change. Since `de42102` (2026-10-18) production moved through
+  [#90](https://github.com/puIad/vic-recruitment-2026/pull/90) `9aae012` (FAQs for the shipped features),
+  [#91](https://github.com/puIad/vic-recruitment-2026/pull/91) `aa51e86` and [#92](https://github.com/puIad/vic-recruitment-2026/pull/92) `73652b5`
+  (Settings cleanup: plain labels, dropdowns, pickers; menu, Connections, Account, Appearance, Change history),
+  [#93](https://github.com/puIad/vic-recruitment-2026/pull/93) `999ef14` (lint to zero errors),
+  [#94](https://github.com/puIad/vic-recruitment-2026/pull/94) `84a0c89` (pending-changes audit fixes) and
+  [#96](https://github.com/puIad/vic-recruitment-2026/pull/96) `16a004d` (audit fixes). Before that `de42102` (2026-10-18, [#89](https://github.com/puIad/vic-recruitment-2026/pull/89)): the HR-only binome
   weight on Settings › General and its "How HR candidates are shared" card; real build checked in the Vercel log (316
   packages, `tsc -b && vite build`, 3,457 modules, "Deployment completed"), no runtime errors. Before that `2c4b45c` (2026-10-18, [#88](https://github.com/puIad/vic-recruitment-2026/pull/88)): `/api/run` answers a
   dropped connection to Google with code `LOST` ("may have finished anyway: refresh before trying again") and logs its cause,
@@ -145,7 +153,10 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@100**, API **@101** from `de42102` (2026-10-18,
+- **Script, latest:** web app **@104**, API **@105** from `e76ea6e` (2026-10-19,
+  [#95](https://github.com/puIad/vic-recruitment-2026/pull/95), which contains #96's `publishBins_` fix; `clasp deployments`
+  shows both at "apply entry"). @102 / @103 sit between `de42102` and `e76ea6e`; their source commits are unknown (clasp
+  logs no dates or commits, only "apply entry"). Before that web app **@100**, API **@101** from `de42102` (2026-10-18,
   [#89](https://github.com/puIad/vic-recruitment-2026/pull/89), `HR_ONLY_WEIGHT` in `pickBinome` and each binome's `load`
   in the snapshot; deployed from PowerShell, 19 files pushed, all 19 equal to `main` when pulled back). Before that web
   app **@98**, API **@99** from `29c165c` (2026-10-18,
@@ -253,14 +264,14 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
     B.11–B.19 `COMM & HR` (9); B.20–B.28 `FLER & HR` (9); B.29, B.30 `HR` (2, two HR members). Mix: 21 experienced
     with new, 8 both experienced, **3 both new** (B.10, B.11, B.18).
   - B.03's typo email (`enp` twice) was fixed by the owner on 2026-10-17. B.08 still has the guessed
-    `rami.ahmane@g.enp.edu.dz`: verify before launch (Change members › Replace).
+    `rami.ahmane@g.enp.edu.dz`, which the owner confirmed correct on 2026-10-19.
   - Registration Responses and Interviewees still hold the 273 applications of 2025 fed in on 2026-10-04. The Reset
     put them back to waiting and the Lock **assigned all 273 to the production binomes** (Assigned At 15/10 13:07), so
     the new binome sheets hold test candidates and the test timing limits will raise NOT_CONTACTED alerts to the
     admins. Clean up before launch as in step 6 below. They are also the screening calibration set.
   - Setup's v2 changes are in place (every Settings row, the Member Changes tab, Team column E "Exclude", column G
     "Experienced").
-  - Timing limits are still the test values 32 / 40 / 5 (24 / 48 / 12 before launch).
+  - Timing limits are still the test values 32 / 40 / 5 (24 / 48 / 12 before launch, the owner's to set).
 - Phases A–D, the timing and interview-form cases and the Reset were all tested live on 2026-10-03:
   [docs/history.md](docs/history.md#live-test-2026-10-03).
 
@@ -276,7 +287,7 @@ and form paths. The fix is planned as **10 tasks, one per session**, in [docs/lo
 members read and edit their own binome from the dashboard (written into their binome sheet, never the Master),
 cached snapshots rebuilt only where something changed, the sync writes only what changed, one poll call per tick,
 refused = error, triggers on `vic.rh`. Open the dashboard to the binomes only after task 10 signs it off.
-Progress: task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is deployed
+Progress (task 10 is being rewritten for the current dashboard): task 1 (sync timing lines) is deployed; its reading of the first `cycle` lines is open. Task 2 (refused = error) is deployed
 ([#19](https://github.com/puIad/vic-recruitment-2026/pull/19)). Task 3 (one poll call per tick, 20 s timeout, rate-limit pause) is live ([#23](https://github.com/puIad/vic-recruitment-2026/pull/23), UI only, Vercel production from `963144d`). Task 9: code deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner moved the triggers to `vic.rh` (2026-10-06). Follow-ups [#21](https://github.com/puIad/vic-recruitment-2026/pull/21) and [#22](https://github.com/puIad/vic-recruitment-2026/pull/22) are live: Check integrity flags binome sheets whose protection doesn't list `vic.rh`, the owner repairs them in bulk from Alerts or with the menu's Re-protect binome sheets. Task 4 (write only what changed) is deployed ([#24](https://github.com/puIad/vic-recruitment-2026/pull/24), @61/@62); its ~20 `cycle` lines are open. Task 5 (cached admin snapshot) is deployed ([#26](https://github.com/puIad/vic-recruitment-2026/pull/26), @63/@64); its live `webState` times are open. Task 6 (member role, read side) is deployed ([#27](https://github.com/puIad/vic-recruitment-2026/pull/27), @65/@66). Task 7 (My binome page, 15 s member polling) is live ([#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, Vercel production from `b9f84c0`); a real member sign-in on the live site is still to check (with TEST_MODE on, nothing is shared, so expect "Your binome sheet isn't shared with you yet"). Task 8 (members edit their binome) is deployed ([#29](https://github.com/puIad/vic-recruitment-2026/pull/29), @67/@68), and after the owner's live check members get the dashboard only once an admin opens their binome ([#30](https://github.com/puIad/vic-recruitment-2026/pull/30), @69/@70, Vercel production from `6b690e5`); #30's live check is open. Next: 10 (load test again, then sign off), once task 9's owner steps are confirmed.
 
 ## Next: pairing, screening, department change (requested 2026-10-15)
@@ -286,8 +297,8 @@ Planned in [docs/launch-features.md](docs/launch-features.md). Pairing with expe
 (hold low-effort applications for review, decline VIC members silently, the rejection email, plus the name swap) is
 merged and deployed ([#33](https://github.com/puIad/vic-recruitment-2026/pull/33), @75/@76 and Vercel from `9aaad16`, 2026-10-17),
 calibrated with the owner on the 273 applications of 2025 (11 held at 50). The owner ran Setup and linked the
-members sheet (2026-10-17); turning it on is left. Changing a binome's department from the dashboard is live
-([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), 2026-10-18, script @96 / @97); its live check is open.
+members sheet (2026-10-17) and tested it on 2026-10-19: it flags the good from the bad. Changing a binome's department from the dashboard is live
+([#84](https://github.com/puIad/vic-recruitment-2026/pull/84), 2026-10-18, script @96 / @97) and checked by the owner (2026-10-19).
 
 ## Next: My binome for admins, interview form in the dashboard (requested 2026-10-18)
 
@@ -299,9 +310,7 @@ Planned in [docs/interview-form.md](docs/interview-form.md), grilled with the ow
   Master's Dashboard Interviews by the sync, editable any time; every interview form fills Rating and Final Affectation:
   script @98 / @99 and Vercel from `29c165c` ([#87](https://github.com/puIad/vic-recruitment-2026/pull/87)).
 
-Not checked live yet (each part's Rollout): an editor in a locked binome saves a gold field from My binome and the
-partner sees it; a member fills a form in Test mode, then Sync now shows the Interview Log row, the status, Rating and
-Final Affectation; an edit and a second sync; a cover sees View answers and the Google Form link.
+Both parts' live checks (each part's Rollout) were done by the owner on 2026-10-19.
 
 ## Brief for 2026-10-04 (settled with the owner)
 
@@ -314,13 +323,12 @@ In order. Each step says where to do it.
    now. The Team tab is the live OT list; the owner adjusts them with Change members as it settles
    ([decisions.md](docs/decisions.md#open-questions), question 2).
 3. ~~**Check the new sheets once.**~~ Done by the owner 2026-10-04: Check integrity found nothing.
-4. **Other-account checks on the new UI** (owner, later on 2026-10-04; [vercel.md](docs/vercel.md#still-open)): an
+4. **Other-account checks on the new UI** (done by the owner, 2026-10-19; [vercel.md](docs/vercel.md#still-open)): an
    editor, a removed ENP account ("No access", no flash of the dashboard), a viewer ("View only"), a multi-account
    browser, sign-out then sign-in within 48 h. Then share the URL with the editors.
-5. **Before launch, by about 2026-10-20:** reword the 2026 forms (they still say 2025 in places); verify the guessed
-   email `rami.ahmane@g.enp.edu.dz` (now in B.08); ~~fix the B.03 email~~ (done 2026-10-17); ~~answer the
-   [open questions](docs/decisions.md#open-questions)~~ (done 2026-10-17); give admins edit access to the Binome Sheets folder (Change
-   members / Cover / Apply need it); timing limits back to 24 / 48 / 12 in Settings › Alerts and timing.
+5. **Before launch:** ~~reword the 2026 forms~~ (done by 2026-10-19); ~~verify B.08's `rami.ahmane@g.enp.edu.dz`~~ (correct, 2026-10-19); ~~fix the B.03 email~~ (done 2026-10-17); ~~answer the
+   [open questions](docs/decisions.md#open-questions)~~ (done 2026-10-17); admin edit access to the Binome Sheets folder (Change
+   members / Cover / Apply need it) and timing limits back to 24 / 48 / 12 are the owner's.
 6. **Full simulation on real data, before TEST_MODE goes off.** Feed the 273 applications of 2025 (Drive: VIC
    Recruitment 2026 › "Last Year Registration Applications", tab RAW, same 34 columns as Registration Responses) into
    Registration Responses one at a time, each stamped with its arrival time. The 1-minute sync routes them into the 32
@@ -343,6 +351,7 @@ In order. Each step says where to do it.
 - **Schedule** (calendar of the interviews set, plus admin events saved in the Master) and **Analytics** (a profile
   for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).
 - **Binome desk** dropped (2026-10-04) and removed from the UI (2026-10-18).
+- **Registration app** plus a VIC landing page to replace the Google Form: being explored in [docs/registration-app.md](docs/registration-app.md).
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.
 - Retired the Apps Script web app's old dashboard (2026-10-17): `Index.html` and `NoAccess.html` are deleted, and its
