@@ -3,7 +3,7 @@
 // (web/api/run.js). With pending changes on, saves go through the real accept step and the real queue consumer
 // (web/api/apply.js, web/lib/pending.js); in the model on in-memory Redis and a stand-in queue (test/fakes.js).
 //
-//   node test/load.js                        model: 64 members (32 binomes), 4 admins, 10 simulated min, switch on, off at 5 min
+//   node test/load.js                        model: 64 members (32 binomes), 4 admins, 10 simulated min, switch on, off at 8 min
 //   node test/load.js --dry-run              print the plan (who, which calls, how often, what is written) and stop
 //   node test/load.js --live https://vic-recruitment.vercel.app --cookies cookies.txt --check
 //                                            one webAccess per cookie: whose session, which role, until when. Never prints a cookie.
@@ -17,9 +17,14 @@
 //                                            of --interview CODE re-saved with its own answers (only a form this account saved; Edited at / by move),
 //                                            --setting ALL_BINOME_WEIGHT toggled 1 <-> 1.5 (no binome uses it) and put back.
 //                                            None of these sends mail. --pending on|off flips the owner's switch (needs the owner's
-//                                            cookie) and puts it back at the end.
+//                                            cookie) and puts it back at the end (--pending-end on|off|found). After a switch-off
+//                                            each writer saves once at once, so the direct fallback is always tried (mark 10).
+//                                            --drop-slice <min> (default 3 with --writes, 0 = never): the owner drops the cached
+//                                            slice of each binome a cookie sits in (webRun dropSlice, TEST_MODE only), so those
+//                                            members read their binome sheet until the next sync (#101's read).
 // cookies.txt: one vic_s value per line, one line per Google account. Admins go on admin cookies, members on member cookies.
-// Options: --members 64 --admins 4 --minutes 10 --scale 5 --pending on|off|keep --pending-off-at <min> (0 = never)
+// Options: --members 64 --admins 4 --minutes 10 --scale 5 --pending on|off|keep --pending-off-at <min> (0 = never) --pending-end on|off|found
+//          --stagger 2 (min: each person opens at a random moment in the first N minutes, as real people do; it spreads their polls too)
 //          --save-every 4 --form-every 20 --alert-every 2 --setting-every 30 (min per person, model; live: writers only)
 //          --sync-hold 10 (s) --hours-per-day 1 (projection: hours a day with everyone on the page) --codes IT.12,HR.3 --alerts 4 --interview IT.12 --setting KEY
 //          --out results.json --assert (the self-check in npm test: fails unless every call answered and every pending change ended)
@@ -37,7 +42,8 @@ const num = (k, d) => { const v = opt(k, d), n = +v; if (v === true || !Number.i
 const LIVE = opt('live', null), DRY = !!opt('dry-run', false), CHECK = !!opt('check', false), WRITES = !LIVE || !!opt('writes', false);
 const MEMBERS = num('members', 64), ADMINS = num('admins', 4), MINUTES = num('minutes', 10);
 const SCALE = LIVE ? 1 : num('scale', 5); // the model runs SCALE× faster than real time; every time reported is simulated
-const PENDING = String(opt('pending', LIVE ? 'keep' : 'on')), OFF_AT = num('pending-off-at', LIVE ? 0 : MINUTES / 2);
+const PENDING = String(opt('pending', LIVE ? 'keep' : 'on')), OFF_AT = num('pending-off-at', LIVE ? 0 : MINUTES * 0.8), END = String(opt('pending-end', 'found'));
+const STAGGER = Math.min(num('stagger', 2), MINUTES / 2) * 60000, DROP_AT = num('drop-slice', LIVE && WRITES ? 3 : 0);
 const SAVE_EVERY = num('save-every', 4), FORM_EVERY = num('form-every', 20), ALERT_EVERY = num('alert-every', 2), SETTING_EVERY = num('setting-every', 30);
 const SYNC_HOLD = num('sync-hold', 10) * 1000, HOURS = num('hours-per-day', 1), ALERT_TARGETS = num('alerts', 4);
 const CODES = String(opt('codes', '') || '').split(',').map(s => s.trim()).filter(Boolean), INTERVIEW = opt('interview', '') || '';
@@ -48,6 +54,7 @@ const MARK = '[load test]'; // added to a test candidate's Notes, then taken off
 const addMark = v => (String(v).trim() ? String(v).trimEnd() + ' ' : '') + MARK;
 const same = (a, b) => String(a).trim() === String(b).trim();
 if (!['on', 'off', 'keep'].includes(PENDING)) { console.error('--pending: on, off or keep'); process.exit(2); }
+if (!['on', 'off', 'found'].includes(END)) { console.error('--pending-end: on, off or found'); process.exit(2); }
 if (SETTING && !SAFE_SETTINGS[SETTING]) { console.error('--setting: only ' + Object.keys(SAFE_SETTINGS).join(', ')); process.exit(2); }
 
 // Simulated time: in the model every Date.now() (the proxy, the consumer, the Redis fake's expiries) runs SCALE× fast.
@@ -62,7 +69,7 @@ const pick = a => a[Math.floor(Math.random() * a.length)];
 function pct(a, p) { if (!a.length) return null; const s = a.slice().sort((x, y) => x - y); return Math.round(s[Math.min(s.length - 1, Math.floor(p / 100 * s.length))]); }
 let lastBeat = realNow(), maxStallMs = 0; // the machine itself can stall (sleep, power saving): every call in flight then looks slow
 setInterval(() => { const n = realNow(); maxStallMs = Math.max(maxStallMs, n - lastBeat - 100); lastBeat = n; }, 100).unref();
-let stop = false;
+let stop = false, OFF_T = null, DROP_T = null; // when the switch went off mid-run, when the slices were dropped (ms)
 
 /* ---------- the Apps Script stand-in (model only) ---------- */
 
@@ -282,12 +289,22 @@ async function call(acct, fn, args = [], extra, timeoutMs) {
 
 const R = { boots: { admin: [], member: [] }, saves: { sent: 0, written: 0, conflict: 0, busy: 0, failed: 0, ms: [] }, forms: { sent: 0, saved: 0, conflict: 0, busy: 0, failed: 0 },
   actions: { sent: 0, done: 0, stale: 0, busy: 0, failed: 0, ms: [] }, settings: { sent: 0, ok: 0, failed: 0 },
-  accepted: [], acceptMs: [], direct: 0, actionErrors: [], ended: [], drops: 0, events: [], seen: [] };
+  accepted: [], acceptMs: [], direct: 0, actionErrors: [], ended: [], drops: 0, events: [], seen: [],
+  afterOff: { pulsesOn: 0, accepted: 0, direct: 0, answered: 0 }, sheetReads: { ok: 0, refused: 0 }, dropped: [] };
+// mark 10: a direct write after the switch went off, and whether it answered (written, a conflict or a stale alert all count)
+const offWrite = ok => { if (OFF_T !== null && Date.now() >= OFF_T) { R.afterOff.direct++; if (ok) R.afterOff.answered++; } };
 const hasPending = rec => Object.keys(rec || {}).some(c => rec[c].state === 'pending');
 
 function person(i, role, acct, until, targets) {
   const me = { i, role, acct, pulse: null, bv: null, built: 0, state: null, rec: {}, polls: 0, wantRec: true, busy: false, refreshing: false, polling: false, on: false, firstRec: true };
-  const member = role === 'member';
+  const member = role === 'member', extra = [];
+  // live: the first time this page sees the switch off mid-run, its writer saves once at once, so mark 10's direct path is always tried
+  const setOn = on => {
+    const was = me.on;
+    me.on = on;
+    if (!(was && !on && OFF_T !== null && LIVE && WRITES)) return;
+    extra.push((async () => { while (me.busy) await sleep(200); try { if (member || acct.binome) await save(); if (!member) await alertAct(); } catch (e) { R.actionErrors.push(String(e && e.message).slice(0, 120)); } })());
+  };
   const setRec = rec => {
     if (!rec) return;
     const now = Date.now(), shown = [];
@@ -313,9 +330,12 @@ function person(i, role, acct, until, targets) {
       const pr = await call(acct, 'webPulse', [true], rec ? { rec } : undefined, POLL_TIMEOUT).catch(() => null);
       if (pr && pr.rec) setRec(pr.rec);
       const s = (await call(acct, 'webState')).value;
-      me.state = s; me.pulse = pr && pr.value && pr.value.v; me.bv = pr && pr.value && pr.value.bv; me.on = pr && pr.value ? !!pr.value.pending : !!s.pending;
+      me.state = s; me.pulse = pr && pr.value && pr.value.v; me.bv = pr && pr.value && pr.value.bv; setOn(pr && pr.value ? !!pr.value.pending : !!s.pending);
+      // #101: My binome read from the binome sheet (a cache miss, or the slice dropped mid-run); false = an admin's My binome refused
+      const mine = member ? s : s.member;
+      if (mine && mine.fromSheet) R.sheetReads.ok++; else if (mine === false) R.sheetReads.refused++;
       observe(s);
-    } catch (e) { /* the page shows a toast and keeps what it had */ }
+    } catch (e) { if (member && /isn't shared|permission/i.test(e.message)) R.sheetReads.refused++; /* the page shows a toast and keeps what it had */ }
     finally { me.refreshing = false; }
   };
   const tick = async () => {
@@ -325,9 +345,12 @@ function person(i, role, acct, until, targets) {
       const held = hasPending(me.rec);
       const rec = me.wantRec ? (held ? 2 : 1) : held && (member || ++me.polls % 2 === 0) ? 2 : 0;
       me.wantRec = false;
-      const r = await call(acct, 'webPulse', [true], rec ? { rec } : undefined, POLL_TIMEOUT);
+      const sent = Date.now(), r = await call(acct, 'webPulse', [true], rec ? { rec } : undefined, POLL_TIMEOUT);
       if (r.rec) setRec(r.rec);
-      if (r.value && typeof r.value === 'object') me.on = !!r.value.pending;
+      if (r.value && typeof r.value === 'object') {
+        if (r.value.pending && OFF_T !== null && sent > OFF_T) R.afterOff.pulsesOn++; // asked after the switch-off, still said on
+        setOn(!!r.value.pending);
+      }
       const v = r.value && typeof r.value === 'object' ? r.value.v : r.value, bv = r.value && r.value.bv;
       if ((v !== me.pulse || bv !== me.bv) && !me.busy) await refresh();
     } catch (e) { /* the next tick retries */ }
@@ -340,6 +363,7 @@ function person(i, role, acct, until, targets) {
     try {
       const r = await call(acct, 'accept', [{ v: 1, changes }]);
       R.acceptMs.push(Date.now() - t);
+      if (OFF_T !== null && t >= OFF_T) R.afterOff.accepted++; // a page that had not polled since the switch-off: it must still end
       setRec(r.value);
       changes.forEach(c => { const cellId = c.kind === 'alert' ? 'alert:' + c.alert : c.kind === 'setting' ? 'setting:' + c.key : 'field:' + c.code + ':' + c.field, e = r.value[cellId];
         if (e && e.state === 'pending') R.accepted.push({ email: acct.email, cell: cellId, id: e.id, at: c.at, kind: c.kind, i }); });
@@ -369,7 +393,8 @@ function person(i, role, acct, until, targets) {
       // Use mine, model only: live, a conflict means a real person typed there, so the run leaves their value alone
       if (theirs.length && !LIVE) out = (await call(acct, 'webRun', ['memberSet', { code, fields: theirs.map(x => ({ field: x.field, value: list.find(y => y.field === x.field).value, seen: x.conflict })) }])).value.result.fields;
       if (out.some(x => 'value' in x)) { R.saves.written++; R.saves.ms.push(Date.now() - at); if (!LIVE) R.events.push({ bin: mine.binome, v: W.binV[mine.binome], at, by: i }); }
-    } catch (e) { if (e.code === 'BUSY') R.saves.busy++; else R.saves.failed++; }
+      offWrite(true);
+    } catch (e) { if (e.code === 'BUSY') R.saves.busy++; else R.saves.failed++; offWrite(false); }
   };
   const form = async () => { // the interview form: open (interviewGet), then save (always direct)
     const code = LIVE ? targets.interview : String(pick(me.state.candidates || [{}]).Code || '');
@@ -397,7 +422,8 @@ function person(i, role, acct, until, targets) {
       const out = await run('quick', { op, ids: [a.id], for: '4h' });
       if (out.result && out.result.done && out.result.done.length) { R.actions.done++; if (targets.lastSet) targets.lastSet[a.id] = to; R.events.push({ admin: true, at, wrote: at, by: i }); } else R.actions.stale++;
       R.actions.ms.push(Date.now() - at);
-    } catch (e) { if (e.code === 'BUSY') R.actions.busy++; else R.actions.failed++; }
+      offWrite(true);
+    } catch (e) { if (e.code === 'BUSY') R.actions.busy++; else R.actions.failed++; offWrite(false); }
     finally { me.busy = false; }
     await refresh();
   };
@@ -424,13 +450,14 @@ function person(i, role, acct, until, targets) {
   };
 
   return (async () => {
+    await sleep(Math.random() * STAGGER); // people open the page at different moments, so their polls never tick together
     const t0 = Date.now();
     try { await call(acct, 'webAccess', [], undefined, POLL_TIMEOUT); await refresh(); if (me.state) R.boots[role].push(Date.now() - t0); } catch (e) { /* the error screen */ }
     const timer = setInterval(tick, (member ? MEMBER_PULSE : ADMIN_PULSE) / SCALE);
     const writers = !WRITES ? [] : member || acct.binome ? [every(SAVE_EVERY, save), targets.interview || !LIVE ? every(FORM_EVERY, form) : null] : [];
     if (WRITES && !member) writers.push(every(ALERT_EVERY, alertAct), SETTING ? every(SETTING_EVERY, settingAct) : null);
     while (!stop && el() < until) await sleep(Math.min(1000, until - el()));
-    await Promise.all(writers);
+    await Promise.all(writers.concat(extra));
     clearInterval(timer);
     // after the run: keep polling the record until this person's pending changes ended (the page would, tab open)
     for (let k = 0; k < 60 && hasPending(me.rec); k++) { await sleep(5000); await call(acct, 'webPulse', [true], { rec: 2 }, POLL_TIMEOUT).then(r => setRec(r.rec)).catch(() => {}); }
@@ -450,6 +477,9 @@ async function readAccounts(lines) {
       if (CHECK || !v.ok) { out.push(a); continue; }
       const s = (await call(a, 'webState')).value || {};
       a.state = s;
+      // the author's record, switch on or off: anything still pending or unanswered from an earlier run shows in the plan
+      const pr = await call(a, 'webPulse', [true], { rec: 2 }, POLL_TIMEOUT).catch(() => null), rec = (pr && pr.rec) || {};
+      a.left = { pending: Object.keys(rec).filter(c => rec[c].state === 'pending').length, dropped: Object.keys(rec).filter(c => rec[c].state === 'dropped' && !rec[c].addressed).length };
       if (a.role === 'admin' && s.member && s.member.binome) { a.binome = s.member.binome; a.slice = s.member; } else if (a.role === 'member') a.slice = s;
     } catch (e) { a.error = e.code === 'SIGNED_OUT' || e.code === 'EXPIRED' || e.status === 401 ? 'session ended (' + (e.code || e.message) + '): sign in again and replace this line' : e.message; }
     out.push(a);
@@ -481,9 +511,12 @@ function plan(accts, t) {
   const perAcct = accts.map(a => { const isA = a.role === 'admin', n = isA ? Math.ceil(nA / admins.length) : a.role === 'member' ? Math.ceil(nM / members.length) : 0; return { a, n, perMin: n * (isA ? 60000 / ADMIN_PULSE : 60000 / MEMBER_PULSE) * 1.1 }; });
   console.log(`\nPlan: ${LIVE ? 'LIVE ' + LIVE : 'model'}, ${MINUTES} min, ${nA} admins (poll ${ADMIN_PULSE / 1000} s) and ${nM} members (poll ${MEMBER_PULSE / 1000} s).`);
   console.log('  Each page: open = webAccess → webPulse → webState; each poll = webPulse (+ the pending record while changes are pending); webPulse + webState when the version moves.');
-  if (LIVE) perAcct.forEach(({ a, n, perMin }) => console.log(`  cookie ${a.n}: ${a.email || '?'} ${a.error ? '(' + a.error + ')' : (a.role || 'no access') + (a.owner ? ', owner' : '') + (a.binome ? ', binome ' + a.binome : '')}: ${n} virtual ${a.role === 'admin' ? 'admins' : 'members'}, ~${Math.round(perMin)} calls/min${perMin > 450 ? '  ! near Google\'s ~600/min per account' : ''}`));
+  if (LIVE) perAcct.forEach(({ a, n, perMin }) => console.log(`  cookie ${a.n}: ${a.email || '?'} ${a.error ? '(' + a.error + ')' : (a.role || 'no access') + (a.owner ? ', owner' : '') + (a.binome ? ', binome ' + a.binome : '')}: ${n} virtual ${a.role === 'admin' ? 'admins' : 'members'}, ~${Math.round(perMin)} calls/min${perMin > 450 ? '  ! near Google\'s ~600/min per account' : ''}${a.left ? (a.left.pending || a.left.dropped ? `  ! record holds ${a.left.pending} pending, ${a.left.dropped} unanswered drops from before` : ', record clear') : ''}`));
   if (LIVE && !members.length && MEMBERS) console.log('  ! no member cookie: no member polls in this run (an admin in a binome still saves through My binome).');
-  console.log(`  Pending changes: ${PENDING === 'keep' ? 'switch left as it is (' + (t.switchOn === null ? '?' : t.switchOn ? 'on' : 'off') + ')' : 'switch ' + PENDING + ' at the start'}${OFF_AT ? `, off at minute ${OFF_AT}` : ''}${PENDING !== 'keep' || OFF_AT ? ', put back as found at the end' : ''}.`);
+  console.log(`  Openings spread over the first ${STAGGER / 60000} min.`);
+  const found = t.switchOn === null ? '?' : t.switchOn ? 'on' : 'off';
+  console.log(`  Pending changes: ${PENDING === 'keep' ? 'switch left as it is (' + found + ')' : 'switch ' + PENDING + ' at the start'}${OFF_AT ? `, off at minute ${OFF_AT} (then each writer saves once, direct)` : ''}${PENDING !== 'keep' || OFF_AT ? `, ${END === 'found' ? 'put back as found (' + found + ')' : 'left ' + END} at the end` : ''}.`);
+  if (LIVE && DROP_AT) console.log(`  Minute ${DROP_AT}: the owner drops the cached slice of ${[...new Set(accts.filter(a => a.slice).map(a => a.binome))].join(', ') || 'no binome'} (TEST_MODE only): those members read their sheet until the next sync.`);
   if (!WRITES) { console.log('  Writes: none (read-only). Add --writes for saves and alert actions.'); return; }
   console.log(`  Writes${LIVE ? ` (TEST_MODE ${t.testMode ? 'on' : 'OFF: the run will refuse'})` : ''}:`);
   console.log(`    My binome Save every ~${SAVE_EVERY} min per ${LIVE ? 'writer' : 'member'}${LIVE ? `: Notes of ${t.codes.join(', ') || 'no candidate'} (toggled "${MARK}", put back at the end)` : ' (1–3 fields)'}`);
@@ -494,8 +527,16 @@ function plan(accts, t) {
 }
 async function setSwitch(accts, on, why) {
   const o = accts.find(a => a.owner && a.role === 'admin');
-  if (!o) { console.log(`! ${why}: turn pending changes ${on ? 'on' : 'off'} now in Settings › General (no owner cookie here).`); return; }
-  await call(o, 'webRun', ['pendingSwitch', { on }]).then(() => console.log(`  ${why}: pending changes ${on ? 'on' : 'off'} (${new Date().toISOString().slice(11, 19)} UTC)`)).catch(e => console.log(`! ${why}: switch refused: ${e.message}`));
+  if (!o) { console.log(`! ${why}: turn pending changes ${on ? 'on' : 'off'} now in Settings › General (no owner cookie here).`); return false; }
+  return call(o, 'webRun', ['pendingSwitch', { on }]).then(() => (console.log(`  ${why}: pending changes ${on ? 'on' : 'off'} (${new Date().toISOString().slice(11, 19)} UTC)`), true)).catch(e => (console.log(`! ${why}: switch refused: ${e.message}`), false));
+}
+async function dropSlices(accts) { // #101 live: the binomes the cookies sit in read their sheets until the next sync republishes them
+  const o = accts.find(a => a.owner && a.role === 'admin'), bins = [...new Set(accts.filter(a => a.slice).map(a => a.binome))];
+  if (!o) return console.log('! drop slices: no owner cookie here');
+  for (const binome of bins) {
+    await call(o, 'webRun', ['dropSlice', { binome }]).then(() => { DROP_T = DROP_T || Date.now(); R.dropped.push(binome); console.log(`  minute ${DROP_AT}: ${binome}'s cached slice dropped (${new Date().toISOString().slice(11, 19)} UTC)`); })
+      .catch(e => console.log(`! drop ${binome}: ${e.message}`));
+  }
 }
 async function restore(accts, t) { // live: what the run changed goes back, read from a fresh state after the sync published it
   console.log('Putting things back (waiting 70 s for the sync to publish the last changes)…');
@@ -570,6 +611,8 @@ function report(accts) {
     lag: Object.keys(lag).reduce((o, k) => (o[k] = { n: lag[k].length, p50: pct(lag[k], 50), p95: pct(lag[k], 95) }, o), {}),
     pending: { accepted: R.accepted.length, directFallback: R.direct, acceptP50: pct(R.acceptMs, 50), acceptP95: pct(R.acceptMs, 95), ended, replaced, lost: lostIds.length - replaced,
       appliedTwice: LIVE ? null : W.appliedTwice, dropsShown: R.drops, inSheetP50: pct(inSheet, 50), inSheetP95: pct(inSheet, 95), authorSeesP95: pct(authorSees, 95) },
+    afterOff: OFF_T === null ? null : Object.assign({ atMin: +((OFF_T - T0) / 60000).toFixed(1) }, R.afterOff),
+    sheetReads: Object.assign({ dropped: R.dropped, atMin: DROP_T === null ? null : +((DROP_T - T0) / 60000).toFixed(1) }, R.sheetReads),
     peakCallsPerMinPerAccount: Math.max(0, ...Object.values(peak)), machineStallS: +(maxStallMs / 1000).toFixed(1),
     actionErrors: R.actionErrors, errorsSample: [...new Set(lost.map(c => String(c.err).slice(0, 120)))].slice(0, 5) };
   if (!LIVE) {
@@ -600,6 +643,10 @@ function print(r) {
   console.log(`  from the click to the other admins' screens: direct ${g(r.lag.admin)}, pending ${g(r.lag.adminPending)} (pending: at the next sync's publish)`);
   console.log(`  pending: ${p.accepted} accepted (${p.directFallback} went direct), accept p50 ${f(p.acceptP50)} p95 ${f(p.acceptP95)}; ended ${JSON.stringify(p.ended)}, ${p.replaced} replaced by a later change, ${p.lost} LOST${p.appliedTwice !== null ? `, ${p.appliedTwice} applied twice` : ''}; ${p.dropsShown} drops shown`);
   console.log(`  pending: click → in the sheet p50 ${f(p.inSheetP50)} p95 ${f(p.inSheetP95)}; the author's page sees it ended p95 ${f(p.authorSeesP95)}`);
+  const o = r.afterOff;
+  if (o) console.log(`  switch off at minute ${o.atMin}: ${o.pulsesOn} polls sent after it still said on; ${o.accepted} saves accepted after it (pages that had not polled yet: counted in "ended" above); ${o.direct} direct writes after it, ${o.answered} answered`);
+  const sr = r.sheetReads;
+  console.log(`  My binome read from the binome sheet: ${sr.ok} answered, ${sr.refused} refused${sr.dropped.length ? ` (slices of ${sr.dropped.join(', ')} dropped at minute ${sr.atMin})` : ''}`);
   console.log(`  busiest account: ${r.peakCallsPerMinPerAccount} calls in one minute (Google: ~600 a minute per account)`);
   if (r.locks) {
     console.log(`  locks: script wait p95 ${f(r.locks.script.waitP95)} max ${f(r.locks.script.max)}, ${r.locks.script.refused} refused; document wait p95 ${f(r.locks.document.waitP95)} max ${f(r.locks.document.max)}, ${r.locks.document.refused} refused`);
@@ -639,17 +686,19 @@ function print(r) {
     accts = await startModel();
     syncLoop(P);
   }
-  const switchWas = t.switchOn;
+  const switchWas = t.switchOn, endOn = END === 'found' ? switchWas : END === 'on';
   // live: whatever happens, the put-back and the switch run before the process ends
   let cleaning = null; // one put-back, which every way out waits for
   const cleanup = () => cleaning || (cleaning = (async () => {
     if (!LIVE) return; stop = true;
     if (WRITES) await restore(accts, t).catch(e => console.log('! put-back failed: ' + e.message));
-    if ((PENDING !== 'keep' || OFF_AT) && switchWas !== null) await setSwitch(accts, switchWas, 'end, as found');
+    if ((PENDING !== 'keep' || OFF_AT || END !== 'found') && endOn !== null) await setSwitch(accts, endOn, END === 'found' ? 'end, as found' : 'end, as asked');
   })());
   if (LIVE) ['uncaughtException', 'unhandledRejection'].forEach(ev => process.on(ev, e => { console.error('! crashed: ' + (e && e.stack || e)); cleanup().then(() => { try { print(report(accts)); } catch (x) { /* the put-back is what matters */ } }).finally(() => process.exit(1)); }));
   if (LIVE && PENDING !== 'keep') await setSwitch(accts, PENDING === 'on', 'start');
-  if (OFF_AT) setTimeout(() => (LIVE ? setSwitch(accts, false, 'minute ' + OFF_AT) : (W.switchOn = false)), OFF_AT * 60000 / SCALE);
+  // OFF_T once the switch really is off: a poll sent after it must say off (mark 10)
+  if (OFF_AT) setTimeout(() => (LIVE ? (!stop && setSwitch(accts, false, 'minute ' + OFF_AT).then(ok => { if (ok) OFF_T = Date.now(); })) : (W.switchOn = false, OFF_T = Date.now())), OFF_AT * 60000 / SCALE);
+  if (LIVE && WRITES && DROP_AT) setTimeout(() => !stop && dropSlices(accts), DROP_AT * 60000);
   process.on('SIGINT', () => { if (stop) process.exit(130); stop = true; console.log('\nStopping: the people finish, then things are put back (Ctrl-C again to quit at once).'); });
 
   const admins = accts.filter(a => a.role === 'admin'), members = accts.filter(a => a.role === 'member');

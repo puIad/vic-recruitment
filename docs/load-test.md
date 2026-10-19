@@ -19,7 +19,7 @@ the task itself and the files it lists.
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☑ [#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, live on Vercel from `b9f84c0`; a real member sign-in is still open |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☑ [#29](https://github.com/puIad/vic-recruitment-2026/pull/29) (@67/@68) and the access follow-up [#30](https://github.com/puIad/vic-recruitment-2026/pull/30) (@69/@70); the live check of #30 in Notes is still open |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
-| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9, pending-changes slices 2–5 | ◐ rewritten for the launch dashboard (2026-10-19); the live run and sign-off are open |
+| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9, pending-changes slices 2–5 | ◐ rewritten for the launch dashboard and the pending path (2026-10-19); the sign-off run is open |
 
 Tasks 1, 2 and 9 can go in any order; 9 is mostly steps for the owner.
 
@@ -33,7 +33,8 @@ Tasks 1, 2 and 9 can go in any order; 9 is mostly steps for the owner.
 - A revoked person loses the dashboard at the next poll, as with the fix of `69024a1`, but with one call per tick.
 - A refused action shows as an error.
 - Vercel stays on Hobby (a 300-person event with registrations and payments fit it). Members poll every 15 s, admins
-  every 2 s.
+  every 2 s. (Since [#102](https://github.com/puIad/vic-recruitment-2026/pull/102), 2026-10-19: 30 s and 5 s, to fit a
+  recruitment day in the free tiers; [vercel.md](vercel.md#free-limits-and-what-spends-them).)
 - The triggers move off the owner's personal account to `vic.rh@g.enp.edu.dz`.
 
 **Defaults the tasks assume** (the owner may still change them before task 6):
@@ -738,20 +739,22 @@ the [pending-changes build plan](plans.md#pending-changes-the-build-plan).
 ### Who, at launch
 
 32 binomes, 64 members (the Team's 65 rows minus one excluded), about 4 admins, each person on their own Google
-account. TEST_MODE stays on until launch.
+account. TEST_MODE stays on until launch. **Pending changes are on at launch** (owner, 2026-10-19): the switch-on rows
+below are the launch path, the switch-off rows the fallback.
 
 | Who | When | Calls (`/api/run`) |
 |---|---|---|
 | Everyone | opens the page | `webAccess` → `webPulse([true], rec 1)` → `webState` |
-| Admin | every 2 s, tab visible, no action or dialog open | `webPulse([true])`; the author's pending record rides on every 5th poll while they have changes pending |
-| Member | every 15 s | `webPulse([true])`, with the record on every poll while changes are pending |
+| Admin | every 5 s, tab visible, no action or dialog open | `webPulse([true])`; the author's pending record rides on every 2nd poll while they have changes pending |
+| Member | every 30 s | `webPulse([true])`, with the record on every poll while changes are pending |
+| Anyone | a tab nobody touched for 3 min polls 4× slower; after 15 min it stops until the next mouse, key or scroll ([#102](https://github.com/puIad/vic-recruitment-2026/pull/102)) | `webAccess` / `webPulse` end at Google after 25 s (the page drops them at 20 s) |
 | Anyone | the pulse moved (admins: `SNAP_VER` or their binome's `bv`; members: their binome's version) | `webPulse` + `webState` |
-| Admin | Alerts: Snooze, Mute, Unmute, Resolve | switch off: `webRun quick` / `resolve` (script lock, then `publishFresh_`), then a refresh. Switch on: `accept` (Redis + queue, no Google call), then the consumer's `webApply` as them (document lock) |
-| Admin | Settings: Save | switch off: `webRun saveSettings` (+ publish); on: `accept` → `webApply` |
-| Member, or admin in a binome ([#85](https://github.com/puIad/vic-recruitment-2026/pull/85)) | My binome: Save (1–7 fields of one candidate) | switch off: `webRun memberSet {code, fields}` (document lock, 10 s); on: `accept` → `webApply` |
+| Admin | Alerts: Snooze, Mute, Unmute, Resolve | switch on: `accept` (Redis + queue, no Google call), then the consumer's `webApply` as them (document lock). Switch off: `webRun quick` / `resolve` (script lock, then `publishFresh_`), then a refresh |
+| Admin | Settings: Save | switch on: `accept` → `webApply`; off: `webRun saveSettings` (+ publish) |
+| Member, or admin in a binome ([#85](https://github.com/puIad/vic-recruitment-2026/pull/85)) | My binome: Save (1–7 fields of one candidate) | switch on: `accept` → `webApply`; off: `webRun memberSet {code, fields}` (document lock, 10 s) |
 | Member, or admin in a binome | the interview form ([#87](https://github.com/puIad/vic-recruitment-2026/pull/87)) | `webRun interviewGet` on open, `interviewSave` on save: always direct, document lock |
 | Anyone with a drop on screen | | `pendingMark` (shown, then seen once a minute, Keep the sheet's value) |
-| The sync (vic.rh) | every minute | script lock (30 s), then `api/drops` (Redis: one SCAN, one HGETALL per author with a record) |
+| The sync (vic.rh) | every minute | script lock (30 s), then `api/drops` (Redis: one SMEMBERS of `pcx`, one HGETALL per author in it) |
 
 Two locks are shared by everyone, and they are what can queue people behind each other:
 - **the script lock**: the sync, every direct admin action and its publish;
@@ -762,8 +765,8 @@ Two locks are shared by everyone, and they are what can queue people behind each
 
 ### The run
 
-**1. Model** (`node test/load.js`, ~2 min): the people above for 10 simulated minutes, pending changes on for the first
-5 and off for the last 5, through the real `web/api/run.js`, `web/api/apply.js` and `web/lib/pending.js` (Redis and
+**1. Model** (`node test/load.js`, ~2 min): the people above for 10 simulated minutes, opening at random moments in the
+first 2, pending changes on for the first 8 and off for the last 2, through the real `web/api/run.js`, `web/api/apply.js` and `web/lib/pending.js` (Redis and
 Queues faked in memory, `test/fakes.js`). The Apps Script stand-in has both locks and the 1-minute sync. Busy-hour rates,
 per person: a My binome Save every ~4 min, an interview form every ~20 min, an alert action every ~2 min (admins), a
 setting every ~30 min. `npm test` runs a 2-minute version of it (`npm run load:check`) that fails unless every call
@@ -775,11 +778,19 @@ answered and every accepted change ended.
    flip the switch with it), and a member account if one can sign in (members' polls run only on member cookies; an
    admin in a binome still saves through My binome). `node test/load.js --live https://vic-recruitment.vercel.app
    --cookies cookies.txt --check` prints each one's email, role and whether it has ended.
-2. The plan, no write: the same with `--dry-run --writes --pending on --pending-off-at 5` (plus `--codes`, `--interview`,
-   `--setting` if wanted). It reads each account once and prints who runs where, the calls a minute per account (Google
-   allows about 600), TEST_MODE, the switch, and exactly what it would write. The owner says go on that plan.
-3. The run: the same without `--dry-run`, 10 minutes, 4 admins and 64 members spread over the cookies of their role.
-   It stops before writing anything unless TEST_MODE is on. It writes only:
+2. The plan, no write: the same with `--dry-run --writes --pending on --pending-off-at 8 --pending-end on|off|found`
+   (the switch's state after the run is the owner's; plus `--codes`, `--interview`, `--setting` if wanted). It reads each
+   account once and prints who runs where, the calls a minute per account (Google allows about 600), whether each
+   account's pending record still holds anything from before, TEST_MODE, the switch, the slice drop, and exactly what it
+   would write. The owner says go on that plan.
+3. The run: the same without `--dry-run`, 10 minutes, 4 admins and 64 members spread over the cookies of their role,
+   each opening at a random moment in the first 2 minutes (`--stagger 2`): runs 1 and 2 opened all 68 in the same second,
+   so their polls ticked together for the whole run, which real pages never do. Pending changes on from the start to
+   minute 8, then off: the last 2 minutes are the direct fallback, and each writer saves once as soon as its page sees
+   the switch off. It stops before writing anything unless TEST_MODE is on. At minute 3 the owner's cookie drops the
+   cached slice of each binome a cookie sits in (`webRun dropSlice`, owner and TEST_MODE only, a script property, no
+   sheet), so those members read their binome sheet until the next sync republishes it: the read
+   [#101](https://github.com/puIad/vic-recruitment-2026/pull/101) fixed. It writes only:
    - Notes of the chosen test candidates (two per binome a cookie sits in, or `--codes`), toggled with " [load test]";
    - Snooze 4 h / Mute / Unmute on up to `--alerts 4` open alerts about a candidate;
    - with `--interview CODE`: that candidate's dashboard interview form, re-saved with its own answers, only if this account
@@ -791,24 +802,47 @@ answered and every accepted change ended.
    left as they left it, and the run prints which. Ctrl-C stops the people and still puts things back.
 4. During the run: the owner keeps Apps Script › Executions open (the sync still runs every minute; `cycle` lines with
    `busy`?), and reads Vercel › Usage and Upstash › Usage before and after. Within the hour, the Vercel runtime logs give
-   the server side: the `{"email","action","ms","ok"}` lines and `{"at":"apply","ended":[...]}`.
+   the server side: the `{"email","action","ms","ok"}` lines, `{"at":"apply","ended":[...]}`, and one
+   `{"at":"drops"}` line per timed sync (mark 11 without Executions).
 
-### Pass marks (all of them)
+Before the run: the script with `dropSlice` is deployed (it ships with the PR that added it).
+
+### Pass marks
+
+The owner decided on 2026-10-19 to launch with pending changes on, so the sign-off judges the **pending path**. The
+direct path is the fallback (the switch off): its marks are measured and reported, and do not gate.
+
+**Gating** (every one of them):
 
 | # | What | Mark | Measured |
 |---|---|---|---|
-| 1 | Calls answered: ok, or an error the page shows as one (BUSY, CONFLICT, DIRECT) | ≥ 99.9 %; no RATE_LIMIT and no "too many scripts" with one person per account | live and model |
+| 1 | Calls answered: ok, or an error the page shows as one (BUSY, CONFLICT, DIRECT) | ≥ 99.9 %; no RATE_LIMIT and no "too many scripts" with one person per account; no My binome read refused while its slice is dropped (#101) | live and model |
 | 2 | Opening the dashboard | p95 ≤ 5 s, admins and members | live |
 | 3 | Refresh (`webState`) / poll (`webPulse`) | p95 ≤ 2 s / ≤ 3 s | live |
+| 6 | Pending path: from the click to the partner's screen / to the other admins' | p95 ≤ 90 s / ≤ 4 min (owner, 2026-10-19; 20 s / 3 min before, see below) | model; the partner live only with two cookies in one binome |
+| 7 | A save shows as Pending (the accept step answered) | p95 ≤ 1 s on a page that is polling | live |
+| 8 | In the sheet (applied or already met) | p95 ≤ 2 min from the click | live and model |
+| 9 | Every accepted change ends applied, met, dropped, or merged into the author's next change on that cell | none lost, none applied twice; drops only where someone else changed the cell first | live and model |
+| 10 | Fallback: the switch turned off mid-run (minute 8) | the queued changes still end (9); no poll sent after it says on; every save after it is a direct write that answers | live and model |
+| 11 | The 1-minute sync | keeps running through the run, never skipped twice in a row | Vercel's `drops` lines, Executions, model |
+| 12 | Free tiers, with everyone on the page 1 h a day | Vercel ≤ 1M invocations a month, Redis ≤ 500K commands, Queues ≤ 1M operations: each "hours a day before a limit" ≥ 1 h | model, checked against the live Usage pages |
+
+**Informational** (the direct path, live in the last 2 minutes only):
+
+| # | What | Reference | Measured |
+|---|---|---|---|
 | 4 | A direct My binome Save answered / refused BUSY | p95 ≤ 5 s / ≤ 1 % of saves (each one shown with Try again) | live and model |
 | 5 | A direct alert action answered | p95 ≤ 10 s | live and model |
-| 6 | From the click to the partner's screen (either path) / to the other admins' (direct) | p95 ≤ 20 s / ≤ 20 s (pending: ≤ 3 min, the next sync's publish) | model; live only with two cookies in one binome |
-| 7 | Switch on: a save shows as Pending (the accept step answered) | p95 ≤ 1 s on a page that is polling | live |
-| 8 | Switch on: in the sheet (applied or already met) | p95 ≤ 2 min from the click | live and model |
-| 9 | Every accepted change ends applied, met, dropped, or merged into the author's next change on that cell | none lost, none applied twice; drops only where someone else changed the cell first | live and model |
-| 10 | Switch turned off mid-run | the queued changes still end; new saves are direct writes | live |
-| 11 | The 1-minute sync | keeps running through the run, never skipped twice in a row | Executions, model |
-| 12 | Free tiers, with everyone on the page 1 h a day | Vercel ≤ 1M invocations a month, Redis ≤ 500K commands, Queues ≤ 1M operations: each "hours a day before a limit" ≥ 1 h | model, checked against the live Usage pages |
+| 6 | Direct path: from the click to the partner's screen / to the other admins' | p95 ≤ 20 s / ≤ 20 s (the partner's is out of reach with 30 s member polls: model 38 s) | model; live only with two cookies in one binome |
+
+Why mark 6 changed on the pending path (owner, 2026-10-19):
+- **Other admins** see an alert or setting change at the first sync that reads the Master after `webApply` wrote it
+  (`webApply` never publishes). The worst case adds up to about 3.5 min: up to 60 s waiting for the author's one
+  `webApply` a minute, a write that lands just after a sync's read (up to 60 s to the next one), that sync's ~20 s to its
+  publish, a 5 s poll and the refresh. Run 2's 219 s was that case; the 3 min counted only the sync.
+- **The partner** sees a My binome field at their next poll after `webApply` (`patchSlice_`). Since #102 members poll
+  every 30 s, so the poll alone is about 28 s at p95; with a second save inside the minute waiting for the next
+  `webApply`, about 90 s. The model gives 79 s.
 
 Then the owner decides to open the dashboard to the binomes (STATUS.md, launch steps).
 
@@ -918,6 +952,38 @@ the 300-cell cap, a non-scope 403 retried.
   **Verdict: not signed off.** The pending path holds (7–10). The reads (2, 3) and anything behind the script lock (5, 6)
   miss; those are what the polling-budget fix and #101 target. The sign-off run repeats this plan once both are live and
   the owner says go.
+- **Before the sign-off run (2026-10-19, after run 2).** Owner: launch with pending changes on, so the sign-off judges the
+  pending path (pass marks above: 4, 5 and 6 direct are informational now). Live since run 2:
+  [#101](https://github.com/puIad/vic-recruitment-2026/pull/101) (@110 / @111: a member's sheet read retried once; not
+  yet hit live, hence the slice drop at minute 3) and [#102](https://github.com/puIad/vic-recruitment-2026/pull/102)
+  (Vercel from `f41499a`: polls every 5 s / 30 s, the idle backoff, a 25 s Google limit on polls, the sync's sweep over `pcx`).
+  What #102 changes for run 2's gating misses:
+  - Marks 2 and 3: half the member polls and 60 % fewer admin polls on each account, and no poll runs past 25 s (run 1
+    had one at 285 s). The rest of run 2's opening (all 68 in the same second on 3 accounts, and their polls ticking
+    together after it) was the test's own burst; the run now staggers the openings over 2 minutes (owner). The 64 virtual
+    members stay in B.29: one member cookie can't put them in other binomes, and their refreshes (about 16 a minute, all
+    64 on each B.29 save) are already half of what 32 real binomes would make.
+  - Mark 6 pending: nothing (admins poll every 5 s instead of 2 s: up to 3 s more). The owner moved the marks to the
+    design's worst case instead (above).
+  - `pcx`: nothing was left outside it. The old full sweep answered `open: 0` every minute from 17:15 to 17:43 UTC, after
+    runs 1 and 2; run 1's changes were past their apply-by by 17:42, so a stuck one would have shown as a drop, and run 2's
+    ended 8 / 8 applied. The dry-run now prints each cookie's record too.
+
+  Model with the sign-off plan (`node test/load.js`: 64 members, 4 admins, 10 min, openings over 2 min, switch off at 8):
+
+  | # | Mark | Model |
+  |---|---|---|
+  | 1 | calls answered | 2,656 / 2,657 (one poll in the model's rare 10× tail) |
+  | 2 | opening p95 | admins 5.2 s, members 6.2 s (the stand-in's `webAccess` is 2 s; live it was 1.2 s) |
+  | 3 | `webState` / `webPulse` p95 | 2.4 s / 2.2 s |
+  | 6 | pending: partner / other admins p95 | 79.2 s / 101 s |
+  | 7 | accept p95 | 0.1 s (no Redis latency in the model) |
+  | 8 | in the sheet p95 | 60.1 s |
+  | 9 | ended | 263 accepted: 261 applied, 2 dropped, 0 lost, 0 applied twice |
+  | 10 | switch off at minute 8 | no poll said on after it; 5 saves accepted by pages that had not polled yet, all ended; 34 direct writes, 34 answered |
+  | 11 | sync | 10 runs, 0 skipped, 17.9 s with its lock wait |
+  | 12 | hours a day before a limit | Vercel 1.9 h (287 invocations a minute), Redis 1.1 h, Queues 16.1 h |
+  | 4, 5, 6 direct | informational | Save p95 9.2 s, 0 BUSY of 30; alert action p95 21.4 s (4); partner / admins 37.8 s / 27.9 s |
 
 
 ---
