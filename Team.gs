@@ -360,8 +360,17 @@ const RESET_PHRASE = 'I confirm to reset the binomes';
 // Open alerts of these types belong to the old binomes (any alert with a Binome does too) and are closed by a reset
 const RESET_ALERT_TYPES = ['MANUAL_EDIT', 'INTEGRITY', 'UNPAIRED_MEMBER', 'MEMBER_CHANGED', 'COVER_ADDED', 'REASSIGNED', 'FILE_ERROR'];
 
+const RETIRED_FOLDER = 'Retired binomes';
+/** The subfolder of the binome folder that keeps the sheets of retired binomes (made on first use). The sync lists only the
+ *  files of the binome folder itself, so nothing in here is read. */
+function retiredFolder_() {
+  const root = DriveApp.getFolderById(CONFIG.BINOME_FOLDER_ID), it = root.getFoldersByName(RETIRED_FOLDER);
+  return it.hasNext() ? it.next() : root.createFolder(RETIRED_FOLDER);
+}
+
 /**
- * Start over with a new organizing team (OT). Trashes every binome sheet (Drive keeps them 30 days), empties Binomes, Team
+ * Start over with a new organizing team (OT). Moves every binome sheet to the "Retired binomes" folder (named with the
+ * reset date, so a second reset's [B.01] is not mistaken for the first), empties Binomes, Team
  * and Member Changes, sends every interviewee back to UNASSIGNED (codes and registration data stay; what the binomes had
  * written is cleared), closes the alerts of the old binomes and forgets what the script knew about them. Registrations
  * deleted by hand stay deleted. The phrase is checked here, not only in the dashboard. Returns null when the script is busy.
@@ -371,11 +380,11 @@ function resetBinomesCore_(phrase) {
   return withLock_(() => {
     const ctx = loadCtx_();
     const I = ctx.iv.I, A = ctx.alerts.table.I;
-    const failed = [];
-    let trashed = 0;
+    const failed = [], retired = retiredFolder_(), day = Utilities.formatDate(ctx.now, S_().TIMEZONE, 'yyyy-MM-dd');
+    let moved = 0;
     ctx.binomes.forEach(b => {
       if (!b.fileId) return;
-      try { DriveApp.getFileById(b.fileId).setTrashed(true); trashed++; } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); }
+      try { const f = DriveApp.getFileById(b.fileId); f.moveTo(retired); f.setName(f.getName() + ' (retired ' + day + ')'); moved++; } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); }
     });
     const nBinomes = ctx.binomes.length, nTeam = ctx.team.data.filter(r => String(r[ctx.team.I.Email]).trim()).length;
     [[TAB.BINOMES, BIN_H], [TAB.TEAM, TEAM_H], [TAB.CHANGES, MC_H]].forEach(t => {
@@ -410,7 +419,7 @@ function resetBinomesCore_(phrase) {
     saveBaseline_(editSnapshot_(fresh));
     saveMemberMap_(fresh); // nobody left: empty
     buildTracker_(fresh);
-    return { trashed: trashed, failed: failed, binomes: nBinomes, team: nTeam, interviewees: nIv, alerts: nAlerts };
+    return { retired: moved, failed: failed, binomes: nBinomes, team: nTeam, interviewees: nIv, alerts: nAlerts };
   }, 60000);
 }
 

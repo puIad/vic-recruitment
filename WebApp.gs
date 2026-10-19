@@ -743,9 +743,9 @@ function webRun(action, args) {
       case 'reshare': reshareBinomeFiles(); break;
       case 'resetBinomes': { result = resetBinomesCore_(args.phrase);
         if (!result) busy_();
-        _webOut.push('Binomes reset. ' + result.binomes + ' binomes removed, ' + result.trashed + ' sheets moved to the trash, ' +
+        _webOut.push('Binomes reset. ' + result.binomes + ' binomes removed, ' + result.retired + ' sheets moved to the Retired binomes folder, ' +
           result.interviewees + ' interviewees back to Unassigned, the team list was cleared.\nImport the new team to start again.' +
-          (result.failed.length ? '\nNote: ' + result.failed.length + ' sheet(s) could not be removed. Please delete them from the Binome Sheets folder:\n' + result.failed.slice(0, 5).join('\n') : '')); break; }
+          (result.failed.length ? '\nNote: ' + result.failed.length + ' sheet(s) could not be moved. Please move them to the Retired binomes folder by hand:\n' + result.failed.slice(0, 5).join('\n') : '')); break; }
       case 'digest': sendDailyDigest(); _webOut.push('Daily summary sent to ' + (adminEmails_().join(', ') || 'nobody yet: add an admin email in Settings')); break;
       case 'reassign': reassignCore_(args.code, args.binome); break;
       case 'changeMember': result = changeMemberCore_(args); break;

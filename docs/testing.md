@@ -95,5 +95,5 @@ Change members, and end any active cover. Other admins using Change members / Co
 Binome Sheets folder.
 
 **Reset all binomes** (Maintenance › Danger zone; only while nothing is shared and before registrations matter): a
-wrong phrase is refused; "I confirm to reset the binomes" trashes every binome sheet, empties Binomes, Team and Member
+wrong phrase is refused; "I confirm to reset the binomes" moves every binome sheet to the "Retired binomes" folder, empties Binomes, Team and Member
 Changes, and closes the binome alerts. Then Import team → Draft → Lock. Passed live on 2026-10-03 (49 → 31 binomes).

@@ -27,10 +27,16 @@ assert.strictEqual(call('webState').binomes.length, had, 'a refused reset change
 
 const out = call('webRun', 'resetBinomes', { phrase: 'I confirm to reset the binomes' });
 assert.strictEqual(out.result.binomes, had);
-assert.strictEqual(out.result.trashed, had);
+assert.strictEqual(out.result.retired, had);
 assert.deepStrictEqual(out.result.failed, []);
 assert(/Binomes reset/.test(out.messages[0]), out.messages[0]);
-files.forEach(id => assert.strictEqual(run(`__files[${JSON.stringify(id)}].trashed`), true, 'sheet trashed'));
+const retiredId = run(`__folders.filter(function (f) { return f.name === 'Retired binomes'; }).map(function (f) { return f.id; }).join()`);
+assert(retiredId && retiredId.indexOf(',') < 0, 'one Retired binomes folder, made by the reset');
+files.forEach(id => {
+  assert.strictEqual(run(`__files[${JSON.stringify(id)}].trashed`) === true, false, 'sheet kept, not trashed');
+  assert.strictEqual(run(`__files[${JSON.stringify(id)}].parent`), retiredId, 'sheet moved to the Retired binomes folder');
+  assert(/ \(retired \d{4}-\d\d-\d\d\)$/.test(run(`__files[${JSON.stringify(id)}].name`)), 'named with the reset date');
+});
 assert.strictEqual(dashRows(), ivA.code, 'Reset keeps the Master copy of the dashboard forms');
 
 st = call('webState');
