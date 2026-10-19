@@ -355,6 +355,8 @@ function person(i, role, acct, until, targets) {
     if (!cands.length) return;
     const c = pick(cands), code = String(c.Code), at = Date.now();
     const fields = LIVE ? ['Notes'] : GOLD.slice().sort(() => Math.random() - 0.5).slice(0, 1 + Math.floor(Math.random() * 3));
+    // live: the mark goes on only over the original and comes off only from original + mark; anything else is a person's text
+    if (LIVE && !same(c.Notes || '', targets.orig[code]) && !same(c.Notes || '', addMark(targets.orig[code]))) { targets.codes = targets.codes.filter(x => x !== code); return; }
     const list = fields.map(f => { const seen = c[f] === undefined ? '' : c[f]; return { field: f, seen, value: LIVE ? (same(seen, targets.orig[code]) ? addMark(targets.orig[code]) : targets.orig[code]) : 'v' + Math.random().toString(36).slice(2, 7) }; });
     R.saves.sent++;
     if (await accept(list.map(x => ({ kind: 'field', code, field: x.field, value: x.value, seen: x.seen, at })))) return;
@@ -373,14 +375,16 @@ function person(i, role, acct, until, targets) {
     R.forms.sent++;
     try {
       const got = (await call(acct, 'webRun', ['interviewGet', { code }])).value.result;
-      // live: only a dashboard row this account saved itself, re-saved with its own answers (its Edited at / by move)
-      if (LIVE && !(got.source === 'Dashboard' && got.answers && [got.submittedBy, got.editedBy].includes(String(acct.email).toLowerCase()))) return;
+      // live: only a dashboard row this account saved last, re-saved with its own answers (its Edited at / by move)
+      if (LIVE && !(got.source === 'Dashboard' && got.answers && String(got.editedBy || got.submittedBy || '').toLowerCase() === String(acct.email).toLowerCase())) return;
       await call(acct, 'webRun', ['interviewSave', { code, answers: got.answers || {}, seen: got.stamp || '' }]);
       R.forms.saved++;
     } catch (e) { if (e.code === 'BUSY') R.forms.busy++; else if (e.code === 'CONFLICT') R.forms.conflict++; else R.forms.failed++; }
   };
   const alertAct = async () => { // Alerts: Snooze 4 h or Mute an open one, Unmute a held one
-    const list = (me.state.alerts || []).map(a => ({ id: a.id, status: 'OPEN' })).concat(me.state.muted || []).filter(a => !targets.alerts || targets.alerts.includes(a.id));
+    // live: open targets, and held ones only while held the way this run left them (one a real admin held stays theirs)
+    const list = (me.state.alerts || []).map(a => ({ id: a.id, status: 'OPEN' })).concat((me.state.muted || []).filter(a => !LIVE || targets.lastSet[a.id] === a.status))
+      .filter(a => !targets.alerts || targets.alerts.includes(a.id));
     if (!list.length) return;
     const a = pick(list), seen = a.status || 'OPEN', op = seen === 'OPEN' ? pick(['snooze', 'mute']) : 'unmute', at = Date.now();
     R.actions.sent++;
