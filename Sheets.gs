@@ -287,12 +287,15 @@ function alertBuffer_(ctx) {
         const list = perRecipient[email];
         const isAdmin = admins.indexOf(email) >= 0;
         const sheet = !isAdmin && ctx.binByCode[list[0].binome] ? ctx.binByCode[list[0].binome].fileUrl : '';
-        const html = mailHtml_({ title: list.length + ' new alert' + (list.length > 1 ? 's' : ''),
-          intro: isAdmin ? 'New recruitment alert(s):' : 'Hi! Something needs your attention in the recruitment process:',
-          blocks: [mailAlerts_(list.map(a => [a.severity, a.type, a.code || '', a.msg]))],
-          cta: isAdmin ? { label: 'Open the master sheet', url: ss_().getUrl() } : { label: 'Open your binome sheet', url: sheet },
-          footer: mailTeamFooter_(sheet) });
-        mail_(email, '[VIC Recruitment] ' + list.length + ' alert' + (list.length > 1 ? 's' : '') + (list.some(a => a.severity === 'HIGH') ? ' (HIGH)' : ''), html);
+        const high = list.some(a => a.severity === 'HIGH') ? ' (HIGH)' : '', table = [mailAlerts_(list.map(a => [a.severity, a.type, a.code || '', a.msg]))];
+        if (!isAdmin) { // the binome's mail is editable; the admins' stays as written here
+          const m = mailFrom_('ALERT', { n: list.length, s: list.length > 1 ? 's' : '' },
+            { blocks: table, cta: { label: 'Open your binome sheet', url: sheet }, footer: mailTeamFooter_(sheet) });
+          return mail_(email, m.subject + high, m.html);
+        }
+        const html = mailHtml_({ title: list.length + ' new alert' + (list.length > 1 ? 's' : ''), intro: 'New recruitment alert(s):', blocks: table,
+          cta: { label: 'Open the master sheet', url: ss_().getUrl() }, footer: mailTeamFooter_(sheet) });
+        mail_(email, '[VIC Recruitment] ' + list.length + ' alert' + (list.length > 1 ? 's' : '') + high, html);
       });
       fresh.length = 0;
     },

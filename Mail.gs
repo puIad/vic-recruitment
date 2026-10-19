@@ -12,17 +12,6 @@ const MAIL = {
 const MAIL_SEV = { HIGH: ['#c11e00', '#ffece5'], MEDIUM: ['#915200', '#fff0c5'], INFO: ['#005b91', '#e2f3ff'] };
 const MAIL_TEXT = 'font-family:' + MAIL.font + ';font-size:15px;line-height:1.55;color:' + MAIL.ink + ';';
 
-// The registrant's confirmation. Wording settled with the owner on 2026-10-19 (docs/plans.md, Email texts, decision 2).
-// {first} and {code} are filled in. Never promise an interview or a binome: screening can still hold or decline them.
-const CONFIRM_MAIL = {
-  subject: 'VIC Recruitment 2026: registration received',
-  title: 'Thanks for registering, {first}!',
-  intro: "We received your registration for the Vision & Innovation Club's 2026 recruitment.",
-  codeLabel: 'Your code',
-  body: 'Keep this code. It identifies your registration until the end of the recruitment, and we will ask for it when we contact you.\n\n' +
-    'We will get back to you by phone or email about the next steps.\n\nSee you soon,\nThe VIC team',
-};
-
 /** A full HTML document: {title, intro, blocks: [html from the helpers below], cta: {label, url}, footer: html}.
  *  No footer = the candidate one (no internal links); team mails pass mailTeamFooter_(). */
 function mailHtml_(o) {
@@ -106,9 +95,61 @@ function mailTeamFooter_(sheetUrl) {
     '<br>Sent by the VIC Recruitment Bot.';
 }
 
-/** The registrant's confirmation, from CONFIRM_MAIL. */
-function confirmHtml_(first, code) {
-  const fill = s => s.replace(/\{first\}/g, () => first).replace(/\{code\}/g, () => code);
-  return mailHtml_({ title: fill(CONFIRM_MAIL.title), intro: fill(CONFIRM_MAIL.intro),
-    blocks: [mailCode_(CONFIRM_MAIL.codeLabel, code), mailP_(fill(CONFIRM_MAIL.body))] });
+/* ---------- the editable mails (MAILS in Config.gs; Settings › Emails) ---------- */
+function mailDef_(id) { return MAILS.filter(m => m.id === id)[0]; }
+/** {m, f} for a Settings key MAIL_<ID>_<FIELD>, or null. */
+function mailKey_(key) {
+  for (const m of MAILS) for (const f of m.fields) if ('MAIL_' + m.id + '_' + f[0].toUpperCase() === key) return { m: m, f: f };
+  return null;
+}
+/** The text of one field: the one being previewed or edited (texts), else the saved one, else the default. */
+function mailField_(id, field, texts) {
+  const m = mailDef_(id), f = m.fields.filter(x => x[0] === field)[0];
+  if (texts && String(texts[field] == null ? '' : texts[field]).trim()) return String(texts[field]).trim();
+  const saved = S_()['MAIL_' + id + '_' + field.toUpperCase()];
+  return saved != null && String(saved).trim() ? String(saved).trim() : f[1];
+}
+/** Throws on a placeholder the mail doesn't know or a text that is too long. Other keys pass. */
+function mailCheck_(key, text) {
+  const hit = mailKey_(key);
+  if (!hit) return;
+  text = String(text);
+  if (text.length > MAIL_MAX) throw new Error(key + ' is over ' + MAIL_MAX + ' characters');
+  (text.match(/\{\w+\}/g) || []).forEach(p => {
+    if (hit.m.vars.indexOf(p.slice(1, -1)) < 0)
+      throw new Error(key + ': unknown placeholder ' + p + '. This mail knows ' + hit.m.vars.map(v => '{' + v + '}').join(' '));
+  });
+}
+function mailFill_(text, vars) {
+  return String(text).replace(/\{(\w+)\}/g, (all, k) => Object.prototype.hasOwnProperty.call(vars, k) && vars[k] != null ? String(vars[k]) : all);
+}
+/** One of the editable mails in the fixed layout: {subject, html, from}. o: blocks (the generated part), cta, footer,
+ *  texts (fields to use instead of the saved ones). Who gets it, and when, stays with the caller. */
+function mailFrom_(id, vars, o) {
+  o = o || {};
+  const m = mailDef_(id), has = f => m.fields.some(x => x[0] === f), t = f => mailFill_(mailField_(id, f, o.texts), vars);
+  const subject = t('subject'), blocks = (o.blocks || []).slice();
+  if (id === 'CONFIRM') blocks.push(mailCode_(t('codeLabel'), vars.code));
+  if (id === 'REJECT') blocks.push(mailP_(t('text')));
+  if (has('below') && t('below')) blocks.push(mailP_(t('below')));
+  return { subject: subject, from: m.to === 'candidate' ? MAIL.candidateFrom : undefined,
+    html: mailHtml_({ title: has('heading') ? t('heading') : subject, intro: has('above') ? t('above') : has('text') && id !== 'REJECT' ? t('text') : '',
+      blocks: blocks, cta: o.cta, footer: o.footer }) };
+}
+function mailSend_(to, m) { return mail_(to, m.subject, m.html, m.from); }
+
+/** The mail with sample data, for the dashboard's preview. */
+function mailSample_(id, texts) {
+  const v = { first: 'Amina', code: 'IT.42', names: 'Amina & Yanis', binome: 'B3', n: 2, s: 's', hours: 24, members: 'Amina K. & Yanis B.',
+    replaced: ' (replaced by Sara B.)', instead: ' instead of Yanis K.', reason: ' (exam)', cover: 'Sara B.', coverEmail: 'sara.b@g.enp.edu.dz',
+    codes: 'IT.12, IT.15' };
+  const people = mailList_([['IT.12', 'Lina A. · 0550 00 00 00 · available: evenings'], ['IT.15', 'Omar S. · 0661 00 00 00 · available: weekends']]);
+  const cta = label => ({ label: label, url: DASHBOARD_URL });
+  const o = { texts: texts, footer: id === 'CONFIRM' || id === 'REJECT' ? undefined : mailTeamFooter_(DASHBOARD_URL) };
+  if (id === 'NEW_IV') Object.assign(o, { blocks: [people], cta: cta('Open your binome sheet') });
+  if (id === 'ALERT') Object.assign(o, { blocks: [mailAlerts_([['HIGH', 'NOT_CONTACTED', 'IT.12', 'IT.12 has not been contacted yet']])], cta: cta('Open your binome sheet') });
+  if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: cta('Open the binome sheet') });
+  if (id === 'PAIRED' || id === 'COVERED') o.cta = cta('Open the binome sheet');
+  if (id === 'COVER') Object.assign(o, { blocks: [people], cta: cta('View the binome sheet') });
+  return mailFrom_(id, v, o);
 }

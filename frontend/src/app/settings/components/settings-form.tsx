@@ -367,7 +367,11 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
   const { saveSettings } = useActions()
   const confirm = useConfirm()
 
-  const listed = React.useMemo(() => new Set(Object.values(GROUPS).flatMap((g) => [...g.sections.flatMap((x) => x.keys), ...(g.own ?? [])])), [])
+  // the email texts (MAIL_*) are edited on the Emails page, never in Advanced
+  const listed = React.useMemo(
+    () => new Set([...Object.values(GROUPS).flatMap((g) => [...g.sections.flatMap((x) => x.keys), ...(g.own ?? [])]), ...(all ?? []).filter((s) => s.key.startsWith("MAIL_")).map((s) => s.key)]),
+    [all],
+  )
   /** every setting this page edits: its sections', its own cards', and the rest when a section takes them */
   const rows = React.useMemo(() => {
     if (!all) return []

@@ -34,6 +34,61 @@ const CONFIG = {
   TEAM_DB_DEFAULT_ID:   '10FILUcr8WXOWvHnZQdTJemcejO7ppdMyWX1pm1eiaF0', // RECRUITMENT 2025 DATABASE
 };
 
+// The mails admins can reword (Settings › Emails; docs/plans.md, Email texts). Per mail: id, name, to (candidate or binome),
+// the placeholders its texts may use, and each text field as [field, default]. The layout is fixed (mailFrom_, Mail.gs):
+// subject, heading, text above, the generated part (code box, list, alert table), text below. One Settings row per field,
+// MAIL_<ID>_<FIELD>; blank = the default here. A text is plain: a blank line starts a paragraph, **x** is bold.
+const MAILS = [
+  { id: 'CONFIRM', name: 'Registrant confirmation', to: 'candidate', vars: ['first', 'code'], fields: [
+    ['subject', 'VIC Recruitment 2026: registration received'],
+    ['heading', 'Thanks for registering, {first}!'],
+    ['above', "We received your registration for the Vision & Innovation Club's 2026 recruitment."],
+    ['codeLabel', 'Your code'],
+    ['below', 'Keep this code. It identifies your registration until the end of the recruitment, and we will ask for it when we contact you.\n\n' +
+      'We will get back to you by phone or email about the next steps.\n\nSee you soon,\nThe VIC team']] },
+  // the heading is the subject; the text starts the body
+  { id: 'REJECT', name: 'Rejection', to: 'candidate', vars: ['first'], fields: [
+    ['subject', 'VIC Recruitment 2026: your application'],
+    ['text', 'Hi {first},\n\nThank you for applying to the Vision & Innovation Club. We read every application carefully, ' +
+      'and we are sorry to tell you that we will not be moving forward with yours this year.\n\nWe hope to see you at our events, ' +
+      'and you are welcome to apply again next year.\n\nThe VIC team']] },
+  { id: 'NEW_IV', name: 'New interviewees', to: 'binome', vars: ['names', 'binome', 'n', 's', 'hours'], fields: [
+    ['subject', '[VIC Recruitment] New interviewee(s) for {binome}'],
+    ['heading', '{n} new interviewee{s} for {binome}'],
+    ['above', 'Hi {names},\n\nNewly assigned to your binome **{binome}** ({n} interviewee{s}):'],
+    ['below', 'Please contact them within {hours}h and fill in **Contacted**, **Interview Date** and **Interview Time** in your binome sheet.\n\n' +
+      'In the interview form, use your binome code **{binome}** and the interviewee code.']] },
+  { id: 'ALERT', name: 'Alert mail to a binome', to: 'binome', vars: ['n', 's'], fields: [
+    ['subject', '[VIC Recruitment] {n} alert{s}'],
+    ['heading', '{n} new alert{s}'],
+    ['above', 'Hi! Something needs your attention in the recruitment process:']] },
+  { id: 'JOINED', name: 'Joined a binome', to: 'binome', vars: ['first', 'binome', 'members'], fields: [
+    ['subject', '[VIC Recruitment] You joined binome {binome}'],
+    ['heading', 'You joined binome {binome}'],
+    ['above', 'Hi {first},\n\nYou are now a member of binome **{binome}** ({members}).'],
+    ['below', 'In the interview form, use the binome code **{binome}**.']] },
+  { id: 'LEFT', name: 'Left a binome', to: 'binome', vars: ['first', 'binome', 'replaced'], fields: [
+    ['subject', '[VIC Recruitment] You left binome {binome}'],
+    ['heading', 'You left binome {binome}'],
+    ['text', 'Hi {first},\n\nYou are no longer a member of binome **{binome}**{replaced}. Thanks for your help!']] },
+  { id: 'PAIRED', name: 'New binome', to: 'binome', vars: ['first', 'binome', 'members'], fields: [
+    ['subject', '[VIC Recruitment] You are in binome {binome}'],
+    ['heading', 'You are in binome {binome}'],
+    ['text', 'Hi {first},\n\nYou are now a member of binome **{binome}** ({members}).\n\nIn the interview form, use the binome code **{binome}**.']] },
+  { id: 'COVER', name: 'You cover', to: 'binome', vars: ['first', 'codes', 'binome', 'members', 'instead'], fields: [
+    ['subject', '[VIC Recruitment] You cover {codes} for binome {binome}'],
+    ['heading', 'You cover {codes} for {binome}'],
+    ['above', 'Hi {first},\n\nThanks for stepping in! You interview these candidates for binome **{binome}** ({members}){instead}:'],
+    ['below', 'The binome keeps filling in the binome sheet. In the interview form, use the binome code **{binome}** and the interviewee code.']] },
+  { id: 'COVERED', name: 'Someone covers for you', to: 'binome', vars: ['first', 'cover', 'coverEmail', 'codes', 'binome', 'instead', 'reason'], fields: [
+    ['subject', '[VIC Recruitment] {cover} covers {codes} for {binome}'],
+    ['heading', '{cover} covers {codes}'],
+    ['text', 'Hi {first},\n\n**{cover}** ({coverEmail}) covers **{codes}** for your binome{instead}{reason}. ' +
+      'You stay responsible for the binome sheet: keep Contacted / Date / Time up to date for them.']] },
+];
+const MAIL_MAX = 2000; // a pending change refuses a text over 2,100 characters (web/lib/pending.js)
+const MAIL_FIELD_LABEL = { subject: 'subject', heading: 'heading', above: 'text above', below: 'text below', text: 'text', codeLabel: 'code box label' };
+
 // Editable in the "Settings" tab (the values below are only the defaults)
 const SETTINGS_DEFAULTS = [
   ['ADMIN_EMAIL', '', 'Who receives alerts + the daily digest (comma-separate several emails)'],
@@ -58,7 +113,10 @@ const SETTINGS_DEFAULTS = [
   ['SCREENING', false, 'TRUE = hold low-effort applications for an admin to review and decline VIC members silently; FALSE = every application goes to a binome as before'],
   ['SCREEN_HOLD_AT', 50, 'Risk score (0-100) at or above which a new application waits for an admin instead of going to a binome'],
   ['VIC_MEMBERS_SHEET', '', 'Link of the Google Sheet listing the VIC members (a column whose header contains "mail"): their applications are declined silently'],
-];
+
+].concat(MAILS.reduce((rows, m) => rows.concat(m.fields.map(f => ['MAIL_' + m.id + '_' + f[0].toUpperCase(), '',
+  'Email text (Settings › Emails): ' + m.name + ', ' + MAIL_FIELD_LABEL[f[0]] + ". Blank = the script's text. Placeholders: " +
+  m.vars.map(v => '{' + v + '}').join(', ')])), []));
 
 const TAB = {
   SETTINGS: 'Settings', TEAM: 'Team', BINOMES: 'Binomes', IV: 'Interviewees',

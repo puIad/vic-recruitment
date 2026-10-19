@@ -647,6 +647,8 @@ function buildState_(ctx) {
       notifyBinome: bool_(s.NOTIFY_BINOME_ON_ALERT), notifyNew: bool_(s.NOTIFY_BINOME_ON_NEW_INTERVIEWEE),
       syncEvery: num_(s.SYNC_EVERY_MINUTES, 15), digestHour: num_(s.DIGEST_HOUR, 8), admins: adminEmails_(),
     },
+    mails: MAILS.map(m => ({ id: m.id, name: m.name, to: m.to, vars: m.vars,
+      fields: m.fields.map(f => ({ key: 'MAIL_' + m.id + '_' + f[0].toUpperCase(), field: f[0], def: f[1] })) })),
     settingsAll: SETTINGS_DEFAULTS.map(r => ({ key: r[0], value: s[r[0]], help: r[2], kind: settingKind_(r) })),
     team: {
       total: ctx.team.data.filter(r => String(r[T['Full Name']]).trim() || String(r[T.Email]).trim()).length,
@@ -706,9 +708,25 @@ function settingValue_(r, raw) {
   if (kind.type === 'bool') v = bool_(v);
   else if (kind.type === 'number') { v = Number(v); if (String(raw).trim() === '' || isNaN(v)) throw new Error(k + ' must be a number'); }
   else { v = String(v).trim(); if (kind.type === 'enum' && kind.options.map(String).indexOf(v) < 0) throw new Error(k + ' must be one of ' + kind.options.join(', ')); if (typeof r[1] === 'number') v = Number(v); }
+  if (/^MAIL_/.test(k)) { mailCheck_(k, v); if (v === mailKey_(k).f[1]) v = ''; } // a text equal to the script's is saved blank, so a new default still reaches it
   if (k === 'ADMIN_EMAIL' && v && !String(v).split(/[,;\s]+/).filter(Boolean).every(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) throw new Error('ADMIN_EMAIL: invalid email address');
   if (k === 'DIGEST_HOUR' && (v < 0 || v > 23 || v % 1)) throw new Error('DIGEST_HOUR must be a whole number from 0 to 23');
   return v;
+}
+
+/** webRun('mailPreview', {id, texts, send}): one editable mail drawn with sample data from the texts as typed (checked like a save),
+ *  {subject, html}. With send, also mailed to the caller as "[TEST] ...", saved or not; in TEST_MODE that works only for an admin
+ *  in ADMIN_EMAIL, since mail_ holds the rest. Writes nothing. */
+function mailPreviewCore_(a, args) {
+  const id = String(args.id || ''), m = mailDef_(id), texts = args.texts || {};
+  if (!m) throw new Error('Unknown mail ' + id);
+  m.fields.forEach(f => { if (texts[f[0]] != null) mailCheck_('MAIL_' + id + '_' + f[0].toUpperCase(), texts[f[0]]); });
+  const out = mailSample_(id, texts);
+  if (args.send) {
+    out.sent = mail_(a.email, '[TEST] ' + out.subject, out.html, out.from);
+    _webOut.push(out.sent ? 'Test mail sent to ' + a.email : 'Not sent: test mode is on and ' + a.email + ' is not in ADMIN_EMAIL');
+  }
+  return { subject: out.subject, html: out.html, sent: !!out.sent };
 }
 
 /** Writes changed values into the Settings tab (the single source of truth, still editable in the sheet). */
@@ -752,7 +770,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -798,6 +816,7 @@ function webRun(action, args) {
       case 'restore': result = restoreCore_(args.codes); break;
       case 'membersRefresh': result = membersRefreshCore_(); break;
       case 'rejections': result = rejectionsCore_(args); break;
+      case 'mailPreview': result = mailPreviewCore_(a, args); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked as resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;

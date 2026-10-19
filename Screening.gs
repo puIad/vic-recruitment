@@ -5,10 +5,6 @@
 
 const SCREEN_MEMBER = 'VIC member'; // Screening starts with it = declined as a member: no rejection email
 const MEMBERS_TTL_MIN = 30;         // the members sheet is read again after this long (Settings › Screening › Refresh now: at once)
-const REJECT_SUBJECT = 'VIC Recruitment 2026: your application';
-const REJECT_BODY = 'Hi {first},\n\nThank you for applying to the Vision & Innovation Club. We read every application carefully, ' +
-  'and we are sorry to tell you that we will not be moving forward with yours this year.\n\nWe hope to see you at our events, ' +
-  'and you are welcome to apply again next year.\n\nThe VIC team';
 
 function screenOn_() { return bool_(S_().SCREENING); }
 
@@ -215,14 +211,14 @@ function rejectionList_(ctx) {
  */
 function rejectionsCore_(a) {
   a = a || {};
-  const subject = String(a.subject || REJECT_SUBJECT).trim(), body = String(a.body || REJECT_BODY).trim();
+  const subject = String(a.subject || mailField_('REJECT', 'subject')).trim(), body = String(a.body || mailField_('REJECT', 'text')).trim();
   if (!a.send) {
     const list = rejectionList_(loadCtx_()), I = idx_(IV_H);
     return { count: list.length, sample: list.slice(0, 5).map(r => (r[I['First Name']] + ' ' + r[I['Family Name']]).trim() + ' <' + r[I.Email] + '>'),
-      subject: REJECT_SUBJECT, body: REJECT_BODY, testMode: bool_(S_().TEST_MODE) };
+      subject: mailField_('REJECT', 'subject'), body: mailField_('REJECT', 'text'), testMode: bool_(S_().TEST_MODE) };
   }
   if (!subject || !body) throw new Error('The email needs a subject and a text.');
-  const html = (first, note) => mailHtml_({ title: subject, blocks: (note ? [mailP_(note)] : []).concat(mailP_(body.replace(/\{first\}/g, () => first))) });
+  const html = (first, note) => mailFrom_('REJECT', { first: first }, { texts: { subject: subject, text: body }, blocks: note ? [mailP_(note)] : [] }).html;
   const t0 = Date.now(), budget = Number(a.budgetMs) || 240000;
   const res = withLock_(() => {
     const ctx = loadCtx_(), I = ctx.iv.I, list = rejectionList_(ctx);
