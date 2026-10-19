@@ -79,11 +79,11 @@ async function tokenRequest(params) {
   const j = await r.json().catch(() => ({}));
   return { ok: r.ok, status: r.status, body: j };
 }
-/** Best effort: a failed revoke must never block sign-out. */
+/** Best effort: a failed revoke must never block sign-out. Returns whether Google accepted it. */
 async function revoke(token) {
-  if (!token) return;
-  try { await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }) }); }
-  catch (e) { /* ignore */ }
+  if (!token) return false;
+  try { return (await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }) })).ok; }
+  catch (e) { return false; }
 }
 
 /** Payload of an id_token that came straight from Google's token endpoint over TLS (no signature check needed). */

@@ -117,6 +117,18 @@ with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup aft
     author per minute (Redis key `pcl:<email>`) carrying all their pending changes, and marks each applied or met for
     10 min, or dropped. Retries back off from 60 s; none starts with under 6 min of token life (then: dropped, "retries
     ran out"). 401 = dropped "sign-in ended before it was saved"; lost access drops every pending change of that author.
+  - Audit fixes, 2026-10-19 (the 2026-10-19 audit of this path):
+    - `accept` and `pendingMark` need a session that `webAccess` let in: `run.js` re-seals the cookie with `acc` when
+      `webAccess` answers ok (and drops it when it stops), and any other verified ENP account gets `DIRECT`. A record holds
+      at most 300 live cells (`MAX_CELLS` in `pending.js`); more is `DIRECT`.
+    - A change typed back on a pending cell keeps a put-back entry (value = the original seen) instead of deleting the cell.
+      When the consumer ends an entry that applied or was met and the cell now holds a newer pending entry, `end()` saves
+      that entry with `seen` = what was written, so an undo or a second edit made during `webApply` is judged against it.
+    - The consumer retries a 403 that is not a scope error (API disabled, broken deployment) with backoff instead of
+      dropping everything as "lost access". A busy document lock (`retry`) deletes the `pcl:` gap key and comes back in
+      5 to 30 s; backoff has ±25% jitter.
+    - The sync's call (`forSync`) also deletes expired cells, so its Redis commands stop growing with everyone who ever
+      saved. `revoke` now returns whether Google accepted it, and the consumer logs that as `revoked`.
   - Store: Upstash Redis Free from the Vercel Marketplace, us-east-1 next to iad1 (recreated there on 2026-10-18 after a
     first install in Frankfurt), connected to this project only. Env vars `KV_REST_API_URL` / `KV_REST_API_TOKEN` (the
     code also takes `UPSTASH_REDIS_REST_*`). The record only ever adds fields: every deployment shares it.

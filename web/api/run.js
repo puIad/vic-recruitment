@@ -45,6 +45,8 @@ module.exports = async (req, res) => {
   };
   // any failure of the pending path sends the page down today's direct write (code DIRECT)
   const direct = msg => done(503, { error: msg, code: 'DIRECT' }, false);
+  // accept and pendingMark are for sessions webAccess let in (sealed below): any other verified account gets the direct path
+  if (PENDING.indexOf(fn) >= 0 && !s.acc) return direct('Not a session with access.');
   if (fn === 'pendingMark') {
     try { return done(200, { value: await P.mark(s.email, args[0] || {}, Date.now()) }, true); }
     catch (e) { console.warn(JSON.stringify({ at: 'pendingMark', error: String(e.message).slice(0, 200) })); return direct('Could not reach the pending-changes store.'); }
@@ -104,6 +106,7 @@ module.exports = async (req, res) => {
     return done(200, conflict ? { error: conflict[1], code: 'CONFLICT' } : { error: msg }, false);
   }
   const out = { value: j.response ? j.response.result : null };
+  if (fn === 'webAccess' && !!s.acc !== !!(out.value && out.value.ok)) { s.acc = out.value && out.value.ok ? true : undefined; S.addCookie(res, S.sessionCookie(s)); }
   if (fn === 'webPulse' && (b.rec === 2 || (b.rec === 1 && out.value && out.value.pending === true))) {
     try { out.rec = await P.read(s.email, Date.now()); } catch (e) { /* the next flagged pulse reads it */ }
   }

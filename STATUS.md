@@ -77,6 +77,9 @@ Launch features ([launch-features.md](docs/launch-features.md)):
     **before** clicking Mute or Resolve on the dashboard (it still shows OPEN until the sync). An edit made after the
     click usually lands too late (a lone change applies within seconds), and Snooze never drops (a snoozed sheet is
     already met).
+- Audit fixes 2026-10-19 (Vercel only, see [vercel.md](docs/vercel.md)): the pending path now needs a `webAccess`-checked
+  session and caps a record at 300 cells, keeps an undo made during `webApply`, retries a non-scope 403 and a busy lock
+  with jitter, sweeps expired cells in the sync's call, and logs the real revoke result. Not live until the PR merges.
 
 Done since 2026-10-15: the 2026-10-17 audit fixes (#37–#43, @81/@82), the Google profile picture (#36), the Owner
 check on `TRIGGER_OWNER` (#34), the old Apps Script dashboard retired, and every open and muted alert loaded (#44).
