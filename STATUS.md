@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-18. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-19. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
@@ -22,6 +22,8 @@ Switch account wait for a save still being accepted; with changes pending both l
 many are still saving. Owner, 2026-10-18: no refresh token on the server (#56), so a mark whose last change is swept by
 `api/drops` (no token) just expires, an accepted cost; Switch account keeps Google's own account picker. Live check:
 load-test task 10's pending-changes block (the account switch with changes pending).
+
+**Pipeline audit fixes (2026-10-19)**, one PR, script deploy needed after merge. One binome sheet that refuses a write no longer stops the sync (placing and the interview mark are caught: candidate stays UNASSIGNED, sheet skipped for the run, HIGH FILE_ERROR); placing a code already in the sheet adds nothing; the pull reads the first row of a code that is on two rows; a code whose row was deleted by hand is never handed out again (the baseline's codes count); Revert keeps Interview Submitted At / Log Row / Screening; the HOUR check skips an interview day saved without a time. Also carries the department-change commit `9734397` that missed #84. Tests: `test/pipeline.test.js`, web.test.js revert case.
 
 Launch features ([launch-features.md](docs/launch-features.md)):
 

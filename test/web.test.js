@@ -392,6 +392,12 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   const n0 = ivRows().length, del = code => run(`(function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
     for(var i=1;i<d.length;i++) if(d[i][${IVI.Code}]===${J(code)}) { sh.deleteRow(i+1); return; }})()`);
   const z = ivs[2], zAt = () => ivRow(z.code)[IVI['Assigned At']].toISOString(), assignedAt = zAt();
+  // an interviewed candidate: Revert keeps the interview too (Submitted At, Log Row, Screening)
+  run(`(function(){var sh=ss_().getSheetByName('Interviewees'),d=sh.getDataRange().getValues();
+    for(var i=1;i<d.length;i++) if(d[i][${IVI.Code}]===${J(z.code)}) { sh.getRange(i+1,${IVI['Interview Submitted At']+1}).setValue(new Date(2026,9,1,10,0)); sh.getRange(i+1,${IVI['Interview Log Row']+1}).setValue(7); sh.getRange(i+1,${IVI.Screening+1}).setValue('checked'); return; }})()`);
+  call('webRun', 'sync');
+  const zKeep = () => { const r = ivRow(z.code); return [r[IVI['Interview Submitted At']].getTime(), r[IVI['Interview Log Row']], r[IVI.Screening], r[IVI.Status]]; }, kept = zKeep();
+  assert.strictEqual(kept[3], 'INTERVIEWED');
   del(z.code);
   call('webRun', 'sync');
   a = open().find(e => e.code === z.code);
@@ -401,6 +407,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(/restored/.test(out.messages[0]), out.messages[0]);
   assert.deepStrictEqual([ivRows().length, ivRow(z.code)[IVI.Binome]], [n0, z.binome], 'same code, same binome');
   assert.strictEqual(zAt(), assignedAt, 'Assigned At kept');
+  assert.deepStrictEqual(zKeep(), kept, 'interview fields kept');
   del(z.code);
   call('webRun', 'sync');
   fix('Accept', [open().find(e => e.code === z.code).id]);
@@ -591,11 +598,11 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   // the baseline spans several script properties (9 KB each, accents count double) and shrinks cleanly
   run('var __b0 = loadBaseline_(), __n0 = __props.BASELINE_N');
   run(`(function(){ var b = loadBaseline_(); for (var i = 0; i < 400; i++) b.iv['k' + i] = { Code: 'IT.' + i, Binome: 'B.01', Status: 'ASSIGNED',
-    'First Name': 'Éloïse Zoé', 'Family Name': 'Bénédicte', Email: 'e' + i + '@g.enp.edu.dz', 'Assigned At': '2026-10-01T08:00:00.000Z' }; saveBaseline_(b); })()`);
+    'First Name': 'Éloïse Zoé', 'Family Name': 'Bénédicte', Email: 'e' + i + '@g.enp.edu.dz', 'Assigned At': '2026-10-01T08:00:00.000Z', 'Interview Submitted At': '', 'Interview Log Row': '', Screening: '' }; saveBaseline_(b); })()`);
   const n = Number(run('__props.BASELINE_N'));
   assert(n > 3, 'split in ' + n);
   for (let i = 0; i < n; i++) assert(Buffer.byteLength(run('__props.BASELINE_' + i)) <= 9216, 'chunk ' + i + ' fits');
-  assert.strictEqual(J(run('loadBaseline_().iv.k399')), J({ Code: 'IT.399', Binome: 'B.01', Status: 'ASSIGNED', 'First Name': 'Éloïse Zoé', 'Family Name': 'Bénédicte', Email: 'e399@g.enp.edu.dz', 'Assigned At': '2026-10-01T08:00:00.000Z' }));
+  assert.strictEqual(J(run('loadBaseline_().iv.k399')), J({ Code: 'IT.399', Binome: 'B.01', Status: 'ASSIGNED', 'First Name': 'Éloïse Zoé', 'Family Name': 'Bénédicte', Email: 'e399@g.enp.edu.dz', 'Assigned At': '2026-10-01T08:00:00.000Z', 'Interview Submitted At': '', 'Interview Log Row': '', Screening: '' }));
   assert.strictEqual(run('(function(){ var iv = loadBaseline_().iv; return Object.keys(iv).filter(function(k){ return iv[k] === 0; }).length; })()'), 1, 'the accepted deletion is remembered');
   run('saveBaseline_(__b0)');
   assert.deepStrictEqual([run('__props.BASELINE_N'), run('"BASELINE_" + (' + n + ' - 1) in __props')], [run('__n0'), false], 'old chunks deleted');

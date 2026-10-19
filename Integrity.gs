@@ -11,7 +11,7 @@ const EDIT_GROUPS = {
   iv: { Code: ['Code'], Binome: ['Binome'], Status: ['Status'], Person: ['First Name', 'Family Name', 'Email'] },
 };
 // Stored but never compared: only needed to rebuild a deleted row on Revert (dates kept as ISO text)
-const BASE_KEEP = { bin: ['Created'], iv: ['Assigned At'] };
+const BASE_KEEP = { bin: ['Created'], iv: ['Assigned At', 'Interview Submitted At', 'Interview Log Row', 'Screening'] };
 const BASE_F = { bin: [].concat.apply([], Object.keys(EDIT_GROUPS.bin).map(g => EDIT_GROUPS.bin[g])).concat(BASE_KEEP.bin),
   iv: [].concat.apply([], Object.keys(EDIT_GROUPS.iv).map(g => EDIT_GROUPS.iv[g])).concat(BASE_KEEP.iv) };
 
@@ -375,7 +375,7 @@ function oddValues_(ctx) {
     else if (reg instanceof Date && at < reg) add('MEDIUM', 'BEFORE', r, 'Interview of ' + code + ' set on ' + when + ', before they registered (' + fmt_(reg) + ')', true);
     else if (st !== ST.INTERVIEWED && at.getTime() - ctx.now.getTime() > 30 * day) add('INFO', 'FAR', r, 'Interview of ' + code + ' set more than 30 days ahead (' + when + ')', false);
     const hm = fmt_(at, 'HH:mm'), mins = Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3));
-    if (mins < 7 * 60 || mins > 23 * 60) add('INFO', 'HOUR', r, 'Interview of ' + code + ' at ' + hm + ', outside 07:00-23:00: AM/PM mixed up?', false);
+    if (String(r[I['Interview Time']]).trim() && (mins < 7 * 60 || mins > 23 * 60)) add('INFO', 'HOUR', r, 'Interview of ' + code + ' at ' + hm + ', outside 07:00-23:00: AM/PM mixed up?', false);
     if ((c === 'Not yet' || c === 'Withdrew') && st !== ST.INTERVIEWED) add('INFO', 'CONTACT', r, code + ' has an interview date (' + when + ') but Contacted says "' + c + '"', false);
   });
   const KI = ctx.alerts.table.I;
