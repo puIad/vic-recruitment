@@ -631,11 +631,12 @@ function buildState_(ctx) {
   const look = quickLookups_(ctx), opened = binAccess_(), hand = ctx.binomes.some(b => b.status === 'DRAFT') ? handDrafts_() : [];
   lap('bLookups'); const teamSrc = findTeamSource_(ss_()); lap('bTeamSrc');
   const history = historyRows_(); lap('bHistory');
+  const masterUrl = ss_().getUrl(); lap('bMasterUrl');
 
   return {
     v: API_VERSION,
     links: {
-      master: ss_().getUrl(),
+      master: masterUrl,
       registrationForm: formUrl_(CONFIG.REGISTRATION_FORM_ID),
       interviewForm: formUrl_(CONFIG.INTERVIEW_FORM_ID),
       binomeFolder: 'https://drive.google.com/drive/folders/' + CONFIG.BINOME_FOLDER_ID,
