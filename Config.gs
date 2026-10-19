@@ -37,7 +37,7 @@ const CONFIG = {
 // The mails admins can reword (Settings › Emails; docs/plans.md, Email texts). Per mail: id, name, to (candidate or binome),
 // the placeholders its texts may use, and each text field as [field, default]. The layout is fixed (mailFrom_, Mail.gs):
 // subject, heading, text above, the generated part (code box, list, alert table), text below. One Settings row per field,
-// MAIL_<ID>_<FIELD>; blank = the default here. A text is plain: a blank line starts a paragraph, **x** is bold.
+// MAIL_<ID>_<FIELD>; blank = the default here. Subject, heading and code label are plain; the other texts: a blank line starts a paragraph, **x** is bold.
 const MAILS = [
   { id: 'CONFIRM', name: 'Registrant confirmation', to: 'candidate', vars: ['first', 'code'], fields: [
     ['subject', 'VIC Recruitment 2026: registration received'],
