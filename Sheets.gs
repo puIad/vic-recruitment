@@ -2,18 +2,18 @@
  * GOOGLE SHEETS PLUMBING
  * ===========================================================================*/
 
-let _ssOpened = null; // openById once per execution: each call was a Properties read plus a Spreadsheet open, ~20 per publish
+let _ssOpened = null; // the Master, found once per execution: each call was getActive + a Properties read + an open, ~20 per publish
 function ss_() {
   const t0 = Date.now();
-  let ss = null;
-  try { ss = SpreadsheetApp.getActive(); } catch (e) { /* no active */ }
-  if (!ss) {
-    const id = PropertiesService.getScriptProperties().getProperty('MASTER_ID');
-    if (_ssOpened && _ssOpened.id === id) ss = _ssOpened.ss;
-    else if (id) { ss = SpreadsheetApp.openById(id); _ssOpened = { id: id, ss: ss }; }
+  if (!_ssOpened) {
+    try { _ssOpened = SpreadsheetApp.getActive(); } catch (e) { /* no active */ }
+    if (!_ssOpened) {
+      const id = PropertiesService.getScriptProperties().getProperty('MASTER_ID');
+      if (id) _ssOpened = SpreadsheetApp.openById(id);
+    }
   }
   _snapT.ssN = (_snapT.ssN || 0) + 1; _snapT.ssMs = (_snapT.ssMs || 0) + Date.now() - t0; // cost of every call, for the publish line
-  return ss;
+  return _ssOpened;
 }
 
 let _settings = null;

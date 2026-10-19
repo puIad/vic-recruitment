@@ -179,9 +179,9 @@ function binMeta_() { try { return JSON.parse(PropertiesService.getScriptPropert
  *  changed}; v goes up only when that slice's hash moved. A slice the cache refuses (over 100 KB) is left out: that member
  *  reads their sheet instead. */
 function publishBins_(ctx) {
-  let t = Date.now();
-  const lap = k => { const n = Date.now(); _snapT[k] = (_snapT[k] || 0) + n - t; t = n; }; // into publishState_'s line
-  const old = binMeta_(), slices = binSlices_(ctx), codes = Object.keys(slices), cache = CacheService.getScriptCache(); lap('binSlices');
+  const lap = snapLap_();
+  const old = binMeta_(); lap('binMeta');
+  const slices = binSlices_(ctx), codes = Object.keys(slices), cache = CacheService.getScriptCache(); lap('binSlices');
   const have = cache.getAll(codes.map(c => 'snap:bin:' + c)), dirty = cache.getAll(codes.map(c => 'dirty:' + c)), meta = {}; lap('binGet');
   let changed = Object.keys(old).length !== codes.length;
   codes.forEach(c => {
@@ -543,11 +543,12 @@ function readSnap_() {
  *  lost entries is refilled without a new version. Call it inside the script lock, so two publishers never cross. Not published
  *  when the snapshot was dropped since ctx was loaded (SNAP_VER moved, and only dropSnap_ moves it outside the lock): ctx may miss
  *  the write that dropped it. Returns the state. */
+/** A stopwatch into _snapT: lap('x') adds the ms since the previous lap (or since this call) to _snapT.x. */
+const snapLap_ = () => { let t = Date.now(); return k => { const n = Date.now(); _snapT[k] = (_snapT[k] || 0) + n - t; t = n; }; };
 let _snapT = {}; // ms per step of the last publishState_ (the cycle and action lines log it: the run-3 stall had no breakdown)
 function publishState_(ctx) {
-  let last = Date.now();
-  const lap = k => { const n = Date.now(); _snapT[k] = (_snapT[k] || 0) + n - last; last = n; };
   _snapT = {};
+  const lap = snapLap_();
   const st = buildState_(ctx); lap('build');
   const json = JSON.stringify(st), h = hash_(json); lap('hash');
   const meta = snapMeta_(); lap('meta');
@@ -601,8 +602,7 @@ function formUrl_(id) {
 
 /** The dashboard as every admin sees it: no per-request fields and no clock, so its hash only moves when the data does. */
 function buildState_(ctx) {
-  let t = Date.now();
-  const lap = k => { const n = Date.now(); _snapT[k] = (_snapT[k] || 0) + n - t; t = n; }; // the slow calls of publishState_'s build, by name
+  const lap = snapLap_(); // the slow calls of publishState_'s build, by name
   const s = S_(); lap('bSettings');
   const I = ctx.iv.I, A = ctx.alerts.table.I, T = ctx.team.I;
 

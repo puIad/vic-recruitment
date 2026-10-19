@@ -1034,15 +1034,15 @@ the 300-cell cap, a non-scope 403 retried.
     Normal cycles: `snap` 2.5–6 s (`build` 1.7–5 s, `binSlices` 0.5–1.9 s, `readSnap` 0.03–0.2 s). In the stalled ones the
     time is in **`build` (36 s and 40 s) and `binSlices` (12 s and 23 s)**, while the steps that touch the cache and the
     properties stay small: `readSnap` 0.2 s, `binGet` 0.05–0.14 s, `binLoop` under 15 ms, `setProps` and `putAll` never above
-    a second. So CacheService / PropertiesService contention is **not** the cause, and neither are the two named sheet reads in
-    the build (`findTeamSource_` about 1 s, `historyRows_` about 0.8 s even in the stalled cycles). `binSlices_` makes no
-    service call other than `Utilities.formatDate`; the rest of the build is `ss_()` (un-memoised: `getActive` + Properties
+    a second. So CacheService contention is unlikely (the reads and writes are small; `binGet`, `putAll`) and so are the two named sheet reads in
+    the build (`findTeamSource_` about 1 s, `historyRows_` about 0.8 s even in the stalled cycles). `binSlices` also holds one Properties read (`binMeta_`, now timed as `binMeta`) and
+    `Utilities.formatDate`; the rest of the build is `ss_()` (un-memoised: `getActive` + Properties
     read + `openById` on every call, about 20 per publish) and more `formatDate`. The stalled cycles' other phases were also
     slow in run 3 (`load` 35 s, `pull` 16 s against 4 s and 5 s), so the whole execution slows for a stretch while the page
     polls (about 3 calls a second): a Google-side slowdown of every service call in that stretch, not one slow call.
     **Not proven which call** (`ssMs` / `fmtMs` were added after the last run; the owner stopped the live runs).
-  - **Fix shipped (reasoned, not measured):** `ss_()` opens the Master once per execution (`_ssOpened`), so a publish makes
-    one `openById` instead of about 20, which shortens the time the lock is held when every call is slow. The sync still
+  - **Fix shipped (reasoned, not measured):** `ss_()` finds the Master once per execution (`_ssOpened`), so a publish makes
+    one `getActive` / Properties read / `openById` instead of about 20, which shortens the time the lock is held when every call is slow. The sync still
     holds the lock for the whole publish. Next: one more read-only run with the counters, and if `fmtMs` dominates, format
     dates in plain JS (a fixed offset per day) instead of `Utilities.formatDate`.
   - Marks 2 and 3 sit near what `scripts.run` gives: one call is about 1.5–1.7 s at the median, so an opening (three calls in
