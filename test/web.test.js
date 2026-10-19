@@ -805,6 +805,30 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert.throws(() => m.call('webState'), /Your binome sheet isn't shared with you yet\./, 'a read that stays refused never shows Google text');
   m.run('SpreadsheetApp.openById = __obi');
 
+  // load-test task 10: the owner drops one binome's cached slice, so its members read their sheet (the read above) until the next sync
+  as('admin@g.enp.edu.dz'); m.call('webRun', 'sync');
+  as(mem);
+  const pvd = m.call('webPulse');
+  assert.strictEqual(m.call('webState').fromSheet, false, 'cached before the drop');
+  assert.throws(() => m.call('webRun', 'dropSlice', { binome: b1.code }), /Not allowed/, 'not for members');
+  as('admin@g.enp.edu.dz');
+  const vd = m.run('__props.SNAP_VER');
+  assert.deepStrictEqual(m.call('webRun', 'dropSlice', { binome: b1.code }).result, { binome: b1.code, v: pvd + 1 });
+  assert.strictEqual(m.run('__props.SNAP_VER'), vd, 'no publish after it (one would put the slice back), and admins keep their screens');
+  assert.throws(() => m.call('webRun', 'dropSlice', { binome: 'B.99' }), /No cached slice for B\.99/);
+  as(mem);
+  assert.deepStrictEqual([m.call('webPulse'), m.call('webState').fromSheet], [pvd + 1, true], 'the pulse moves and the next refresh reads the sheet');
+  as('admin@g.enp.edu.dz'); m.call('webRun', 'sync');
+  as(mem);
+  assert.strictEqual(m.call('webState').fromSheet, false, 'the next sync republishes it');
+  m.run('master.addEditor("other.admin@g.enp.edu.dz")'); as('other.admin@g.enp.edu.dz');
+  assert.throws(() => m.call('webRun', 'dropSlice', { binome: b1.code }), /Only the owner/, 'an admin who is not the owner cannot');
+  m.run('__files[master.id].editors = __files[master.id].editors.filter(e => e !== "other.admin@g.enp.edu.dz")');
+  as('admin@g.enp.edu.dz');
+  m.run('var __S0 = S_; S_ = () => Object.assign({}, __S0(), { TEST_MODE: false })');
+  assert.throws(() => m.call('webRun', 'dropSlice', { binome: b1.code }), /Only in TEST_MODE/, 'never with TEST_MODE off');
+  m.run('S_ = __S0');
+
   // a cover sees only the codes they cover
   as('admin@g.enp.edu.dz');
   m.call('webRun', 'addCover', { codes: ivOf(b2.code)[0], inEmail: 'stand.in@g.enp.edu.dz', inName: 'Stand In' });

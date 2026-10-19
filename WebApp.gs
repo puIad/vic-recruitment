@@ -399,6 +399,22 @@ function patchSlice_(b, code, vals) {
   bins[b] = { h: h, v: o.v + 1 };
   PropertiesService.getScriptProperties().setProperty('SNAP_BIN', JSON.stringify(bins));
 }
+/** webRun('dropSlice', {binome}), load-test task 10: binome b's cached slice counts as gone, as dropSnap_ does to every binome
+ *  after a failed publish, so its members' next webState reads their sheet (memberBook_) until the next sync republishes it.
+ *  Owner only, TEST_MODE only; under the script lock, so no publish crosses it. */
+function dropSlice_(a, b) {
+  if (!a.owner) throw new Error('Only the owner (the account that runs the triggers) can drop a cached slice');
+  if (!bool_(S_().TEST_MODE)) throw new Error('Only in TEST_MODE: dropping a cached slice is for the load test');
+  const out = withLock_(() => {
+    const bins = binMeta_(), o = bins[b];
+    if (!o) throw new Error('No cached slice for ' + b);
+    bins[b] = { h: '', v: o.v + 1 };
+    PropertiesService.getScriptProperties().setProperty('SNAP_BIN', JSON.stringify(bins));
+    return { binome: b, v: bins[b].v };
+  }, 30000);
+  if (!out) busy_();
+  return out;
+}
 
 /* ---------- the interview form in the dashboard (docs/interview-form.md part 2) ---------- */
 
@@ -717,7 +733,8 @@ function webRun(action, args) {
   if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch'].indexOf(action) < 0 && !args.dryRun &&
+  // dropSlice: a publish would put the dropped slice straight back
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -767,6 +784,7 @@ function webRun(action, args) {
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;
       case 'pendingSwitch': result = pendingSwitch_(a, !!args.on); break;
+      case 'dropSlice': result = dropSlice_(a, String(args.binome || '')); break;
       default: throw new Error('Unknown action: ' + action);
     }
     return { messages: _webOut.slice(), result: result };
