@@ -1026,6 +1026,25 @@ the 300-cell cap, a non-scope 403 retried.
     lock for minutes: the skipped syncs, every BUSY (the drop, the direct alert actions, the put-back) and the other admins'
     239 s come from them. Cause not found: `buildState_` makes no slow call on its own, so `publishState_` needs a time per
     step (the build, the cache reads and writes, the properties) under the same load.
+  - **The publish stall, investigated (2026-10-19, script @114–@121, read-only live runs of 4, 4 and 6 min, 4 admins + 64
+    members, no writes).** The cycle and action lines now carry `snapT` (ms per step of `publishState_`: `build`, `hash`,
+    `meta`, `readSnap`, `bins` with `binSlices` / `binGet` / `binLoop`, `putAll`, `setProps`; inside the build `bTeamSrc`,
+    `bHistory`; later runs also `ssN`/`ssMs` and `fmtN`/`fmtMs`). Read-only polling alone reproduces it: a first 4-min run had
+    a cycle of 376 s with `snap` 286 s (old code, no breakdown), the 6-min run two of 12 cycles with `snap` 48 s and 64 s.
+    Normal cycles: `snap` 2.5–6 s (`build` 1.7–5 s, `binSlices` 0.5–1.9 s, `readSnap` 0.03–0.2 s). In the stalled ones the
+    time is in **`build` (36 s and 40 s) and `binSlices` (12 s and 23 s)**, while the steps that touch the cache and the
+    properties stay small: `readSnap` 0.2 s, `binGet` 0.05–0.14 s, `binLoop` under 15 ms, `setProps` and `putAll` never above
+    a second. So CacheService / PropertiesService contention is **not** the cause, and neither are the two named sheet reads in
+    the build (`findTeamSource_` about 1 s, `historyRows_` about 0.8 s even in the stalled cycles). `binSlices_` makes no
+    service call other than `Utilities.formatDate`; the rest of the build is `ss_()` (un-memoised: `getActive` + Properties
+    read + `openById` on every call, about 20 per publish) and more `formatDate`. The stalled cycles' other phases were also
+    slow in run 3 (`load` 35 s, `pull` 16 s against 4 s and 5 s), so the whole execution slows for a stretch while the page
+    polls (about 3 calls a second): a Google-side slowdown of every service call in that stretch, not one slow call.
+    **Not proven which call** (`ssMs` / `fmtMs` were added after the last run; the owner stopped the live runs).
+  - **Fix shipped (reasoned, not measured):** `ss_()` opens the Master once per execution (`_ssOpened`), so a publish makes
+    one `openById` instead of about 20, which shortens the time the lock is held when every call is slow. The sync still
+    holds the lock for the whole publish. Next: one more read-only run with the counters, and if `fmtMs` dominates, format
+    dates in plain JS (a fixed offset per day) instead of `Utilities.formatDate`.
   - Marks 2 and 3 sit near what `scripts.run` gives: one call is about 1.5–1.7 s at the median, so an opening (three calls in
     a row) is about 5 s at the median, and a `webState` p95 under 2 s leaves 0.3 s above it. Run 2's opening burst is gone
     (admins 14.6 s → 5.8 s). Whether 5 s and 2 s fit is the owner's question.

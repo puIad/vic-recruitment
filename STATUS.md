@@ -21,7 +21,8 @@ path; the direct path (switch off) is the fallback, so its marks are information
 the owner, staggered openings, the owner-only TEST_MODE `webRun dropSlice`; script @112 / @113). The pending path holds
 (marks 6–10 pass). Blocking: a member's sheet read always fails (`sliceFromSheet_` formats dates through `S_()`, which opens
 the Master members can't open: #101 did not fix it; fixed by #104, not yet re-run), the sync's publish phase stalled 97–202 s under the load and three
-timed syncs were skipped in a row (mark 11), and the reads miss (opening p95 5.8 s admins / 11.0 s members, `webState` p95
+timed syncs were skipped in a row (mark 11; reproduced with read-only polling alone, see load-test.md task 10 Notes; per-step
+times now in the `cycle` line as `snapT`; `ss_()` now opens the Master once per execution, effect not yet measured), and the reads miss (opening p95 5.8 s admins / 11.0 s members, `webState` p95
 3.8 s). Left after the run: everything put back (three alerts by hand), every pending record clear, TEST_MODE on, and
 **pending changes on** (owner, 2026-10-19: on from now).
 
