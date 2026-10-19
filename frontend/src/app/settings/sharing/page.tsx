@@ -7,7 +7,8 @@ import { useVic } from "@/lib/vic/store"
 import { cn } from "@/lib/utils"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
 import { isTrue } from "@/lib/vic/settings-ui"
-import { GROUPS, SettingDrop, SettingsPage, type SettingsForm } from "../components/settings-form"
+import { GROUPS } from "../components/settings-groups"
+import { SettingDrop, SettingsPage, type SettingsForm } from "../components/settings-form"
 
 function Yes({ on, note }: { on: boolean; note?: string }) {
   return (

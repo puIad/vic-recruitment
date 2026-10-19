@@ -6,7 +6,8 @@ import { Switch } from "@/components/ui/switch"
 import { useConfirm } from "@/lib/vic/confirm"
 import { useVic } from "@/lib/vic/store"
 import type { Binome } from "@/lib/vic/types"
-import { GROUPS, RowShell, SettingsPage } from "../components/settings-form"
+import { GROUPS } from "../components/settings-groups"
+import { RowShell, SettingsPage } from "../components/settings-form"
 
 export default function GeneralSettings() {
   return (

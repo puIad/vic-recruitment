@@ -316,9 +316,7 @@ export function PairingPanel({ state }: { state: WebState }) {
 
   // picks that left the free list (paired elsewhere, excluded in the sheet) drop out
   const freeByEmail = React.useMemo(() => new Map(free.map((m) => [lc(m.email), m])), [free])
-  React.useEffect(() => {
-    setPicked((p) => (p.every((e) => freeByEmail.has(e)) ? p : p.filter((e) => freeByEmail.has(e))))
-  }, [freeByEmail])
+  if (!picked.every((e) => freeByEmail.has(e))) setPicked(picked.filter((e) => freeByEmail.has(e)))
   const pickedMembers = picked.map((e) => freeByEmail.get(e)).filter(Boolean) as TeamMember[]
 
   const s = q.trim().toLowerCase()

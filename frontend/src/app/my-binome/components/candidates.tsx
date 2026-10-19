@@ -11,15 +11,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useConfirm } from "@/lib/vic/confirm"
-import { SHEET_LABEL, STAGES, STATUS_COLOR, STATUS_LABEL, cellText, sheetTime } from "@/lib/vic/format"
+import { SHEET_LABEL, STAGES, STATUS_COLOR, STATUS_LABEL, cellText, fullName, sheetTime } from "@/lib/vic/format"
 import { GOLD_KEYS, type Candidate, type GoldKey, type MemberState, type SheetKey } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { GoldField, GoldForm } from "./gold-fields"
 import { InterviewAction } from "./interview-action"
 
 const STATUS_ORDER: Record<string, number> = Object.fromEntries(STAGES.map((s, i) => [s.key, i]))
-
-export const fullName = (c: Candidate) => `${cellText(c["First Name"])} ${cellText(c["Family Name"])}`.trim()
 
 /** The sheet's Contacted? options as soft pills: done is teal, a non-answer is blue, not yet stays quiet. */
 const CONTACT_TONE: Record<string, React.ComponentProps<typeof Badge>["variant"]> = {
@@ -248,10 +246,7 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
   // someone moved away (or a cover that ended) must not linger on screen or in memory
   const [shown, setShown] = React.useState(candidate)
   const stillHere = !!shown && candidates.some((x) => cellText(x.Code) === cellText(shown.Code))
-  React.useEffect(() => {
-    if (candidate) setShown(candidate)
-    else if (!stillHere) setShown(null)
-  }, [candidate, stillHere])
+  if (candidate ? candidate !== shown : shown && !stillHere) setShown(candidate)
   const c = candidate ?? (stillHere ? shown : null)
 
   // closing with unsaved fields asks first: they would be lost

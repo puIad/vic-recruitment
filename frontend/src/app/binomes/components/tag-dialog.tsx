@@ -48,14 +48,20 @@ export function TagDialog({ binome, onClose }: { binome: Binome | null; onClose:
   const to = tagFor(pick)
   const same = to === from
 
-  React.useEffect(() => {
+  const [shownFor, setShownFor] = React.useState<{ code?: string; from: string } | null>(null)
+  if (shownFor?.code !== code || shownFor?.from !== from) {
+    setShownFor({ code, from })
     if (code) setPick(new Set(depsOf(from)))
-  }, [code, from])
+  }
 
   // the dry run of the current ticks (debounced: each one loads the Master under the script lock)
-  React.useEffect(() => {
+  const [checkFor, setCheckFor] = React.useState<{ code?: string; to: string; same: boolean; nonce: number } | null>(null)
+  if (checkFor?.code !== code || checkFor?.to !== to || checkFor?.same !== same || checkFor?.nonce !== nonce) {
+    setCheckFor({ code, to, same, nonce })
     setCheck(null)
     setError("")
+  }
+  React.useEffect(() => {
     if (!code || !to || same) return
     let gone = false
     const t = setTimeout(() => {

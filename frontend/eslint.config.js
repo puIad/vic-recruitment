@@ -20,4 +20,10 @@ export default tseslint.config([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn ui files export variants and hooks next to their components (kept as generated); the lib/vic hook modules
+    // (useActions, useQuick, useConfirm, notices) render their dialog bodies inline. A dev edit there reloads the page.
+    files: ['src/components/ui/**/*.tsx', 'src/lib/vic/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])

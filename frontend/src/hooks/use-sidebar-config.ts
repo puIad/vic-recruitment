@@ -1,5 +1,17 @@
 import * as React from "react"
-import { SidebarContext, type SidebarContextValue } from "@/contexts/sidebar-context"
+
+export interface SidebarConfig {
+  variant: "sidebar" | "floating" | "inset"
+  collapsible: "offcanvas" | "icon" | "none"
+  side: "left" | "right"
+}
+
+export interface SidebarContextValue {
+  config: SidebarConfig
+  updateConfig: (config: Partial<SidebarConfig>) => void
+}
+
+export const SidebarContext = React.createContext<SidebarContextValue | null>(null)
 
 export function useSidebarConfig(): SidebarContextValue {
   const context = React.useContext(SidebarContext)

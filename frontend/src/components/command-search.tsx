@@ -42,9 +42,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
   const { sync } = useActions()
   const [q, setQ] = React.useState("")
 
-  React.useEffect(() => {
-    if (!open) setQ("")
-  }, [open])
+  if (!open && q) setQ("")
 
   const go = (url: string) => {
     onOpenChange(false)

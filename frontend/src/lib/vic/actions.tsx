@@ -57,8 +57,8 @@ export interface CoverArgs {
   reason: string
 }
 
-/** The rejection email before it goes: who gets it, and its text (edits are written into `draft`). */
-function RejectionEditor({ p, draft }: { p: RejectionsPreview; draft: { subject: string; body: string } }) {
+/** The rejection email before it goes: who gets it, and its text (edits go to `onEdit`). */
+function RejectionEditor({ p, draft, onEdit }: { p: RejectionsPreview; draft: { subject: string; body: string }; onEdit: (k: "subject" | "body", v: string) => void }) {
   return (
     <div className="space-y-4">
       {p.testMode && (
@@ -78,12 +78,12 @@ function RejectionEditor({ p, draft }: { p: RejectionsPreview; draft: { subject:
         . VIC members are never in this list.
       </p>
       <div className="space-y-2 rounded-2xl border bg-muted/40 p-3">
-        <Input aria-label="Subject of the rejection email" defaultValue={draft.subject} onChange={(e) => (draft.subject = e.target.value)} className="bg-background font-semibold" />
+        <Input aria-label="Subject of the rejection email" defaultValue={draft.subject} onChange={(e) => onEdit("subject", e.target.value)} className="bg-background font-semibold" />
         <Textarea
           aria-label="Text of the rejection email"
           defaultValue={draft.body}
           rows={Math.min(14, draft.body.split("\n").length + 2)}
-          onChange={(e) => (draft.body = e.target.value)}
+          onChange={(e) => onEdit("body", e.target.value)}
           className="bg-background leading-relaxed"
         />
       </div>
@@ -536,7 +536,7 @@ export function useActions() {
         const ok = await confirm({
           title: p.testMode ? "Send a test rejection to yourself" : `Email ${p.count} declined applicant${p.count === 1 ? "" : "s"}`,
           wide: true,
-          body: <RejectionEditor p={p} draft={draft} />,
+          body: <RejectionEditor p={p} draft={draft} onEdit={(k, v) => (draft[k] = v)} />,
           okLabel: p.testMode ? "Send me the test" : `Send ${p.count} email${p.count === 1 ? "" : "s"}`,
           danger: !p.testMode,
         })
