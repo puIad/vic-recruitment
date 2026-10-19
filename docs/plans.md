@@ -1,17 +1,18 @@
 # Plans: Schedule, Analytics, pending changes, settings cleanup
 
-The owner's decisions of 2026-10-04 on the three "Coming up" pages. None of this is needed for launch. The pages
-are placeholders today ([frontend.md](frontend.md#placeholders-sample-data-each-labelled-and-what-makes-them-real)).
-The build plan for pending changes (2026-10-17, pulled forward 2026-10-18) is [at the end](#pending-changes-the-build-plan);
-it ships before load-test task 10 and the launch. The settings cleanup (grilled with the owner 2026-10-19) is
-[the last section](#settings-cleanup-the-build-plan).
+The owner's decisions of 2026-10-04 on the "Coming up" pages. Schedule and Analytics are the only pages still to
+build, next after the 2026-10-19 audit fixes; none of it is needed for launch, and both are placeholders today
+([frontend.md](frontend.md#placeholders-sample-data-each-labelled-and-what-makes-them-real)). Two later plans are
+done and kept here as a record: pending changes ([build plan](#pending-changes-the-build-plan): slices 1 to 5 live
+2026-10-18 with the owner's switch off, audit fixes live 2026-10-19) and the [settings
+cleanup](#settings-cleanup-the-build-plan) (both PRs live 2026-10-19).
 
 | Page | Decision |
 |---|---|
 | Schedule | Keep: a calendar of the interviews binomes have set, plus admin events saved in the Master. Plan below. |
 | Analytics | Keep: a profile for each applicant and stats over all of them. Plan below. |
 | Binome desk | **Dropped**, removed 2026-10-18: `frontend/src/app/chat/`, the `/desk` route and its nav entry are gone. |
-| Binome view | Idea kept, **not planned yet**: binome members get their own view of the dashboard and could use it instead of their binome sheet (the script would fill the sheet for them). Needs an access rule in WebApp.gs first (today only Master editors get in). |
+| Binome view | **Built** as **My binome** (load-test tasks 6 to 8, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)–[#30](https://github.com/puIad/vic-recruitment-2026/pull/30); admins in a binome [#85](https://github.com/puIad/vic-recruitment-2026/pull/85); interview form [#87](https://github.com/puIad/vic-recruitment-2026/pull/87)): members in `MEMBER_MAP` see their binome only, fill in the gold columns (written into their binome sheet) and the interview form. Members get it once load-test task 10 signs it off. |
 
 Both pages follow the usual order ([HANDOFF](../HANDOFF.md#how-changes-ship)): the script ships first and only
 adds fields, so no `API_VERSION` bump. The UI treats a missing field as empty, so it still works on an older script.
@@ -146,8 +147,9 @@ Suggested:
 
 ### Privacy
 
-Only people who can open the dashboard (Master editors) see this, the same as today. It shows more per person than
-the dashboard does now (birth dates, free-text answers), so it stays off the binome view if that is ever built.
+Only admins (Master editors) see this. It shows more per person than the dashboard does now (birth dates, free-text
+answers), so it stays off My binome: members never get `webAnalytics` or the profile, and `webAnalytics` checks the
+admin role like the other admin entry points.
 
 ## Pending changes: the build plan
 
