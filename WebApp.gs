@@ -179,8 +179,10 @@ function binMeta_() { try { return JSON.parse(PropertiesService.getScriptPropert
  *  changed}; v goes up only when that slice's hash moved. A slice the cache refuses (over 100 KB) is left out: that member
  *  reads their sheet instead. */
 function publishBins_(ctx) {
-  const old = binMeta_(), slices = binSlices_(ctx), codes = Object.keys(slices), cache = CacheService.getScriptCache();
-  const have = cache.getAll(codes.map(c => 'snap:bin:' + c)), dirty = cache.getAll(codes.map(c => 'dirty:' + c)), meta = {};
+  const lap = snapLap_();
+  const old = binMeta_(); lap('binMeta');
+  const slices = binSlices_(ctx), codes = Object.keys(slices), cache = CacheService.getScriptCache(); lap('binSlices');
+  const have = cache.getAll(codes.map(c => 'snap:bin:' + c)), dirty = cache.getAll(codes.map(c => 'dirty:' + c)), meta = {}; lap('binGet');
   let changed = Object.keys(old).length !== codes.length;
   codes.forEach(c => {
     // a member wrote and no sync has read that sheet yet (any publish that didn't pull, or ctx loaded before the write): ctx
@@ -190,8 +192,11 @@ function publishBins_(ctx) {
     meta[c] = { h: h, v: !o ? 1 : o.h === h ? o.v : o.v + 1 };
     if (!o || o.h !== h) changed = true;
     if (have['snap:bin:' + c] === json) return;
+    const p0 = Date.now();
     try { cache.put('snap:bin:' + c, json, 21600); } catch (e) { console.warn('Slice of ' + c + ' not cached: ' + e); cache.remove('snap:bin:' + c); }
+    _snapT.binPuts = (_snapT.binPuts || 0) + 1; _snapT.binPutMs = (_snapT.binPutMs || 0) + Date.now() - p0;
   });
+  lap('binLoop');
   return { meta: meta, changed: changed };
 }
 
@@ -538,9 +543,17 @@ function readSnap_() {
  *  lost entries is refilled without a new version. Call it inside the script lock, so two publishers never cross. Not published
  *  when the snapshot was dropped since ctx was loaded (SNAP_VER moved, and only dropSnap_ moves it outside the lock): ctx may miss
  *  the write that dropped it. Returns the state. */
+/** A stopwatch into _snapT: lap('x') adds the ms since the previous lap (or since this call) to _snapT.x. */
+const snapLap_ = () => { let t = Date.now(); return k => { const n = Date.now(); _snapT[k] = (_snapT[k] || 0) + n - t; t = n; }; };
+let _snapT = {}; // ms per step of the last publishState_ (the cycle and action lines log it: the run-3 stall had no breakdown)
 function publishState_(ctx) {
-  const st = buildState_(ctx), json = JSON.stringify(st), h = hash_(json), meta = snapMeta_();
-  const same = !!meta && meta.h === h, cached = same && !!readSnap_(), bins = publishBins_(ctx);
+  _snapT = {};
+  const lap = snapLap_();
+  const st = buildState_(ctx); lap('build');
+  const json = JSON.stringify(st), h = hash_(json); lap('hash');
+  const meta = snapMeta_(); lap('meta');
+  const same = !!meta && meta.h === h, cached = same && !!readSnap_(); lap('readSnap');
+  const bins = publishBins_(ctx); lap('bins');
   if (cached && !bins.changed) return Object.assign(st, { updated: meta.at, built: meta.ms || 0 });
   // built = the ms the data was read (ctx.now): a pending change's screen gives way to a snapshot built at or after its write
   const at = same ? meta.at : fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), ms = same ? meta.ms || 0 : ctx.now.getTime(), chunks = {};
@@ -552,10 +565,11 @@ function publishState_(ctx) {
     chunks['snap:admin:' + n] = json.slice(i, j); i = j;
   }
   if (!cached) CacheService.getScriptCache().putAll(chunks, 21600);
-  const props = PropertiesService.getScriptProperties(), ver = Number(props.getProperty('SNAP_VER') || 0);
+  lap('putAll');
+  const props = PropertiesService.getScriptProperties(), ver = Number(props.getProperty('SNAP_VER') || 0); lap('getVer');
   // ponytail: check then set, not atomic; a drop in the few ms between them is lost until the next change is published
   if (ver !== ctx.snapVer) return Object.assign(st, { updated: fmt_(ctx.now, 'dd/MM/yyyy HH:mm'), built: ctx.now.getTime() });
-  props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at, ms: ms }), SNAP_VER: String(same ? ver : ver + 1), SNAP_BIN: JSON.stringify(bins.meta) });
+  props.setProperties({ SNAP_HASH: JSON.stringify({ h: h, n: n, at: at, ms: ms }), SNAP_VER: String(same ? ver : ver + 1), SNAP_BIN: JSON.stringify(bins.meta) }); lap('setProps');
   return Object.assign(st, { updated: at, built: ms });
 }
 /** The cache can no longer be trusted (a publish failed or could not run): the next webState builds live (a member's from
@@ -588,13 +602,14 @@ function formUrl_(id) {
 
 /** The dashboard as every admin sees it: no per-request fields and no clock, so its hash only moves when the data does. */
 function buildState_(ctx) {
-  const s = S_();
+  const lap = snapLap_(); // the slow calls of publishState_'s build, by name
+  const s = S_(); lap('bSettings');
   const I = ctx.iv.I, A = ctx.alerts.table.I, T = ctx.team.I;
 
   const byStatus = {}; Object.keys(ST).forEach(k => { byStatus[ST[k]] = 0; });
   const byDep = {}; DEPTS.forEach(d => { byDep[d] = 0; });
   const perBin = {};
-  const loadOf = loads_(ctx); // the load pickBinome compares (BALANCE_BY), for Settings › General
+  lap('bPre'); const loadOf = loads_(ctx); // the load pickBinome compares (BALANCE_BY), for Settings › General
   ctx.iv.data.forEach(r => {
     if (!r[I.Code] && !r[I['Response Key']]) return;
     byStatus[r[I.Status]] = (byStatus[r[I.Status]] || 0) + 1;
@@ -614,12 +629,14 @@ function buildState_(ctx) {
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
 
   const look = quickLookups_(ctx), opened = binAccess_(), hand = ctx.binomes.some(b => b.status === 'DRAFT') ? handDrafts_() : [];
-  const teamSrc = findTeamSource_(ss_());
+  lap('bLookups'); const teamSrc = findTeamSource_(ss_()); lap('bTeamSrc');
+  const history = historyRows_(); lap('bHistory');
+  const masterUrl = ss_().getUrl(); lap('bMasterUrl');
 
   return {
     v: API_VERSION,
     links: {
-      master: ss_().getUrl(),
+      master: masterUrl,
       registrationForm: formUrl_(CONFIG.REGISTRATION_FORM_ID),
       interviewForm: formUrl_(CONFIG.INTERVIEW_FORM_ID),
       binomeFolder: 'https://drive.google.com/drive/folders/' + CONFIG.BINOME_FOLDER_ID,
@@ -642,7 +659,7 @@ function buildState_(ctx) {
     unpaired: activeOrPaused_(ctx).length ? unpairedMembers(teamMembers_(ctx), ctx.binomes) : [],
     covers: (ctx.covers || []).map(c => ({ row: c.row, binome: c.binome, name: c.name, email: c.email, outName: c.outName,
       codes: c.codes, live: coverLive_(ctx, c), reason: c.reason })),
-    history: historyRows_(),
+    history: history,
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
@@ -719,7 +736,7 @@ function saveSettings_(values) {
 function logAction_(action, outcome, t0, tp, ph) {
   const lockWait = ph.lockWait || 0, load = ph.load || 0, tracker = ph.tracker || 0, end = Date.now();
   console.log(JSON.stringify({ at: 'action', action: String(action).slice(0, 30), outcome: outcome, total: end - t0, lockWait: lockWait, load: load,
-    writes: Math.max(0, tp - t0 - lockWait - load - tracker), tracker: tracker, publish: end - tp, mailsSent: _mailsSent }));
+    writes: Math.max(0, tp - t0 - lockWait - load - tracker), tracker: tracker, publish: end - tp, snapT: _snapT, mailsSent: _mailsSent }));
 }
 
 /** One entry point for every dashboard button. Returns {messages[], result}. args.budgetMs (lock): the Vercel front sends

@@ -205,7 +205,7 @@ const __log = console.log, lines = []; console.log = (...x) => lines.push(x.join
 try { out = call('webRun', 'reassign', { code: iv.code, binome: target.code }); } finally { console.log = __log; }
 const act = lines.map(l => { try { return JSON.parse(l); } catch (e) { return null; } }).filter(x => x && x.at === 'action');
 assert.deepStrictEqual(act.map(x => [x.action, x.outcome]), [['reassign', 'ok']], 'one action line');
-assert.deepStrictEqual(Object.keys(act[0]), ['at', 'action', 'outcome', 'total', 'lockWait', 'load', 'writes', 'tracker', 'publish', 'mailsSent']);
+assert.deepStrictEqual(Object.keys(act[0]), ['at', 'action', 'outcome', 'total', 'lockWait', 'load', 'writes', 'tracker', 'publish', 'snapT', 'mailsSent']);
 assert(['lockWait', 'load', 'writes', 'tracker', 'publish'].every(k => act[0][k] >= 0) && act[0].total >= act[0].lockWait + act[0].load + act[0].tracker + act[0].publish, JSON.stringify(act[0]));
 assert(/moved to/.test(out.messages[0]), out.messages[0]);
 assert.strictEqual(call('webState').interviewees.find(x => x.code === iv.code).binome, target.code);
@@ -793,7 +793,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   // cache empty: rebuilt from their own sheet; not shared: a clear error
   m.run('__cacheClear()');
   // members can't open the Master (load-test run 3, 2026-10-19): every read below runs with it refused
-  m.run('var __mgo = SpreadsheetApp.openById, __mga = SpreadsheetApp.getActive; SpreadsheetApp.getActive = () => null; SpreadsheetApp.openById = id => { if (id === __props.MASTER_ID) throw new Error("Exception: You do not have permission to access the requested document."); return __mgo.call(SpreadsheetApp, id); }; _settings = null');
+  m.run('var __mgo = SpreadsheetApp.openById, __mga = SpreadsheetApp.getActive; SpreadsheetApp.getActive = () => null; SpreadsheetApp.openById = id => { if (id === __props.MASTER_ID) throw new Error("Exception: You do not have permission to access the requested document."); return __mgo.call(SpreadsheetApp, id); }; _settings = null; _ssOpened = null');
   st = m.call('webState');
   assert.deepStrictEqual([st.fromSheet, st.candidates.map(c => c.Code).sort(), st.candidates.find(c => c.Code === code1).Notes, st.alerts], [true, ivOf(b1.code), 'called twice', []]);
   m.run('var __obi = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id !== __props.MASTER_ID) throw new Error("You do not have permission"); return __obi.call(SpreadsheetApp, id); }');
@@ -805,7 +805,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert.strictEqual(m.call('webState').fromSheet, true, 'one refused read is retried');
   m.run('__refused = 99');
   assert.throws(() => m.call('webState'), /Your binome sheet isn't shared with you yet\./, 'a read that stays refused never shows Google text');
-  m.run('SpreadsheetApp.openById = __mgo; SpreadsheetApp.getActive = __mga; _settings = null');
+  m.run('SpreadsheetApp.openById = __mgo; SpreadsheetApp.getActive = __mga; _settings = null; _ssOpened = null');
 
   // load-test task 10: the owner drops one binome's cached slice, so its members read their sheet (the read above) until the next sync
   as('admin@g.enp.edu.dz'); m.call('webRun', 'sync');
@@ -882,7 +882,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     assert.deepStrictEqual(JSON.parse(cell(code2, 'Notes')), ['=1+1, called twice', '=1+1, called twice'], 'notes stay text');
     assert.strictEqual(set(code2, 'Interview Date', '', '15/10/2026').result.value, '', 'a date can be cleared');
     // a member can't open the Master (its Settings tab holds TIMEZONE): a date still saves, on the binome sheet's timezone
-    m.run('var __sobm = SpreadsheetApp.openById, __sga = SpreadsheetApp.getActive; SpreadsheetApp.getActive = () => null; SpreadsheetApp.openById = id => { if (id === __props.MASTER_ID) throw new Error("Exception: You do not have permission to access the requested document."); return __sobm.call(SpreadsheetApp, id); }; _settings = null');
+    m.run('var __sobm = SpreadsheetApp.openById, __sga = SpreadsheetApp.getActive; SpreadsheetApp.getActive = () => null; SpreadsheetApp.openById = id => { if (id === __props.MASTER_ID) throw new Error("Exception: You do not have permission to access the requested document."); return __sobm.call(SpreadsheetApp, id); }; _settings = null; _ssOpened = null');
     assert.strictEqual(set(code2, 'Interview Date', '15/10/2026', '').result.value, '15/10/2026', 'no Master read for a date');
     m.run('SpreadsheetApp.openById = __sobm; SpreadsheetApp.getActive = __sga');
     // a binome sheet in a daylight-saving zone: a day on either side of the change is still that day's local midnight
@@ -1049,9 +1049,9 @@ assert.throws(() => call('webState'), /Not allowed/);
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
 assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, role: '', email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY', owner: false }));
 assert(/vic-recruitment\.vercel\.app/.test(run('doGet()._html')), 'the same link page for an account without access');
-run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { throw new Error("You do not have permission to access the requested document.") }');
+run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { throw new Error("You do not have permission to access the requested document.") }; _ssOpened = null');
 assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'an account that cannot open the Master');
-run('SpreadsheetApp.openById = __open');
+run('SpreadsheetApp.openById = __open; _ssOpened = null');
 run('var __drive = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("No item with the given ID could be found.") }');
 assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'bound Master handed back to an account Drive says has no access → not "view only"');
 run('DriveApp.getFileById = __drive');

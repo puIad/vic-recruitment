@@ -2,14 +2,18 @@
  * GOOGLE SHEETS PLUMBING
  * ===========================================================================*/
 
+let _ssOpened = null; // the Master, found once per execution: each call was getActive + a Properties read + an open, ~20 per publish
 function ss_() {
-  let ss = null;
-  try { ss = SpreadsheetApp.getActive(); } catch (e) { /* no active */ }
-  if (!ss) {
-    const id = PropertiesService.getScriptProperties().getProperty('MASTER_ID');
-    if (id) ss = SpreadsheetApp.openById(id);
+  const t0 = Date.now();
+  if (!_ssOpened) {
+    try { _ssOpened = SpreadsheetApp.getActive(); } catch (e) { /* no active */ }
+    if (!_ssOpened) {
+      const id = PropertiesService.getScriptProperties().getProperty('MASTER_ID');
+      if (id) _ssOpened = SpreadsheetApp.openById(id);
+    }
   }
-  return ss;
+  _snapT.ssN = (_snapT.ssN || 0) + 1; _snapT.ssMs = (_snapT.ssMs || 0) + Date.now() - t0; // cost of every call, for the publish line
+  return _ssOpened;
 }
 
 let _settings = null;
@@ -35,7 +39,9 @@ function adminEmails_() {
 function tzOffset_() { return Utilities.formatDate(new Date(), S_().TIMEZONE, 'XXX'); }
 function fmt_(d, pattern, tz) { // tz: a caller that can't open the Master (a member) names its own; default = the Master's TIMEZONE
   if (!(d instanceof Date) || isNaN(d)) return String(d || '');
-  return Utilities.formatDate(d, tz || S_().TIMEZONE, pattern || 'dd/MM/yyyy HH:mm');
+  const t0 = Date.now(), out = Utilities.formatDate(d, tz || S_().TIMEZONE, pattern || 'dd/MM/yyyy HH:mm');
+  _snapT.fmtN = (_snapT.fmtN || 0) + 1; _snapT.fmtMs = (_snapT.fmtMs || 0) + Date.now() - t0;
+  return out;
 }
 /** FNV-1a (32 bits) plus the length: tells two snapshots apart (publishState_); not for anything secret. */
 function hash_(s) {
