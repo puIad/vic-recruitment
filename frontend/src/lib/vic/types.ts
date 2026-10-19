@@ -208,6 +208,15 @@ export type SettingKind =
   | { type: "text" }
   | { type: "enum"; options: (string | number)[] }
 
+/** One mail the script lets admins reword (MAILS in Config.gs). */
+export interface MailDef {
+  id: string
+  name: string
+  to: "candidate" | "binome"
+  vars: string[]
+  fields: { key: string; field: string; def: string }[]
+}
+
 export interface SettingRow {
   key: string
   value: string | number | boolean
@@ -253,6 +262,8 @@ export interface WebState {
     admins: string[]
   }
   settingsAll: SettingRow[]
+  /** absent on a script from before the Emails page */
+  mails?: MailDef[]
   team: { total: number; excluded: number; issues: number; source: string }
   counts: { byStatus: Record<string, number>; byDep: Record<string, number> }
   locked: boolean

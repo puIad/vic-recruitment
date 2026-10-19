@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
 
 import { GROUPS } from "./settings-groups"
-import { CHOICES, SETTING_UI, isTrue, type Choice, type Control, type SettingUi } from "@/lib/vic/settings-ui"
+import { CHOICES, SETTING_UI, isTrue, mailProblemFor, type Choice, type Control, type SettingUi } from "@/lib/vic/settings-ui"
 
 export interface SettingsSection {
   /** no title: one plain card, as a page with a single list */
@@ -41,6 +41,8 @@ export interface SettingsGroup {
   sections: SettingsSection[]
   /** keys the page shows in its own cards (the test-mode card, the members sheet card) */
   own?: string[]
+  /** also edits every MAIL_* text (the Emails page draws them itself) */
+  mail?: boolean
 }
 
 /** What a page's own cards get: a row's draft value, a change, its pending mark, and a save of some edits right now. */
@@ -377,7 +379,7 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
     if (!all) return []
     const mine = new Set([...group.sections.flatMap((x) => x.keys), ...(group.own ?? [])])
     const rest = group.sections.some((x) => x.rest)
-    return all.filter((s) => mine.has(s.key) || (rest && !listed.has(s.key)))
+    return all.filter((s) => mine.has(s.key) || (rest && !listed.has(s.key)) || (group.mail && s.key.startsWith("MAIL_")))
   }, [all, group, listed])
 
   const [edits, setEdits] = React.useState<Record<string, CellValue>>({})
@@ -400,6 +402,7 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
   const commit = async (e: Record<string, CellValue>) => {
     const edited = rows.filter((s) => s.key in e)
     if (!edited.length) return false
+    if (edited.some((s) => mailProblemFor(s.key, e[s.key], state?.mails))) return false
     if ("TEST_MODE" in e && testMode && !isTrue(e.TEST_MODE)) {
       const ok = await confirm({
         title: "Turn test mode off?",
@@ -484,7 +487,7 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
           >
             Discard
           </Button>
-          <Button disabled={!dirty || busy || accepting} onClick={() => commit(edits)}>
+          <Button disabled={!dirty || busy || accepting || Object.entries(edits).some(([k, v]) => mailProblemFor(k, v, state?.mails))} onClick={() => commit(edits)}>
             {busy && action === "saveSettings" && <Spinner />} Save changes
           </Button>
         </div>

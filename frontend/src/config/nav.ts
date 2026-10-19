@@ -6,6 +6,7 @@ import {
   History,
   LayoutDashboard,
   ListChecks,
+  Mail,
   Network,
   Palette,
   Settings,
@@ -75,6 +76,7 @@ export const navGroups: NavGroup[] = [
           { title: "General", url: "/settings/general" },
           { title: "Alerts and timing", url: "/settings/timing" },
           { title: "Sharing and email", url: "/settings/sharing" },
+          { title: "Emails", url: "/settings/emails" },
           { title: "Screening", url: "/settings/screening" },
           { title: "Connections", url: "/settings/connections", divider: true },
           { title: "Change history", url: "/settings/history" },
@@ -117,6 +119,7 @@ export const pageIndex = (inBinome: boolean): { title: string; url: string; grou
 function settingsIcon(url: string): LucideIcon {
   if (url.endsWith("timing")) return Timer
   if (url.endsWith("sharing")) return Share2
+  if (url.endsWith("emails")) return Mail
   if (url.endsWith("connections")) return Network
   if (url.endsWith("account")) return UserCircle
   if (url.endsWith("appearance")) return Palette

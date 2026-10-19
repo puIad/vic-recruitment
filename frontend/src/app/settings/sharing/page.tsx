@@ -38,6 +38,9 @@ function WhoHears() {
         <CardDescription>What the settings above add up to right now{test ? ". Test mode is on, so mail reaches the admins only" : ""}.</CardDescription>
       </CardHeader>
       <CardContent>
+        <p className="mb-3 text-sm text-muted-foreground">
+          The switches for the confirmation, new-candidate and alert mails, and their texts, are on <Link to="/settings/emails" className="font-semibold text-primary hover:underline">Emails</Link>.
+        </p>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">

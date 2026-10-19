@@ -7,6 +7,14 @@ import {
   Gauge,
   Mail,
   MailCheck,
+  MailMinus,
+  MailPlus,
+  MailX,
+  Handshake,
+  UserMinus,
+  UserRoundPlus,
+  Siren,
+  Users2,
   Play,
   RefreshCw,
   Scale,
@@ -20,7 +28,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react"
-import type { WebState } from "./types"
+import type { MailDef, WebState } from "./types"
 
 export const isTrue = (v: unknown) => v === true || /^(true|yes|oui|1|vrai)$/i.test(String(v))
 
@@ -168,4 +176,61 @@ export const SETTING_UI: Record<string, SettingUi> = {
     control: { type: "choice", custom: { unit: "points", min: 0, max: 100 } },
   },
   VIC_MEMBERS_SHEET: { label: "VIC members sheet", icon: Table2, help: "The Google Sheet listing the VIC members." },
+}
+
+/* ---------- Settings › Emails ---------- */
+
+/** The nine mails: a plain label, who gets it and when, an icon, and the switch that turns it on (if it has one). */
+export const MAIL_UI: Record<string, { label: string; help: string; icon: LucideIcon; switch?: string }> = {
+  CONFIRM: { label: "Registrant confirmation", help: "Sent once to each new registrant, with their code.", icon: MailCheck, switch: "CONFIRM_REGISTRANTS" },
+  REJECT: { label: "Rejection", help: "Sent to declined applicants when an admin presses Send rejections in Maintenance. This is the text the dialog starts from.", icon: MailX },
+  NEW_IV: { label: "New interviewees", help: "Sent to both members of a binome when new candidates are given to them.", icon: MailPlus, switch: "NOTIFY_BINOME_ON_NEW_INTERVIEWEE" },
+  ALERT: { label: "Alert mail to a binome", help: "Sent to a binome (and whoever covers) when an alert concerns them.", icon: Siren, switch: "NOTIFY_BINOME_ON_ALERT" },
+  JOINED: { label: "Joined a binome", help: "Sent to a member who joins a binome after the lock.", icon: UserRoundPlus },
+  LEFT: { label: "Left a binome", help: "Sent to a member who leaves a binome after the lock.", icon: UserMinus },
+  PAIRED: { label: "New binome", help: "Sent to both members of a binome created after the lock.", icon: Users2 },
+  COVER: { label: "You cover", help: "Sent to a person who covers candidates for a binome.", icon: Handshake },
+  COVERED: { label: "Someone covers for you", help: "Sent to the members of a binome when someone covers for them.", icon: MailMinus },
+}
+
+export const MAIL_FIELD_LABEL: Record<string, string> = {
+  subject: "Subject",
+  heading: "Heading",
+  above: "Text above the list",
+  below: "Text below the list",
+  text: "Text",
+  codeLabel: "Label of the code box",
+}
+
+/** A plain line for each placeholder chip. */
+export const PLACEHOLDER_HELP: Record<string, string> = {
+  first: "The person's first name",
+  code: "The registrant's code",
+  names: "Both members' first names",
+  binome: "The binome's code",
+  n: "How many",
+  s: "An “s” when there is more than one",
+  hours: "Hours before an alert is raised",
+  members: "The binome's members",
+  replaced: "“ (replaced by …)” or nothing",
+  codes: "The candidates' codes",
+  instead: "“ instead of …” or nothing",
+  cover: "The cover's name",
+  coverEmail: "The cover's email",
+  reason: "“ (reason)” or nothing",
+}
+
+export const MAIL_MAX = 2000
+
+/** Why a mail text can't be saved, or null. The same check as mailCheck_ in Mail.gs. */
+export function mailProblem(text: string, vars: string[]): string | null {
+  if (text.length > MAIL_MAX) return `Too long: ${text.length} of ${MAIL_MAX} characters.`
+  const bad = (text.match(/\{\w+\}/g) ?? []).find((p) => !vars.includes(p.slice(1, -1)))
+  return bad ? `${bad} is not a placeholder this mail knows. Use the chips under the box.` : null
+}
+
+/** The problem with a MAIL_<ID>_<FIELD> key's text, or null (other keys never have one). */
+export function mailProblemFor(key: string, text: unknown, mails: MailDef[] | undefined): string | null {
+  const m = mails?.find((x) => x.fields.some((f) => f.key === key))
+  return m ? mailProblem(String(text ?? ""), m.vars) : null
 }
