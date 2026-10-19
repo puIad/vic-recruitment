@@ -601,13 +601,15 @@ function formUrl_(id) {
 
 /** The dashboard as every admin sees it: no per-request fields and no clock, so its hash only moves when the data does. */
 function buildState_(ctx) {
-  const s = S_();
+  let t = Date.now();
+  const lap = k => { const n = Date.now(); _snapT[k] = (_snapT[k] || 0) + n - t; t = n; }; // the slow calls of publishState_'s build, by name
+  const s = S_(); lap('bSettings');
   const I = ctx.iv.I, A = ctx.alerts.table.I, T = ctx.team.I;
 
   const byStatus = {}; Object.keys(ST).forEach(k => { byStatus[ST[k]] = 0; });
   const byDep = {}; DEPTS.forEach(d => { byDep[d] = 0; });
   const perBin = {};
-  const loadOf = loads_(ctx); // the load pickBinome compares (BALANCE_BY), for Settings › General
+  lap('bPre'); const loadOf = loads_(ctx); // the load pickBinome compares (BALANCE_BY), for Settings › General
   ctx.iv.data.forEach(r => {
     if (!r[I.Code] && !r[I['Response Key']]) return;
     byStatus[r[I.Status]] = (byStatus[r[I.Status]] || 0) + 1;
@@ -627,7 +629,8 @@ function buildState_(ctx) {
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
 
   const look = quickLookups_(ctx), opened = binAccess_(), hand = ctx.binomes.some(b => b.status === 'DRAFT') ? handDrafts_() : [];
-  const teamSrc = findTeamSource_(ss_());
+  lap('bLookups'); const teamSrc = findTeamSource_(ss_()); lap('bTeamSrc');
+  const history = historyRows_(); lap('bHistory');
 
   return {
     v: API_VERSION,
@@ -655,7 +658,7 @@ function buildState_(ctx) {
     unpaired: activeOrPaused_(ctx).length ? unpairedMembers(teamMembers_(ctx), ctx.binomes) : [],
     covers: (ctx.covers || []).map(c => ({ row: c.row, binome: c.binome, name: c.name, email: c.email, outName: c.outName,
       codes: c.codes, live: coverLive_(ctx, c), reason: c.reason })),
-    history: historyRows_(),
+    history: history,
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
