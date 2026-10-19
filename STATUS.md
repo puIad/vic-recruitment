@@ -109,8 +109,11 @@ timing limits (the owner's), and every live check: #37 (no formula injection), t
 `cycle` lines, the department change (#84), the HR share card (#89), the settings cleanup pages (#91, #92), both
 interview-form parts (#85, #87) and #95's protected binome sheet in TEST_MODE.
 
-Left, code: the confirmation email's wording, inside the email templates in Settings
-([plans.md](docs/plans.md)).
+The confirmation's settled wording and the "VIC Recruitment" sender on candidate mails are live
+([#99](https://github.com/puIad/vic-recruitment-2026/pull/99), web app @108 / API @109 from `3a834de`, 2026-10-19).
+Owner's live check open: a TEST registration from an ADMIN_EMAIL address that is not on the Team, Sync now, the
+confirmation arrives from "VIC Recruitment" with the new text. The Settings › Emails editor comes after launch
+([plans.md](docs/plans.md), Email texts, PR 2 and PR 3).
 Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done.
 
 ## Live now
