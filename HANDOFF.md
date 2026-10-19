@@ -20,7 +20,7 @@ Repo: https://github.com/puIad/vic-recruitment-2026 (its own repo, not the AI-OS
 
 ## How changes ship
 
-1. A branch per change, `npm test`, a PR into `main`. CodeRabbit reviews; fix its findings on the branch. Doc-only
+1. A branch per change, `npm test`, a PR into `main`. The claude GitHub Action reviews; fix its findings on the branch. Doc-only
    edits go straight to `main`.
 2. Script changes, after merge: `npm run deploy` from `main` = tests → `clasp push` → update **both** deployments
    (web app + API) in place. Never `clasp create-deployment` (new URL). Check the "Pushed N files" list:

@@ -2,7 +2,7 @@
 
 The owner's requests of 2026-10-18, grilled the same day. The answers are in [Decisions](#decisions-owner-2026-10-18)
 at the end and are built into the sections below. Part 1 is live (#85, script @96 / @97, 2026-10-18);
-part 2 is live (#87, script @98 / @99, Vercel 29c165c, 2026-10-18); its live check is still to do (Rollout below). Part 1 ships first: part 2 needs its access change and touches the same page.
+part 2 is live (#87, script @98 / @99, Vercel 29c165c, 2026-10-18); both live checks were done by the owner on 2026-10-19 (Rollout below). Part 1 ships first: part 2 needs its access change and touches the same page.
 
 | # | Feature | Size |
 |---|---|---|
@@ -73,7 +73,7 @@ other member, made an editor).
 ### Rollout
 
 Script deploy, then Vercel. Live check: an editor account in a locked binome sees My binome under People, saves a gold
-field, and the partner sees it at their next poll.
+field, and the partner sees it at their next poll. Done by the owner, 2026-10-19.
 
 ## 2. Interview form in the dashboard
 
@@ -203,7 +203,7 @@ As planned, with these details settled while building:
   migration.
 - Live check with Test mode on: an editing member fills a form for a test candidate; the partner sees Submitted; after
   Sync now the Interview Log row, the status, Rating and Final Affectation are right. Edit it and sync again. A cover
-  sees View answers and the Google Form link.
+  sees View answers and the Google Form link. Done by the owner, 2026-10-19.
 
 ## Decisions (owner, 2026-10-18)
 
