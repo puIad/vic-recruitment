@@ -1,11 +1,13 @@
-# Plans: Schedule, Analytics, pending changes, settings cleanup
+# Plans: Schedule, Analytics, pending changes, settings cleanup, email texts
 
 The owner's decisions of 2026-10-04 on the "Coming up" pages. Schedule and Analytics are the only pages still to
 build, next after the 2026-10-19 audit fixes; none of it is needed for launch, and both are placeholders today
 ([frontend.md](frontend.md#placeholders-sample-data-each-labelled-and-what-makes-them-real)). Two later plans are
 done and kept here as a record: pending changes ([build plan](#pending-changes-the-build-plan): slices 1 to 5 live
 2026-10-18 with the owner's switch off, audit fixes live 2026-10-19) and the [settings
-cleanup](#settings-cleanup-the-build-plan) (both PRs live 2026-10-19).
+cleanup](#settings-cleanup-the-build-plan) (both PRs live 2026-10-19). The [email texts](#email-texts-the-build-plan)
+plan (2026-10-19, not built) puts the confirmation's settled wording in the code before launch, and after launch a
+Settings › Emails page where admins edit the mails to candidates and binome members.
 
 | Page | Decision |
 |---|---|
@@ -450,3 +452,170 @@ page and the header drawer show the same choice. The sidebar's user card also sa
 layout choices use plain names (Standard / Floating / Inset, Hide / Icons only / Always open). Merged as
 [#92](https://github.com/puIad/vic-recruitment-2026/pull/92) (`73652b5`) and live on Vercel on 2026-10-19. Both PRs of
 the settings cleanup are done; no script deploy was needed.
+
+## Email texts: the build plan
+
+Grilled with the owner on 2026-10-19, when they asked for a Settings section where admins edit the emails the script
+sends to candidates and binome members, instead of hard-coding the registrant confirmation's wording. Only the
+confirmation's new wording ships before launch, in the code; the editor ships after launch. Admins edit words only:
+every mail still goes through `mailHtml_()` and `mail_()`, so the template, the TEST_MODE gate and who gets each mail
+stay the script's.
+
+### The mails today
+
+Every `mail_()` call in the `.gs` files on 2026-10-19:
+
+| # | Mail | Code | To | How often | Fills in | Editable |
+|---|---|---|---|---|---|---|
+| 1 | Registrant confirmation | `sendConfirmations_` (Registrations.gs), text `CONFIRM_MAIL` (Mail.gs) | the registrant | one per person, by the sync that reads the registration; `CONFIRM_REGISTRANTS` | first name, the code (in a box) | yes |
+| 2 | Rejection | `rejectionsCore_` (Screening.gs), text `REJECT_SUBJECT` / `REJECT_BODY` | declined applicants, not VIC members | bulk: Maintenance › Send rejections…, whose dialog edits subject and text per send; TEST_MODE: one copy to the admin pressing it | first name | yes: the dialog's starting text |
+| 3 | New interviewees | `sendNewIntervieweeMails_` (Sync.gs) | both members of the binome | one per binome per sync; `NOTIFY_BINOME_ON_NEW_INTERVIEWEE` | the members' first names, binome, count, a list (code, name, phone, availability), `HOURS_NOT_CONTACTED` | yes |
+| 4 | Alert mail to a binome | the alerts' `flush` (Sheets.gs) | the binome's members and whoever covers the interviewee | one per recipient per flush; `NOTIFY_BINOME_ON_ALERT`, `INSTANT_EMAIL_MIN_SEVERITY` | count, the alert table, "(HIGH)" in the subject | yes |
+| 5 | Joined a binome | Change members (`applyMemberPlans_`, Members.gs) | the newcomer | one per person | first name, binome, members, interviewees in progress | yes |
+| 6 | Left a binome | Change members (`applyMemberPlans_`, Members.gs) | the leaver | one per person | first name, binome, the replacement | yes |
+| 7 | New binome | Pair two… after Lock (`newBinomeCore_`, Members.gs) | both members | one per person | first name, binome, members | yes |
+| 8 | You cover | Cover (`addCoverCore_`, Members.gs) | the cover | one per cover | first name, codes, binome, members, who they replace, a list (code, name, phone, availability, interview) | yes |
+| 9 | Someone covers for you | Cover (`addCoverCore_`, Members.gs) | the binome's members | one per person | first name, the cover's name and email, codes, who they replace, the reason | yes |
+| 10 | Quick action: check your registration | `mailText_` / `sendMails_` (QuickFix.gs) | candidates | per candidate, from Alerts; edited before each send | first name, the problems | no |
+| 11 | Quick action: candidates need attention | same | binome members | per binome; edited before each send | names, the alert lines, sheet link | no |
+| 12 | Quick action: send the interview form again | same | the interviewer who sent the form | per form; edited before each send | first name, date, typed name, form link | no |
+| 13 | Dropped changes | `dropsSync_` / `dropsMail_` (Pending.gs) | the author (admin or member) | one per author per sync | count, each drop | no |
+| 14 | Instant alerts to admins | the alerts' `flush` (Sheets.gs) | `ADMIN_EMAIL` | per flush | the alert table | no |
+| 15 | Daily digest | `sendDailyDigest` (Actions.gs) | `ADMIN_EMAIL` | daily at `DIGEST_HOUR` | stats, open alerts | no |
+
+### Decisions (owner, 2026-10-19)
+
+1. Timing: only the confirmation's wording ships before launch, written into the code (`CONFIRM_MAIL`, which stays
+   the fallback text). The editor ships after launch with no deadline, so no new code touches the registration path
+   during launch week.
+2. The confirmation's wording. It no longer says a binome will contact them: a held or declined applicant never gets
+   one, and "binome" is the club's word, not theirs.
+   ```
+   Subject:   VIC Recruitment 2026: registration received
+   Heading:   Thanks for registering, {first}!
+   Above:     We received your registration for the Vision & Innovation Club's 2026 recruitment.
+   Code box:  Your code
+   Below:     Keep this code. It identifies your registration until the end of the recruitment, and we will ask
+              for it when we contact you.
+
+              We will get back to you by phone or email about the next steps.
+
+              See you soon,
+              The VIC team
+   ```
+3. Sender name: candidate mails (the confirmation, rejections, quick-action mails to candidates) come from "VIC
+   Recruitment"; team mails keep "VIC Recruitment Bot".
+4. Scope: the candidate mails (1, 2) and the binome member mails (3 to 9). The admin mails, the digest, the
+   dropped-changes mail and the quick-action mails (already edited before each send) stay as code.
+5. Storage: one row per field in the Settings tab, `MAIL_<ID>_<FIELD>`. A blank value = the code's text. Still
+   editable in the Master.
+6. Page: a new Settings page **Emails**, after Sharing and email. One card per mail in two sections, Candidates and
+   Binome members. Each card carries its switch: `CONFIRM_REGISTRANTS`, `NOTIFY_BINOME_ON_NEW_INTERVIEWEE` and
+   `NOTIFY_BINOME_ON_ALERT` move there from Sharing and email.
+7. Fixed layout: subject, heading, text above, the generated part (code box, list or alert table: code, never edited),
+   text below. The confirmation also has its code box's label. Button labels and footers stay code.
+8. Format: plain text as in the rejection dialog: a blank line starts a paragraph, `**x**` is bold, everything is
+   escaped and wrapped by `mailHtml_()`.
+9. Save check: a placeholder the mail doesn't know (`{frist}`) refuses the save, on the page and in the script
+   (`settingValue_`), so a pending change carrying one drops with the reason. "interview" or "entretien" in the
+   confirmation only warns.
+10. Preview and Send me a test: the script draws the mail with sample data through its own `mailHtml_()` (one
+    renderer, no copy in the dashboard). The test goes to the admin pressing it, subject starting `[TEST]`, saved or
+    not. It works with TEST_MODE on, since admins get mail then.
+11. Editors: all admins, like every other setting.
+12. History: Reset to default on each card (it blanks the card's fields); who changed what is in the Master's version
+    history. No log tab.
+13. Language: the defaults stay English (the 2025 registration form asked its questions in English). An admin can type
+    any language; there is no per-person language.
+14. Saves: like any setting, through Save settings: a direct write, or a pending change when the switch is on.
+
+### Found while planning
+
+- The pending path refuses a text over 2,100 characters (`scalar` in `web/lib/pending.js`), so each field is capped
+  at 2,000 characters on the page and in `settingValue_`. Today's longest text (the rejection's) is about 330. A mail
+  is 2 to 5 cells, far under the 300-cell cap per author.
+- Config.gs loads first (`filePushOrder`; `test/gs.js` loads the same way), so `SETTINGS_DEFAULTS` can only be built
+  from a table defined above it in Config.gs, not from texts in Mail.gs.
+- In TEST_MODE `mail_()` lets only `ADMIN_EMAIL` through, so a Master editor missing from that list gets no test
+  copy; the action says so. The rejection's test copy behaves the same today.
+- A field saved with exactly the code's text is saved blank, so a later change to the default still reaches it.
+- A dropped mail edit would put the whole text in the drop row and the drops email: both show the first 200
+  characters instead.
+- `mailText_` is taken (QuickFix.gs): the new helpers get other names.
+
+### Fields and placeholders
+
+| ID | Fields | Placeholders |
+|---|---|---|
+| `CONFIRM` | subject, heading, above, code label, below | `{first}` `{code}` |
+| `REJECT` | subject, text (the heading is the subject, as today) | `{first}` |
+| `NEW_IV` | subject, heading, above, below | `{names}` (both first names) `{binome}` `{n}` `{s}` (an s when n is not 1) `{hours}` |
+| `ALERT` | subject, heading, above | `{n}` `{s}`; the code still adds " (HIGH)" to the subject |
+| `JOINED` | subject, heading, above, below | `{first}` `{binome}` `{members}` |
+| `LEFT` | subject, heading, text | `{first}` `{binome}` `{replaced}` |
+| `PAIRED` | subject, heading, text | `{first}` `{binome}` `{members}` |
+| `COVER` | subject, heading, above, below | `{first}` `{codes}` `{binome}` `{members}` `{instead}` |
+| `COVERED` | subject, heading, text | `{first}` `{cover}` `{coverEmail}` `{codes}` `{binome}` `{instead}` `{reason}` |
+
+31 rows. `{replaced}`, `{instead}` and `{reason}` fill a piece of sentence or nothing (" (replaced by Sara B.)",
+" instead of Yanis K.", " (exam)"), as the code's text does today. The defaults are today's texts; where today's
+text switches words on a count (was / were), the default is reworded so `{s}` is enough. A missing first name
+fills "there", as the rejection does now.
+
+### PR 1, before launch: the confirmation's wording (script)
+
+- Mail.gs `CONFIRM_MAIL`: decision 2's text; the comment above it says the wording is settled (owner, 2026-10-19).
+- Sheets.gs `mail_(to, subject, html, from)`: `from` defaults to "VIC Recruitment Bot". Registrations.gs (the
+  confirmation), Screening.gs (rejections and their test copy) and QuickFix.gs `sendMails_` for `to === 'candidate'`
+  pass "VIC Recruitment".
+- Tests: the confirmation's new text, still without the word "interview"; the mock outbox's `name` on a
+  confirmation, a rejection, a candidate quick-action mail and a binome mail.
+- Ships: one PR, then `npm run deploy`. No UI, no `API_VERSION` change. Check: in TEST_MODE, a test registration's
+  confirmation reaches an admin from "VIC Recruitment" with the new text.
+
+### PR 2, after launch: the texts as settings (script)
+
+| Where | What |
+|---|---|
+| Config.gs | `MAILS` above `SETTINGS_DEFAULTS`: per ID a name, `to` (candidate or binome), the placeholders and each field's default text. `CONFIRM_MAIL` (Mail.gs) and `REJECT_SUBJECT` / `REJECT_BODY` (Screening.gs) move in. `SETTINGS_DEFAULTS` spreads one row per field, for example `['MAIL_CONFIRM_ABOVE', '', 'Email text (Settings › Emails): Registrant confirmation, text above. Blank = the script's text. Placeholders: {first}, {code}']`. |
+| Mail.gs | `mailField_(id, field)`: the saved text, else the default. `mailCheck_(key, text)`: throws on an unknown placeholder or over 2,000 characters. `mailFrom_(id, vars, {block, cta, footer, texts})` → `{subject, html, from}`, built by `mailHtml_()` in the fixed layout, `from` by `to`. `MAIL_SAMPLE`: per ID sample values and a sample block, for the preview. |
+| Registrations.gs, Screening.gs, Sync.gs, Sheets.gs, Members.gs | The nine senders call `mailFrom_()`. Recipients, conditions, generated parts and the TEST_MODE gate are unchanged. In Sheets.gs only the binome and cover recipients' mail: the admins' alert mail stays as it is. `rejectionsCore_`'s preview returns the saved subject and text, so the dialog starts from them. |
+| WebApp.gs | `settingValue_` runs `mailCheck_` on `MAIL_` keys, so `saveSettings_` and the pending entry (`applySetting_`) refuse the same values. `webState.mails`: `[{id, to, vars, fields: [{key, field, def}]}]` (the values stay in `settingsAll`). `webRun('mailPreview', {id, texts, send})`: checks the texts and returns `{subject, html}` with the sample data; with `send` it mails that to the caller as `[TEST] …` and answers sent, or why not. It joins `webRun`'s no-publish list. |
+| Pending.gs | `dropsMail_` shows the first 200 characters of a long value. |
+| Setup.gs | Nothing: Setup adds the blank rows and refreshes their help column the next time it runs. Until then a missing row is the default, and the first save appends it. |
+| Tests | Every `MAILS` field has its row, keys unique and within the pending key pattern (41 characters). With blank rows each mail renders today's text. An edited field reaches the sent mail, escaped (`<b>` shows as text), `**bold**` works, placeholders filled. `{frist}` and 2,001 characters are refused by `saveSettings_` and dropped by the pending entry with the reason. `mailPreview` is built by `mailHtml_()` (the mock's check) and writes nothing; `send` reaches only the caller, and nobody in TEST_MODE when the caller isn't in `ADMIN_EMAIL`. The rejection dialog's preview carries the saved text. |
+
+Ships: one PR, then `npm run deploy`. It only adds: `webState` gains a field and `webRun` an action, so no
+`API_VERSION` bump.
+
+### PR 3, after PR 2's deploy: the Emails page (Vercel)
+
+| Where | What |
+|---|---|
+| `frontend/src/lib/vic/types.ts` | `mails?`, optional: on an older script the page says the script needs an update. |
+| `frontend/src/lib/vic/settings-ui.ts` | `MAIL_UI`: per ID a label, a help line (who gets it, when) and an icon; the field labels (Subject, Heading, Text above the list, Text below…); a plain line per placeholder for its chip; `mailProblem(text, vars)`, the same check as `mailCheck_`. `SETTING_UI` keeps the three switches' entries; `CHOICES` unchanged. |
+| `frontend/src/app/settings/components/settings-groups.ts` | `GROUPS.emails` (title, description, `own`: the three switches; the page draws its two sections itself). Sharing and email keeps `SHARE_FILES_WITH_BINOME`, the test mode card and the who-hears table, plus a link to Emails. |
+| `frontend/src/app/settings/components/settings-form.tsx` | General › Advanced's rest skips `MAIL_` keys. `SettingDrop` clips a long value to 200 characters. Save, the pending path, the drop answers and `settingOk` are unchanged. |
+| `frontend/src/app/settings/emails/page.tsx` (new) | One card per mail from `st.mails`: its switch, the fields (starting from the saved text or the default), placeholder chips that insert at the cursor, the inline error (`mailProblem`) and on the confirmation the interview warning, a "Changed" mark, Reset to default. Preview opens a dialog with the mail in a sandboxed `iframe` (`srcDoc`) and Send me a test inside it, so the test send is previewed first. A text equal to the default is saved blank. |
+| `frontend/src/lib/vic/actions.tsx` | The preview and the test send through `webRun('mailPreview')`. |
+| `config/routes.tsx`, `config/nav.ts` | `/settings/emails`, "Emails" after Sharing and email, its icon in the command palette. |
+| Tests | The page's placeholder lists equal `MAILS` (like the `SETTING_ENUMS` check). e2e on the mock: nine cards, an edit saved into its Settings row, Reset blanks it, `{frist}` blocks Save, Advanced lists no `MAIL_` key. |
+
+Ships: one PR, Vercel only.
+
+### Ship order
+
+PR 1 before launch. After launch: PR 2, merge, `npm run deploy`, then PR 3. Live check after PR 3, TEST_MODE on:
+edit the confirmation's text above with `**bold**` and `{first}`, Preview, Send me a test, Save, register a test
+candidate and read the confirmation in an admin inbox; Reset to default; `{frist}` refused; with the pending switch
+on, one mail edit saved as pending and applied.
+
+### The registration app
+
+The registration app ([registration-app.md](registration-app.md), planned on 2026-10-19) writes rows into
+Registration Responses, so the sync sends the confirmation exactly as for a form row, with the saved text after PR 2.
+Two rules keep it that way: the confirmation stays the script's only copy of its wording (the app never keeps its
+own), and it stays the only mail carrying the code, which the sync gives out. The app's own code mail (the email
+check before the form) is sent by a separate mailer script, not Mail.gs, so it is not on the Emails page. If its
+wording should be editable too, the mailer reads its rows from the Master's Settings tab and the page gets a card
+for it; that is the owner's call once the app is built.
