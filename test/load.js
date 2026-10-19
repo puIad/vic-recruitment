@@ -383,7 +383,7 @@ function person(i, role, acct, until, targets) {
   };
   const alertAct = async () => { // Alerts: Snooze 4 h or Mute an open one, Unmute a held one
     // live: open targets, and held ones only while held the way this run left them (one a real admin held stays theirs)
-    const list = (me.state.alerts || []).map(a => ({ id: a.id, status: 'OPEN' })).concat((me.state.muted || []).filter(a => !LIVE || (targets.lastSet || {})[a.id] === a.status))
+    const list = (me.state.alerts || []).map(a => ({ id: a.id, status: 'OPEN' })).concat((me.state.muted || []).filter(a => !LIVE || targets.lastSet[a.id] === a.status))
       .filter(a => !targets.alerts || targets.alerts.includes(a.id));
     if (!list.length) return;
     const a = pick(list), seen = a.status || 'OPEN', op = seen === 'OPEN' ? pick(['snooze', 'mute']) : 'unmute', at = Date.now();
@@ -645,7 +645,7 @@ function print(r) {
     if (WRITES) await restore(accts, t).catch(e => console.log('! put-back failed: ' + e.message));
     if ((PENDING !== 'keep' || OFF_AT) && switchWas !== null) await setSwitch(accts, switchWas, 'end, as found');
   })());
-  if (LIVE) ['uncaughtException', 'unhandledRejection'].forEach(ev => process.on(ev, e => { console.error('! crashed: ' + (e && e.stack || e)); cleanup().finally(() => process.exit(1)); }));
+  if (LIVE) ['uncaughtException', 'unhandledRejection'].forEach(ev => process.on(ev, e => { console.error('! crashed: ' + (e && e.stack || e)); cleanup().then(() => { try { print(report(accts)); } catch (x) { /* the put-back is what matters */ } }).finally(() => process.exit(1)); }));
   if (LIVE && PENDING !== 'keep') await setSwitch(accts, PENDING === 'on', 'start');
   if (OFF_AT) setTimeout(() => (LIVE ? setSwitch(accts, false, 'minute ' + OFF_AT) : (W.switchOn = false)), OFF_AT * 60000 / SCALE);
   process.on('SIGINT', () => { if (stop) process.exit(130); stop = true; console.log('\nStopping: the people finish, then things are put back (Ctrl-C again to quit at once).'); });
@@ -659,7 +659,7 @@ function print(r) {
   const writer = new Set();
   const targetsFor = a => (LIVE ? (writer.has(a) ? null : (writer.add(a), { codes: t.codes, alerts: t.alerts, interview: t.interview, setting: true, lastSet: t.lastSet, orig: Object.keys(t.original.notes).reduce((o, c) => (o[c] = t.original.notes[c].value, o), {}) })) : {});
   console.log(`Running ${people.length} people for ${MINUTES} min${SCALE > 1 ? ` (model, ${SCALE}× real time: ~${Math.round(MINUTES * 60 / SCALE)} s)` : ''}…`);
-  const runs = people.map(([role, a], i) => { const tg = targetsFor(a); return person(i, role, a, until, tg || { codes: [], alerts: [] }); });
+  const runs = people.map(([role, a], i) => { const tg = targetsFor(a); return person(i, role, a, until, tg || { codes: [], alerts: [], lastSet: {} }); });
   await Promise.all(runs);
   stop = true;
   if (!LIVE) for (let k = 0; k < 600 && inflight.size; k++) await sleep(1000); // the queue drains
