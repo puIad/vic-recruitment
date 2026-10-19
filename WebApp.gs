@@ -214,7 +214,11 @@ function memberState_(a) {
 /** The binome sheet of a member view (asMember_), opened with the signed-in account's own access. */
 function memberBook_(m) {
   let book = null;
-  try { book = m.f ? SpreadsheetApp.openById(m.f) : null; } catch (e) { /* not shared with this account (TEST_MODE shares nothing) */ }
+  // openById can answer and the first read behind it still be refused (Drive lagging behind a share, load test run 1): read once
+  // here, retry once, and a refusal that stays is the "not shared" answer, never Google's own text
+  for (let i = 0; i < 2 && !book && m.f; i++) {
+    try { const b = SpreadsheetApp.openById(m.f); b.getSheets(); book = b; } catch (e) { if (i === 0) Utilities.sleep(1000); }
+  }
   if (!book) throw new Error("Your binome sheet isn't shared with you yet.");
   return book;
 }

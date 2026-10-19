@@ -797,6 +797,13 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   m.run('var __obi = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id !== __props.MASTER_ID) throw new Error("You do not have permission"); return __obi.call(SpreadsheetApp, id); }');
   assert.throws(() => m.call('webState'), /Your binome sheet isn't shared with you yet\./);
   m.run('SpreadsheetApp.openById = __obi');
+  // load-test run 1 (2026-10-19): openById answered, the first read behind it was refused: one refusal is retried; one that stays gives
+  // the same clear answer, never Google's own text
+  m.run('var __refused = 1; SpreadsheetApp.openById = id => { const b = __obi.call(SpreadsheetApp, id); if (id === __props.MASTER_ID) return b; const o = Object.create(b); o.getSheets = () => { if (__refused-- > 0) throw new Error("You do not have permission to access the requested document."); return b.getSheets(); }; return o; }');
+  assert.strictEqual(m.call('webState').fromSheet, true, 'one refused read is retried');
+  m.run('__refused = 99');
+  assert.throws(() => m.call('webState'), /Your binome sheet isn't shared with you yet\./, 'a read that stays refused never shows Google text');
+  m.run('SpreadsheetApp.openById = __obi');
 
   // a cover sees only the codes they cover
   as('admin@g.enp.edu.dz');
