@@ -242,6 +242,7 @@ function runCycle_(opts) {
     let last = Date.now();
     const lap = k => { const n = Date.now(); T[k] += n - last; last = n; }; // ms since the previous lap
     _mailsSent = 0;
+    _snapT = {};
     _settings = null;
     const ctx = loaded = loadCtx_(); lap('load');
     detectEdits_(ctx); lap('edits');
@@ -268,7 +269,7 @@ function runCycle_(opts) {
     return ctx;
   }, opts.wait || 30000); outcome = ctx ? 'ok' : 'busy'; } finally {
     console.log(JSON.stringify(Object.assign({ at: 'cycle', kind: opts.kind || 'other', outcome: outcome }, T,
-      { total: Date.now() - t0, lockWait: _lockWait, opened: (loaded && loaded.opened) || {}, mailsSent: _mailsSent })));
+      { total: Date.now() - t0, lockWait: _lockWait, opened: (loaded && loaded.opened) || {}, snapT: _snapT, mailsSent: _mailsSent })));
   }
   return ctx;
 }
