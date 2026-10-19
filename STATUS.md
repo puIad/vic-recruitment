@@ -109,6 +109,12 @@ timing limits (the owner's), and every live check: #37 (no formula injection), t
 `cycle` lines, the department change (#84), the HR share card (#89), the settings cleanup pages (#91, #92), both
 interview-form parts (#85, #87) and #95's protected binome sheet in TEST_MODE.
 
+A member's `webState` no longer shows Google's "You do not have permission to access the requested document"
+([#101](https://github.com/puIad/vic-recruitment-2026/pull/101), web app @110 / API @111 from `3b039f0`, 2026-10-19; load-test
+run 1 saw it twice). `memberBook_` read the sheet once behind `openById`, retries once, and a refusal that stays is
+"Your binome sheet isn't shared with you yet." The real error goes to the log (`memberBook_` warn). Cause inferred, not
+seen: Drive said yes, the first Spreadsheet read was refused. Owner's live check open with the member cookie.
+
 The confirmation's settled wording and the "VIC Recruitment" sender on candidate mails are live
 ([#99](https://github.com/puIad/vic-recruitment-2026/pull/99), web app @108 / API @109 from `3a834de`, 2026-10-19).
 Owner's live check open: a TEST registration from an ADMIN_EMAIL address that is not on the Team, Sync now, the
