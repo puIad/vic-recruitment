@@ -73,7 +73,10 @@ mock reseeds it and signs everyone out: open `/dev-login?as=…` again. More: [d
 - Admins can only change members / cover / apply fixes if they can edit the Binome Sheets folder.
 - The script runs on the `vic-recruitment` Cloud project, so Google APIs are not auto-enabled: "Permission denied while
   enabling APIs: X" = enable API X in that project (Drive is needed; see [docs/vercel.md](docs/vercel.md#rebuilding-the-google-cloud-side-if-ever-needed)).
-- `clasp logs` doesn't work here (no GCP project ID set for clasp); use Apps Script › Executions.
+- `clasp logs` needs a Cloud project ID, which the committed `.clasp.json` doesn't have: copy `.clasp.json` to a scratch
+  folder, add `"projectId": "444885197277"` (the project number; the name `vic-recruitment` is refused) and `"rootDir": "."`,
+  and run `clasp logs` there. It prints the recent `cycle` / `action` lines and stack traces (times in Algiers time).
+  Otherwise Apps Script › Executions.
 - Vercel project settings that must stay as they are (Root Directory `web`, files outside the root included):
   [docs/vercel.md](docs/vercel.md#vercel-project-settings).
 - Screenshots of the UI: the default browser (Obscura) doesn't draw Tailwind's `rounded-full`; use Chrome

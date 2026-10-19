@@ -15,6 +15,16 @@ No PR is open. Since 2026-10-18 (@92 / @93 from `f9bdecb`, [#77](https://github.
 path; the direct path (switch off) is the fallback, so its marks are informational. Turning the switch on is a launch step
 (below).
 
+**Load-test task 10, sign-off run (run 3), 2026-10-19 18:25–18:42 UTC: not signed off**
+([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off), Notes). Prepared in
+[#103](https://github.com/puIad/vic-recruitment-2026/pull/103) (pass marks for the pending path, mark 6 at 90 s / 4 min by
+the owner, staggered openings, the owner-only TEST_MODE `webRun dropSlice`; script @112 / @113). The pending path holds
+(marks 6–10 pass). Blocking: a member's sheet read always fails (`sliceFromSheet_` formats dates through `S_()`, which opens
+the Master members can't open: #101 did not fix it), the sync's publish phase stalled 97–202 s under the load and three
+timed syncs were skipped in a row (mark 11), and the reads miss (opening p95 5.8 s admins / 11.0 s members, `webState` p95
+3.8 s). Left after the run: everything put back (three alerts by hand), every pending record clear, TEST_MODE on, and
+**pending changes on** (owner, 2026-10-19: on from now).
+
 **Polling budget** ([#102](https://github.com/puIad/vic-recruitment-2026/pull/102), merged 2026-10-19 17:43 UTC as `f41499a`), Vercel only: admins poll every 5 s and members every 30 s (2 s / 15 s before), an open tab nobody touches polls 4× slower after 3 min and stops after 15 min, `webAccess` / `webPulse` end at Google after 25 s (a hung member poll ran to 285 s in load-test run 1), and the sync's sweep reads only the authors in the Redis set `pcx`. Live from `f41499a` at 17:44 UTC (real build: frontend `npm ci` 316 packages, `tsc -b && vite build`, 3,460 modules, "Deployment completed"), no runtime errors since, and the new sweep answers every minute (`open: 0`). Nothing was left outside `pcx`: the old full sweep answered `open: 0` every minute from 17:15 to 17:43, after runs 1 and 2. Why and the day estimate: [vercel.md](docs/vercel.md#free-limits-and-what-spends-them).
 
 **Audit fixes, 2026-10-19** ([#96](https://github.com/puIad/vic-recruitment-2026/pull/96), merged 2026-10-19 00:40 UTC as `16a004d`): a binome's patched slice is now kept while its dirty mark exists (`publishBins_`), so no publish without a pull (an admin action, a form submission, a cache miss) flips a member's saved value back for the partner. The script part is live in @104 / @105 (from `e76ea6e`, which contains `16a004d`), the frontend part on Vercel from `16a004d`. Frontend: newest-refresh-wins in the store, stable table pages, My binome drafts in localStorage, preload-error reload plus an error boundary, alert messages visible on phones.
@@ -106,9 +116,9 @@ Left, owner (in order):
 2. Final binome reset just before launch; it also settles #30's member who was shared by hand.
 3. Load-test task 10, signed off on the pending path
    ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)). Still the gate before members get the
-   dashboard.
-4. Launch, the last step: TEST_MODE off → Re-share binome sheets → pending changes on (Settings › General) → share the
-   registration form → watch Alerts.
+   dashboard. Run 3 (2026-10-19) did not sign it off; a fourth run follows the fixes listed above.
+4. Launch, the last step: TEST_MODE off → Re-share binome sheets → pending changes on (Settings › General; on since
+   2026-10-19, so check it is still on) → share the registration form → watch Alerts.
 
 Owner answered on 2026-10-19 and done: screening tested (flags the good from the bad), B.08's
 `rami.ahmane@g.enp.edu.dz` is correct, the 2026 forms reworded, admin edit access to the Binome Sheets folder and the
@@ -120,7 +130,9 @@ A member's `webState` no longer shows Google's "You do not have permission to ac
 ([#101](https://github.com/puIad/vic-recruitment-2026/pull/101), web app @110 / API @111 from `3b039f0`, 2026-10-19; load-test
 run 1 saw it twice). `memberBook_` read the sheet once behind `openById`, retries once, and a refusal that stays is
 "Your binome sheet isn't shared with you yet." The real error goes to the log (`memberBook_` warn). Cause inferred, not
-seen: Drive said yes, the first Spreadsheet read was refused. Owner's live check open with the member cookie.
+seen: Drive said yes, the first Spreadsheet read was refused. **Wrong cause** (load-test run 3, 2026-10-19, from the
+script's stack): the sheet opens fine, and `sliceFromSheet_` then formats its dates through `S_()`, which opens the Master;
+members can't open it. Still broken: every member read from the sheet fails until it is fixed.
 
 The confirmation's settled wording and the "VIC Recruitment" sender on candidate mails are live
 ([#99](https://github.com/puIad/vic-recruitment-2026/pull/99), web app @108 / API @109 from `3a834de`, 2026-10-19).
@@ -171,7 +183,10 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@104**, API **@105** from `e76ea6e` (2026-10-19,
+- **Script, latest:** web app **@112**, API **@113** from `6c1dc5f` (2026-10-19,
+  [#103](https://github.com/puIad/vic-recruitment-2026/pull/103): `webRun dropSlice`, owner and TEST_MODE only, for load-test
+  task 10; 19 files pushed, all 19 equal to `main` when pulled back, both at "apply entry"). Before it @110 / @111 from
+  `3b039f0` (#101), @108 / @109 from `3a834de` (#99). Before those web app **@104**, API **@105** from `e76ea6e` (2026-10-19,
   [#95](https://github.com/puIad/vic-recruitment-2026/pull/95), which contains #96's `publishBins_` fix; `clasp deployments`
   shows both at "apply entry"). @102 / @103 sit between `de42102` and `e76ea6e`; their source commits are unknown (clasp
   logs no dates or commits, only "apply entry"). Before that web app **@100**, API **@101** from `de42102` (2026-10-18,

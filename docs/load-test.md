@@ -19,7 +19,7 @@ the task itself and the files it lists.
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☑ [#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, live on Vercel from `b9f84c0`; a real member sign-in is still open |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☑ [#29](https://github.com/puIad/vic-recruitment-2026/pull/29) (@67/@68) and the access follow-up [#30](https://github.com/puIad/vic-recruitment-2026/pull/30) (@69/@70); the live check of #30 in Notes is still open |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
-| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9, pending-changes slices 2–5 | ◐ rewritten for the launch dashboard and the pending path (2026-10-19); the sign-off run is open |
+| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9, pending-changes slices 2–5 | ◐ rewritten for the launch dashboard and the pending path (2026-10-19); sign-off run 3 did not sign off (Notes) |
 
 Tasks 1, 2 and 9 can go in any order; 9 is mostly steps for the owner.
 
@@ -984,6 +984,57 @@ the 300-cell cap, a non-scope 403 retried.
   | 11 | sync | 10 runs, 0 skipped, 17.9 s with its lock wait |
   | 12 | hours a day before a limit | Vercel 1.9 h (287 invocations a minute), Redis 1.1 h, Queues 16.1 h |
   | 4, 5, 6 direct | informational | Save p95 9.2 s, 0 BUSY of 30; alert action p95 21.4 s (4); partner / admins 37.8 s / 27.9 s |
+- **Live run 3, the sign-off run, 2026-10-19 18:25–18:42 UTC: not signed off.** Script @112 / @113 (`6c1dc5f`, with
+  `dropSlice`, [#103](https://github.com/puIad/vic-recruitment-2026/pull/103)), Vercel `f41499a`. Same cookies as runs 1
+  and 2 (vic.rh, owner; the owner's account, admin in B.26; maroua_tassanime.amiar@, member in B.29), 4 virtual admins and
+  64 virtual members opening over 2 minutes, `--writes --pending on --pending-off-at 8 --pending-end on --interview FLER.07
+  --setting ALL_BINOME_WEIGHT`. Switch on 18:25:54, off 18:33:56, on again at 18:41:38 (the owner chose to leave it on).
+  The minute-3 drop was refused BUSY for both binomes (the sync held the script lock); B.29's was redone by hand and landed
+  at about 18:32:25, B.26 was not dropped. Put back: the run did FLER.07's Notes and `ALL_BINOME_WEIGHT`; A-1962 and
+  A-1445 were refused BUSY, and A-1964 was left as "held by someone else" (its last change had been dropped, so the run
+  misread its own hold); all three were put back to Open by hand at 18:43. Checked after: the four alerts Open,
+  `ALL_BINOME_WEIGHT` 1, FLER.07 "hakak", FLER.16 and HR.01 empty, every cookie's pending record clear, the switch on,
+  TEST_MODE on.
+
+  | # | Mark | Run 3 | |
+  |---|---|---|---|
+  | 1 | calls answered ≥ 99.9 % | 2,007 / 2,059 (97.5 %): 45 member reads refused (below), 6 polls or openings past the page's 20 s, 1 test mistake (the B.29 account asked for FLER.07's form, a B.26 candidate). Without the 46: 99.7 %. No RATE_LIMIT, no "too many scripts" | miss |
+  | 2 | opening p95 ≤ 5 s | admins 5.8 s (4), members 11.0 s (62 of 64 opened); p50 5.6 s / 5.2 s | miss |
+  | 3 | `webState` / `webPulse` p95 ≤ 2 s / ≤ 3 s | 3.8 s / 2.8 s (p50 1.7 s / 1.5 s) | miss (`webState`) |
+  | 6 | pending: partner / other admins ≤ 90 s / ≤ 4 min | partner not measurable (one member cookie; model 79 s) / 239 s (9) | pass, at the edge |
+  | 7 | accept p95 ≤ 1 s | 0.96 s (6) | pass |
+  | 8 | in the sheet p95 ≤ 2 min | 17.3 s | pass |
+  | 9 | every accepted change ended | 6: 5 applied, 1 dropped (the owner's account on an alert vic.rh had changed seconds before; shown, then kept), 0 lost | pass |
+  | 10 | switch off mid-run | no poll said on after it, no save accepted after it; 6 direct writes after it: 4 done, 2 refused BUSY (shown with Try again) | pass |
+  | 11 | the sync, never skipped twice in a row | skipped 3 times in a row (18:34:25, 18:35:25, 18:36:26 UTC) behind one sync that held the script lock 3 min 48 s, and again at 18:40:25 | miss |
+  | 12 | free tiers | model only (1.9 h / 1.1 h / 16.1 h); the Usage pages were not read | open |
+
+  Informational (direct path, after minute 8): My binome Save 4.6 s, 0 BUSY (2 written, 1 conflict); alert actions 1 done
+  at 52.5 s, 6 of 8 calls BUSY; Save settings 33.5 s; the other screens not measured. Busiest account: 305 calls in a minute.
+
+  What the script's own log says (`clasp logs`, see HANDOFF › Gotchas):
+  - **A member's sheet read always fails; #101 did not fix it.** Stack: `S_` (Sheets:20) ← `fmt_` ← `cell_` ←
+    `candidate_` ← `sliceFromSheet_` (WebApp:230). The binome sheet opens (`memberBook_` passes); formatting its first date
+    (Registered) reads the Master's TIMEZONE through `S_()`, which opens the Master, and members can't open the Master:
+    Google's "You do not have permission to access the requested document." Every member whose slice is not cached gets it
+    until the next sync republishes: after a failed publish (`dropSnap_`: every binome at once), a patch that missed the cache
+    (maroua's own `webApply` at 18:27:22, then her refused read at 18:27:23), an evicted slice. Run 1's two refusals were the
+    same. The mock lets members open the Master, so the tests pass. Fix: format the sheet's dates in the sheet's own timezone
+    (`book.getSpreadsheetTimeZone()`, as `answersView_` already does), and make the mock refuse the Master to members.
+  - **The sync's publish stalls under load.** Its `cycle` lines show `snap` (`publishState_`) at 161 s, 202 s and 97 s in
+    three cycles (totals 205 s, 228 s, 143 s), 2–17 s in the others and 2–3 s once the run ended. Those cycles hold the script
+    lock for minutes: the skipped syncs, every BUSY (the drop, the direct alert actions, the put-back) and the other admins'
+    239 s come from them. Cause not found: `buildState_` makes no slow call on its own, so `publishState_` needs a time per
+    step (the build, the cache reads and writes, the properties) under the same load.
+  - Marks 2 and 3 sit near what `scripts.run` gives: one call is about 1.5–1.7 s at the median, so an opening (three calls in
+    a row) is about 5 s at the median, and a `webState` p95 under 2 s leaves 0.3 s above it. Run 2's opening burst is gone
+    (admins 14.6 s → 5.8 s). Whether 5 s and 2 s fit is the owner's question.
+  - The test itself: the minute-3 drop should retry until it lands, and `--interview` should go only to the account whose
+    binome holds that candidate.
+
+  **Verdict: not signed off.** The pending path holds (6–10 pass). Blocking: mark 1 (the member read and the polls past
+  20 s), mark 11 (the publish stall), marks 2 and 3 (the reads). Next: fix the member read, find the publish stall, settle
+  marks 2 and 3 with the owner, then a fourth run.
 
 
 ---
