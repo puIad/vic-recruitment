@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Eye, RotateCcw, Send, TriangleAlert } from "lucide-react"
+import { Eye, Mail, RotateCcw, Send, TriangleAlert } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,7 +26,7 @@ const SECTIONS: { to: MailDef["to"]; title: string; description: string }[] = [
 const PROMISE = /interview|entretien/i
 
 function MailCard({ m, f }: { m: MailDef; f: SettingsForm }) {
-  const ui = MAIL_UI[m.id]
+  const ui = MAIL_UI[m.id] ?? { label: m.name, help: "", icon: Mail } // a mail the script knows before this page does
   const Icon = ui.icon
   const { mailPreview } = useActions()
   const busy = useVic((s) => s.busy)
@@ -34,13 +34,18 @@ function MailCard({ m, f }: { m: MailDef; f: SettingsForm }) {
   const [last, setLast] = React.useState(m.fields[0].key)
   const [view, setView] = React.useState<{ subject: string; html: string } | null>(null)
 
-  const texts = Object.fromEntries(m.fields.map((x) => [x.field, String(f.value(x.key) ?? "") || x.def]))
+  /** boxes the admin emptied: they stay empty (the default shows as a hint) until typed in or reset */
+  const [emptied, setEmptied] = React.useState<string[]>([])
+  const texts = Object.fromEntries(m.fields.map((x) => [x.field, String(f.value(x.key) ?? "") || (emptied.includes(x.key) ? "" : x.def)]))
   const changed = m.fields.some((x) => String(f.value(x.key) ?? "") !== "")
   const switchKey = ui.switch
   const confirmPromise = m.id === "CONFIRM" && m.fields.some((x) => PROMISE.test(texts[x.field]))
 
   /** a text equal to the default is kept blank, so a later change to the default still reaches it */
-  const set = (x: MailDef["fields"][number], v: string) => f.change(x.key, v.trim() === x.def ? "" : v)
+  const set = (x: MailDef["fields"][number], v: string) => {
+    setEmptied((e) => (v === "" ? [...new Set([...e, x.key])] : e.filter((k) => k !== x.key)))
+    f.change(x.key, v.trim() === x.def ? "" : v)
+  }
 
   const insert = (name: string) => {
     const x = m.fields.find((y) => y.key === last) ?? m.fields[0]
@@ -89,6 +94,7 @@ function MailCard({ m, f }: { m: MailDef; f: SettingsForm }) {
           const common = {
             id,
             value: v,
+            placeholder: x.def,
             onFocus: () => setLast(x.key),
             onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => set(x, e.target.value),
             "aria-invalid": !!problem,
@@ -136,7 +142,10 @@ function MailCard({ m, f }: { m: MailDef; f: SettingsForm }) {
           <Button type="button" variant="outline" disabled={busy} onClick={() => preview(false)}>
             <Eye /> Preview
           </Button>
-          <Button type="button" variant="ghost" disabled={!changed} onClick={() => m.fields.forEach((x) => f.change(x.key, ""))}>
+          <Button type="button" variant="ghost" disabled={!changed} onClick={() => {
+              setEmptied([])
+              m.fields.forEach((x) => f.change(x.key, ""))
+            }}>
             <RotateCcw /> Reset to default
           </Button>
         </div>

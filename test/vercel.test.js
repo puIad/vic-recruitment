@@ -603,6 +603,14 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   assert(/fetch\("\/api\/run"/.test(front('api.ts')) && !/google\.script/.test(front('api.ts')), 'every call goes through /api/run');
   const gs = require('fs').readFileSync(__dirname + '/../WebApp.gs', 'utf8');
   assert.strictEqual(front('types.ts').match(/export const API_VERSION = (\d+)/)[1], gs.match(/const API_VERSION = (\d+)/)[1], 'front and script API_VERSION match');
+  // Settings › Emails: a label for every mail the script sends, and the same text cap on both sides
+  {
+    const ui = front('settings-ui.ts'), cfg = require('fs').readFileSync(__dirname + '/../Config.gs', 'utf8');
+    const ids = [...cfg.matchAll(/\{ id: '([A-Z_]+)', name:/g)].map(m => m[1]);
+    const block = ui.match(/export const MAIL_UI[\s\S]*?\n\}/)[0];
+    assert.deepStrictEqual([...block.matchAll(/^  ([A-Z_]+): \{ label/gm)].map(m => m[1]), ids, 'MAIL_UI has every MAILS id, same order');
+    assert.strictEqual(ui.match(/MAIL_MAX = (\d+)/)[1], cfg.match(/const MAIL_MAX = (\d+)/)[1], 'MAIL_MAX matches the script');
+  }
   // settings dropdowns (settings-ui.ts CHOICES) offer exactly the values settingValue_ accepts (WebApp.gs SETTING_ENUMS)
   {
     const ui = front('settings-ui.ts'), enums = eval('(' + gs.match(/const SETTING_ENUMS =\s*(\{[\s\S]*?\});/)[1] + ')');
