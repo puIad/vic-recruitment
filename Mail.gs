@@ -6,20 +6,21 @@ const MAIL = {
   font: "Gilroy,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif",
   // Gmail blocks SVG and data: images, so the logo is a PNG served by the dashboard (frontend/public/brand/)
   logo: 'https://vic-recruitment.vercel.app/brand/vic-logo-white.png',
+  candidateFrom: 'VIC Recruitment', // sender name on candidate mails; team mails keep mail_()'s 'VIC Recruitment Bot'
 };
 // severity chip: [text, soft fill] (DESIGN.md danger / warning / info)
 const MAIL_SEV = { HIGH: ['#c11e00', '#ffece5'], MEDIUM: ['#915200', '#fff0c5'], INFO: ['#005b91', '#e2f3ff'] };
 const MAIL_TEXT = 'font-family:' + MAIL.font + ';font-size:15px;line-height:1.55;color:' + MAIL.ink + ';';
 
-// The registrant's confirmation. Wording and language not settled with the owner yet: edit it here.
-// {first} and {code} are filled in. Never promise an interview: screening can still decline them.
+// The registrant's confirmation. Wording settled with the owner on 2026-10-19 (docs/plans.md, Email texts, decision 2).
+// {first} and {code} are filled in. Never promise an interview or a binome: screening can still hold or decline them.
 const CONFIRM_MAIL = {
-  subject: 'VIC Recruitment 2026: we received your registration',
+  subject: 'VIC Recruitment 2026: registration received',
   title: 'Thanks for registering, {first}!',
-  intro: 'We received your registration for the Vision & Innovation Club recruitment 2026.',
+  intro: "We received your registration for the Vision & Innovation Club's 2026 recruitment.",
   codeLabel: 'Your code',
-  body: 'Keep this code: it identifies your registration until the end of the recruitment.\n\n' +
-    'A binome (two VIC members) will contact you by phone or email about the next steps.\n\nSee you soon,\nThe VIC team',
+  body: 'Keep this code. It identifies your registration until the end of the recruitment, and we will ask for it when we contact you.\n\n' +
+    'We will get back to you by phone or email about the next steps.\n\nSee you soon,\nThe VIC team',
 };
 
 /** A full HTML document: {title, intro, blocks: [html from the helpers below], cta: {label, url}, footer: html}.

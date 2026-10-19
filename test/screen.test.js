@@ -157,12 +157,13 @@ out = call('webRun', 'rejections', { send: true, subject: 'Your application', bo
 assert(/Test mode is on: one copy went to you/.test(out.messages[0]), out.messages[0]);
 assert.deepStrictEqual(R('__outbox.slice(' + box + ').map(function (m) { return [m.to, m.subject]; })'), [['admin@g.enp.edu.dz', '[TEST] Your application']]);
 assert(/Hi Junk, sorry/.test(run('__outbox[__outbox.length - 1].htmlBody')));
+assert.strictEqual(run('__outbox[__outbox.length - 1].name'), 'VIC Recruitment', 'the test copy, as the applicants get it');
 assert(!/Rejection sent/.test(ivRow('junk.two@g.enp.edu.dz')[IV.Screening]), 'nothing stamped in TEST_MODE');
 settings({ TEST_MODE: false });
 box = run('__outbox.length');
 out = call('webRun', 'rejections', { send: true, subject: 'Your application', body: 'Hi {first}, sorry.' });
 assert(/1 rejection email sent/.test(out.messages[0]), out.messages[0]);
-assert.deepStrictEqual(R('__outbox.slice(' + box + ').map(function (m) { return m.to; })'), ['junk.two@g.enp.edu.dz']);
+assert.deepStrictEqual(R('__outbox.slice(' + box + ').map(function (m) { return [m.to, m.name]; })'), [['junk.two@g.enp.edu.dz', 'VIC Recruitment']]);
 assert(/Rejection sent \d\d\/\d\d/.test(ivRow('junk.two@g.enp.edu.dz')[IV.Screening]), 'stamped');
 assert.strictEqual(call('webRun', 'rejections', {}).result.count, 0, 'pressing again reaches nobody');
 // a failed send (quota, bad address) is not stamped, so the next press retries it
