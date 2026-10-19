@@ -66,10 +66,8 @@ async function handle(msg, meta) {
     j = await r.json().catch(() => ({}));
   } catch (e) { throw new Later(backoff(meta)); } // timeout or network: judged cell by cell on the retry
   if (r.status === 401) return end(tok, pending, signedOut);
-  if (r.status === 403) { // a token from before a new scope ends signed out; any other 403 (API disabled, broken deployment) is not their access
-    if (/insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(JSON.stringify(j))) return end(tok, pending, signedOut);
-    throw new Later(backoff(meta));
-  }
+  // a token from before a new scope ends signed out; any other 403 (API disabled, broken deployment) is retried below, logged
+  if (r.status === 403 && /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(JSON.stringify(j))) return end(tok, pending, signedOut);
   if (!r.ok || j.error) {
     console.warn(JSON.stringify({ at: 'apply', email, status: r.status, msg: String((j.error && j.error.message) || '').slice(0, 200) }));
     throw new Later(r.status === 429 ? 60 : backoff(meta));

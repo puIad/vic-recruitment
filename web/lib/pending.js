@@ -101,7 +101,11 @@ async function accept(s, changes, now) {
     if (!(cell in before)) before[cell] = rec[cell];
     delete writes[cell];
     // typed, then undone: on a cell with a pending entry a put-back stays (the entry may be inside webApply right now; end() fixes its seen)
-    if (same(value, seen) && !(rec[cell] && rec[cell].state === 'pending')) return;
+    if (same(value, seen)) {
+      if (!(rec[cell] && rec[cell].state === 'pending')) return;
+      // an alert op takes only some seen values (unmute: SNOOZED or MUTED, never OPEN): judge the put-back against the op it replaces
+      if (c.kind === 'alert') seen = rec[cell].value;
+    }
     if (c.kind === 'alert' && seen === 'RESOLVED') return; // their own Resolve closed it: any action on a closed alert is already met (issue 50)
     const base = { id: crypto.randomUUID(), cell: cell, kind: c.kind, value: value, seen: seen, at: c.at, state: 'pending', by: s.ate };
     writes[cell] = Object.assign(base, c.kind === 'alert' ? { alert: String(c.alert), op: c.op, until: c.op === 'snooze' ? c.until : undefined }

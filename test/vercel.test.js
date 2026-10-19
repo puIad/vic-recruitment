@@ -267,7 +267,9 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     await accept(own, { alert: 'A-9002', op: 'snooze', seen: 'OPEN', until: Date.now() + 3600e3 });
     const snoozeMsg = last();
     r = await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'SNOOZED' });
-    assert.deepStrictEqual([r.json.value['alert:A-9002'].value, r.json.value['alert:A-9002'].seen, F.sent.length], ['OPEN', 'OPEN', 3], 'typed then undone: a put-back stays (the snooze may be inside webApply), published');
+    assert.deepStrictEqual([r.json.value['alert:A-9002'].value, r.json.value['alert:A-9002'].seen, F.sent.length], ['OPEN', 'SNOOZED', 3], 'typed then undone: a put-back stays (the snooze may be inside webApply), published');
+    await deliver(); // the put-back itself: the sheet is still OPEN, so it is met, not a drop
+    assert.deepStrictEqual([(await recOf(own, 'alert:A-9002')).state, status('A-9002')], ['met', 'OPEN'], 'an undone snooze ends met');
     const runs1 = g.log.runs.length;
     await deliver(snoozeMsg);
     assert.deepStrictEqual([status('A-9002'), g.log.runs.length], ['OPEN', runs1], 'replaced by the put-back: the snooze is never applied');
