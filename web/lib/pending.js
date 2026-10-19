@@ -15,6 +15,7 @@ const SCRIPT_FORMAT = 1;   // webApply's call format (Pending.gs APPLY_FORMAT)
 const TOPIC = 'vic-apply';
 const REVOKE = 'pcr:';  // + email: "revoke when done" (slice 5); outlives every token a pending change holds
 const RETENTION_S = 7200;  // about 2 h (issue 58)
+const MAX_CELLS = 300; // live cells per author: a real one holds a handful (shortcut: raise it if a page ever needs more)
 const ENDED_MS = 10 * 60e3, ADDRESSED_MS = 7 * 24 * 3600e3, RECORD_S = 30 * 24 * 3600;
 const AWAY_MS = 5 * 60e3, ANSWER_MS = 24 * 3600e3; // slice 4: no page showed it (email), the email went unanswered (alert)
 const VALUE = { resolve: 'RESOLVED', snooze: 'SNOOZED', mute: 'MUTED', unmute: 'OPEN' };
@@ -91,7 +92,7 @@ const same = (a, b) => String(a) === String(b); // the page's values: Rating 7.5
  * s = the session {email, at, ate}. Returns the record as it now is.
  */
 async function accept(s, changes, now) {
-  const { rec, gone: expired } = await readAll(s.email, now), writes = {}, cancel = [], before = {};
+  const { rec, gone: expired } = await readAll(s.email, now), writes = {}, before = {};
   changes.forEach(c => {
     const cell = cellOf(c), e0 = writes[cell] || rec[cell], value = valueOf(c);
     let seen = c.seen;
@@ -99,14 +100,16 @@ async function accept(s, changes, now) {
     else if (e0 && (e0.state === 'applied' || e0.state === 'met') && same(e0.seen, c.seen) && !(c.built >= e0.wrote)) seen = e0.value;
     if (!(cell in before)) before[cell] = rec[cell];
     delete writes[cell];
-    if (same(value, seen)) { if (rec[cell] && rec[cell].state === 'pending') cancel.push(cell); return; } // typed, then undone
+    // typed, then undone: on a cell with a pending entry a put-back stays (the entry may be inside webApply right now; end() fixes its seen)
+    if (same(value, seen) && !(rec[cell] && rec[cell].state === 'pending')) return;
     if (c.kind === 'alert' && seen === 'RESOLVED') return; // their own Resolve closed it: any action on a closed alert is already met (issue 50)
     const base = { id: crypto.randomUUID(), cell: cell, kind: c.kind, value: value, seen: seen, at: c.at, state: 'pending', by: s.ate };
     writes[cell] = Object.assign(base, c.kind === 'alert' ? { alert: String(c.alert), op: c.op, until: c.op === 'snooze' ? c.until : undefined }
       : c.kind === 'setting' ? { key: c.key } : { code: c.code, field: c.field });
   });
   // expired cells go here, inside the read-then-write the accept already has (a pulse never deletes)
-  const gone = cancel.concat(expired).filter(c => !writes[c]), ids = Object.keys(writes).map(c => writes[c].id);
+  const gone = expired.filter(c => !writes[c]), ids = Object.keys(writes).map(c => writes[c].id);
+  if (Object.keys(rec).concat(Object.keys(writes).filter(c => !(c in rec))).length > MAX_CELLS) throw new Error('Too many pending cells');
   await save(s.email, writes, gone);
   if (ids.length) {
     try {
@@ -155,14 +158,14 @@ async function forSync(mailed, now) {
   (Array.isArray(mailed) ? mailed : []).forEach(m => { if (m && m.email && Array.isArray(m.cells)) sent[m.email] = m; });
   const out = { mail: [], alert: [], open: [] }, writes = [];
   keys.forEach((k, i) => {
-    const email = k.slice(3), { rec } = parse(flats[i], now), w = {}, m = sent[email];
+    const email = k.slice(3), { rec, gone } = parse(flats[i], now), w = {}, m = sent[email];
     Object.keys(rec).forEach(c => {
       let e = rec[c];
       if (e.state === 'pending' && e.by < now) e = w[c] = Object.assign({}, e, { state: 'dropped', reason: 'retries ran out', again: true, droppedAt: now });
       if (e.state === 'dropped' && !e.mailed && m && m.cells.indexOf(c) >= 0) e = w[c] = Object.assign({}, e, { mailed: Number(m.at) || now });
       rec[c] = e;
     });
-    if (Object.keys(w).length) writes.push(save(email, w));
+    if (Object.keys(w).length || gone.length) writes.push(save(email, w, gone)); // expired cells go here too, not only on the author's next accept
     const drops = Object.keys(rec).map(c => rec[c]).filter(e => e.state === 'dropped' && !e.addressed);
     if (!drops.length) return;
     out.open.push(email);

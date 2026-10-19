@@ -366,6 +366,14 @@ Vercel, one PR ([Token handling for pending changes](https://github.com/puIad/vi
   still being saved and that one which can't be shows at the next sign-in and by email.
 - Live check: load-test task 10's next-season block.
 
+### Audit fixes (2026-10-19)
+
+The 2026-10-19 audit of the pending-changes path (Vercel only, no script change): an `acc` flag sealed in the session
+cookie when `webAccess` answers ok gates `accept` and `pendingMark`; the record is capped at 300 live cells; a typed-back
+change keeps a put-back entry and `end()` re-bases a newer pending entry after a write (undo during `webApply`); a non-scope 403
+is retried; a busy lock retries in 5 to 30 s and frees `pcl:`; backoff has jitter; `forSync` deletes expired cells;
+`revoked` is logged from Google's answer. Detail: [vercel.md](vercel.md).
+
 ### After the season
 
 Hand the store over as [Research: handing the Marketplace Redis store over to vic.rh](https://github.com/puIad/vic-recruitment-2026/issues/60)

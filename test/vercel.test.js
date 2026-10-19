@@ -28,7 +28,8 @@ function invoke(name, { method = 'GET', url = '/', cookie = '', origin = process
     Promise.resolve(handlers[name]({ method, url, headers: { cookie, origin, 'x-vic': xvic }, body }, res));
   });
 }
-const sess = (email, extra) => S.COOKIE + '=' + encodeURIComponent(S.seal(Object.assign({ email, rt: 'rt:' + email, at: 'at:' + email, ate: Date.now() + 3600e3, iat: Date.now() }, extra)));
+// acc: webAccess answered ok for this browser (run.js seals it); pass { acc: undefined } for a cookie that never passed it
+const sess = (email, extra) => S.COOKIE + '=' + encodeURIComponent(S.seal(Object.assign({ email, rt: 'rt:' + email, at: 'at:' + email, ate: Date.now() + 3600e3, iat: Date.now(), acc: true }, extra)));
 const rpc = (cookie, fn, ...args) => invoke('run', { method: 'POST', cookie, body: { fn, args } });
 
 (async () => {
@@ -266,10 +267,10 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     await accept(own, { alert: 'A-9002', op: 'snooze', seen: 'OPEN', until: Date.now() + 3600e3 });
     const snoozeMsg = last();
     r = await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'SNOOZED' });
-    assert.deepStrictEqual(['alert:A-9002' in r.json.value, F.sent.length], [false, 2], 'typed then undone: nothing left, nothing published');
+    assert.deepStrictEqual([r.json.value['alert:A-9002'].value, r.json.value['alert:A-9002'].seen, F.sent.length], ['OPEN', 'OPEN', 3], 'typed then undone: a put-back stays (the snooze may be inside webApply), published');
     const runs1 = g.log.runs.length;
     await deliver(snoozeMsg);
-    assert.deepStrictEqual([status('A-9002'), g.log.runs.length], ['OPEN', runs1], 'cancelled: never applied');
+    assert.deepStrictEqual([status('A-9002'), g.log.runs.length], ['OPEN', runs1], 'replaced by the put-back: the snooze is never applied');
     // Snooze then Mute: the second replaces the first and keeps its seen value
     await accept(own, { alert: 'A-9002', op: 'snooze', seen: 'OPEN', until: Date.now() + 3600e3 });
     r = await accept(own, { alert: 'A-9002', op: 'mute', seen: 'SNOOZED' });
@@ -318,7 +319,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     assert.deepStrictEqual(apply.retry(new apply.Later(42), { deliveryCount: 1 }), { afterSeconds: 42 });
     // Google failing: retried with backoff; too little token life left: dropped, Apply mine anyway offered
     g.opts.scriptStatus = 500;
-    await assert.rejects(deliver(last(), 3), e => e instanceof apply.Later && e.after === 240);
+    await assert.rejects(deliver(last(), 3), e => e instanceof apply.Later && e.after >= 180 && e.after <= 300);
     g.opts.scriptStatus = 200;
     const stale = S.seal({ email: 'admin@g.enp.edu.dz', at: 'at:admin@g.enp.edu.dz', ate: Date.now() + 5 * 60e3 });
     await deliver({ v: 1, t: stale, ids: last().ids });
@@ -373,7 +374,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     assert.deepStrictEqual([(await recOf(own, 'setting:HOURS_NOT_CONTACTED')).state, cellOf('HOURS_NOT_CONTACTED')], ['applied', '30']);
     await accept(own, set('DIGEST_HOUR', 9, 8));
     r = await accept(own, set('DIGEST_HOUR', 8, 9));
-    assert(!('setting:DIGEST_HOUR' in r.json.value), 'typed then undone: cancelled');
+    assert.deepStrictEqual([r.json.value['setting:DIGEST_HOUR'].value, r.json.value['setting:DIGEST_HOUR'].seen], [8, 8], 'typed then undone: a put-back stays');
     await accept(own, set('DIGEST_HOUR', 25, 8));
     await deliver();
     d = await recOf(own, 'setting:DIGEST_HOUR');
@@ -383,6 +384,89 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     assert.strictEqual(cellOf('HOURS_NOT_CONTACTED'), '24');
     r = await accept(own, set('HOURS_NOT_CONTACTED', { x: 1 }, 24));
     assert.strictEqual(r.json.code, 'DIRECT', 'not a plain value: not taken');
+
+    // audit 2026-10-19 (1): accept and pendingMark need a session that passed webAccess, and a record is capped
+    {
+      const sent0 = F.sent.length, noAcc = sess('admin@g.enp.edu.dz', { acc: undefined });
+      r = await accept(noAcc, { alert: 'A-9001', op: 'resolve', seen: 'OPEN' });
+      assert.deepStrictEqual([r.status, r.json.code, F.sent.length], [503, 'DIRECT', sent0], 'no webAccess yet: accept refused, nothing published');
+      r = await rpc(noAcc, 'pendingMark', { seen: [] });
+      assert.deepStrictEqual([r.status, r.json.code], [503, 'DIRECT'], 'no webAccess yet: pendingMark refused');
+      r = await rpc(noAcc, 'webAccess');
+      assert.strictEqual(S.open(r.jar[S.COOKIE]).acc, true, 'webAccess ok: the cookie is sealed again with the flag');
+      r = await rpc(S.COOKIE + '=' + encodeURIComponent(r.jar[S.COOKIE]), 'pendingMark', { seen: [] });
+      assert.strictEqual(r.status, 200, 'with the flag: answered');
+      r = await rpc(sess('outsider@g.enp.edu.dz', { acc: undefined }), 'webAccess');
+      assert.strictEqual(r.jar[S.COOKIE], undefined, 'webAccess not ok (read only): no flag');
+      const bulk = sess('bulk@g.enp.edu.dz'), many = (a, n) => Array.from({ length: n }, (_, i) => ({ alert: 'A-' + (a + i), op: 'resolve', seen: 'OPEN' }));
+      r = await accept(bulk, ...many(100, 200));
+      assert.strictEqual(r.status, 200, '200 cells fit');
+      r = await accept(bulk, ...many(400, 150));
+      assert.deepStrictEqual([r.status, r.json.code, Object.keys(F.db['pc:bulk@g.enp.edu.dz']).length], [503, 'DIRECT', 200], 'past ~300 live cells: DIRECT, nothing added');
+      delete F.db['pc:bulk@g.enp.edu.dz'];
+    }
+
+    // audit (2): a change that lands while the consumer is inside webApply is not lost
+    {
+      const f1 = global.fetch; let hook = null;
+      global.fetch = async (u, i) => { if (hook && /:run$/.test(String(u))) { const h = hook; hook = null; await h(); } return f1(u, i); };
+      const cell = 'setting:HOURS_NOT_CONTACTED';
+      await accept(own, set('HOURS_NOT_CONTACTED', 30, 24));
+      hook = () => accept(own, set('HOURS_NOT_CONTACTED', 24, 30)); // typed back while webApply runs
+      await deliver(F.sent[F.sent.length - 1].payload);
+      const pb = await recOf(own, cell);
+      assert(pb, 'the put-back is kept, not deleted');
+      assert.deepStrictEqual([cellOf('HOURS_NOT_CONTACTED'), pb.state, String(pb.value), String(pb.seen)], ['30', 'pending', '24', '30'], 'the put-back now judges against what webApply wrote');
+      await deliver();
+      assert.deepStrictEqual([cellOf('HOURS_NOT_CONTACTED'), (await recOf(own, cell)).state], ['24', 'applied'], 'the put-back is applied: the member sees 24');
+      await accept(own, set('HOURS_NOT_CONTACTED', 30, 24));
+      const first = last();
+      hook = () => accept(own, set('HOURS_NOT_CONTACTED', 36, 30)); // 24 → 30 → 36
+      await deliver(first);
+      await deliver();
+      assert.deepStrictEqual([cellOf('HOURS_NOT_CONTACTED'), (await recOf(own, cell)).state], ['36', 'applied'], 'no drop against their own 30');
+      await accept(own, set('HOURS_NOT_CONTACTED', 24, 36));
+      await deliver();
+      global.fetch = f1;
+      assert.strictEqual(cellOf('HOURS_NOT_CONTACTED'), '24');
+    }
+
+    // audit (3, 4): a 403 that is not a scope problem is retried; a busy document lock retries soon, with the gap key freed
+    {
+      await accept(own, set('HOURS_NOT_CONTACTED', 30, 24));
+      const cellRec = () => P.read('admin@g.enp.edu.dz', Date.now()).then(x => x['setting:HOURS_NOT_CONTACTED']);
+      g.opts.scriptStatus = 403;
+      await assert.rejects(deliver(), e => e instanceof apply.Later, 'API disabled or a broken deployment: retried, not "lost access"');
+      assert.strictEqual((await cellRec()).state, 'pending');
+      g.opts.scriptMessage = 'Request had insufficient authentication scopes.';
+      await deliver();
+      g.opts.scriptMessage = 'secret details'; g.opts.scriptStatus = 200;
+      assert.strictEqual((await cellRec()).reason, 'sign-in ended before it was saved', 'a scope 403 still ends as signed out');
+      await accept(own, set('HOURS_NOT_CONTACTED', 30, 24));
+      seed.run('__docLockBusy = true');
+      await assert.rejects(deliver(), e => e instanceof apply.Later && e.after >= 5 && e.after <= 30);
+      assert(!('pcl:admin@g.enp.edu.dz' in F.db), 'the gap key is freed so the retry is not held a minute');
+      seed.run('__docLockBusy = false');
+      const afters = new Set(Array.from({ length: 30 }, () => apply.retry(new Error('x'), { deliveryCount: 2 }).afterSeconds));
+      assert(afters.size > 1 && [...afters].every(a => a >= 90 && a <= 150), 'backoff has jitter');
+      await deliver();
+      await accept(own, set('HOURS_NOT_CONTACTED', 24, 30));
+      await deliver();
+    }
+
+    // audit (5): the timed sync's sweep removes expired cells; revoke is logged by what Google answered
+    {
+      F.db['pc:old@g.enp.edu.dz'] = { 'alert:A-1': JSON.stringify({ cell: 'alert:A-1', state: 'applied', exp: Date.now() - 1 }) };
+      await P.forSync([], Date.now());
+      assert.deepStrictEqual(Object.keys(F.db['pc:old@g.enp.edu.dz']), [], 'forSync removed the expired cell');
+      delete F.db['pc:old@g.enp.edu.dz'];
+      const logs = [], w0 = console.log; console.log = x => logs.push(String(x));
+      const f2 = global.fetch; global.fetch = async (u, i) => (String(u).endsWith('/revoke') ? { ok: false, status: 400, json: async () => ({}) } : f2(u, i));
+      F.db['pcr:rev@g.enp.edu.dz'] = '1';
+      await deliver({ v: 1, t: S.seal({ email: 'rev@g.enp.edu.dz', at: 'at:rev', ate: Date.now() + 3600e3 }), ids: [] });
+      global.fetch = f2; console.log = w0;
+      assert(logs.some(x => /"revoked":false/.test(x)) && !logs.some(x => /"revoked":true/.test(x)), 'Google refused the revoke: logged false');
+    }
 
     // My binome fields (slice 3): a member's change, applied as them in their own sheet; the partner's next poll has it
     seed.run('__as("admin@g.enp.edu.dz")');
@@ -467,15 +551,17 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       assert.deepStrictEqual([r.headers.location, S.open(r.jar[S.COOKIE]).email, g.log.revoked, F.db[mark]], ['/', 'b@g.enp.edu.dz', [], '1'], 'changes pending: no revoke yet, marked revoke when done');
       await deliver();
       assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'the last one ended: revoked with its access token, mark gone');
-      // the last one cancelled from another device (typed back): its delivery finds nothing pending and revokes
+      // the last one typed back from another device: its put-back is met and the revoke follows
       await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
       const cancelled = last();
       g.log.revoked.length = 0;
       await cbWith(admin);
       await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
-      assert.strictEqual(F.sent[F.sent.length - 1].payload, cancelled, 'typed back: cancelled, nothing published');
+      assert.notStrictEqual(F.sent[F.sent.length - 1].payload, cancelled, 'typed back: a put-back is published');
       await deliver(cancelled);
-      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'cancelled last change: revoked on its delivery');
+      assert.deepStrictEqual([g.log.revoked, mark in F.db], [[], true], 'the replaced one finds a pending put-back: no revoke yet');
+      await deliver();
+      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'put-back met: revoked on its delivery');
       // the admin signing in again anywhere clears the mark: their next change ends with no revoke
       await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
       await cbWith(admin);

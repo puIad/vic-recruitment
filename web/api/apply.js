@@ -8,7 +8,8 @@ class Later extends Error { constructor(s) { super('again in ' + s + ' s'); this
 const MIN_LIFE_MS = 6 * 60e3; // a call can run for 6 min: none starts with less token life left than that
 const GAP_MS = 60e3;          // at most one webApply per author per minute; it carries all their pending changes (issue 48)
 const BATCH = 50;
-const backoff = meta => Math.min(300, 60 * 2 ** Math.max(0, ((meta && meta.deliveryCount) || 1) - 1));
+// jitter: every author of one outage must not come back at the same second
+const backoff = meta => Math.min(300, 60 * 2 ** Math.max(0, ((meta && meta.deliveryCount) || 1) - 1) * (0.75 + Math.random() * 0.5));
 const lost = () => ({ state: 'dropped', reason: 'lost access' });
 const signedOut = () => ({ state: 'dropped', reason: 'sign-in ended before it was saved', again: true });
 
@@ -18,7 +19,12 @@ async function end(tok, entries, how) {
   // shortcut: read then write, not atomic; an accept on the same cell in those few ms can be overwritten (Lua if it shows)
   entries.forEach(e => {
     const cur = rec[e.cell];
-    if (!cur || cur.id !== e.id || cur.state !== 'pending') return;
+    if (!cur || cur.state !== 'pending') return;
+    if (cur.id !== e.id) { // a newer change landed while webApply ran: it now judges against what this one wrote
+      const y = how(e);
+      if (y.state === 'applied' || y.state === 'met') w[e.cell] = Object.assign({}, cur, { seen: e.value });
+      return;
+    }
     const x = how(cur);
     w[e.cell] = Object.assign({}, cur, x, x.state === 'dropped' ? { droppedAt: now } : { exp: now + P.ENDED_MS });
   });
@@ -32,7 +38,7 @@ async function end(tok, entries, how) {
  *  with this message's access token. An entry the #58 sweep ends holds no token: that mark expires (accepted, issue 56). */
 async function revokeIfMarked(tok) {
   const [mark] = await P.redis([['GETDEL', P.REVOKE + tok.email]]).catch(() => [null]);
-  if (mark) { await S.revoke(tok.at); console.log(JSON.stringify({ at: 'apply', email: tok.email, revoked: true })); }
+  if (mark) console.log(JSON.stringify({ at: 'apply', email: tok.email, revoked: await S.revoke(tok.at) }));
 }
 
 async function handle(msg, meta) {
@@ -60,7 +66,10 @@ async function handle(msg, meta) {
     j = await r.json().catch(() => ({}));
   } catch (e) { throw new Later(backoff(meta)); } // timeout or network: judged cell by cell on the retry
   if (r.status === 401) return end(tok, pending, signedOut);
-  if (r.status === 403) return end(tok, pending, /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(JSON.stringify(j)) ? signedOut : lost); // a token from before a new scope
+  if (r.status === 403) { // a token from before a new scope ends signed out; any other 403 (API disabled, broken deployment) is not their access
+    if (/insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(JSON.stringify(j))) return end(tok, pending, signedOut);
+    throw new Later(backoff(meta));
+  }
   if (!r.ok || j.error) {
     console.warn(JSON.stringify({ at: 'apply', email, status: r.status, msg: String((j.error && j.error.message) || '').slice(0, 200) }));
     throw new Later(r.status === 429 ? 60 : backoff(meta));
@@ -68,7 +77,11 @@ async function handle(msg, meta) {
   const v = (j.response && j.response.result) || {};
   if (v.lost) return end(tok, pending, lost);
   if (v.refused) return end(tok, batch, () => ({ state: 'dropped', reason: v.refused }));
-  if (v.retry || !Array.isArray(v.results)) throw new Later(backoff(meta));
+  if (v.retry) { // the document lock is busy: soon, and not in step with the other authors; free the gap key so it holds nobody a minute
+    await P.redis([['DEL', 'pcl:' + email]]).catch(() => {});
+    throw new Later(5 + Math.random() * 25);
+  }
+  if (!Array.isArray(v.results)) throw new Later(backoff(meta));
   const by = {};
   v.results.forEach(x => { by[x.id] = x; });
   await end(tok, batch.filter(e => by[e.id]), e => {
