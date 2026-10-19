@@ -266,9 +266,15 @@ export default function InterviewPage() {
 
   const load = React.useCallback(() => call<RunOut<InterviewData>>("webRun", ["interviewGet", { code }]).then((o) => o.result), [code])
 
+  // another candidate's page starts loading again (load changes only with code)
+  const [loadedFor, setLoadedFor] = React.useState(code)
+  if (loadedFor !== code) {
+    setLoadedFor(code)
+    setPhase({ s: "loading" })
+  }
+
   React.useEffect(() => {
     let live = true
-    setPhase({ s: "loading" })
     load()
       .then((d) => {
         if (!live) return

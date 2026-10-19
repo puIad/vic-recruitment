@@ -8,7 +8,7 @@ import type { Candidate, MemberState } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 
 /** Who may fill the form here: a member with edit access, not a cover. */
-export const canFillInterview = (m: Pick<MemberState, "edit" | "cover">) => m.edit && !m.cover
+const canFillInterview = (m: Pick<MemberState, "edit" | "cover">) => m.edit && !m.cover
 
 /**
  * One candidate's interview form from My binome: Fill interview form (none yet), Edit answers (filled here), View answers (sent

@@ -100,7 +100,9 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
 
   // a poll brought new values: untouched fields follow them, a field mid-edit keeps the draft (the save checks it)
   const sig = JSON.stringify(GOLD_KEYS.map((k) => candidate[k] ?? null))
-  React.useEffect(() => {
+  const [prevSig, setPrevSig] = React.useState(sig)
+  if (sig !== prevSig) {
+    setPrevSig(sig)
     setFields((cur) => {
       let next = cur
       for (const k of GOLD_KEYS) {
@@ -110,8 +112,7 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
       }
       return next
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig])
+  }
 
   React.useEffect(() => {
     if (!saved) return

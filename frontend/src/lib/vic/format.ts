@@ -1,4 +1,4 @@
-import type { BinomeStatus, SheetKey, Severity, Status } from "./types"
+import type { BinomeStatus, Candidate, SheetKey, Severity, Status } from "./types"
 
 /** Pipeline stages in order. The ramp runs cobalt, blue, teal, aquamarine: the charter gradient, as candidates progress. */
 export const STAGES: { key: Status; label: string; hint: string; color: string }[] = [
@@ -154,3 +154,5 @@ export function sheetTime(date: unknown, time?: unknown): number {
   const t = /^(\d{1,2}):(\d{2})/.exec(String(time ?? "").trim())
   return new Date(+d[3], +d[2] - 1, +d[1], t ? +t[1] : 0, t ? +t[2] : 0).getTime()
 }
+
+export const fullName = (c: Candidate) => `${cellText(c["First Name"])} ${cellText(c["Family Name"])}`.trim()

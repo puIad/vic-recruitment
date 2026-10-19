@@ -39,8 +39,8 @@ const pending = (ids: string[]): QuickOut => ({ lines: [], done: ids })
 
 const noId = (l: string) => l.replace(/^A-\d+: /, "").replace(/^./, (c) => c.toUpperCase())
 
-/** Editable preview of the emails about to go out. Edits are written straight into the draft objects. */
-function MailEditor({ drafts, testMode }: { drafts: MailDraft[]; testMode: boolean }) {
+/** Editable preview of the emails about to go out. Edits go to `onEdit`. */
+function MailEditor({ drafts, testMode, onEdit }: { drafts: MailDraft[]; testMode: boolean; onEdit: (i: number, k: "subject" | "body", v: string) => void }) {
   return (
     <div className="space-y-4">
       {testMode && (
@@ -48,18 +48,18 @@ function MailEditor({ drafts, testMode }: { drafts: MailDraft[]; testMode: boole
           <b>Test mode is on:</b> only admins really receive these emails.
         </p>
       )}
-      {drafts.map((d) => (
+      {drafts.map((d, i) => (
         <div key={d.group} className="space-y-2 rounded-2xl border bg-muted/40 p-3">
           <p className="text-xs text-muted-foreground">
             To <b className="text-foreground">{d.to}</b>
             {d.ids.length > 1 && <span> · covers {d.ids.length} alerts</span>}
           </p>
-          <Input aria-label={`Subject of the email to ${d.to}`} defaultValue={d.subject} onChange={(e) => (d.subject = e.target.value)} className="bg-background font-semibold" />
+          <Input aria-label={`Subject of the email to ${d.to}`} defaultValue={d.subject} onChange={(e) => onEdit(i, "subject", e.target.value)} className="bg-background font-semibold" />
           <Textarea
             aria-label={`Text of the email to ${d.to}`}
             defaultValue={d.body}
             rows={Math.min(16, d.body.split("\n").length + 1)}
-            onChange={(e) => (d.body = e.target.value)}
+            onChange={(e) => onEdit(i, "body", e.target.value)}
             className="bg-background leading-relaxed"
           />
         </div>
@@ -110,7 +110,7 @@ export function useQuick() {
         const ok = await confirm({
           title: to === "binome" ? (n > 1 ? `Email ${n} binomes` : `Email ${drafts[0].group}`) : to === "candidate" ? "Email the candidate" : "Ask for the form again",
           wide: true,
-          body: <MailEditor drafts={drafts} testMode={d.testMode} />,
+          body: <MailEditor drafts={drafts} testMode={d.testMode} onEdit={(i, k, v) => (drafts[i][k] = v)} />,
           okLabel: n > 1 ? `Send ${n} emails` : "Send email",
         })
         if (!ok) return false

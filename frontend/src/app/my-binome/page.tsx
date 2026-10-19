@@ -7,12 +7,12 @@ import { DotGrid, RingSlot } from "@/components/brand/motifs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { alertLabel, cellText, initials, SEVERITY, SHEET_LABEL, sheetTime, STAGES } from "@/lib/vic/format"
+import { alertLabel, cellText, fullName, initials, SEVERITY, SHEET_LABEL, sheetTime, STAGES } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import { REASON, useMemberView } from "@/lib/vic/pending"
 import type { Candidate, FieldEntry, MemberAlert, MemberState } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
-import { CandidateSheet, CandidatesTable, fullName } from "./components/candidates"
+import { CandidateSheet, CandidatesTable } from "./components/candidates"
 import { Note } from "./components/note"
 
 /** A binome's candidates never wait for a binome: the pipeline starts at Assigned. */
@@ -46,7 +46,7 @@ function GoneNotice({ gone }: { gone: FieldEntry[] }) {
 function ProgressCard({ m }: { m: MemberState }) {
   const n = (k: string) => m.candidates.filter((c) => c.Status === k).length
   const total = m.candidates.length
-  const now = Date.now() - 3600e3 // an interview that started within the hour still counts as coming up
+  const now = useVic((s) => s.loadedAt) - 3600e3 // as of the last poll; an interview that started within the hour still counts as coming up
   const next = m.candidates
     .filter((c) => c.Status !== "WITHDRAWN" && !cellText(c["Interview Done"]))
     .map((c) => ({ c, t: sheetTime(c["Interview Date"], c["Interview Time"]) }))

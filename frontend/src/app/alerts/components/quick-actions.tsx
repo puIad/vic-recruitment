@@ -41,27 +41,24 @@ import { useUi } from "@/lib/vic/ui"
 import type { Alert, AppView, FormView, QuickInfo, RegView } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { MemberName } from "@/components/member-name"
+import { REVIEW, TIMING } from "./alert-kinds"
 
 /* ---------- which alerts get which actions ---------- */
 
-export const TIMING = ["NOT_CONTACTED", "NO_DATE", "OVERDUE", "BAD_DATE"]
 const TYPO = ["BAD_PHONE", "BAD_EMAIL", "BAD_BIRTHDATE", "MISSING_NAME"]
 const ROUTING = ["INVALID_CHOICE", "SAME_CHOICES", "NO_BINOME"]
 const WHO = ["BINOME_MISMATCH", "BACKUP_INTERVIEWER", "NOT_ASSIGNED"]
-/** Screening: an application on hold, or a VIC member who already has a binome. */
-export const REVIEW = ["NEEDS_REVIEW", "VIC_MEMBER"]
 const DEPTS = ["IT", "COMM", "FLER", "HR"]
+const NO_IVS: never[] = []
 const CONTACT_OPTIONS = ["Not yet", "Yes", "No answer", "Withdrew"]
 
 type Q<K extends QuickInfo["kind"]> = Extract<QuickInfo, { kind: K }>
 const qOf = <K extends QuickInfo["kind"]>(a: Alert, kind: K): Q<K> | null => (a.q && a.q.kind === kind ? (a.q as Q<K>) : null)
 
-/** A binome can be emailed about it: a timing alert, or an odd value in its sheet. */
-export const nudgeable = (a: Alert) => !!a.binome && (TIMING.includes(a.type) || (a.type === "ODD_VALUE" && a.q?.kind === "iv"))
-export const snoozable = (a: Alert) => a.type !== "MANUAL_EDIT"
+const snoozable = (a: Alert) => a.type !== "MANUAL_EDIT"
 
 /** The one action a list row offers. open = it needs input, so the row opens the detail pane instead. */
-export function rowAction(a: Alert): { label: string; icon: typeof Mail; kind: "nudge" | "exclude" | "repair" | "keep" | "open" } | null {
+function rowAction(a: Alert): { label: string; icon: typeof Mail; kind: "nudge" | "exclude" | "repair" | "keep" | "open" } | null {
   if (TIMING.includes(a.type) && a.binome) return { label: "Nudge", icon: Send, kind: "nudge" }
   if (a.type === "UNPAIRED_MEMBER" && a.q) return { label: "Exclude", icon: UserX, kind: "exclude" }
   if (repairOf(a)) return { label: repairOf(a) === "retry" ? "Retry" : "Repair", icon: Wrench, kind: "repair" }
@@ -370,7 +367,7 @@ function DuplicatePanel({ a, v, old }: { a: Alert; v: RegView; old?: RegView }) 
 
 function PickPanel({ a, f }: { a: Alert; f: FormView }) {
   const quick = useQuick()
-  const ivs = useVic((s) => s.state?.interviewees) ?? []
+  const ivs = useVic((s) => s.state?.interviewees) ?? NO_IVS
   const { busy, pending, act } = useBusy()
   const [code, setCode] = React.useState("")
   const home = f.binome || f.subBinome

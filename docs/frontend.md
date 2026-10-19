@@ -68,4 +68,6 @@ only leave an INFO alert).
 - Log interviewee moves and accepted hand edits in a history source, then show them in Change history.
 - No automated tests for the UI itself; `test/vercel.test.js` only checks its RPC wrapper and `API_VERSION`. The data
   layer is thin enough to add cases against `webdev.js`.
-- `npm run lint` fails on the ESLint config (flat-config migration); `tsc -b` is the check that works.
+- `npm run lint` passes with 0 errors. One warning stays: `react-hooks/incompatible-library` on TanStack's `useReactTable` in
+  `data-table.tsx` (the React Compiler skips that component; nothing to fix). `only-export-components` is off for
+  `src/components/ui` (shadcn files) and the `src/lib/vic/*.tsx` hook modules, which only costs a full reload in dev.

@@ -10,6 +10,7 @@ import { Spinner } from "@/lib/vic/confirm"
 import { useVic } from "@/lib/vic/store"
 import type { AccessLevel, Binome, BinomeAccessOut, RunOut } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { NOW_TONE } from "./access-badge"
 
 const LEVELS: { key: AccessLevel; label: string; icon: React.ElementType; what: string }[] = [
   { key: "none", label: "No access", icon: Lock, what: "They can't open their sheet or the dashboard." },
@@ -17,18 +18,7 @@ const LEVELS: { key: AccessLevel; label: string; icon: React.ElementType; what: 
   { key: "edit", label: "Edit", icon: PencilLine, what: "They fill in their sheet, there or from My binome." },
 ]
 const NOW_LABEL: Record<string, string> = { none: "No access", view: "Can view", edit: "Can edit", owner: "Owner" }
-const NOW_TONE: Record<string, string> = {
-  none: "bg-secondary text-muted-foreground",
-  view: "bg-info-soft text-info",
-  edit: "bg-success-soft text-success",
-  owner: "bg-accent text-accent-foreground",
-}
 
-/** Short label for the level an admin opened a binome at (Binomes table). */
-export const ACCESS_BADGE: Record<string, { label: string; tone: string } | undefined> = {
-  view: { label: "Open · view", tone: NOW_TONE.view },
-  edit: { label: "Open · edit", tone: NOW_TONE.edit },
-}
 
 /**
  * Who in a binome can open its sheet, and with it the dashboard (the script lets a member in only while Drive lets them open
@@ -44,11 +34,19 @@ export function AccessDialog({ binome, onClose }: { binome: Binome | null; onClo
   const [nonce, setNonce] = React.useState(0)
   const code = binome?.code
 
+  // a new binome or a reload starts from a blank read
+  const [loadKey, setLoadKey] = React.useState({ code, nonce })
+  if (loadKey.code !== code || loadKey.nonce !== nonce) {
+    setLoadKey({ code, nonce })
+    if (code) {
+      setLive(null)
+      setError("")
+    }
+  }
+
   React.useEffect(() => {
     if (!code) return
     let gone = false
-    setLive(null)
-    setError("")
     call<RunOut<BinomeAccessOut>>("webRun", ["binomeAccess", { binome: code }])
       .then((out) => {
         if (gone) return

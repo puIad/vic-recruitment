@@ -22,7 +22,8 @@ import { cn } from "@/lib/utils"
 import { useAlertView } from "@/lib/vic/pending"
 import { AlertDetail } from "./components/alert-detail"
 import { InlineDrop, PendingMark } from "./components/pending-mark"
-import { nudgeable, REVIEW, RowQuickButton, SnoozeMenu, UnmuteButton } from "./components/quick-actions"
+import { nudgeable, REVIEW } from "./components/alert-kinds"
+import { RowQuickButton, SnoozeMenu, UnmuteButton } from "./components/quick-actions"
 
 type Filter = "ALL" | "HIGH" | "MEDIUM" | "INFO" | "EDITS" | "MUTED"
 const NONE: Alert[] = []
@@ -65,10 +66,8 @@ export default function AlertsPage() {
   const shownIds = isMuted ? shownMuted.map((a) => a.id) : shown.map((a) => a.id)
 
   // keep the selection to alerts that still exist (they leave the screen when resolved)
-  React.useEffect(() => {
-    const ids = new Set((isMuted ? muted : alerts).map((a) => a.id))
-    setSelected((cur) => (Array.from(cur).every((i) => ids.has(i)) ? cur : new Set(Array.from(cur).filter((i) => ids.has(i)))))
-  }, [alerts, muted, isMuted])
+  const liveIds = React.useMemo(() => new Set((isMuted ? muted : alerts).map((a) => a.id)), [alerts, muted, isMuted])
+  if (!Array.from(selected).every((i) => liveIds.has(i))) setSelected(new Set(Array.from(selected).filter((i) => liveIds.has(i))))
 
   const active = alerts.find((a) => a.id === activeId) || null
   // a deep link (?id=) or the bell can open an alert that sits far down the list: bring its row into view

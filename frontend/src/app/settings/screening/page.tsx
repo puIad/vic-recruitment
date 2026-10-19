@@ -9,7 +9,8 @@ import { useActions } from "@/lib/vic/actions"
 import { useVic } from "@/lib/vic/store"
 import { cn } from "@/lib/utils"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
-import { GROUPS, SettingDrop, SettingsPage, type SettingsForm } from "../components/settings-form"
+import { GROUPS } from "../components/settings-groups"
+import { SettingDrop, SettingsPage, type SettingsForm } from "../components/settings-form"
 
 /** The members sheet in one card: its link (Open, Change link…, or a paste box before there is one), how many emails the
  *  script read and when, and Refresh now (read as the admin pressing it). The link saves with the page's Save. */
