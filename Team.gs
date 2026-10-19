@@ -370,7 +370,7 @@ function retiredFolder_() {
 
 /**
  * Start over with a new organizing team (OT). Moves every binome sheet to the "Retired binomes" folder (named with the
- * reset date, so a second reset's [B.01] is not mistaken for the first), empties Binomes, Team
+ * reset date, so a second reset's [B.01] is not mistaken for the first, and no longer shared with the old members), empties Binomes, Team
  * and Member Changes, sends every interviewee back to UNASSIGNED (codes and registration data stay; what the binomes had
  * written is cleared), closes the alerts of the old binomes and forgets what the script knew about them. Registrations
  * deleted by hand stay deleted. The phrase is checked here, not only in the dashboard. Returns null when the script is busy.
@@ -380,11 +380,17 @@ function resetBinomesCore_(phrase) {
   return withLock_(() => {
     const ctx = loadCtx_();
     const I = ctx.iv.I, A = ctx.alerts.table.I;
-    const failed = [], retired = retiredFolder_(), day = Utilities.formatDate(ctx.now, S_().TIMEZONE, 'yyyy-MM-dd');
+    const failed = [], retired = retiredFolder_(), day = fmt_(ctx.now, 'yyyy-MM-dd'), staff = staffEmails_();
     let moved = 0;
     ctx.binomes.forEach(b => {
       if (!b.fileId) return;
-      try { const f = DriveApp.getFileById(b.fileId); f.moveTo(retired); f.setName(f.getName() + ' (retired ' + day + ')'); moved++; } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); }
+      try {
+        const f = DriveApp.getFileById(b.fileId);
+        // the sheet holds applicants' contact details: the outgoing members lose it (staff and the owner stay)
+        f.getEditors().forEach(u => { const e = lc_(u.getEmail()); if (staff.indexOf(e) < 0) try { f.removeEditor(e); } catch (x) { /* owner */ } });
+        f.getViewers().forEach(u => { const e = lc_(u.getEmail()); if (staff.indexOf(e) < 0) try { f.removeViewer(e); } catch (x) { /* owner */ } });
+        f.moveTo(retired); f.setName(f.getName() + ' (retired ' + day + ')'); moved++;
+      } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); }
     });
     const nBinomes = ctx.binomes.length, nTeam = ctx.team.data.filter(r => String(r[ctx.team.I.Email]).trim()).length;
     [[TAB.BINOMES, BIN_H], [TAB.TEAM, TEAM_H], [TAB.CHANGES, MC_H]].forEach(t => {
