@@ -35,8 +35,13 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
   call('webRun', 'sync');
   const now = ivRows().find(x => x[IV.Code] === r[IV.Code]);
   assert.strictEqual(now[IV.Status], 'INTERVIEWED', 'logged although the sheet refuses the mark');
-  assert(alerts('FILE_ERROR').some(a => a.binome === bin && a.severity === 'HIGH'), 'FILE_ERROR for the mark');
+  const mk = alerts('FILE_ERROR').find(a => a.binome === bin && /Cannot mark/.test(a.msg));
+  assert(mk && mk.severity === 'HIGH' && mk.code === r[IV.Code], 'its own FILE_ERROR for the mark, even with another open for the binome');
   refuse(bin, false);
+  const rowOf = () => run(`__files[${J(fileId(bin))}].obj.sheets[0].cells`).find(c => c[BFI.Code] === r[IV.Code]);
+  assert.notStrictEqual(rowOf()[BFI['Interview Done']], true, 'not marked yet');
+  call('webRun', 'quick', { op: 'repair', ids: [mk.id] });
+  assert.strictEqual(rowOf()[BFI['Interview Done']], true, 'Retry writes the mark');
 }
 
 // 2: placing is idempotent: a second append of the same code adds nothing and keeps what the binome typed

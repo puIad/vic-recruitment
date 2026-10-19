@@ -94,7 +94,7 @@ function logInterview_(ctx, f) {
         (res.result === 'AUTOCORRECTED' ? ' (auto-corrected)' : '') + (f.dash ? ' (dashboard)' : ''));
     } catch (e) {
       bad[b.code] = true;
-      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: b.code, msg: 'Cannot mark ' + res.interviewee + ' in the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code });
+      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: res.interviewee, binome: b.code, msg: 'Cannot mark ' + res.interviewee + ' in the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code + '|' + res.interviewee });
     }
   }
   res.alerts.forEach(a => ctx.alerts.add({ severity: a.severity, type: a.type, code: res.interviewee || typed,
