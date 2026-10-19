@@ -143,10 +143,11 @@ function savedMemberMap_() { try { return JSON.parse(loadPropChunks_('MEMBER_MAP
 
 // The alerts the script mails to a binome (notifyBinome: timing and odd values); every other type is for the admins only.
 const MEMBER_ALERTS = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'ODD_VALUE'];
-/** A sheet cell as the dashboard shows it (scripts.run can't return a Date). */
-function cell_(v, k) { return v instanceof Date ? fmt_(v, k === 'Interview Time' ? 'HH:mm' : k === 'Registered' ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy') : v; }
+/** A sheet cell as the dashboard shows it (scripts.run can't return a Date). tz: the sheet's own timezone when the caller is a
+ *  member, who can't open the Master that holds TIMEZONE. */
+function cell_(v, k, tz) { return v instanceof Date ? fmt_(v, k === 'Interview Time' ? 'HH:mm' : k === 'Registered' ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy', tz) : v; }
 /** One candidate of a binome: its binome-sheet fields (BF_H keys) and its status. */
-function candidate_(row, status) { const c = { Status: status || '' }; BF_H.forEach((k, i) => { c[k] = cell_(row[i], k); }); return c; }
+function candidate_(row, status, tz) { const c = { Status: status || '' }; BF_H.forEach((k, i) => { c[k] = cell_(row[i], k, tz); }); return c; }
 
 /** code -> what a member of that binome sees: its candidates, its open MEMBER_ALERTS, its members' names. */
 function binSlices_(ctx) {
@@ -228,11 +229,11 @@ function memberBook_(m) {
   return book;
 }
 function sliceFromSheet_(m) {
-  const book = memberBook_(m), sh = book.getSheets()[0], n = bfLastRow_(sh), done = tabInterviews_(book);
+  const book = memberBook_(m), sh = book.getSheets()[0], n = bfLastRow_(sh), done = tabInterviews_(book), tz = book.getSpreadsheetTimeZone();
   const rows = n < 2 ? [] : sh.getRange(2, BF_COL, n - 1, BF_H.length).getValues().filter(r => String(r[0]).trim());
   return { v: API_VERSION, binome: m.b, tag: '', status: '', fileUrl: book.getUrl(), members: [], alerts: [], fromSheet: true,
     candidates: rows.map(r => {
-      const c = candidate_(r, ''), x = done[String(r[0]).trim()];
+      const c = candidate_(r, '', tz), x = done[String(r[0]).trim()];
       // a form logged before the tab existed has no row there, only its mark in the Interview Form cell
       if (x || String(c['Interview Form']).trim()) c.interview = x || { at: '', by: '', source: 'Google Form' };
       return c;

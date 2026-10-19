@@ -33,9 +33,9 @@ function adminEmails_() {
   return String(S_().ADMIN_EMAIL || '').split(/[,;\s]+/).map(e => e.trim()).filter(e => /@/.test(e));
 }
 function tzOffset_() { return Utilities.formatDate(new Date(), S_().TIMEZONE, 'XXX'); }
-function fmt_(d, pattern) {
+function fmt_(d, pattern, tz) { // tz: a caller that can't open the Master (a member) names its own; default = the Master's TIMEZONE
   if (!(d instanceof Date) || isNaN(d)) return String(d || '');
-  return Utilities.formatDate(d, S_().TIMEZONE, pattern || 'dd/MM/yyyy HH:mm');
+  return Utilities.formatDate(d, tz || S_().TIMEZONE, pattern || 'dd/MM/yyyy HH:mm');
 }
 /** FNV-1a (32 bits) plus the length: tells two snapshots apart (publishState_); not for anything secret. */
 function hash_(s) {

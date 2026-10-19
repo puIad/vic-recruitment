@@ -792,6 +792,8 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
 
   // cache empty: rebuilt from their own sheet; not shared: a clear error
   m.run('__cacheClear()');
+  // members can't open the Master (load-test run 3, 2026-10-19): every read below runs with it refused
+  m.run('var __mgo = SpreadsheetApp.openById, __mga = SpreadsheetApp.getActive; SpreadsheetApp.getActive = () => null; SpreadsheetApp.openById = id => { if (id === __props.MASTER_ID) throw new Error("Exception: You do not have permission to access the requested document."); return __mgo.call(SpreadsheetApp, id); }; _settings = null');
   st = m.call('webState');
   assert.deepStrictEqual([st.fromSheet, st.candidates.map(c => c.Code).sort(), st.candidates.find(c => c.Code === code1).Notes, st.alerts], [true, ivOf(b1.code), 'called twice', []]);
   m.run('var __obi = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id !== __props.MASTER_ID) throw new Error("You do not have permission"); return __obi.call(SpreadsheetApp, id); }');
@@ -803,7 +805,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   assert.strictEqual(m.call('webState').fromSheet, true, 'one refused read is retried');
   m.run('__refused = 99');
   assert.throws(() => m.call('webState'), /Your binome sheet isn't shared with you yet\./, 'a read that stays refused never shows Google text');
-  m.run('SpreadsheetApp.openById = __obi');
+  m.run('SpreadsheetApp.openById = __mgo; SpreadsheetApp.getActive = __mga; _settings = null');
 
   // load-test task 10: the owner drops one binome's cached slice, so its members read their sheet (the read above) until the next sync
   as('admin@g.enp.edu.dz'); m.call('webRun', 'sync');

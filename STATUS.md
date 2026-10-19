@@ -20,7 +20,7 @@ path; the direct path (switch off) is the fallback, so its marks are information
 [#103](https://github.com/puIad/vic-recruitment-2026/pull/103) (pass marks for the pending path, mark 6 at 90 s / 4 min by
 the owner, staggered openings, the owner-only TEST_MODE `webRun dropSlice`; script @112 / @113). The pending path holds
 (marks 6–10 pass). Blocking: a member's sheet read always fails (`sliceFromSheet_` formats dates through `S_()`, which opens
-the Master members can't open: #101 did not fix it), the sync's publish phase stalled 97–202 s under the load and three
+the Master members can't open: #101 did not fix it; fixed by #104, not yet re-run), the sync's publish phase stalled 97–202 s under the load and three
 timed syncs were skipped in a row (mark 11), and the reads miss (opening p95 5.8 s admins / 11.0 s members, `webState` p95
 3.8 s). Left after the run: everything put back (three alerts by hand), every pending record clear, TEST_MODE on, and
 **pending changes on** (owner, 2026-10-19: on from now).
@@ -132,7 +132,7 @@ run 1 saw it twice). `memberBook_` read the sheet once behind `openById`, retrie
 "Your binome sheet isn't shared with you yet." The real error goes to the log (`memberBook_` warn). Cause inferred, not
 seen: Drive said yes, the first Spreadsheet read was refused. **Wrong cause** (load-test run 3, 2026-10-19, from the
 script's stack): the sheet opens fine, and `sliceFromSheet_` then formats its dates through `S_()`, which opens the Master;
-members can't open it. Still broken: every member read from the sheet fails until it is fixed.
+members can't open it. Fixed in [#104](https://github.com/puIad/vic-recruitment-2026/pull/104): the dates use the binome sheet's own timezone, and the member block of the web test refuses the Master. Not yet seen live: the next load-test run is the check.
 
 The confirmation's settled wording and the "VIC Recruitment" sender on candidate mails are live
 ([#99](https://github.com/puIad/vic-recruitment-2026/pull/99), web app @108 / API @109 from `3a834de`, 2026-10-19).
@@ -183,7 +183,9 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   (their candidates, statuses, open alerts, a link to their sheet; read-only) and poll every 15 s; admins unchanged (load-test
   plan, task 7). UI only, no script deploy. Before that `6f3cbc3` (2026-10-07, [#27](https://github.com/puIad/vic-recruitment-2026/pull/27)): `API_VERSION` 3. Before that `963144d` (2026-10-06, [#23](https://github.com/puIad/vic-recruitment-2026/pull/23)): one poll call per tick, a 20 s
   poll timeout, a quiet 30 s pause on Google's rate limit (load-test plan, task 3).
-- **Script, latest:** web app **@112**, API **@113** from `6c1dc5f` (2026-10-19,
+- **Script, latest:** web app **@116**, API **@117** from `e2c3b19` (2026-10-19,
+  [#104](https://github.com/puIad/vic-recruitment-2026/pull/104): member sheet read in the sheet's own timezone; 19 files
+  pushed, both at "apply entry"). Before it web app **@112**, API **@113** from `6c1dc5f` (2026-10-19,
   [#103](https://github.com/puIad/vic-recruitment-2026/pull/103): `webRun dropSlice`, owner and TEST_MODE only, for load-test
   task 10; 19 files pushed, all 19 equal to `main` when pulled back, both at "apply entry"). Before it @110 / @111 from
   `3b039f0` (#101), @108 / @109 from `3a834de` (#99). Before those web app **@104**, API **@105** from `e76ea6e` (2026-10-19,
