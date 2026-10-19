@@ -154,16 +154,14 @@ function applyMemberPlans_(ctx, plans, reason) {
       msg: what + ' by ' + by + (reason ? ' (' + reason + ')' : ''), key: '' });
     if (same) return;
     const pending = ctx.iv.data.filter(r => r[I.Binome] === b.code && PENDING_STATUSES.indexOf(r[I.Status]) >= 0);
-    if (p.inn) mail_(p.inn.email, '[VIC Recruitment] You joined binome ' + b.code, mailHtml_({ title: 'You joined binome ' + b.code,
-      intro: 'Hi ' + p.inn.name.split(' ')[0] + ',\n\nYou are now a member of binome **' + b.code + '** (' + b.members.map(m => m.name).join(' & ') + ').',
-      blocks: (pending.length ? [mailP_('Interviewees still in progress:'), mailList_(pending.map(r => [r[I.Code],
+    const members = b.members.map(m => m.name).join(' & ');
+    if (p.inn) mailSend_(p.inn.email, mailFrom_('JOINED', { first: p.inn.name.split(' ')[0], binome: b.code, members: members }, {
+      blocks: pending.length ? [mailP_('Interviewees still in progress:'), mailList_(pending.map(r => [r[I.Code],
         r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' + String(r[I.Status]).toLowerCase() +
-        (r[I['Interview Date']] ? ' · ' + r[I['Interview Date']] + ' ' + r[I['Interview Time']] : '')]))] : [])
-        .concat(mailP_('In the interview form, use the binome code **' + b.code + '**.')),
+        (r[I['Interview Date']] ? ' · ' + r[I['Interview Date']] + ' ' + r[I['Interview Time']] : '')]))] : [],
       cta: { label: 'Open the binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) }));
-    if (p.out && p.out.email) mail_(p.out.email, '[VIC Recruitment] You left binome ' + b.code, mailHtml_({ title: 'You left binome ' + b.code,
-      intro: 'Hi ' + (p.out.name || '').split(' ')[0] + ',\n\nYou are no longer a member of binome **' + b.code + '**' +
-        (p.inn ? ' (replaced by ' + p.inn.name + ')' : '') + '. Thanks for your help!', footer: mailTeamFooter_() }));
+    if (p.out && p.out.email) mailSend_(p.out.email, mailFrom_('LEFT', { first: (p.out.name || '').split(' ')[0], binome: b.code,
+      replaced: p.inn ? ' (replaced by ' + p.inn.name + ')' : '' }, { footer: mailTeamFooter_() }));
   });
   ctx.alerts.flush();
   buildTracker_(ctx);
@@ -258,10 +256,8 @@ function newBinomeCore_(a) {
     } catch (e) { issues.push('Member Changes history not written (' + e.message + ')'); }
     members.forEach(m => {
       try {
-        mail_(m.email, '[VIC Recruitment] You are in binome ' + b.code, mailHtml_({ title: 'You are in binome ' + b.code,
-          intro: 'Hi ' + m.name.split(' ')[0] + ',\n\nYou are now a member of binome **' + b.code + '** (' + names + ').\n\n' +
-            'In the interview form, use the binome code **' + b.code + '**.',
-          cta: { label: 'Open the binome sheet', url: file.getUrl() }, footer: mailTeamFooter_(file.getUrl()) }));
+        mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: b.code, members: names },
+          { cta: { label: 'Open the binome sheet', url: file.getUrl() }, footer: mailTeamFooter_(file.getUrl()) }));
       } catch (e) { issues.push('email to ' + m.email + ' not sent (' + e.message + ')'); }
     });
     const what = b.code + ' created (' + b.tag + '): ' + names;
@@ -452,23 +448,17 @@ function addCoverCore_(a) {
       if (issues.length) ctx.alerts.add({ severity: 'MEDIUM', type: 'FILE_ERROR', code: '', binome: b.code, key: '',
         msg: 'Cover in ' + b.code + ' saved, but ' + issues.join('; ') + '. Fix access to the binome sheet.' });
       const rows = g.codes.map(c => ctx.ivByCode[c]);
-      mail_(p.inn.email, '[VIC Recruitment] You cover ' + g.codes.join(', ') + ' for binome ' + b.code, mailHtml_({
-        title: 'You cover ' + g.codes.join(', ') + ' for ' + b.code,
-        intro: 'Hi ' + p.inn.name.split(' ')[0] + ',\n\nThanks for stepping in! You interview these candidates for binome **' + b.code +
-          '** (' + b.members.map(m => m.name).join(' & ') + ')' + (g.out ? ' instead of ' + g.out.name : '') + ':',
+      const instead = g.out ? ' instead of ' + g.out.name : '';
+      mailSend_(p.inn.email, mailFrom_('COVER', { first: p.inn.name.split(' ')[0], codes: g.codes.join(', '), binome: b.code,
+        members: b.members.map(m => m.name).join(' & '), instead: instead }, {
         blocks: [mailList_(rows.map(r => [r[I.Code], r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' +
           String(r[I.Phone]).replace(/^'/, '') + ' · available: ' + r[I.Availability] +
-          (r[I['Interview Date']] ? ' · interview ' + r[I['Interview Date']] + ' ' + r[I['Interview Time']] : '')])),
-        mailP_((b.fileUrl ? 'You can view the binome sheet; ' : '') + 'the binome keeps filling it in. ' +
-          'In the interview form, use the binome code **' + b.code + '** and the interviewee code.')],
+          (r[I['Interview Date']] ? ' · interview ' + r[I['Interview Date']] + ' ' + r[I['Interview Time']] : '')]))],
         cta: { label: 'View the binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) }));
       b.members.forEach(m => {
-        if (m.email) mail_(m.email, '[VIC Recruitment] ' + p.inn.name + ' covers ' + g.codes.join(', ') + ' for ' + b.code, mailHtml_({
-          title: p.inn.name + ' covers ' + g.codes.join(', '),
-          intro: 'Hi ' + m.name.split(' ')[0] + ',\n\n**' + p.inn.name + '** (' + p.inn.email + ') covers **' + g.codes.join(', ') +
-            '** for your binome' + (g.out ? ' instead of ' + g.out.name : '') + (a.reason ? ' (' + a.reason + ')' : '') +
-            '. You stay responsible for the binome sheet: keep Contacted / Date / Time up to date for them.',
-          cta: { label: 'Open the binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) }));
+        if (m.email) mailSend_(m.email, mailFrom_('COVERED', { first: m.name.split(' ')[0], cover: p.inn.name, coverEmail: p.inn.email,
+          codes: g.codes.join(', '), binome: b.code, instead: instead, reason: a.reason ? ' (' + a.reason + ')' : '' },
+          { cta: { label: 'Open the binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) }));
       });
     });
     ctx.covers = loadCovers_(); ctx.coverMap = coverMap_(ctx);

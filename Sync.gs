@@ -217,17 +217,12 @@ function sendNewIntervieweeMails_(ctx) {
     const b = ctx.binByCode[code];
     if (!b) return;
     const list = ctx.mailNew[code];
-    const html = mailHtml_({ title: list.length + ' new interviewee' + (list.length > 1 ? 's' : '') + ' for ' + code,
-      intro: 'Hi ' + b.members.map(m => m.name.split(' ')[0]).join(' & ') + ',\n\n' + list.length +
-        ' new interviewee' + (list.length > 1 ? 's were' : ' was') + ' assigned to your binome **' + code + '**:',
-      blocks: [
-        mailList_(list.map(r => [r[I.Code], r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' +
-          String(r[I.Phone]).replace(/^'/, '') + ' · available: ' + r[I.Availability]])),
-        mailP_('Please contact them within ' + S_().HOURS_NOT_CONTACTED + 'h and fill in **Contacted**, **Interview Date** and ' +
-          '**Interview Time** in your binome sheet.\n\nIn the interview form, use your binome code **' + code + '** and the interviewee code.'),
-      ],
+    const mail = mailFrom_('NEW_IV', { names: b.members.map(m => m.name.split(' ')[0]).join(' & '), binome: code, n: list.length, s: list.length > 1 ? 's' : '',
+      hours: S_().HOURS_NOT_CONTACTED }, {
+      blocks: [mailList_(list.map(r => [r[I.Code], r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' +
+        String(r[I.Phone]).replace(/^'/, '') + ' · available: ' + r[I.Availability]]))],
       cta: { label: 'Open your binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) });
-    b.members.forEach(m => { if (m.email) mail_(m.email, '[VIC Recruitment] New interviewee(s) for ' + code, html); });
+    b.members.forEach(m => { if (m.email) mailSend_(m.email, mail); });
   });
   ctx.mailNew = {};
 }

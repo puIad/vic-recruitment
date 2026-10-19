@@ -9,7 +9,7 @@ const settings = v => call('webRun', 'saveSettings', { values: v });
 const sync = () => call('webRun', 'sync');
 const ivRow = email => R('master.getSheetByName("Interviewees").getDataRange().getValues().slice(1)').find(r => r[IV.Email] === email);
 const outbox = () => R('__outbox.slice()');
-const confirms = () => outbox().filter(m => m.subject === run('CONFIRM_MAIL.subject')).map(m => m.to).sort();
+const confirms = () => outbox().filter(m => m.subject === run("mailDef_('CONFIRM').fields[0][1]")).map(m => m.to).sort();
 let n = 0;
 const apply = (collected, first, fam, typed) => run(`master.getSheetByName('Registration Responses').cells.push(regRow(new Date(Date.now() + ${++n} * 1000),
   ${J(collected)}, ${J(first)}, ${J(fam)}, ${J(typed === undefined ? collected : typed)}, '01/03/2005', '0555${200000 + n}', 'IT', 'HR'))`);
@@ -30,7 +30,7 @@ assert(/#ffece5;color:#c11e00[^>]*>HIGH</.test(html) && /#fff0c5;color:#915200[^
 assert(/<td bgcolor="#0075b2"[^>]*><a href=/.test(html), 'the call to action is a table-cell button');
 assert(html.includes('href="https://vic-recruitment.vercel.app"') && html.includes('href="https://docs.google.com/spreadsheets/d/abc"'), 'team footer: dashboard + binome sheet');
 assert(!/<a /.test(run(`mailHtml_({ title: 't', blocks: [mailP_('x')] })`)), 'candidate footer: no link');
-const conf = run(`confirmHtml_('Lina', 'IT.07')`);
+const conf = run(`mailFrom_('CONFIRM', { first: 'Lina', code: 'IT.07' }).html`);
 assert(/Thanks for registering, Lina!/.test(conf) && />IT\.07</.test(conf) && /We will get back to you by phone or email/.test(conf), 'thanks, the code, we will get back to them');
 assert(!/binome/i.test(conf), 'no binome: a held or declined applicant never gets one');
 assert(!/<a /.test(conf), 'no internal link to a candidate');
@@ -147,3 +147,32 @@ assert(/Daily digest · /.test(digest) && /New registrations <b/.test(digest) &&
 
 assert.strictEqual(run('__untemplated.length'), 0, J(run('__untemplated')));
 console.log('MAIL OK');
+
+// ---- editable mail texts (MAILS, Settings › Emails) ----
+{
+  const keys = R('SETTINGS_DEFAULTS.map(function (r) { return r[0]; })'), mk = R('MAILS.reduce(function (a, m) { return a.concat(m.fields.map(function (f) { return "MAIL_" + m.id + "_" + f[0].toUpperCase(); })); }, [])');
+  assert.strictEqual(mk.length, 31, '31 fields');
+  assert(mk.every(k => keys.includes(k) && k.length <= 41 && /^[A-Z_]+$/.test(k)), 'every field has its Settings row, within the pending key pattern');
+  assert.strictEqual(new Set(keys).size, keys.length, 'keys unique');
+  // blank rows = today's text; an edit reaches the mail, escaped
+  assert(/Thanks for registering, Ann!/.test(run(`mailFrom_('CONFIRM', { first: 'Ann', code: 'IT.1' }).html`)), 'default');
+  settings({ MAIL_CONFIRM_HEADING: 'Hello <b>{first}</b>, **welcome**' });
+  const edited = run(`mailFrom_('CONFIRM', { first: 'Ann', code: 'IT.1' }).html`);
+  assert(/Hello &lt;b&gt;Ann&lt;\/b&gt;, \*\*welcome\*\*/.test(edited), 'edit escaped, placeholders filled, no bold in a heading');
+  assert.strictEqual(run(`mailFrom_('REJECT', { first: 'Ann' }, { texts: { subject: 'For you, {first}', text: 'x' } }).subject`), 'For you, Ann', 'a placeholder in the rejection subject is filled');
+  assert(/Thanks for registering, Amina!/.test(run(`mailSample_('CONFIRM', { heading: '' })`).html), 'a blank field sent by the caller is the default, not the saved text');
+  // refused: an unknown placeholder, too long; a text equal to the default is saved blank
+  assert.throws(() => settings({ MAIL_CONFIRM_ABOVE: 'Hi {frist}' }), /unknown placeholder \{frist\}/);
+  assert.throws(() => settings({ MAIL_CONFIRM_ABOVE: 'x'.repeat(2001) }), /over 2000/);
+  settings({ MAIL_CONFIRM_HEADING: run("mailDef_('CONFIRM').fields[1][1]") });
+  assert.strictEqual(call('webState').settingsAll.find(x => x.key === 'MAIL_CONFIRM_HEADING').value, '', 'default text saved blank');
+  assert(call('webState').mails.length === 9, 'webState.mails');
+  // preview: sample data, nothing written, send reaches only the caller
+  run('__outbox.length = 0');
+  const pv = call('webRun', 'mailPreview', { id: 'COVERED', texts: { text: 'Hi {first}, {cover} covers {codes}' } }).result;
+  assert(/Hi Amina, Sara B\. covers IT\.12, IT\.15/.test(pv.html) && pv.subject.includes('Sara B.') && !outbox().length, 'preview');
+  assert.throws(() => call('webRun', 'mailPreview', { id: 'COVERED', texts: { text: '{nope}' } }), /unknown placeholder/);
+  const sent = call('webRun', 'mailPreview', { id: 'LEFT', send: true }).result;
+  assert(outbox().every(m => /^\[TEST\] /.test(m.subject)), 'test subject');
+  console.log('editable mails ok; test send', sent.sent);
+}

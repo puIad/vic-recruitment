@@ -233,7 +233,7 @@ function stampConfirmations_(ctx) {
 /** After the save, like the new-interviewee mail. TEST_MODE: mail_ keeps it to the admins. */
 function sendConfirmations_(ctx) {
   const I = ctx.iv.I;
-  ctx.confirm.forEach(r => mail_(String(r[I.Email]).trim(), CONFIRM_MAIL.subject,
-    confirmHtml_(String(r[I['First Name']]).trim(), String(r[I.Code])), MAIL.candidateFrom));
+  ctx.confirm.forEach(r => mailSend_(String(r[I.Email]).trim(),
+    mailFrom_('CONFIRM', { first: String(r[I['First Name']]).trim(), code: String(r[I.Code]) })));
   ctx.confirm = [];
 }

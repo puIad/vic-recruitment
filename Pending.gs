@@ -212,7 +212,7 @@ function dropsSync_(ctx) {
 function dropsMail_(ctx, drops) {
   const KI = ctx.alerts.table.I, rows = {};
   ctx.alerts.table.data.forEach(r => { rows[r[KI.ID]] = r; });
-  const text = v => (v === true ? 'Yes' : v === false ? 'No' : v === undefined || v === null || v === '' ? 'empty' : String(v));
+  const text = v => (v === true ? 'Yes' : v === false ? 'No' : v === undefined || v === null || v === '' ? 'empty' : String(v).length > 200 ? String(v).slice(0, 200) + '…' : String(v));
   const blocks = drops.map(d => {
     const a = d.kind === 'alert' ? rows[d.alert] : null;
     const what = d.kind === 'alert' ? 'Alert ' + d.alert + (a ? ' · ' + a[KI.Type] + (a[KI.Interviewee] ? ' · ' + a[KI.Interviewee] : '') : '')
