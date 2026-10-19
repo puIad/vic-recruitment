@@ -62,6 +62,7 @@ function ivCarry_(ctx, r) {
 function appendToBinomeFile_(ctx, b, r, carry) {
   const sh = binomeSheet_(ctx, b);
   if (!sh) return;
+  if (findFileRow_(sh, String(r[ctx.iv.I.Code]).trim()) > 0) return; // already there: a run that died after placing them must not add a blank twin
   sh.getRange(bfLastRow_(sh) + 1, BF_COL, 1, BF_H.length).setValues(plainRows_([ivToFileRow_(ctx, r, carry)], BF_H));
 }
 

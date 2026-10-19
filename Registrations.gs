@@ -64,24 +64,35 @@ function loads_(ctx) {
   return load;
 }
 
+/** Codes in use: the tab's, and those of rows deleted by hand that the baseline keeps for Revert (never handed out again). */
+function usedCodes_(ctx) {
+  const held = ctx.base ? Object.keys(ctx.base.iv).map(k => ctx.base.iv[k] && ctx.base.iv[k].Code).filter(Boolean) : [];
+  return Object.keys(ctx.ivByCode).concat(held);
+}
+
 /** Give a binome (and a code if missing) to an Interviewees row. Returns true if assigned. */
 function assignRow_(ctx, r) {
   const I = ctx.iv.I, s = S_();
   const dep = String(r[I['1st Choice']]).trim();
   if (DEPTS.indexOf(dep) < 0) return false;
   if (!r[I.Code]) {
-    r[I.Code] = nextCode(dep, Object.keys(ctx.ivByCode));
+    r[I.Code] = nextCode(dep, usedCodes_(ctx));
     ctx.ivByCode[r[I.Code]] = r;
   }
   if (!bool_(s.ASSIGNMENTS_OPEN)) return false;
-  const load = loads_(ctx);
-  const cands = activeBinomes_(ctx).map(b => ({ code: b.code, tag: b.tag, load: load[b.code] || 0, b: b }));
+  const load = loads_(ctx), bad = ctx.badBinomes || (ctx.badBinomes = {});
+  const cands = activeBinomes_(ctx).filter(b => !bad[b.code]).map(b => ({ code: b.code, tag: b.tag, load: load[b.code] || 0, b: b }));
   const pick = pickBinome(dep, cands, num_(s.ALL_BINOME_WEIGHT, 1), num_(s.HR_ONLY_WEIGHT, 1));
   if (!pick) return false;
+  // a sheet that refuses the write leaves the candidate UNASSIGNED and is skipped for the rest of the run: it must not stop the cycle
+  try { appendToBinomeFile_(ctx, pick.b, r); } catch (e) {
+    bad[pick.code] = true;
+    ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: pick.code, msg: 'Cannot write ' + r[I.Code] + ' into the file of ' + pick.code + ': ' + e, key: 'FILE|' + pick.code });
+    return false;
+  }
   r[I.Binome] = pick.code;
   r[I.Status] = ST.ASSIGNED;
   r[I['Assigned At']] = ctx.now;
-  appendToBinomeFile_(ctx, pick.b, r);
   (ctx.mailNew[pick.code] = ctx.mailNew[pick.code] || []).push(r);
   return true;
 }
@@ -151,6 +162,9 @@ function processRegistrations_(ctx) {
       const old = ctx.restore[key];
       out[I.Code] = old.Code; out[I.Binome] = old.Binome;
       out[I['Assigned At']] = old['Assigned At'] ? new Date(old['Assigned At']) : ''; // older baselines lack it: empty, as before
+      if (old['Interview Submitted At']) out[I['Interview Submitted At']] = new Date(old['Interview Submitted At']);
+      out[I['Interview Log Row']] = old['Interview Log Row'] ? Number(old['Interview Log Row']) : '';
+      out[I.Screening] = old.Screening || out[I.Screening];
       out[I.Status] = old.Status; // out and on hold stay so (statusOf_ keeps them); the others are computed again
       out[I.Status] = statusOf_(ctx, out);
       if (out[I.Code]) ctx.ivByCode[out[I.Code]] = out;
@@ -162,7 +176,7 @@ function processRegistrations_(ctx) {
     if (scr && scr.member) {
       // a VIC member: out, silently (no alert mail, no binome mail); one line in the history so admins can audit it
       out[I.Status] = ST.DECLINED;
-      if (rec.c1) { out[I.Code] = nextCode(rec.c1, Object.keys(ctx.ivByCode)); ctx.ivByCode[out[I.Code]] = out; }
+      if (rec.c1) { out[I.Code] = nextCode(rec.c1, usedCodes_(ctx)); ctx.ivByCode[out[I.Code]] = out; }
       ctx.alerts.add({ severity: 'INFO', type: 'VIC_MEMBER_DECLINED', status: 'AUTO-FIXED', code: out[I.Code] || named, binome: '',
         msg: (out[I.Code] || named) + ' (' + out[I.Email] + ') is on the VIC members list: declined silently, nobody was emailed.', key: '' });
       continue;
@@ -172,7 +186,7 @@ function processRegistrations_(ctx) {
     } else if (scr && scr.hold) {
       // waits for an admin (screenWaiting_ raises NEEDS_REVIEW); a code so alerts and quick actions can point at it
       out[I.Status] = ST.HELD;
-      if (rec.c1) { out[I.Code] = nextCode(rec.c1, Object.keys(ctx.ivByCode)); ctx.ivByCode[out[I.Code]] = out; }
+      if (rec.c1) { out[I.Code] = nextCode(rec.c1, usedCodes_(ctx)); ctx.ivByCode[out[I.Code]] = out; }
     } else if (rec.c1) {
       assignRow_(ctx, out);
     }

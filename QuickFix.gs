@@ -485,6 +485,13 @@ function retryFile_(ctx, r, ref, dry) {
     if (dry) return 'put ' + code + ' back in the sheet of ' + b.code + '.';
     return moveInterviewee_(ctx, code, b.code) + '.';
   }
+  if (code && /^Cannot mark/.test(msg)) { // the form was logged: write its mark again
+    const at = (ctx.ivByCode[code] || {})[ctx.iv.I['Interview Submitted At']];
+    if (!(at instanceof Date)) throw new Error(code + ' has no interview form logged: fix it by hand.');
+    if (dry) return 'mark ' + code + ' as interviewed in the sheet of ' + b.code + ' again.';
+    markInterviewInFile_(ctx, b, code, '✅ ' + fmt_(at, 'dd/MM HH:mm') + ' (retried)');
+    return code + ' is marked in the sheet of ' + b.code + '.';
+  }
   if (!b.fileId) throw new Error(b.code + ' has no File ID: set it in the Binomes tab.');
   const share = bool_(S_().SHARE_FILES_WITH_BINOME) && !bool_(S_().TEST_MODE);
   if (dry) return 'open the sheet of ' + b.code + ' again and update its title and banner' + (share ? ', and share it with its members' : '') + '.';

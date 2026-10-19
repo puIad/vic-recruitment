@@ -87,8 +87,15 @@ function logInterview_(ctx, f) {
     rctx.interviewed[res.interviewee] = true;
     // the form that counts marks the sheet: the first one, or the first one edited
     const b = first || Number(ivRow[I['Interview Log Row']]) === logRowNumber ? ctx.binByCode[ivRow[I.Binome]] : null;
-    if (b) markInterviewInFile_(ctx, b, res.interviewee, (res.result === 'FLAGGED' ? '⚠️ ' : '✅ ') + fmt_(f.ts, 'dd/MM HH:mm') +
-      (res.result === 'AUTOCORRECTED' ? ' (auto-corrected)' : '') + (f.dash ? ' (dashboard)' : ''));
+    const bad = ctx.badBinomes || (ctx.badBinomes = {});
+    // a sheet that refuses the mark never stops the log: the candidate stays INTERVIEWED, the sheet is skipped for this run
+    if (b && !bad[b.code]) try {
+      markInterviewInFile_(ctx, b, res.interviewee, (res.result === 'FLAGGED' ? '⚠️ ' : '✅ ') + fmt_(f.ts, 'dd/MM HH:mm') +
+        (res.result === 'AUTOCORRECTED' ? ' (auto-corrected)' : '') + (f.dash ? ' (dashboard)' : ''));
+    } catch (e) {
+      bad[b.code] = true;
+      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: res.interviewee, binome: b.code, msg: 'Cannot mark ' + res.interviewee + ' in the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code + '|' + res.interviewee });
+    }
   }
   res.alerts.forEach(a => ctx.alerts.add({ severity: a.severity, type: a.type, code: res.interviewee || typed,
     binome: a.binome || res.binome, msg: a.msg + ' [Interview Log row ' + logRowNumber + ']', notifyBinome: a.notifyBinome,

@@ -39,10 +39,12 @@ function pullBinomeFiles_(ctx, force) {
     if (n >= 2) {
       const rng = sh.getRange(2, BF_COL, n - 1, BF_H.length);
       const vals = rng.getValues(), disp = rng.getDisplayValues();
+      const read = {};
       vals.forEach((v, k) => {
         const code = String(v[F.Code]).trim();
         const r = ctx.ivByCode[code];
-        if (!r || r[I.Binome] !== b.code) return;
+        if (!r || r[I.Binome] !== b.code || read[code]) return; // a code on two rows: the first counts, as for findFileRow_
+        read[code] = true;
         const contacted = String(v[F.Contacted]).trim();
         if (contacted && contacted !== 'Not yet' && !r[I['Contacted Seen At']]) r[I['Contacted Seen At']] = ctx.now;
         r[I.Contacted] = contacted;
