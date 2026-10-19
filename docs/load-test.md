@@ -892,6 +892,32 @@ the 300-cell cap, a non-scope 403 retried.
     from the binome sheet when the cached slice is missing. To look at before members get the dashboard.
 - **Verdict so far: not signed off.** Run 1 covered 4 of 10 minutes and only the pending path; marks 3 look missed; marks
   4, 5, 6, 10 were not reached. A second run with #100 decides.
+- **Live run 2, 2026-10-19 17:06–17:21 UTC: the baseline, not the sign-off.** Same cookies, plan and targets as run 1,
+  with #100; switch on 17:06:17, off 17:11:19, back off at the end. The owner holds the sign-off run until the member
+  `webState` fix ([#101](https://github.com/puIad/vic-recruitment-2026/pull/101)) and the polling-budget fix are live.
+  Everything was put back: the run's own put-back did the Notes, three alerts and the setting; A-1964's unmute was
+  refused BUSY (the sync held the script lock) and was redone by hand at 17:22. Checked after: switch off, the four alerts
+  Open, `ALL_BINOME_WEIGHT` 1, FLER.07 "hakak", FLER.16 and HR.01 empty.
+
+  | # | Mark | Run 2 | |
+  |---|---|---|---|
+  | 1 | calls answered ≥ 99.9 % | 3,616 / 3,640 (99.3 %): 22 polls dropped at the page's 20 s, 1 Google `UNAVAILABLE`, 1 alert gone meanwhile | miss |
+  | 2 | opening p95 ≤ 5 s | admins 14.6 s, members 10.1 s (all 68 opened in the same second on 3 accounts) | miss |
+  | 3 | `webState` / `webPulse` p95 | 4.8 s / 3.5 s (p99 26.5 s / 9.2 s) | miss |
+  | 4 | direct Save p95 / BUSY | 5.5 s / 0 (only 2 saves: too few to judge) | open |
+  | 5 | direct alert action p95 ≤ 10 s | 33.3 s p50, 108 s max (5 done, 1 BUSY): behind the sync on the script lock | miss |
+  | 6 | other admins' screens, direct / pending | 43.5 s / 219 s p95 (marks 20 s / 3 min) | miss |
+  | 7 | accept p95 ≤ 1 s | 0.5 s (8 calls) | pass |
+  | 8 | in the sheet p95 ≤ 2 min | 65.6 s | pass |
+  | 9 | every accepted change ended | 8 / 8 applied, 0 lost | pass |
+  | 10 | switch off mid-run | nothing left pending, saves after it were direct | pass |
+  | 11 | the sync | not read this run (Executions) | open |
+  | 12 | free tiers | model only | see model |
+
+  Busiest account: 369 calls in a minute (the member account carrying 64 virtual members), under Google's ~600.
+  **Verdict: not signed off.** The pending path holds (7–10). The reads (2, 3) and anything behind the script lock (5, 6)
+  miss; those are what the polling-budget fix and #101 target. The sign-off run repeats this plan once both are live and
+  the owner says go.
 
 
 ---
