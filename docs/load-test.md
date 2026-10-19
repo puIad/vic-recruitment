@@ -782,10 +782,13 @@ answered and every accepted change ended.
    It stops before writing anything unless TEST_MODE is on. It writes only:
    - Notes of the chosen test candidates (two per binome a cookie sits in, or `--codes`), toggled with " [load test]";
    - Snooze 4 h / Mute / Unmute on up to `--alerts 4` open alerts about a candidate;
-   - with `--interview CODE`: that candidate's dashboard interview form, re-saved with its own answers (skipped if it has none);
+   - with `--interview CODE`: that candidate's dashboard interview form, re-saved with its own answers, only if this account
+     saved it (its Edited at / by move; nothing else changes);
    - with `--setting ALL_BINOME_WEIGHT`: 1 ↔ 1.5 (no binome is ALL this season, so it changes nothing).
-   None of these sends mail. At the end it waits for the sync, then puts the Notes, the alerts, the setting and the switch
-   back as it found them, and prints what it put back. Ctrl-C stops the people and still puts things back.
+   None of these sends mail. A conflict on a Notes cell (someone typed there) is counted and left alone, never "Use mine".
+   At the end it waits for the sync, then puts back only what is still as the run left it: a Note still ending in the
+   mark, an alert still held the way the run held it, the setting, the switch. Anything someone else changed meanwhile is
+   left as they left it, and the run prints which. Ctrl-C stops the people and still puts things back.
 4. During the run: the owner keeps Apps Script › Executions open (the sync still runs every minute; `cycle` lines with
    `busy`?), and reads Vercel › Usage and Upstash › Usage before and after. Within the hour, the Vercel runtime logs give
    the server side: the `{"email","action","ms","ok"}` lines and `{"at":"apply","ended":[...]}`.

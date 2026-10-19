@@ -14,7 +14,7 @@
 //                                            production. Read-only unless --writes. With --writes it stops unless TEST_MODE is on,
 //                                            writes only: Notes of the chosen test candidates (toggled, put back at the end),
 //                                            Snooze / Mute / Unmute on chosen open alerts (put back to Open), the interview form
-//                                            of --interview CODE re-saved with its own answers (only if it has a dashboard row),
+//                                            of --interview CODE re-saved with its own answers (only a form this account saved; Edited at / by move),
 //                                            --setting ALL_BINOME_WEIGHT toggled 1 <-> 1.5 (no binome uses it) and put back.
 //                                            None of these sends mail. --pending on|off flips the owner's switch (needs the owner's
 //                                            cookie) and puts it back at the end.
@@ -44,7 +44,9 @@ const CODES = String(opt('codes', '') || '').split(',').map(s => s.trim()).filte
 const SETTING = opt('setting', LIVE ? '' : 'ALL_BINOME_WEIGHT') || '';
 const ADMIN_PULSE = 2000, MEMBER_PULSE = 15000, POLL_TIMEOUT = 20000; // app-shell.tsx, store.ts
 const SAFE_SETTINGS = { ALL_BINOME_WEIGHT: ['1', '1.5'] }; // no ALL binome exists this season: the value changes nothing
-const MARK = ' [load test]'; // added to a test candidate's Notes, then taken off again
+const MARK = '[load test]'; // added to a test candidate's Notes, then taken off again (the script trims, so no leading space)
+const addMark = v => (String(v).trim() ? String(v).trimEnd() + ' ' : '') + MARK;
+const same = (a, b) => String(a).trim() === String(b).trim();
 if (!['on', 'off', 'keep'].includes(PENDING)) { console.error('--pending: on, off or keep'); process.exit(2); }
 if (SETTING && !SAFE_SETTINGS[SETTING]) { console.error('--setting: only ' + Object.keys(SAFE_SETTINGS).join(', ')); process.exit(2); }
 
@@ -353,13 +355,15 @@ function person(i, role, acct, until, targets) {
     if (!cands.length) return;
     const c = pick(cands), code = String(c.Code), at = Date.now();
     const fields = LIVE ? ['Notes'] : GOLD.slice().sort(() => Math.random() - 0.5).slice(0, 1 + Math.floor(Math.random() * 3));
-    const list = fields.map(f => { const seen = c[f] === undefined ? '' : c[f]; return { field: f, seen, value: LIVE ? (String(seen).endsWith(MARK) ? String(seen).slice(0, -MARK.length) : String(seen) + MARK) : 'v' + Math.random().toString(36).slice(2, 7) }; });
+    const list = fields.map(f => { const seen = c[f] === undefined ? '' : c[f]; return { field: f, seen, value: LIVE ? (same(seen, targets.orig[code]) ? addMark(targets.orig[code]) : targets.orig[code]) : 'v' + Math.random().toString(36).slice(2, 7) }; });
     R.saves.sent++;
     if (await accept(list.map(x => ({ kind: 'field', code, field: x.field, value: x.value, seen: x.seen, at })))) return;
     try {
       let out = (await call(acct, 'webRun', ['memberSet', { code, fields: list }])).value.result.fields;
       const theirs = out.filter(x => 'conflict' in x);
-      if (theirs.length) { R.saves.conflict++; out = (await call(acct, 'webRun', ['memberSet', { code, fields: theirs.map(x => ({ field: x.field, value: list.find(y => y.field === x.field).value, seen: x.conflict })) }])).value.result.fields; } // Use mine
+      if (theirs.length) { R.saves.conflict++; if (LIVE) targets.codes = targets.codes.filter(c => c !== code); } // live: never that cell again
+      // Use mine, model only: live, a conflict means a real person typed there, so the run leaves their value alone
+      if (theirs.length && !LIVE) out = (await call(acct, 'webRun', ['memberSet', { code, fields: theirs.map(x => ({ field: x.field, value: list.find(y => y.field === x.field).value, seen: x.conflict })) }])).value.result.fields;
       if (out.some(x => 'value' in x)) { R.saves.written++; R.saves.ms.push(Date.now() - at); if (!LIVE) R.events.push({ bin: mine.binome, v: W.binV[mine.binome], at, by: i }); }
     } catch (e) { if (e.code === 'BUSY') R.saves.busy++; else R.saves.failed++; }
   };
@@ -369,7 +373,8 @@ function person(i, role, acct, until, targets) {
     R.forms.sent++;
     try {
       const got = (await call(acct, 'webRun', ['interviewGet', { code }])).value.result;
-      if (LIVE && !(got.source === 'Dashboard' && got.answers)) return; // live: only a dashboard row, re-saved with its own answers
+      // live: only a dashboard row this account saved itself, re-saved with its own answers (its Edited at / by move)
+      if (LIVE && !(got.source === 'Dashboard' && got.answers && [got.submittedBy, got.editedBy].includes(String(acct.email).toLowerCase()))) return;
       await call(acct, 'webRun', ['interviewSave', { code, answers: got.answers || {}, seen: got.stamp || '' }]);
       R.forms.saved++;
     } catch (e) { if (e.code === 'BUSY') R.forms.busy++; else if (e.code === 'CONFLICT') R.forms.conflict++; else R.forms.failed++; }
@@ -379,17 +384,19 @@ function person(i, role, acct, until, targets) {
     if (!list.length) return;
     const a = pick(list), seen = a.status || 'OPEN', op = seen === 'OPEN' ? pick(['snooze', 'mute']) : 'unmute', at = Date.now();
     R.actions.sent++;
-    if (await accept([{ kind: 'alert', alert: a.id, op, seen, at, until: op === 'snooze' ? at + 4 * 3600e3 : undefined, built: me.state.built }])) return;
+    const to = op === 'snooze' ? 'SNOOZED' : op === 'mute' ? 'MUTED' : 'OPEN';
+    if (await accept([{ kind: 'alert', alert: a.id, op, seen, at, until: op === 'snooze' ? at + 4 * 3600e3 : undefined, built: me.state.built }])) { if (targets.lastSet) targets.lastSet[a.id] = to; return; }
     me.busy = true;
     try {
       const out = await run('quick', { op, ids: [a.id], for: '4h' });
-      if (out.result && out.result.done && out.result.done.length) { R.actions.done++; R.events.push({ admin: true, at, wrote: at, by: i }); } else R.actions.stale++;
+      if (out.result && out.result.done && out.result.done.length) { R.actions.done++; if (targets.lastSet) targets.lastSet[a.id] = to; R.events.push({ admin: true, at, wrote: at, by: i }); } else R.actions.stale++;
       R.actions.ms.push(Date.now() - at);
     } catch (e) { if (e.code === 'BUSY') R.actions.busy++; else R.actions.failed++; }
     finally { me.busy = false; }
     await refresh();
   };
   const settingAct = async () => {
+    if (LIVE && !targets.setting) return; // live: only the account's writer
     const s = (me.state.settingsAll || []).find(x => x.key === SETTING);
     if (!s) return;
     const [x, y] = SAFE_SETTINGS[SETTING], value = String(s.value) === x ? y : x, at = Date.now();
@@ -444,7 +451,7 @@ async function readAccounts(lines) {
 }
 function liveTargets(accts) {
   const admin = accts.find(a => a.role === 'admin' && a.state), st = admin && admin.state;
-  const t = { testMode: st ? st.settings && st.settings.testMode === true : null, switchOn: st ? !!st.pending : null, codes: null, alerts: null, interview: '', original: { notes: {}, alerts: {}, setting: null } };
+  const t = { testMode: st ? st.settings && st.settings.testMode === true : null, switchOn: st ? !!st.pending : null, codes: null, alerts: null, interview: '', original: { notes: {}, alerts: {}, setting: null }, lastSet: {} };
   // My binome: the given codes, else two candidates of each binome a cookie sits in
   t.codes = [];
   accts.filter(a => a.slice).forEach(a => {
@@ -472,8 +479,8 @@ function plan(accts, t) {
   console.log(`  Pending changes: ${PENDING === 'keep' ? 'switch left as it is (' + (t.switchOn === null ? '?' : t.switchOn ? 'on' : 'off') + ')' : 'switch ' + PENDING + ' at the start'}${OFF_AT ? `, off at minute ${OFF_AT}` : ''}${PENDING !== 'keep' || OFF_AT ? ', put back as found at the end' : ''}.`);
   if (!WRITES) { console.log('  Writes: none (read-only). Add --writes for saves and alert actions.'); return; }
   console.log(`  Writes${LIVE ? ` (TEST_MODE ${t.testMode ? 'on' : 'OFF: the run will refuse'})` : ''}:`);
-  console.log(`    My binome Save every ~${SAVE_EVERY} min per ${LIVE ? 'writer' : 'member'}${LIVE ? `: Notes of ${t.codes.join(', ') || 'no candidate'} (toggled "${MARK.trim()}", put back at the end)` : ' (1–3 fields)'}`);
-  console.log(`    Interview form every ~${FORM_EVERY} min: ${LIVE ? (t.interview ? t.interview + ', re-saved with its own answers if it has a dashboard row' : 'none (--interview CODE)') : 'interviewGet + interviewSave'}`);
+  console.log(`    My binome Save every ~${SAVE_EVERY} min per ${LIVE ? 'writer' : 'member'}${LIVE ? `: Notes of ${t.codes.join(', ') || 'no candidate'} (toggled "${MARK}", put back at the end)` : ' (1–3 fields)'}`);
+  console.log(`    Interview form every ~${FORM_EVERY} min: ${LIVE ? (t.interview ? t.interview + ', re-saved with its own answers if this account saved its dashboard form (its Edited at / by move)' : 'none (--interview CODE)') : 'interviewGet + interviewSave'}`);
   console.log(`    Alert action every ~${ALERT_EVERY} min per admin: Snooze 4 h / Mute / Unmute${LIVE ? ' on ' + ((t.alerts || []).join(', ') || 'no alert') + ' (put back to Open at the end)' : ''}`);
   console.log(`    Setting: ${SETTING ? SETTING + ' ' + SAFE_SETTINGS[SETTING].join(' <-> ') + ' every ~' + SETTING_EVERY + ' min' + (LIVE ? ' (put back to ' + t.original.setting + ')' : '') : 'none'}`);
   console.log('    No mail: none of these actions sends any.');
@@ -491,17 +498,23 @@ async function restore(accts, t) { // live: what the run changed goes back, read
     const { acct, value } = t.original.notes[code];
     const s = (await call(acct, 'webState').catch(() => null)), c = s && (acct.role === 'admin' ? s.value.member : s.value);
     const now = c && (c.candidates || []).find(x => String(x.Code) === code);
-    if (now && String(now.Notes || '') !== value) await call(acct, 'webRun', ['memberSet', { code, fields: [{ field: 'Notes', value, seen: String(now.Notes || '') }] }]).then(() => console.log('  ' + code + ' Notes put back')).catch(e => console.log('! ' + code + ' Notes: ' + e.message));
+    const cur = now && String(now.Notes || '');
+    if (!now || same(cur, value)) continue;
+    if (!same(cur, addMark(value))) { console.log('  ' + code + ' Notes changed by someone during the run: left as is'); continue; }
+    await call(acct, 'webRun', ['memberSet', { code, fields: [{ field: 'Notes', value, seen: cur }] }]).then(() => console.log('  ' + code + ' Notes put back')).catch(e => console.log('! ' + code + ' Notes: ' + e.message));
   }
   if (!admin) return;
   const s = (await call(admin, 'webState').catch(() => null)), st = s && s.value;
   if (!st) return console.log('! could not read the state: check the alerts ' + (t.alerts || []).join(', ') + ' by hand');
   for (const id of t.alerts || []) {
     if ((st.alerts || []).some(a => a.id === id)) continue;
+    const held = (st.muted || []).find(a => a.id === id);
+    // only an alert still held the way this run left it: one a real admin snoozed or muted since stays as they left it
+    if (!held || held.status !== t.lastSet[id]) { console.log('  ' + id + (held ? ' held by someone else: left as is' : ' no longer open or held: left as is')); continue; }
     await call(admin, 'webRun', ['quick', { op: 'unmute', ids: [id] }]).then(() => console.log('  ' + id + ' back to Open')).catch(e => console.log('! ' + id + ': ' + e.message));
   }
   const cur = (st.settingsAll || []).find(x => x.key === SETTING);
-  if (t.original.setting !== null && cur && String(cur.value) !== t.original.setting) await call(admin, 'webRun', ['saveSettings', { values: { [SETTING]: t.original.setting } }]).then(() => console.log('  ' + SETTING + ' put back to ' + t.original.setting)).catch(e => console.log('! ' + SETTING + ': ' + e.message));
+  if (t.original.setting !== null && cur && String(cur.value) !== t.original.setting && SAFE_SETTINGS[SETTING].includes(String(cur.value))) await call(admin, 'webRun', ['saveSettings', { values: { [SETTING]: t.original.setting } }]).then(() => console.log('  ' + SETTING + ' put back to ' + t.original.setting)).catch(e => console.log('! ' + SETTING + ': ' + e.message));
 }
 
 /* ---------- report ---------- */
@@ -572,7 +585,7 @@ function print(r) {
   console.log('  call                     calls     ok      p50     p95     p99     max  other answers');
   r.rows.forEach(x => console.log('  ' + x.fn.padEnd(24) + String(x.calls).padStart(6) + String(x.ok).padStart(7) + [x.p50, x.p95, x.p99, x.max].map(v => f(v).padStart(8)).join('') + (Object.keys(x.kinds).length ? '  ' + JSON.stringify(x.kinds) : '')));
   const s = r.saves, a = r.actions, p = r.pending;
-  console.log(`  My binome saves: ${s.sent} clicks (pending ones counted below); direct: ${s.written} written, ${s.conflict} conflicts (then Use mine), ${s.busy} refused BUSY, ${s.failed} failed; answered p50 ${f(s.p50)} p95 ${f(s.p95)}`);
+  console.log(`  My binome saves: ${s.sent} clicks (pending ones counted below); direct: ${s.written} written, ${s.conflict} conflicts (model: then Use mine; live: left alone), ${s.busy} refused BUSY, ${s.failed} failed; answered p50 ${f(s.p50)} p95 ${f(s.p95)}`);
   console.log(`  interview forms: ${r.forms.sent} opened, ${r.forms.saved} saved, ${r.forms.busy} BUSY, ${r.forms.conflict} conflicts, ${r.forms.failed} failed`);
   console.log(`  alert actions: ${a.sent} clicks; direct: ${a.done} done, ${a.stale} already changed, ${a.busy} BUSY, ${a.failed} failed; answered p50 ${f(a.p50)} p95 ${f(a.p95)}. Settings: ${r.settings.sent} sent`);
   const g = x => `p50 ${f(x.p50)} p95 ${f(x.p95)} (${x.n})`;
@@ -630,7 +643,7 @@ function print(r) {
   for (let i = 0; members.length && i < MEMBERS; i++) people.push(['member', members[i % members.length]]);
   // live: only the first virtual person on each account writes (one person per Google account); every one of them reads
   const writer = new Set();
-  const targetsFor = a => (LIVE ? (writer.has(a) ? null : (writer.add(a), { codes: t.codes, alerts: t.alerts, interview: t.interview })) : {});
+  const targetsFor = a => (LIVE ? (writer.has(a) ? null : (writer.add(a), { codes: t.codes, alerts: t.alerts, interview: t.interview, setting: true, lastSet: t.lastSet, orig: Object.keys(t.original.notes).reduce((o, c) => (o[c] = t.original.notes[c].value, o), {}) })) : {});
   console.log(`Running ${people.length} people for ${MINUTES} min${SCALE > 1 ? ` (model, ${SCALE}× real time: ~${Math.round(MINUTES * 60 / SCALE)} s)` : ''}…`);
   const runs = people.map(([role, a], i) => { const tg = targetsFor(a); return person(i, role, a, until, tg || { codes: [], alerts: [] }); });
   await Promise.all(runs);
