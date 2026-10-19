@@ -149,17 +149,20 @@ var SpreadsheetApp = {
   },
 };
 
+var __folders = []; // subfolders made by the script: {id, name, parent}
 var DriveApp = {
   getFileById(id) {
     const f = __files[id]; if (!f) throw new Error('no drive file ' + id);
-    return { moveTo(folder) { f.parent = folder.id; }, setTrashed(t) { f.trashed = t; return this; }, getLastUpdated() { return f.lastUpdated; }, getId() { return id; },
+    return { moveTo(folder) { f.parent = folder.id; }, setTrashed(t) { f.trashed = t; return this; }, getName() { return f.name || ''; }, setName(n) { f.name = n; return this; }, getLastUpdated() { return f.lastUpdated; }, getId() { return id; },
       getEditors() { return f.editors.map(e => ({ getEmail: () => e })); }, addEditor(e) { f.editors.push(e); }, getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; },
       getViewers() { return (f.viewers || []).map(e => ({ getEmail: () => e })); },
       addViewer(e) { (f.viewers = f.viewers || []).push(e); }, removeViewer(e) { f.viewers = (f.viewers || []).filter(x => x !== e); },
       removeEditor(e) { if (e === 'admin@g.enp.edu.dz') throw new Error('Cannot remove the owner'); f.editors = f.editors.filter(x => x !== e); } };
   },
   getFolderById(fid) {
-    return { id: fid, getEditors() { return []; }, getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getFiles() { const ids = Object.keys(__files).filter(k => __files[k].parent === fid); let i = 0;
+    return { id: fid, getFoldersByName(n) { const k = __folders.filter(x => x.parent === fid && x.name === n); let i = 0; return { hasNext: () => i < k.length, next: () => DriveApp.getFolderById(k[i++].id) }; },
+      createFolder(n) { const id = 'folder-' + (__folders.length + 1); __folders.push({ id: id, name: n, parent: fid }); return DriveApp.getFolderById(id); },
+      getEditors() { return []; }, getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getFiles() { const ids = Object.keys(__files).filter(k => __files[k].parent === fid); let i = 0;
       return { hasNext: () => i < ids.length, next: () => { const id = ids[i++]; return { getId: () => id, getLastUpdated: () => __files[id].lastUpdated }; } }; } };
   },
 };

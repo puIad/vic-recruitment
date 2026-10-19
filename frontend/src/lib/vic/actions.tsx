@@ -485,7 +485,7 @@ export function useActions() {
               </p>
               <ul>
                 <li>
-                  <b>{binomes}</b> binomes are deleted and their Google Sheets are moved to the Drive trash (Drive keeps them 30 days). Whatever the binomes wrote in them — contacted, dates, notes — goes with them.
+                  <b>{binomes}</b> binomes are removed and their Google Sheets are moved to the "Retired binomes" folder in Drive, so whatever the binomes wrote in them — contacted, dates, notes — is kept there but no longer used.
                 </li>
                 <li>
                   <b>{interviewees}</b> interviewees go back to Unassigned. Their codes and registration answers stay; their binome, dates and notes are cleared.

@@ -38,7 +38,7 @@ Why the system is built the way it is. Read before changing behaviour; add a row
 | ACTIVE ↔ PAUSED by hand is intended (INFO only) | That is how a binome is paused. |
 | Full sheet check never runs on the frequent trigger; it is time-boxed and resumable | It opens ~50 files (1–2 min); Vercel's limit is 300s. |
 | Manual-edit / integrity alerts go to admins only | They're about the Master, not the binome's work. |
-| **Reset all binomes** (2026-10-03): typed phrase, checked by the script too; binome sheets trashed, not deleted; registrations deleted on purpose stay remembered | Starting over with a new team must be possible before launch, and impossible by a misclick; trash keeps 30 days to undo. |
+| **Reset all binomes** (2026-10-03): typed phrase, checked by the script too; binome sheets moved to a "Retired binomes" folder since 2026-10-19 (first version trashed them); registrations deleted on purpose stay remembered | Starting over with a new team must be possible before launch, and impossible by a misclick; the retired sheets keep what the binomes wrote. |
 
 ## Dashboard on Vercel (2026-10-01) — details in [vercel.md](vercel.md); UI decisions in [frontend.md](frontend.md#decisions)
 
