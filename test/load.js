@@ -42,7 +42,7 @@ const SAVE_EVERY = num('save-every', 4), FORM_EVERY = num('form-every', 20), ALE
 const SYNC_HOLD = num('sync-hold', 10) * 1000, HOURS = num('hours-per-day', 1), ALERT_TARGETS = num('alerts', 4);
 const CODES = String(opt('codes', '') || '').split(',').map(s => s.trim()).filter(Boolean), INTERVIEW = opt('interview', '') || '';
 const SETTING = opt('setting', LIVE ? '' : 'ALL_BINOME_WEIGHT') || '';
-const ADMIN_PULSE = 2000, MEMBER_PULSE = 15000, POLL_TIMEOUT = 20000; // app-shell.tsx, store.ts
+const ADMIN_PULSE = 5000, MEMBER_PULSE = 30000, POLL_TIMEOUT = 20000; // store.ts (the idle backoff is not modelled: virtual users never go idle, so this is the worst case)
 const SAFE_SETTINGS = { ALL_BINOME_WEIGHT: ['1', '1.5'] }; // no ALL binome exists this season: the value changes nothing
 const MARK = '[load test]'; // added to a test candidate's Notes, then taken off again (the script trims, so no leading space)
 const addMark = v => (String(v).trim() ? String(v).trimEnd() + ' ' : '') + MARK;
@@ -308,7 +308,9 @@ function person(i, role, acct, until, targets) {
   const refresh = async () => {
     me.refreshing = true;
     try {
-      const pr = await call(acct, 'webPulse', [true], { rec: hasPending(me.rec) ? 2 : 1 }, POLL_TIMEOUT).catch(() => null);
+      const rec = hasPending(me.rec) ? 2 : me.wantRec ? 1 : 0;
+      me.wantRec = false;
+      const pr = await call(acct, 'webPulse', [true], rec ? { rec } : undefined, POLL_TIMEOUT).catch(() => null);
       if (pr && pr.rec) setRec(pr.rec);
       const s = (await call(acct, 'webState')).value;
       me.state = s; me.pulse = pr && pr.value && pr.value.v; me.bv = pr && pr.value && pr.value.bv; me.on = pr && pr.value ? !!pr.value.pending : !!s.pending;
@@ -321,7 +323,7 @@ function person(i, role, acct, until, targets) {
     me.polling = true;
     try {
       const held = hasPending(me.rec);
-      const rec = me.wantRec ? (held ? 2 : 1) : held && (member || ++me.polls % 5 === 0) ? 2 : 0;
+      const rec = me.wantRec ? (held ? 2 : 1) : held && (member || ++me.polls % 2 === 0) ? 2 : 0;
       me.wantRec = false;
       const r = await call(acct, 'webPulse', [true], rec ? { rec } : undefined, POLL_TIMEOUT);
       if (r.rec) setRec(r.rec);

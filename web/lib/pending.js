@@ -13,6 +13,7 @@ const S = require('./session');
 const FORMAT = 1;          // the page's change format: another one is refused with code FORMAT (the page reloads)
 const SCRIPT_FORMAT = 1;   // webApply's call format (Pending.gs APPLY_FORMAT)
 const TOPIC = 'vic-apply';
+const LIVE = 'pcx'; // set of emails whose record may hold a pending or unaddressed dropped entry: the sync's sweep reads only these
 const REVOKE = 'pcr:';  // + email: "revoke when done" (slice 5); outlives every token a pending change holds
 const RETENTION_S = 7200;  // about 2 h (issue 58)
 const MAX_CELLS = 300; // live cells per author: a real one holds a handful (shortcut: raise it if a page ever needs more)
@@ -66,6 +67,7 @@ function save(email, entries, gone) {
   if (flat.length) cmds.push(['HSET', k].concat(flat));
   if (gone && gone.length) cmds.push(['HDEL', k].concat(gone));
   cmds.push(['EXPIRE', k, RECORD_S]);
+  if (Object.keys(entries).some(c => entries[c].state === 'pending' || entries[c].state === 'dropped')) cmds.push(['SADD', LIVE, email]);
   return redis(cmds);
 }
 
@@ -146,7 +148,7 @@ async function mark(email, a, now) {
 }
 
 /**
- * The sync's call each cycle (docs/plans.md › Slice 4, issue 54), over every author's record:
+ * The sync's call each cycle (docs/plans.md › Slice 4, issue 54), over the authors in the live set (LIVE: pending or unaddressed dropped entries):
  *  - mailed = what the last cycle emailed ([{email, cells, at}]): those drops get mailed = at;
  *  - an entry still pending past its apply-by (its deployment died, or the queue gave up) ends dropped, "retries ran out";
  *  - mail: per author, the unaddressed drops no page showed within 5 min and no email covered yet;
@@ -155,14 +157,12 @@ async function mark(email, a, now) {
  * shortcut: read then write per author like the consumer's end(), not atomic; Lua if a race ever shows.
  */
 async function forSync(mailed, now) {
-  const keys = [];
-  let cur = '0';
-  do { const [[next, ks]] = await redis([['SCAN', cur, 'MATCH', 'pc:*', 'COUNT', 1000]]); cur = String(next); keys.push(...ks); } while (cur !== '0');
-  const flats = keys.length ? await redis(keys.map(k => ['HGETALL', k])) : [], sent = {};
+  const [emails] = await redis([['SMEMBERS', LIVE]]);
+  const flats = emails.length ? await redis(emails.map(e => ['HGETALL', key(e)])) : [], sent = {}, idle = [];
   (Array.isArray(mailed) ? mailed : []).forEach(m => { if (m && m.email && Array.isArray(m.cells)) sent[m.email] = m; });
   const out = { mail: [], alert: [], open: [] }, writes = [];
-  keys.forEach((k, i) => {
-    const email = k.slice(3), { rec, gone } = parse(flats[i], now), w = {}, m = sent[email];
+  emails.forEach((email, i) => {
+    const { rec, gone } = parse(flats[i], now), w = {}, m = sent[email];
     Object.keys(rec).forEach(c => {
       let e = rec[c];
       if (e.state === 'pending' && e.by < now) e = w[c] = Object.assign({}, e, { state: 'dropped', reason: 'retries ran out', again: true, droppedAt: now });
@@ -171,6 +171,7 @@ async function forSync(mailed, now) {
     });
     if (Object.keys(w).length || gone.length) writes.push(save(email, w, gone)); // expired cells go here too, not only on the author's next accept
     const drops = Object.keys(rec).map(c => rec[c]).filter(e => e.state === 'dropped' && !e.addressed);
+    if (!drops.length && !Object.keys(rec).some(c => rec[c].state === 'pending')) idle.push(email); // nothing left to sweep for them
     if (!drops.length) return;
     out.open.push(email);
     const due = drops.filter(e => !e.shown && !e.mailed && now - (e.droppedAt || e.at) >= AWAY_MS);
@@ -179,6 +180,8 @@ async function forSync(mailed, now) {
     if (drops.some(e => (e.shown && now - Math.max(e.shown, e.seenAt || 0) >= AWAY_MS) || (e.mailed && now - e.mailed >= ANSWER_MS))) out.alert.push(email);
   });
   await Promise.all(writes);
+  // shortcut: SREM can race an accept's SADD between our read and here (ms); that entry is then missed by the sweep only, never by the consumer
+  if (idle.length) await redis([['SREM', LIVE].concat(idle)]);
   return out;
 }
 
@@ -195,4 +198,4 @@ async function revokeWhenDone(s, now) {
   await S.revoke(s.rt);
 }
 
-module.exports = { FORMAT, REVOKE, revokeWhenDone, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync };
+module.exports = { FORMAT, LIVE, REVOKE, revokeWhenDone, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync };
