@@ -162,9 +162,13 @@ function AlertsCard({ alerts, fromSheet, onOpen }: { alerts: MemberAlert[]; from
                   <b className="w-16 shrink-0 pt-0.5 text-sm font-bold text-primary">{code || "—"}</b>
                   <span className="min-w-0 flex-1 space-y-1">
                     {list.map((a) => (
-                      <span key={a.id} className="flex items-center gap-2 text-sm">
-                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold", SEVERITY[a.severity]?.tone)}>{SEVERITY[a.severity]?.label ?? a.severity}</span>
-                        <span className="truncate font-medium">{alertLabel(a.type)}</span>
+                      <span key={a.id} className="block text-sm">
+                        <span className="flex items-center gap-2">
+                          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold", SEVERITY[a.severity]?.tone)}>{SEVERITY[a.severity]?.label ?? a.severity}</span>
+                          <span className="truncate font-medium">{alertLabel(a.type)}</span>
+                        </span>
+                        {/* the hover title is invisible on a phone */}
+                        {a.msg && <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{a.msg}</span>}
                       </span>
                     ))}
                   </span>

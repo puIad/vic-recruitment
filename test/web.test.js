@@ -821,6 +821,10 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     assert.strictEqual(m.call('webPulse'), pv0 + 1);
     st = m.call('webState');
     assert.deepStrictEqual([st.fromSheet, st.candidates.find(c => c.Code === code2).Contacted], [false, 'Yes'], 'patched slice, not a sheet read');
+    // an admin action that doesn't pull (a no-op settings save) republishes: the unread write must survive it
+    as('admin@g.enp.edu.dz'); m.call('webRun', 'saveSettings', { values: {} });
+    as(partner);
+    assert.strictEqual(m.call('webState').candidates.find(c => c.Code === code2).Contacted, 'Yes', 'a publish without a pull keeps the dirty slice');
 
     // every kind of field, typed the way a person would
     assert.deepStrictEqual(set(code2, 'Interview Date', '15/10/2026', c0['Interview Date']).result.value, '15/10/2026');

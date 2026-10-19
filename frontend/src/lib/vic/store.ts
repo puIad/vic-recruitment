@@ -80,6 +80,9 @@ interface VicStore {
 export type MemberSetResult = { ok: true; value: string | number | boolean } | { conflict: string } | { error: string; busy?: boolean }
 
 let polling = false
+/** refresh() calls in flight and the newest one's number: only the newest result is applied, and checkPulse waits for none */
+let inflight = 0
+let refreshSeq = 0
 let polls = 0
 /** the next pulse reads the record (the tab came back into view) */
 let wantRec = true
@@ -149,6 +152,8 @@ export const useVic = create<VicStore>((set, get) => ({
   },
 
   async refresh(quiet) {
+    const mine = ++refreshSeq
+    inflight++
     if (!quiet) set({ refreshing: true })
     try {
       // read before the state, so an edit in between still shows as a change; with the author's record when the switch is on
@@ -164,6 +169,7 @@ export const useVic = create<VicStore>((set, get) => ({
         const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => null)
         set({ access: a ?? get().access })
       }
+      if (mine !== refreshSeq) return // a newer refresh started meanwhile; its result is the fresher one
       set((cur) => ({
         gate: { mode: member ? "member" : "ok" },
         state: member ? null : (s as WebState),
@@ -185,7 +191,8 @@ export const useVic = create<VicStore>((set, get) => ({
       else if ((gate.mode === "ok" || gate.mode === "member") && !limited) toast.error("Could not load the dashboard", { description: (e as Error).message })
       set({ loading: false })
     } finally {
-      set({ refreshing: false })
+      inflight--
+      if (mine === refreshSeq) set({ refreshing: false })
     }
   },
 
@@ -197,7 +204,7 @@ export const useVic = create<VicStore>((set, get) => ({
     if (drops.length && !document.hidden && Date.now() - seenMark >= SEEN_MS) { seenMark = Date.now(); void get().markDrops({ seen: drops }) }
     // a member whose sheet couldn't load keeps polling, so the page fills itself once the sync has published their binome
     const shown = gate.mode === "ok" ? !!state : gate.mode === "member" && !!(member || memberError)
-    if (busy || refreshing || polling || document.hidden || !shown || modals > 0) return
+    if (busy || refreshing || inflight || polling || document.hidden || !shown || modals > 0) return
     if (rateLimited()) return // Google is limiting this account: pause quietly instead of adding to it
     polling = true // at a 2 s tick a slow Apps Script call would otherwise stack up
     try {

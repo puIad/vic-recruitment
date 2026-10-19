@@ -68,6 +68,34 @@ const isDirty = (k: GoldKey, f: Field) => f.draft !== toDraft(k, f.base)
 const fieldsOf = (c: Candidate) =>
   Object.fromEntries(GOLD_KEYS.map((k) => [k, { base: c[k], draft: toDraft(k, c[k]), phase: { s: "idle" } }])) as Fields
 
+/* Unsaved drafts live in this browser, per binome, candidate and field, so an expired session or a reload doesn't lose them (like the
+   interview form, lib/vic/interview.ts). The base rides along: a restored draft is still checked against the sheet on Save. */
+const draftKey = (binome: string, code: string, k: GoldKey) => `vic:gold:${binome}:${code}:${k}`
+function restoreDrafts(binome: string, c: Candidate, fields: Fields): Fields {
+  const next = { ...fields }
+  for (const k of GOLD_KEYS) {
+    try {
+      const raw = localStorage.getItem(draftKey(binome, String(c.Code), k))
+      const d = raw ? (JSON.parse(raw) as { draft?: string | boolean; base?: Cell }) : null
+      if (d && d.draft !== undefined) next[k] = { base: d.base, draft: d.draft, phase: { s: "idle" } }
+    } catch {
+      /* no storage: no draft */
+    }
+  }
+  return next
+}
+function keepDrafts(binome: string, code: string, fields: Fields) {
+  for (const k of GOLD_KEYS) {
+    try {
+      const f = fields[k]
+      if (isDirty(k, f)) localStorage.setItem(draftKey(binome, code, k), JSON.stringify({ draft: f.draft, base: f.base }))
+      else localStorage.removeItem(draftKey(binome, code, k))
+    } catch {
+      /* private window or storage full: the form still works, without a draft */
+    }
+  }
+}
+
 type Form = {
   code: string
   fields: Fields
@@ -92,7 +120,9 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
   const patchMember = useVic((s) => s.patchMember)
   const allMarks = useMemberView().marks
   const marks = Object.fromEntries(GOLD_KEYS.filter((k) => allMarks[`field:${code}:${k}`]).map((k) => [k, allMarks[`field:${code}:${k}`]]))
-  const [fields, setFields] = React.useState(() => fieldsOf(candidate))
+  const binome = useVic((s) => s.member?.binome ?? "")
+  const [fields, setFields] = React.useState(() => restoreDrafts(binome, candidate, fieldsOf(candidate)))
+  React.useEffect(() => keepDrafts(binome, code, fields), [binome, code, fields])
   const [saving, setSaving] = React.useState(false)
   const [saved, setSaved] = React.useState(false)
 
