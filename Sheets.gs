@@ -295,14 +295,14 @@ function alertBuffer_(ctx) {
 
 let _mailsSent = 0; // calls of mail_() since runCycle_ reset it (TEST_MODE skips count too)
 /** True when the email left; false when TEST_MODE held it or the send threw (logged, never thrown). */
-function mail_(to, subject, html) {
+function mail_(to, subject, html, from) {
   _mailsSent++;
   if (bool_(S_().TEST_MODE) && adminEmails_().map(e => e.toLowerCase()).indexOf(String(to).trim().toLowerCase()) < 0) {
     console.log('TEST_MODE: email to ' + to + ' not sent: ' + subject);
     return false;
   }
   try {
-    MailApp.sendEmail({ to: to, subject: subject, htmlBody: html, name: 'VIC Recruitment Bot' });
+    MailApp.sendEmail({ to: to, subject: subject, htmlBody: html, name: from || 'VIC Recruitment Bot' });
     return true;
   } catch (e) { console.error('Mail to ' + to + ' failed: ' + e); return false; }
 }

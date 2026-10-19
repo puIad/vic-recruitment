@@ -31,7 +31,8 @@ assert(/<td bgcolor="#0075b2"[^>]*><a href=/.test(html), 'the call to action is 
 assert(html.includes('href="https://vic-recruitment.vercel.app"') && html.includes('href="https://docs.google.com/spreadsheets/d/abc"'), 'team footer: dashboard + binome sheet');
 assert(!/<a /.test(run(`mailHtml_({ title: 't', blocks: [mailP_('x')] })`)), 'candidate footer: no link');
 const conf = run(`confirmHtml_('Lina', 'IT.07')`);
-assert(/Thanks for registering, Lina!/.test(conf) && />IT\.07</.test(conf) && /binome/.test(conf), 'thanks, the code, a binome will contact them');
+assert(/Thanks for registering, Lina!/.test(conf) && />IT\.07</.test(conf) && /We will get back to you by phone or email/.test(conf), 'thanks, the code, we will get back to them');
+assert(!/binome/i.test(conf), 'no binome: a held or declined applicant never gets one');
 assert(!/<a /.test(conf), 'no internal link to a candidate');
 assert(!/interview/i.test(conf), 'never promises an interview');
 
@@ -60,10 +61,12 @@ const lina = ivRow('lina.amrani@g.enp.edu.dz');
 assert(lina[IV.Code] && /CONFIRMED \d\d\/\d\d\/\d{4}/.test(lina[IV.Flags]), 'the sent mark is saved: ' + lina[IV.Flags]);
 const mine = outbox().find(m => m.to === 'lina.amrani@g.enp.edu.dz');
 assert(mine.htmlBody.includes('>' + lina[IV.Code] + '<'), 'their code');
+assert.strictEqual(mine.name, 'VIC Recruitment', 'a candidate mail');
 const ines = outbox().find(m => m.to === 'ines.kaci@g.enp.edu.dz').htmlBody;
 assert(ines.includes('Ines&lt;i&gt;&quot;') && !ines.includes('Ines<i>'), 'the name is escaped');
 const binMail = outbox().find(m => /New interviewee/.test(m.subject));
 assert(binMail && binMail.htmlBody.includes(lina[IV.Code]) && binMail.htmlBody.includes('Open your binome sheet'), 'the binome mail, through the template');
+assert.strictEqual(binMail.name, 'VIC Recruitment Bot', 'a team mail');
 run('__outbox.length = 0');
 sync(); sync();
 assert.deepStrictEqual(confirms(), [], 'a re-run never sends it again');
