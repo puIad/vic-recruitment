@@ -182,8 +182,9 @@ function publishBins_(ctx) {
   const have = cache.getAll(codes.map(c => 'snap:bin:' + c)), dirty = cache.getAll(codes.map(c => 'dirty:' + c)), meta = {};
   let changed = Object.keys(old).length !== codes.length;
   codes.forEach(c => {
-    // a member wrote after ctx was loaded: ctx may miss it, so their patched slice stays; the next sync reads that sheet
-    if (old[c] && Number(dirty['dirty:' + c] || 0) > ctx.now.getTime()) { meta[c] = old[c]; return; }
+    // a member wrote and no sync has read that sheet yet (any publish that didn't pull, or ctx loaded before the write): ctx
+    // misses it, so their patched slice stays until a pull has read the sheet after the write
+    if (old[c] && Number(dirty['dirty:' + c] || 0) > ((ctx.readAt || {})[c] || 0)) { meta[c] = old[c]; return; }
     const json = JSON.stringify(slices[c]), h = hash_(json), o = old[c];
     meta[c] = { h: h, v: !o ? 1 : o.h === h ? o.v : o.v + 1 };
     if (!o || o.h !== h) changed = true;

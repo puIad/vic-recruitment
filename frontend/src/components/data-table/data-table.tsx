@@ -51,15 +51,20 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(initialVisibility)
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize })
 
   const table = useReactTable({
     data,
     columns,
     getRowId,
-    state: { sorting, columnVisibility, columnFilters },
-    initialState: { pagination: { pageSize } },
+    state: { sorting, columnVisibility, columnFilters, pagination },
+    onPaginationChange: setPagination,
+    autoResetPageIndex: false, // a live refresh must not send the reader back to page 1
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: (u) => {
+      setColumnFilters(u)
+      setPagination((p) => ({ ...p, pageIndex: 0 }))
+    },
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -68,6 +73,12 @@ export function DataTable<TData, TValue>({
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
   })
+
+  // the toolbar's search is a global filter (or a column one): either way a changed filter starts at page 1; a shrunk list clamps
+  const pageCount = table.getPageCount()
+  React.useEffect(() => {
+    if (pagination.pageIndex > 0 && pagination.pageIndex >= pageCount) setPagination((p) => ({ ...p, pageIndex: Math.max(0, pageCount - 1) }))
+  }, [pageCount, pagination.pageIndex])
 
   return (
     <div className="space-y-4">
