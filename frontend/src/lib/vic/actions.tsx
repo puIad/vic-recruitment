@@ -523,6 +523,12 @@ export function useActions() {
         return !!out
       },
 
+      /** Settings › Emails: one mail drawn by the script with sample data from these texts; send also mails it to the caller. */
+      async mailPreview(id: string, texts: Record<string, string>, send = false) {
+        const out = await go<{ subject: string; html: string; sent: boolean }>("mailPreview", { id, texts, send }, send ? "Send a test mail" : "Preview a mail")
+        return out?.result ?? null
+      },
+
       /** Maintenance › Send rejections…: preview who gets it and the text, then send (admins only while test mode is on). */
       async rejections() {
         const pre = await go<RejectionsPreview>("rejections", {}, "Prepare rejections")

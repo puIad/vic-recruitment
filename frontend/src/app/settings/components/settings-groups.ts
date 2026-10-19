@@ -1,6 +1,6 @@
 import type { SettingsGroup } from "./settings-form"
 
-export const GROUPS: Record<"general" | "timing" | "sharing" | "screening", SettingsGroup> = {
+export const GROUPS: Record<"general" | "timing" | "sharing" | "emails" | "screening", SettingsGroup> = {
   general: {
     title: "General",
     description: "Who the admins are, how candidates are shared out, and when the script runs.",
@@ -18,9 +18,16 @@ export const GROUPS: Record<"general" | "timing" | "sharing" | "screening", Sett
   },
   sharing: {
     title: "Sharing and email",
-    description: "Test mode, whether binome sheets are shared, and which emails go out.",
-    sections: [{ keys: ["SHARE_FILES_WITH_BINOME", "NOTIFY_BINOME_ON_ALERT", "NOTIFY_BINOME_ON_NEW_INTERVIEWEE", "CONFIRM_REGISTRANTS"] }],
+    description: "Test mode, whether binome sheets are shared, and who hears about what. The emails and their texts are under Emails.",
+    sections: [{ keys: ["SHARE_FILES_WITH_BINOME"] }],
     own: ["TEST_MODE"],
+  },
+  emails: {
+    title: "Emails",
+    description: "The mails the script sends to candidates and binome members. You change the words; the layout, who gets each mail and test mode stay the same.",
+    sections: [],
+    own: ["CONFIRM_REGISTRANTS", "NOTIFY_BINOME_ON_NEW_INTERVIEWEE", "NOTIFY_BINOME_ON_ALERT"],
+    mail: true,
   },
   screening: {
     title: "Screening",
