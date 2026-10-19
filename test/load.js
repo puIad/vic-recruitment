@@ -70,6 +70,7 @@ function pct(a, p) { if (!a.length) return null; const s = a.slice().sort((x, y)
 let lastBeat = realNow(), maxStallMs = 0; // the machine itself can stall (sleep, power saving): every call in flight then looks slow
 setInterval(() => { const n = realNow(); maxStallMs = Math.max(maxStallMs, n - lastBeat - 100); lastBeat = n; }, 100).unref();
 let stop = false, OFF_T = null, DROP_T = null; // when the switch went off mid-run, when the slices were dropped (ms)
+let OFF_SENT = null; // when the switch-off was asked for (ms): a poll can see it off before its own answer arrives (OFF_T)
 
 /* ---------- the Apps Script stand-in (model only) ---------- */
 
@@ -292,7 +293,7 @@ const R = { boots: { admin: [], member: [] }, saves: { sent: 0, written: 0, conf
   accepted: [], acceptMs: [], direct: 0, actionErrors: [], ended: [], drops: 0, events: [], seen: [],
   afterOff: { pulsesOn: 0, accepted: 0, direct: 0, answered: 0 }, sheetReads: { ok: 0, refused: 0 }, dropped: [] };
 // mark 10: a direct write after the switch went off, and whether it answered (written, a conflict or a stale alert all count)
-const offWrite = ok => { if (OFF_T !== null && Date.now() >= OFF_T) { R.afterOff.direct++; if (ok) R.afterOff.answered++; } };
+const offWrite = ok => { if (OFF_SENT !== null && Date.now() >= OFF_SENT) { R.afterOff.direct++; if (ok) R.afterOff.answered++; } };
 const hasPending = rec => Object.keys(rec || {}).some(c => rec[c].state === 'pending');
 
 function person(i, role, acct, until, targets) {
@@ -302,7 +303,7 @@ function person(i, role, acct, until, targets) {
   const setOn = on => {
     const was = me.on;
     me.on = on;
-    if (!(was && !on && OFF_T !== null && LIVE && WRITES)) return;
+    if (!(was && !on && OFF_SENT !== null && LIVE && WRITES)) return;
     extra.push((async () => { while (me.busy) await sleep(200); try { if (member || acct.binome) await save(); if (!member) await alertAct(); } catch (e) { R.actionErrors.push(String(e && e.message).slice(0, 120)); } })());
   };
   const setRec = rec => {
@@ -697,7 +698,7 @@ function print(r) {
   if (LIVE) ['uncaughtException', 'unhandledRejection'].forEach(ev => process.on(ev, e => { console.error('! crashed: ' + (e && e.stack || e)); cleanup().then(() => { try { print(report(accts)); } catch (x) { /* the put-back is what matters */ } }).finally(() => process.exit(1)); }));
   if (LIVE && PENDING !== 'keep') await setSwitch(accts, PENDING === 'on', 'start');
   // OFF_T once the switch really is off: a poll sent after it must say off (mark 10)
-  if (OFF_AT) setTimeout(() => (LIVE ? (!stop && setSwitch(accts, false, 'minute ' + OFF_AT).then(ok => { if (ok) OFF_T = Date.now(); })) : (W.switchOn = false, OFF_T = Date.now())), OFF_AT * 60000 / SCALE);
+  if (OFF_AT) setTimeout(() => (OFF_SENT = Date.now(), LIVE ? (!stop && setSwitch(accts, false, 'minute ' + OFF_AT).then(ok => { if (ok) OFF_T = Date.now(); })) : (W.switchOn = false, OFF_T = Date.now())), OFF_AT * 60000 / SCALE);
   if (LIVE && WRITES && DROP_AT) setTimeout(() => !stop && dropSlices(accts), DROP_AT * 60000);
   process.on('SIGINT', () => { if (stop) process.exit(130); stop = true; console.log('\nStopping: the people finish, then things are put back (Ctrl-C again to quit at once).'); });
 
