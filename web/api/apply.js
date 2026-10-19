@@ -9,7 +9,7 @@ const MIN_LIFE_MS = 6 * 60e3; // a call can run for 6 min: none starts with less
 const GAP_MS = 60e3;          // at most one webApply per author per minute; it carries all their pending changes (issue 48)
 const BATCH = 50;
 // jitter: every author of one outage must not come back at the same second
-const backoff = meta => Math.min(300, 60 * 2 ** Math.max(0, ((meta && meta.deliveryCount) || 1) - 1) * (0.75 + Math.random() * 0.5));
+const backoff = meta => Math.ceil(Math.min(300, 60 * 2 ** Math.max(0, ((meta && meta.deliveryCount) || 1) - 1) * (0.75 + Math.random() * 0.5)));
 const lost = () => ({ state: 'dropped', reason: 'lost access' });
 const signedOut = () => ({ state: 'dropped', reason: 'sign-in ended before it was saved', again: true });
 
