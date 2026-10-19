@@ -870,6 +870,28 @@ the 300-cell cap, a non-scope 403 retried.
   What to watch live: the document lock under many My binome saves (marks 4, 6) and the script lock for direct admin
   actions while the sync runs (mark 5). Vercel and Redis fit only if everyone together is on the page about an hour a day
   or less.
+- **Live run 1, 2026-10-19 16:37:22 UTC (stopped after 4 min, no sign-off).** Cookies: vic.rh (owner), the owner's
+  account (admin in B.26), maroua_tassanime.amiar@ (member, B.29); 4 virtual admins, 64 virtual members; switch on at
+  16:37:37. At 16:41:14 the load script crashed on its own bug (the admins of an account that don't write had no
+  `lastSet`; fixed in [#100](https://github.com/puIad/vic-recruitment-2026/pull/100), which also makes any crash put things
+  back), so the switch-off half, the direct path and the script's own report never ran. Put back by hand right after
+  (16:44–16:48): switch off, A-1964 / A-1445 / A-1446 back to Open, `ALL_BINOME_WEIGHT` 1, FLER.07 and HR.01 Notes back
+  to their originals; FLER.07's dashboard interview form was re-saved once at 16:40:23 (its Edited at moved, as agreed).
+  From the Vercel runtime logs of those 4 minutes:
+  - **Accept step (mark 7):** 14 calls, 10–543 ms (the first one 543 ms, the rest ≤ 217 ms). Every accepted change
+    ended in the authors' records (applied or met); the consumer's `apply` lines show `applied`. Pass on this sample.
+  - **`webState` (mark 3):** about 100 sampled, mostly 1.0–2.5 s, admins about 2.4 s typical, max 6.8 s; roughly 1 in 10
+    over 2.5 s, so p95 is about 3.5 s against ≤ 2 s. **Miss.**
+  - **`webPulse` (mark 3):** 100 sampled at 16:39, mostly 1.0–2.0 s, 1 in 10 over 3 s (3.1–9.2 s, one 20 s), so p95 is
+    about 4 s against ≤ 3 s. Two member polls hung at Google for 120 s and 285 s (the page drops a poll at 20 s, but the
+    function ran on until Vercel's limit). **Miss.**
+  - No warning or error lines, no RATE_LIMIT, no BUSY. The 64 virtual members all sat in one binome (B.29), so each
+    save there made all 64 refresh at once (16:40:49): a burst real members, spread over 32 binomes, would not make.
+  - Seen in the owner's own browser after the run: two member `webState` calls refused with "You do not have permission
+    to access the requested document" (16:42:11, 16:45:35) while `webAccess` for the same member said ok: the read
+    from the binome sheet when the cached slice is missing. To look at before members get the dashboard.
+- **Verdict so far: not signed off.** Run 1 covered 4 of 10 minutes and only the pending path; marks 3 look missed; marks
+  4, 5, 6, 10 were not reached. A second run with #100 decides.
 
 
 ---
