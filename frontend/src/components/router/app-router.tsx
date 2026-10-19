@@ -41,7 +41,7 @@ export function AppRouter() {
     <Routes>
       <Route element={<AppShell />}>
         {(member ? memberRoutes : shellRoutes).map((r) => (
-          <Route key={r.path} path={r.path} element={<RouteBoundary><Suspense fallback={<PageFallback />}>{r.element}</Suspense></RouteBoundary>} />
+          <Route key={r.path} path={r.path} element={<RouteBoundary key={r.path}><Suspense fallback={<PageFallback />}>{r.element}</Suspense></RouteBoundary>} />
         ))}
       </Route>
     </Routes>

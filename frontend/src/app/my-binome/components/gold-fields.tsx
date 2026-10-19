@@ -76,8 +76,8 @@ function restoreDrafts(binome: string, c: Candidate, fields: Fields): Fields {
   for (const k of GOLD_KEYS) {
     try {
       const raw = localStorage.getItem(draftKey(binome, String(c.Code), k))
-      const d = raw ? (JSON.parse(raw) as { draft?: string | boolean; base?: Cell }) : null
-      if (d && d.draft !== undefined) next[k] = { base: d.base, draft: d.draft, phase: { s: "idle" } }
+      const d = raw ? (JSON.parse(raw) as { draft?: string | boolean; base?: Cell; phase?: Phase }) : null
+      if (d && d.draft !== undefined) next[k] = { base: d.base, draft: d.draft, phase: d.phase ?? { s: "idle" } }
     } catch {
       /* no storage: no draft */
     }
@@ -88,7 +88,7 @@ function keepDrafts(binome: string, code: string, fields: Fields) {
   for (const k of GOLD_KEYS) {
     try {
       const f = fields[k]
-      if (isDirty(k, f)) localStorage.setItem(draftKey(binome, code, k), JSON.stringify({ draft: f.draft, base: f.base }))
+      if (isDirty(k, f)) localStorage.setItem(draftKey(binome, code, k), JSON.stringify({ draft: f.draft, base: f.base, phase: f.phase.s === "conflict" ? f.phase : undefined }))
       else localStorage.removeItem(draftKey(binome, code, k))
     } catch {
       /* private window or storage full: the form still works, without a draft */

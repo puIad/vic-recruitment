@@ -57,6 +57,7 @@ function pullBinomeFiles_(ctx, force) {
         r[I.Status] = statusOf_(ctx, r);
       });
     }
+    (ctx.readAt = ctx.readAt || {})[b.code] = readFrom; // publishBins_: this sheet is read as of now, whatever the answers read does
     // a dashboard save marks its binome dirty: its interview forms are read too (Sync now reads every sheet's)
     let answers = true;
     if (edited(b) || force) try { syncAnswers_(ctx, b, sh.getParent()); } catch (e) { answers = false; console.warn('Interview Answers of ' + b.code + ': ' + e); }
