@@ -234,6 +234,6 @@ function stampConfirmations_(ctx) {
 function sendConfirmations_(ctx) {
   const I = ctx.iv.I;
   ctx.confirm.forEach(r => mail_(String(r[I.Email]).trim(), CONFIRM_MAIL.subject,
-    confirmHtml_(String(r[I['First Name']]).trim(), String(r[I.Code])), 'VIC Recruitment'));
+    confirmHtml_(String(r[I['First Name']]).trim(), String(r[I.Code])), MAIL.candidateFrom));
   ctx.confirm = [];
 }

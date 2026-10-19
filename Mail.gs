@@ -6,6 +6,7 @@ const MAIL = {
   font: "Gilroy,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif",
   // Gmail blocks SVG and data: images, so the logo is a PNG served by the dashboard (frontend/public/brand/)
   logo: 'https://vic-recruitment.vercel.app/brand/vic-logo-white.png',
+  candidateFrom: 'VIC Recruitment', // sender name on candidate mails; team mails keep mail_()'s 'VIC Recruitment Bot'
 };
 // severity chip: [text, soft fill] (DESIGN.md danger / warning / info)
 const MAIL_SEV = { HIGH: ['#c11e00', '#ffece5'], MEDIUM: ['#915200', '#fff0c5'], INFO: ['#005b91', '#e2f3ff'] };

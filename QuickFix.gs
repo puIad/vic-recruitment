@@ -577,7 +577,7 @@ function sendMails_(ctx, rows, to, drafts) {
   gs.forEach(g => {
     // the edited plain text, wrapped in the template; candidate footer (no internal links): some go to candidates
     const d = by[g.id], html = mailHtml_({ title: d.subject.replace(/^\[VIC Recruitment\]\s*/, ''), blocks: [mailP_(d.body)] });
-    g.emails.forEach(e => mail_(e, d.subject, html, to === 'candidate' ? 'VIC Recruitment' : undefined));
+    g.emails.forEach(e => mail_(e, d.subject, html, to === 'candidate' ? MAIL.candidateFrom : undefined));
     g.alerts.forEach(r => {
       const had = String(r[A['Emailed To']] || '').split(/,\s*/).filter(Boolean);
       r[A['Emailed To']] = had.concat(g.emails.filter(e => had.indexOf(e) < 0)).join(', ');
