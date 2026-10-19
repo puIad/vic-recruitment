@@ -11,12 +11,8 @@ import { ChangeMembersSheet } from "@/components/work-panels/change-members-shee
 import { MoveDialog } from "@/components/work-panels/move-dialog"
 import { useSidebarConfig } from "@/hooks/use-sidebar-config"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { useVic } from "@/lib/vic/store"
+import { MEMBER_PULSE_MS, PULSE_MS, useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
-
-// Members poll 4× less often than admins: ~100 of them must fit Vercel Hobby (load-test plan, decisions)
-const PULSE_MS = 2000
-const MEMBER_PULSE_MS = 15000
 
 /** Persistent frame: sidebar, header and footer stay mounted while pages change inside the Outlet. */
 export function AppShell() {

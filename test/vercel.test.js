@@ -459,8 +459,13 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     // audit (5): the timed sync's sweep removes expired cells; revoke is logged by what Google answered
     {
       F.db['pc:old@g.enp.edu.dz'] = { 'alert:A-1': JSON.stringify({ cell: 'alert:A-1', state: 'applied', exp: Date.now() - 1 }) };
+      F.db[P.LIVE] = new Set(['old@g.enp.edu.dz']);
       await P.forSync([], Date.now());
       assert.deepStrictEqual(Object.keys(F.db['pc:old@g.enp.edu.dz']), [], 'forSync removed the expired cell');
+      assert(!F.db[P.LIVE].has('old@g.enp.edu.dz'), 'an author with nothing pending or dropped leaves the live set (the sweep stops reading them)');
+      await P.save('new@g.enp.edu.dz', { 'alert:A-2': { cell: 'alert:A-2', state: 'pending' } });
+      assert(F.db[P.LIVE].has('new@g.enp.edu.dz'), 'a pending entry puts its author in the live set');
+      delete F.db['pc:new@g.enp.edu.dz']; F.db[P.LIVE].delete('new@g.enp.edu.dz');
       delete F.db['pc:old@g.enp.edu.dz'];
       const logs = [], w0 = console.log; console.log = x => logs.push(String(x));
       const f2 = global.fetch; global.fetch = async (u, i) => (String(u).endsWith('/revoke') ? { ok: false, status: 400, json: async () => ({}) } : f2(u, i));
@@ -502,7 +507,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
         const res = { statusCode: 200, setHeader() {}, end(b) { resolve({ status: res.statusCode, json: JSON.parse(b) }); } };
         Promise.resolve(dropsApi({ method: 'POST', headers: { authorization: auth === undefined ? 'Bearer s3cret' : auth }, body }, res));
       });
-      const now = Date.now(), put = (email, cell, e) => { (F.db['pc:' + email] = F.db['pc:' + email] || {})[cell] = JSON.stringify(Object.assign({ cell, kind: 'alert', alert: cell.slice(6), op: 'resolve', value: 'RESOLVED', seen: 'OPEN', at: now - 7 * 60e3 }, e)); };
+      const now = Date.now(), put = (email, cell, e) => { (F.db[P.LIVE] = F.db[P.LIVE] || new Set()).add(email), (F.db['pc:' + email] = F.db['pc:' + email] || {})[cell] = JSON.stringify(Object.assign({ cell, kind: 'alert', alert: cell.slice(6), op: 'resolve', value: 'RESOLVED', seen: 'OPEN', at: now - 7 * 60e3 }, e)); };
       const entry = (email, cell) => JSON.parse(F.db['pc:' + email][cell]);
       assert.strictEqual((await drops({})).status, 503, 'no DROPS_SECRET on Vercel: refused');
       process.env.DROPS_SECRET = 's3cret';

@@ -79,6 +79,14 @@ interface VicStore {
 
 export type MemberSetResult = { ok: true; value: string | number | boolean } | { conflict: string } | { error: string; busy?: boolean }
 
+/** Poll intervals: ~65 members and a few admins on a busy day must fit Vercel Hobby's 1M invocations a month (docs/vercel.md › Limits) */
+export const PULSE_MS = 5000
+export const MEMBER_PULSE_MS = 30000
+/** Open but untouched: after IDLE_SLOW_MS poll 4× slower, after IDLE_STOP_MS stop until the next touch */
+const IDLE_SLOW_MS = 3 * 60e3
+const IDLE_STOP_MS = 15 * 60e3
+let lastInput = Date.now()
+let lastPoll = 0
 let polling = false
 /** refresh() calls in flight and the newest one's number: only the newest result is applied, and checkPulse waits for none */
 let inflight = 0
@@ -157,7 +165,10 @@ export const useVic = create<VicStore>((set, get) => ({
     if (!quiet) set({ refreshing: true })
     try {
       // read before the state, so an edit in between still shows as a change; with the author's record when the switch is on
-      const pr = await callFull<Pulse>("webPulse", [true], { rec: hasPending(get().rec) ? 2 : 1 }, POLL_TIMEOUT_MS).catch(() => null)
+      // the record is read when this visit starts or returns, or while changes are pending; a later refresh keeps the one it has
+      const rec = hasPending(get().rec) ? 2 : wantRec ? 1 : 0
+      wantRec = false
+      const pr = await callFull<Pulse>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS).catch(() => null)
       const pp = pulseOf(pr ? pr.value : null)
       if (pr?.rec) get().setRec(pr.rec)
       const p = pp.v
@@ -206,12 +217,15 @@ export const useVic = create<VicStore>((set, get) => ({
     const shown = gate.mode === "ok" ? !!state : gate.mode === "member" && !!(member || memberError)
     if (busy || refreshing || inflight || polling || document.hidden || !shown || modals > 0) return
     if (rateLimited()) return // Google is limiting this account: pause quietly instead of adding to it
-    polling = true // at a 2 s tick a slow Apps Script call would otherwise stack up
+    const idle = Date.now() - lastInput
+    if (idle > IDLE_STOP_MS || (idle > IDLE_SLOW_MS && Date.now() - lastPoll < 4 * (gate.mode === "member" ? MEMBER_PULSE_MS : PULSE_MS))) return
+    lastPoll = Date.now()
+    polling = true // at a 5 s tick a slow Apps Script call would otherwise stack up
     try {
       // webPulse rechecks access itself, so a revoked account drops to the gate at the next tick (69024a1) in one call
-      // the record rides on the pulse while the author has changes pending (admins every 5th 2 s poll, members every 15 s one), and on tab return
+      // the record rides on the pulse while the author has changes pending (admins every 2nd 5 s poll, members every 30 s one), and on tab return
       const held = hasPending(get().rec)
-      const rec = wantRec ? (held ? 2 : 1) : held && (gate.mode === "member" || ++polls % 5 === 0) ? 2 : 0
+      const rec = wantRec ? (held ? 2 : 1) : held && (gate.mode === "member" || ++polls % 2 === 0) ? 2 : 0
       wantRec = false
       const r = await callFull<Pulse>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS)
       const p = pulseOf(r.value)
@@ -371,6 +385,13 @@ hooks.beforeSignOut = async () => {
 }
 if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => { if (!document.hidden) wantRec = true })
+  // a touch after a slow or stopped stretch polls at once (and reads the record, like a tab return)
+  const touched = () => {
+    const was = Date.now() - lastInput > IDLE_SLOW_MS
+    lastInput = Date.now()
+    if (was) { wantRec = true; void useVic.getState().checkPulse() }
+  }
+  ;["pointerdown", "pointermove", "keydown", "scroll", "touchstart"].forEach((t) => window.addEventListener(t, touched, { passive: true, capture: true }))
   // the browser's own "leave site?" only while a save is still being accepted (about 1 s); once safe it applies with the tab closed
   window.addEventListener("beforeunload", (e) => {
     if (useVic.getState().accepting > 0) e.preventDefault()

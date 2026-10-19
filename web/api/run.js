@@ -9,6 +9,8 @@ const S = require('../lib/session'), P = require('../lib/pending');
 const ALLOWED = ['webAccess', 'webState', 'webRun', 'webPulse'], PENDING = ['accept', 'pendingMark'];
 const ACCEPT_LIFE_MS = 30 * 60e3; // the accept step seals a token with at least this long to live (issue 56)
 const TIMEOUT_MS = 285000; // under maxDuration 300 (vercel.json)
+const POLL_LIMIT_MS = 25000; // webAccess / webPulse: the page gives up on them at 20 s, so the function must not run on to 285 s
+const POLLS = ['webAccess', 'webPulse'];
 // a token granted before the script gained a scope: scripts.run answers 403; signing in again shows Google's screen once
 const SCOPE_RE = /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i;
 const NEW_SCOPE = 'The dashboard needs one more Google permission: sign in again and allow it.';
@@ -75,12 +77,14 @@ module.exports = async (req, res) => {
   let r, j;
   try {
     r = await fetch(S.runUrl(), {
-      method: 'POST', signal: AbortSignal.timeout(TIMEOUT_MS),
+      method: 'POST', signal: AbortSignal.timeout(POLLS.indexOf(fn) >= 0 ? POLL_LIMIT_MS : TIMEOUT_MS),
       headers: { Authorization: 'Bearer ' + s.at, 'Content-Type': 'application/json' },
       body: JSON.stringify({ function: fn, parameters: args, devMode: false }),
     });
     j = await r.json().catch(() => ({}));
   } catch (e) {
+    if ((e.name === 'TimeoutError' || e.name === 'AbortError') && POLLS.indexOf(fn) >= 0)
+      return done(504, { error: 'Google took too long to answer.', code: 'TIMEOUT' }, false);
     if (e.name === 'TimeoutError' || e.name === 'AbortError')
       return done(504, { error: 'Still running after ~5 minutes. It may finish on its own: refresh in a minute before trying again.', code: 'TIMEOUT' }, false);
     // the connection dropped mid-call (2026-10-18: a Sync now after 41 s): the script may still run to the end on Google's side,

@@ -79,6 +79,23 @@ token from before (the cookie's access token, a stored refresh token) is answere
 permission"), and the next sign-in shows Google's screen once. The consumer drops such a change as "sign-in ended",
 with Apply mine anyway. `vic.rh` re-authorizes the triggers by running Setup after the script deploy.
 
+## Free limits and what spends them
+
+Checked 2026-10-19. **Vercel Hobby**: 1,000,000 function invocations, 4 CPU-hours active and 360 GB-hours memory a month; past a
+limit the feature waits until 30 days have passed. **Upstash Free**: 500,000 commands a month, 10,000 a second.
+The invocations are the number to watch (Vercel › Usage); CPU and memory grow with them.
+
+- Every poll is one invocation (`api/run.js` → Google), a refresh is two (`webPulse` + `webState`), the sync's `api/drops` one a minute (~43k a month idle).
+- Polls: admins every 5 s, members every 30 s (`PULSE_MS`, `MEMBER_PULSE_MS` in `store.ts`; `test/load.js` mirrors them). A hidden
+  tab does not poll and refreshes once on return. An open tab nobody touches polls 4× slower after 3 min and stops after 15 min
+  until the next mouse, key or scroll (then one poll and the record are read at once).
+- `webAccess` / `webPulse` end at Google after 25 s (the page drops them at 20 s); before, a hung one ran to 285 s.
+- Redis: the record rides on a poll only while the author has changes pending (admins every 2nd poll, members every poll), and
+  on a refresh only at the start of a visit or a tab return. The sync's sweep reads the set `pcx` (authors with a pending or
+  unaddressed dropped entry, added by `save`, removed by the sweep) instead of every `pc:*` key, which kept ~65 authors for
+  30 days and cost ~65 commands a minute. Records written before 2026-10-19 that were still pending or unanswered when this shipped are not in `pcx`.
+- Day estimate (owner, 2026-10-19: 65 members × 45 min, 4 admins × 3 h): about 37k invocations before, about 18k after (idle backoff not counted).
+
 ## Rules worth knowing
 
 - **Access is re-checked by the script on every call** (`access_()` in WebApp.gs): ENP account + editor/owner of the
