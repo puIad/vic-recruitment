@@ -105,7 +105,7 @@ function mailKey_(key) {
 /** The text of one field: the one being previewed or edited (texts), else the saved one, else the default. */
 function mailField_(id, field, texts) {
   const m = mailDef_(id), f = m.fields.filter(x => x[0] === field)[0];
-  if (texts && String(texts[field] == null ? '' : texts[field]).trim()) return String(texts[field]).trim();
+  if (texts && texts[field] != null) return String(texts[field]).trim() || f[1]; // sent by the caller: blank means the default, as a save does
   const saved = S_()['MAIL_' + id + '_' + field.toUpperCase()];
   return saved != null && String(saved).trim() ? String(saved).trim() : f[1];
 }

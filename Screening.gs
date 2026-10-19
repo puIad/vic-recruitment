@@ -218,22 +218,24 @@ function rejectionsCore_(a) {
       subject: mailField_('REJECT', 'subject'), body: mailField_('REJECT', 'text'), testMode: bool_(S_().TEST_MODE) };
   }
   if (!subject || !body) throw new Error('The email needs a subject and a text.');
-  const html = (first, note) => mailFrom_('REJECT', { first: first }, { texts: { subject: subject, text: body }, blocks: note ? [mailP_(note)] : [] }).html;
+  const mail = (first, note) => mailFrom_('REJECT', { first: first }, { texts: { subject: subject, text: body }, blocks: note ? [mailP_(note)] : [] });
   const t0 = Date.now(), budget = Number(a.budgetMs) || 240000;
   const res = withLock_(() => {
     const ctx = loadCtx_(), I = ctx.iv.I, list = rejectionList_(ctx);
     detectEdits_(ctx);
     if (bool_(S_().TEST_MODE)) {
       const me = Session.getActiveUser().getEmail();
-      if (list.length) mail_(me, '[TEST] ' + subject, html(String(list[0][I['First Name']]).trim() || 'there',
-        'Test mode: this copy went to you only. With test mode off it goes to ' + list.length + ' declined applicant(s).'), MAIL.candidateFrom);
+      if (list.length) {
+        const m = mail(String(list[0][I['First Name']]).trim() || 'there', 'Test mode: this copy went to you only. With test mode off it goes to ' + list.length + ' declined applicant(s).');
+        mail_(me, '[TEST] ' + m.subject, m.html, m.from);
+      }
       return { sent: 0, left: list.length, test: true };
     }
     let i = 0, sent = 0, failed = 0;
     for (; i < list.length && Date.now() - t0 < budget; i++) {
       const r = list[i];
       // a failed send (quota, bad address) stays unstamped so the next press retries it
-      if (!mail_(String(r[I.Email]).trim(), subject, html(String(r[I['First Name']]).trim() || 'there'), MAIL.candidateFrom)) { failed++; continue; }
+      if (!mailSend_(String(r[I.Email]).trim(), mail(String(r[I['First Name']]).trim() || 'there'))) { failed++; continue; }
       r[I.Screening] = String(r[I.Screening]).trim() + '; Rejection sent ' + fmt_(ctx.now, 'dd/MM');
       sent++;
     }

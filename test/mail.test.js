@@ -158,7 +158,9 @@ console.log('MAIL OK');
   assert(/Thanks for registering, Ann!/.test(run(`mailFrom_('CONFIRM', { first: 'Ann', code: 'IT.1' }).html`)), 'default');
   settings({ MAIL_CONFIRM_HEADING: 'Hello <b>{first}</b>, **welcome**' });
   const edited = run(`mailFrom_('CONFIRM', { first: 'Ann', code: 'IT.1' }).html`);
-  assert(/Hello &lt;b&gt;Ann&lt;\/b&gt;, <b>welcome<\/b>/.test(edited.replace(/<h1[^>]*>/, '').replace(/<\/h1>/, '')) || /Hello &lt;b&gt;Ann&lt;\/b&gt;/.test(edited), 'edit escaped, placeholders filled');
+  assert(/Hello &lt;b&gt;Ann&lt;\/b&gt;, \*\*welcome\*\*/.test(edited), 'edit escaped, placeholders filled, no bold in a heading');
+  assert.strictEqual(run(`mailFrom_('REJECT', { first: 'Ann' }, { texts: { subject: 'For you, {first}', text: 'x' } }).subject`), 'For you, Ann', 'a placeholder in the rejection subject is filled');
+  assert(/Thanks for registering, Amina!/.test(run(`mailSample_('CONFIRM', { heading: '' })`).html), 'a blank field sent by the caller is the default, not the saved text');
   // refused: an unknown placeholder, too long; a text equal to the default is saved blank
   assert.throws(() => settings({ MAIL_CONFIRM_ABOVE: 'Hi {frist}' }), /unknown placeholder \{frist\}/);
   assert.throws(() => settings({ MAIL_CONFIRM_ABOVE: 'x'.repeat(2001) }), /over 2000/);
