@@ -282,7 +282,7 @@ async function call(acct, fn, args = [], extra, timeoutMs) {
 
 const R = { boots: { admin: [], member: [] }, saves: { sent: 0, written: 0, conflict: 0, busy: 0, failed: 0, ms: [] }, forms: { sent: 0, saved: 0, conflict: 0, busy: 0, failed: 0 },
   actions: { sent: 0, done: 0, stale: 0, busy: 0, failed: 0, ms: [] }, settings: { sent: 0, ok: 0, failed: 0 },
-  accepted: [], acceptMs: [], direct: 0, ended: [], drops: 0, events: [], seen: [] };
+  accepted: [], acceptMs: [], direct: 0, actionErrors: [], ended: [], drops: 0, events: [], seen: [] };
 const hasPending = rec => Object.keys(rec || {}).some(c => rec[c].state === 'pending');
 
 function person(i, role, acct, until, targets) {
@@ -416,7 +416,8 @@ function person(i, role, acct, until, targets) {
       await sleep(Math.min(expo(minutes * 60000), until - el()));
       if (stop || el() >= until || !me.state) continue;
       while (me.busy) await sleep(200);
-      await fn();
+      // one action going wrong is counted and the person carries on: a throw here once ended a live run before its put-back
+      try { await fn(); } catch (e) { R.actionErrors.push(String(e && e.message).slice(0, 120)); }
     }
   };
 
@@ -568,7 +569,7 @@ function report(accts) {
     pending: { accepted: R.accepted.length, directFallback: R.direct, acceptP50: pct(R.acceptMs, 50), acceptP95: pct(R.acceptMs, 95), ended, replaced, lost: lostIds.length - replaced,
       appliedTwice: LIVE ? null : W.appliedTwice, dropsShown: R.drops, inSheetP50: pct(inSheet, 50), inSheetP95: pct(inSheet, 95), authorSeesP95: pct(authorSees, 95) },
     peakCallsPerMinPerAccount: Math.max(0, ...Object.values(peak)), machineStallS: +(maxStallMs / 1000).toFixed(1),
-    errorsSample: [...new Set(lost.map(c => String(c.err).slice(0, 120)))].slice(0, 5) };
+    actionErrors: R.actionErrors, errorsSample: [...new Set(lost.map(c => String(c.err).slice(0, 120)))].slice(0, 5) };
   if (!LIVE) {
     const lk = x => ({ waitP95: pct(x.waits, 95), max: pct(x.waits, 100), refused: x.refused });
     r.locks = { script: lk(L.script), document: lk(L.doc) };
@@ -607,6 +608,7 @@ function print(r) {
   }
   if (r.machineStallS > 2) console.log(`  ! this machine stalled for ${r.machineStallS} s during the run: calls in flight then are inflated; run again`);
   if (r.errorsSample.length) console.log('  errors seen: ' + r.errorsSample.join(' | '));
+  if (r.actionErrors.length) console.log(`  ! ${r.actionErrors.length} actions threw in the load script itself: ${[...new Set(r.actionErrors)].slice(0, 3).join(' | ')}`);
 }
 
 /* ---------- main ---------- */
@@ -636,6 +638,14 @@ function print(r) {
     syncLoop(P);
   }
   const switchWas = t.switchOn;
+  // live: whatever happens, the put-back and the switch run before the process ends
+  let cleaning = null; // one put-back, which every way out waits for
+  const cleanup = () => cleaning || (cleaning = (async () => {
+    if (!LIVE) return; stop = true;
+    if (WRITES) await restore(accts, t).catch(e => console.log('! put-back failed: ' + e.message));
+    if ((PENDING !== 'keep' || OFF_AT) && switchWas !== null) await setSwitch(accts, switchWas, 'end, as found');
+  })());
+  if (LIVE) ['uncaughtException', 'unhandledRejection'].forEach(ev => process.on(ev, e => { console.error('! crashed: ' + (e && e.stack || e)); cleanup().then(() => { try { print(report(accts)); } catch (x) { /* the put-back is what matters */ } }).finally(() => process.exit(1)); }));
   if (LIVE && PENDING !== 'keep') await setSwitch(accts, PENDING === 'on', 'start');
   if (OFF_AT) setTimeout(() => (LIVE ? setSwitch(accts, false, 'minute ' + OFF_AT) : (W.switchOn = false)), OFF_AT * 60000 / SCALE);
   process.on('SIGINT', () => { if (stop) process.exit(130); stop = true; console.log('\nStopping: the people finish, then things are put back (Ctrl-C again to quit at once).'); });
@@ -649,17 +659,16 @@ function print(r) {
   const writer = new Set();
   const targetsFor = a => (LIVE ? (writer.has(a) ? null : (writer.add(a), { codes: t.codes, alerts: t.alerts, interview: t.interview, setting: true, lastSet: t.lastSet, orig: Object.keys(t.original.notes).reduce((o, c) => (o[c] = t.original.notes[c].value, o), {}) })) : {});
   console.log(`Running ${people.length} people for ${MINUTES} min${SCALE > 1 ? ` (model, ${SCALE}× real time: ~${Math.round(MINUTES * 60 / SCALE)} s)` : ''}…`);
-  const runs = people.map(([role, a], i) => { const tg = targetsFor(a); return person(i, role, a, until, tg || { codes: [], alerts: [] }); });
+  const runs = people.map(([role, a], i) => { const tg = targetsFor(a); return person(i, role, a, until, tg || { codes: [], alerts: [], lastSet: {} }); });
   await Promise.all(runs);
   stop = true;
   if (!LIVE) for (let k = 0; k < 600 && inflight.size; k++) await sleep(1000); // the queue drains
-  if (LIVE && WRITES) await restore(accts, t);
-  if (LIVE && (PENDING !== 'keep' || OFF_AT) && switchWas !== null) await setSwitch(accts, switchWas, 'end, as found');
+  await cleanup();
   const r = report(accts);
   print(r);
   if (opt('out', null)) fs.writeFileSync(opt('out'), JSON.stringify(r, null, 2));
   if (opt('assert', false)) { // the self-check (npm test): every call answered, every accepted change ended
-    const bad = [r.lost && 'calls not answered', r.pending.lost && 'pending changes lost', r.pending.appliedTwice && 'applied twice', !r.pending.accepted && 'no pending change', !r.saves.written && 'no direct save'].filter(Boolean);
+    const bad = [r.lost && 'calls not answered', r.pending.lost && 'pending changes lost', r.pending.appliedTwice && 'applied twice', r.actionErrors.length && 'the script threw', !r.pending.accepted && 'no pending change', !r.saves.written && 'no direct save'].filter(Boolean);
     if (bad.length) { console.error('load self-check failed: ' + bad.join(', ')); process.exitCode = 1; }
   }
   if (srv) srv.close();
