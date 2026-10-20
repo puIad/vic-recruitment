@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { ThemeCustomizer } from "@/components/theme-customizer"
 import { DropsDialog } from "@/components/drops-dialog"
+import { TourProvider } from "@/components/tour/tour"
 import { ChangeMembersSheet } from "@/components/work-panels/change-members-sheet"
 import { MoveDialog } from "@/components/work-panels/move-dialog"
 import { useSidebarConfig } from "@/hooks/use-sidebar-config"
@@ -59,6 +60,7 @@ export function AppShell() {
       }
       className={config.collapsible === "none" ? "sidebar-none-mode" : ""}
     >
+      <TourProvider>
       {config.side === "left" ? (
         <>
           {sidebar}
@@ -74,6 +76,7 @@ export function AppShell() {
       <DropsDialog />
       {!member && <ChangeMembersSheet />}
       {!member && <MoveDialog />}
+      </TourProvider>
     </SidebarProvider>
   )
 }

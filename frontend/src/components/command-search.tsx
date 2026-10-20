@@ -135,6 +135,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
 export function SearchTrigger({ onClick }: { onClick: () => void }) {
   return (
     <button
+      data-tour="search-trigger"
       onClick={onClick}
       className="relative inline-flex h-9 w-full items-center justify-start gap-2 whitespace-nowrap rounded-full border border-input bg-background px-3.5 py-1 text-sm font-medium text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:pr-14 md:w-44 lg:w-64"
     >

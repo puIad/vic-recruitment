@@ -37,7 +37,7 @@ export default function MaintenancePage() {
 
   return (
     <BaseLayout title="Maintenance" description="Checks and repairs that keep the sheets, sharing and mail in step." watermark="Maintenance">
-      <Card>
+      <Card data-tour="maintenance-tools">
         <CardHeader>
           <CardTitle className="text-lg font-bold">Tools</CardTitle>
           <CardDescription>

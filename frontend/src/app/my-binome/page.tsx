@@ -55,7 +55,7 @@ function ProgressCard({ m }: { m: MemberState }) {
     .slice(0, 4)
 
   return (
-    <Card className="lg:col-span-3">
+    <Card className="lg:col-span-3" data-tour="binome-progress">
       <CardHeader>
         <CardTitle className="text-lg font-bold">Your candidates</CardTitle>
         <CardDescription>{m.fromSheet ? "Read from your sheet; statuses show after the next sync" : "Where each one stands in the Master"}</CardDescription>
@@ -124,7 +124,7 @@ function AlertsCard({ alerts, fromSheet, onOpen }: { alerts: MemberAlert[]; from
     .map(([code, list]) => ({ code, list: list.sort((a, b) => rank(b) - rank(a)) }))
     .sort((a, b) => rank(b.list[0]) - rank(a.list[0]) || a.code.localeCompare(b.code, undefined, { numeric: true }))
   return (
-    <Card className="relative overflow-hidden lg:col-span-2">
+    <Card className="relative overflow-hidden lg:col-span-2" data-tour="binome-needs-you">
       <CardHeader>
         <CardTitle className="text-lg font-bold">Needs you</CardTitle>
         <CardDescription>
@@ -187,7 +187,7 @@ function Members({ m }: { m: MemberState }) {
   if (!m.members.length) return null
   return (
     // spans, not a ul: this sits inside the page header's <p>
-    <span role="list" aria-label="Your binome" className="mt-3 flex flex-wrap gap-2">
+    <span role="list" aria-label="Your binome" data-tour="binome-partner" className="mt-3 flex flex-wrap gap-2">
       {m.members.map((name) => (
         <span role="listitem" key={name} className="flex items-center gap-2 rounded-full border bg-card py-1 pl-1 pr-3 text-sm font-semibold text-foreground">
           <span className="flex size-6 items-center justify-center rounded-full bg-vic-aqua text-[10px] font-bold text-vic-ink" aria-hidden="true">
@@ -305,7 +305,7 @@ export default function MyBinomePage() {
         <AlertsCard alerts={m.alerts} fromSheet={m.fromSheet} onOpen={openCode} />
       </div>
 
-      <section aria-labelledby="cand-title" className="space-y-3">
+      <section aria-labelledby="cand-title" className="space-y-3" data-tour="binome-candidates">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 id="cand-title" className="text-lg font-bold">Candidates</h2>

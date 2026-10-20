@@ -33,11 +33,15 @@ export interface NavItem {
   items?: { title: string; url: string; soon?: boolean; divider?: boolean }[]
   /** shown only to an admin who is in a binome (the store's member is set) */
   inBinome?: boolean
+  /** the onboarding tour's anchor (lib/vic/tour.ts) */
+  tour?: string
 }
 
 export interface NavGroup {
   label: string
   items: NavItem[]
+  /** the onboarding tour's anchor (lib/vic/tour.ts) */
+  tour?: string
 }
 
 export const navGroups: NavGroup[] = [
@@ -72,6 +76,7 @@ export const navGroups: NavGroup[] = [
         title: "Settings",
         url: "#settings",
         icon: Settings,
+        tour: "nav-settings",
         items: [
           { title: "General", url: "/settings/general" },
           { title: "Alerts and timing", url: "/settings/timing" },
@@ -89,14 +94,16 @@ export const navGroups: NavGroup[] = [
   },
 ]
 
-/** A binome member's sidebar: their binome, then their own settings. */
+/** A binome member's sidebar: their binome, then their own settings and Help. */
 export const memberNavGroups: NavGroup[] = [
   { label: "Your binome", items: [{ title: "My binome", url: "/", icon: UserRoundCheck }] },
   {
     label: "You",
+    tour: "nav-you",
     items: [
       { title: "Account", url: "/settings/account", icon: UserCircle },
       { title: "Appearance", url: "/settings/appearance", icon: Palette },
+      { title: "Help", url: "/help", icon: CircleHelp },
     ],
   },
 ]

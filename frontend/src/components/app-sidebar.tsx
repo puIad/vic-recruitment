@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { adminNav, memberNavGroups } from "@/config/nav"
+import { useTour } from "@/components/tour/use-tour"
 import { useVic } from "@/lib/vic/store"
 
 /** The Google files the old sidebar linked to (Master, both forms, the binome folder): one collapsed row, four links inside. */
@@ -76,7 +77,7 @@ function BinomeSheetLink() {
   const url = useVic((s) => s.member?.fileUrl)
   if (!url) return null
   return (
-    <SidebarGroup>
+    <SidebarGroup data-tour="nav-binome-sheet">
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton asChild tooltip="My binome sheet">
@@ -95,8 +96,9 @@ function BinomeSheetLink() {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const member = useVic((s) => s.gate.mode === "member")
   const inBinome = useVic((s) => !!s.member)
+  const { running } = useTour()
   return (
-    <Sidebar {...props}>
+    <Sidebar modal={!running} {...props}>
       <SidebarHeader className="px-4 pt-5 pb-3">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -110,7 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         {(member ? memberNavGroups : adminNav(inBinome)).map((group) => (
-          <NavMain key={group.label} label={group.label} items={group.items} />
+          <NavMain key={group.label} label={group.label} items={group.items} tour={group.tour} />
         ))}
         {member ? <BinomeSheetLink /> : <GoogleFiles />}
       </SidebarContent>

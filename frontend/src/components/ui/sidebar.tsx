@@ -153,6 +153,7 @@ function Sidebar({
   side = "left",
   variant = "sidebar",
   collapsible = "offcanvas",
+  modal = true,
   className,
   children,
   ...props
@@ -160,6 +161,8 @@ function Sidebar({
   side?: "left" | "right"
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
+  /** the phone drawer traps focus and hides the rest of the page from screen readers; false while the tour points into it */
+  modal?: boolean
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
@@ -180,8 +183,10 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      <Sheet open={openMobile} onOpenChange={setOpenMobile} modal={modal} {...props}>
         <SheetContent
+          // non-modal, a press or focus outside would close it: the tour's card takes focus on every step
+          onInteractOutside={modal ? undefined : (e) => e.preventDefault()}
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
