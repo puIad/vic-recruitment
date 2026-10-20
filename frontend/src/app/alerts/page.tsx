@@ -116,7 +116,7 @@ export default function AlertsPage() {
 
   const list = (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="space-y-3 p-4 pb-3">
+      <div className="space-y-3 p-4 pb-3" data-tour="alerts-toolbar">
         <div role="group" aria-label="Filter by severity" className="flex flex-wrap gap-1.5">
           {(
             [

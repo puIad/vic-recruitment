@@ -319,10 +319,10 @@ export function SettingDrop({ mark, s }: { mark?: Mark<SettingEntry>; s: Setting
   )
 }
 
-function Section({ sec, children }: { sec: SettingsSection; children: React.ReactNode }) {
+function Section({ sec, tour, children }: { sec: SettingsSection; tour?: string; children: React.ReactNode }) {
   if (!sec.title)
     return (
-      <Card>
+      <Card data-tour={tour}>
         <CardContent className="divide-y">{children}</CardContent>
       </Card>
     )
@@ -334,14 +334,14 @@ function Section({ sec, children }: { sec: SettingsSection; children: React.Reac
   )
   if (!sec.folded)
     return (
-      <Card>
+      <Card data-tour={tour}>
         <CardHeader>{head}</CardHeader>
         <CardContent className="divide-y">{children}</CardContent>
       </Card>
     )
   return (
     <Collapsible asChild>
-      <Card className="group/fold">
+      <Card className="group/fold" data-tour={tour}>
         <CardHeader>
           <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
             <span className="grid gap-1.5">{head}</span>
@@ -461,12 +461,12 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
       ) : (
         <>
           {top && fill(top, form)}
-          {group.sections.map((sec) => {
+          {group.sections.map((sec, i) => {
             const at = (s: SettingRow) => (sec.keys.includes(s.key) ? sec.keys.indexOf(s.key) : sec.keys.length) // the section's order, the rest after
             const mine = rows.filter((s) => !ownKeys.has(s.key) && (sec.keys.includes(s.key) || (sec.rest && !listed.has(s.key))) && visible(s)).sort((a, b) => at(a) - at(b))
             const slot = sec.title && slots?.[sec.title]
             return (
-              <Section key={sec.title ?? "main"} sec={sec}>
+              <Section key={sec.title ?? "main"} sec={sec} tour={i === 0 ? "settings-sections" : undefined}>
                 {mine.map((s) => (
                   <Row key={s.key + gen} s={s} value={value(s)} mark={over[s.key]?.mark} onChange={(v) => change(s, v)} />
                 ))}

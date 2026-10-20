@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { ChevronRight } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
@@ -28,7 +29,7 @@ function Soon() {
   )
 }
 
-export function NavMain({ label, items }: { label: string; items: NavItem[] }) {
+export function NavMain({ label, items, tour }: { label: string; items: NavItem[]; tour?: string }) {
   const location = useLocation()
   const view = useAlertView() // with the author's pending changes over the snapshot
   const alerts = view.alerts.length
@@ -37,14 +38,14 @@ export function NavMain({ label, items }: { label: string; items: NavItem[] }) {
   const isActive = (url: string) => (url === "/" ? location.pathname === "/" : location.pathname === url || location.pathname.startsWith(url + "/"))
 
   return (
-    <SidebarGroup>
+    <SidebarGroup data-tour={tour}>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const open = item.items?.some((s) => isActive(s.url)) || false
           return (
-            <Collapsible key={item.title} asChild defaultOpen={open} className="group/collapsible">
-              <SidebarMenuItem>
+            <NavCollapsible key={item.title} active={open}>
+              <SidebarMenuItem data-tour={item.tour}>
                 {item.items?.length ? (
                   <>
                     <CollapsibleTrigger asChild>
@@ -91,10 +92,26 @@ export function NavMain({ label, items }: { label: string; items: NavItem[] }) {
                   </>
                 )}
               </SidebarMenuItem>
-            </Collapsible>
+            </NavCollapsible>
           )
         })}
       </SidebarMenu>
     </SidebarGroup>
+  )
+}
+
+/** A submenu opens when one of its pages becomes active (the sidebar stays mounted, so a later visit, the tour's
+ *  included, would otherwise find it closed); the user can still close it. */
+function NavCollapsible({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = React.useState(active)
+  const [was, setWas] = React.useState(active)
+  if (active !== was) {
+    setWas(active)
+    if (active) setOpen(true)
+  }
+  return (
+    <Collapsible asChild open={open} onOpenChange={setOpen} className="group/collapsible">
+      {children}
+    </Collapsible>
   )
 }

@@ -76,7 +76,7 @@ function BinomeSheetLink() {
   const url = useVic((s) => s.member?.fileUrl)
   if (!url) return null
   return (
-    <SidebarGroup>
+    <SidebarGroup data-tour="nav-binome-sheet">
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton asChild tooltip="My binome sheet">
@@ -110,7 +110,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         {(member ? memberNavGroups : adminNav(inBinome)).map((group) => (
-          <NavMain key={group.label} label={group.label} items={group.items} />
+          <NavMain key={group.label} label={group.label} items={group.items} tour={group.tour} />
         ))}
         {member ? <BinomeSheetLink /> : <GoogleFiles />}
       </SidebarContent>

@@ -18,7 +18,7 @@ export default function OverviewPage() {
   return (
     <BaseLayout title="Overview" description={description} watermark="Overview">
       <PipelineCard />
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid gap-6 lg:grid-cols-5" data-tour="overview-cards">
         <div className="lg:col-span-3 [&>*]:h-full">
           <AttentionCard />
         </div>

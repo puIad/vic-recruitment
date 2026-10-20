@@ -168,7 +168,7 @@ export default function IntervieweesPage() {
           </div>
         }
         toolbar={(table) => (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" data-tour="interviewees-toolbar">
             <div className="relative w-full sm:w-72">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Code, name or binome" aria-label="Search interviewees" className="h-9 rounded-full pl-9" />

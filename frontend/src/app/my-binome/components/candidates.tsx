@@ -80,7 +80,7 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
             id: "Interview form",
             accessorFn: (c: Candidate) => (c.interview ? (c.interview.source === "Dashboard" ? 2 : 1) : 0),
             header: ({ column }) => <DataTableColumnHeader column={column} title="Interview form" />,
-            cell: ({ row }) => <InterviewAction c={row.original} m={member} />,
+            cell: ({ row }) => <div data-tour="binome-interview-action" className="w-fit"><InterviewAction c={row.original} m={member} /></div>,
           } satisfies ColumnDef<Candidate>,
         ]
       : []),
