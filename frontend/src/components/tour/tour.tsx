@@ -153,7 +153,12 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     }
   }, [running])
 
-  const cardRef = React.useRef<HTMLDivElement>(null)
+  const cardRef = React.useRef<HTMLDivElement | null>(null)
+  // the card remounts when it moves between docked and anchored (the target scrolling into view): it takes focus again
+  const setCard = React.useCallback((el: HTMLDivElement | null) => {
+    cardRef.current = el
+    el?.focus({ preventScroll: true })
+  }, [])
   // Keys: Right and Enter next, Left back, Esc skip; every other key stays out of the page's shortcuts (Ctrl K).
   React.useEffect(() => {
     if (!running) return
@@ -165,7 +170,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       else if (e.key === "ArrowLeft") back()
       else handled = false
       if (handled) e.preventDefault()
-      if (handled || (!inCard && e.key !== "Tab")) e.stopPropagation()
+      // stopping the event still lets a focused card button click on Enter or Space (that is the browser's default)
+      if (handled || e.key !== "Tab") e.stopPropagation()
     }
     window.addEventListener("keydown", onKey, true)
     return () => window.removeEventListener("keydown", onKey, true)
@@ -176,7 +182,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (settled) cardRef.current?.focus({ preventScroll: true })
   }, [settled, index])
 
-  const value = React.useMemo(() => ({ start }), [start])
+  const value = React.useMemo(() => ({ start, running }), [start, running])
 
   let layer: React.ReactNode = null
   if (step) {
@@ -187,7 +193,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     const dockTop = !!box && box.y + box.h / 2 > vh / 2
     const card = (
       <TourCard
-        ref={cardRef}
+        ref={setCard}
         step={step}
         index={index}
         total={total}

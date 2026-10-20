@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/sidebar"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { adminNav, memberNavGroups } from "@/config/nav"
+import { useTour } from "@/components/tour/use-tour"
 import { useVic } from "@/lib/vic/store"
 
 /** The Google files the old sidebar linked to (Master, both forms, the binome folder): one collapsed row, four links inside. */
@@ -95,8 +96,9 @@ function BinomeSheetLink() {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const member = useVic((s) => s.gate.mode === "member")
   const inBinome = useVic((s) => !!s.member)
+  const { running } = useTour()
   return (
-    <Sidebar {...props}>
+    <Sidebar modal={!running} {...props}>
       <SidebarHeader className="px-4 pt-5 pb-3">
         <SidebarMenu>
           <SidebarMenuItem>
