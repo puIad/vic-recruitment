@@ -439,6 +439,8 @@ export interface InterviewQuestion {
   help: string
   /** the 1st department choice: its answer picks the department section */
   branch: boolean
+  /** what the interviewee looks at for this question (a Drive folder); absent before the script deploy */
+  link?: { label: string; url: string } | null
 }
 export interface InterviewSection {
   id: string

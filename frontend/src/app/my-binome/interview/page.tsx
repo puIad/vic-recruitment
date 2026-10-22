@@ -154,6 +154,13 @@ function Question({ q, value, onChange, readOnly, invalid, registered }: {
         <div className="min-w-0">
           <p id={labelId} className="whitespace-pre-line text-[0.9375rem] font-semibold leading-snug text-foreground">{tidy(q.title)}</p>
           {q.help && <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{tidy(q.help)}</p>}
+          {q.link && (
+            <Button asChild variant="outline" size="sm" className="mt-2">
+              <a href={q.link.url} target="_blank" rel="noopener noreferrer">
+                {q.link.label} <ArrowUpRight />
+              </a>
+            </Button>
+          )}
         </div>
         {!q.required && <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">Optional</span>}
       </div>
