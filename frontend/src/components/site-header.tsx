@@ -75,14 +75,14 @@ function LiveActivity() {
   const tick = useVic((s) => s.tick)
   const refresh = useVic((s) => s.refresh)
   const activity = useVic((s) => s.activity)
-  const failed = activity.some((a) => a.error)
+  const failed = !!activity[0]?.error // the newest action: the dot clears once a retry works
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
           className="relative flex h-9 items-center gap-2 rounded-full px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          aria-label={`Activity and live status. Last updated ${time}${failed ? ". An action failed" : ""}`}
+          aria-label={`Activity and live status. Last updated ${time}${failed ? ". The last action failed" : ""}`}
         >
           <MiniRing spinning={refreshing} tick={tick} />
           {failed && <span className="absolute left-7 top-1.5 size-2 rounded-full bg-danger ring-2 ring-background" aria-hidden="true" />}
