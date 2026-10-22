@@ -1,7 +1,8 @@
 // UI smoke run (npm run test:ui): the dashboard against the mock (test/webdev.js) in headless Chrome for Testing, as an admin
 // and as a member. Every page must show its heading, with no console error, no uncaught exception and no error screen.
-// Not in npm test, which gates the script deploys: this one needs a browser (npx playwright install chromium-headless-shell).
-const { spawn } = require('child_process'), fs = require('fs'), os = require('os'), path = require('path');
+// Not in npm test, which gates the script deploys: this one needs the browser build playwright-core expects, once:
+// npx playwright-core install chromium-headless-shell
+const { spawn } = require('child_process'), path = require('path');
 const { chromium } = require('playwright-core');
 
 const API = 3311, UI = 5311, ROOT = path.join(__dirname, '..');
@@ -24,23 +25,13 @@ function start(cmd, args, opts, ready) {
 }
 const stop = p => { if (p && p.exitCode === null) { p.removeAllListeners('exit'); process.platform === 'win32' ? spawn('taskkill', ['/pid', p.pid, '/T', '/F']) : p.kill(); } };
 
-// Playwright's chromium-headless-shell, the newest one installed (the full chrome.exe fails to start on some machines)
-function shell() {
-  const dir = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), '.cache'), 'ms-playwright');
-  const v = fs.existsSync(dir) ? fs.readdirSync(dir).filter(d => /^chromium_headless_shell-\d+$/.test(d)).sort((a, b) => +b.split('-')[1] - +a.split('-')[1])[0] : null;
-  if (!v) return undefined;
-  const exe = ['chrome-headless-shell-win64/chrome-headless-shell.exe', 'chrome-headless-shell-linux64/chrome-headless-shell', 'chrome-headless-shell-mac-arm64/chrome-headless-shell']
-    .map(f => path.join(dir, v, f)).find(f => fs.existsSync(f));
-  return exe;
-}
-
 (async () => {
   let api, ui, browser, failed = 0;
   try {
     api = await start('node', ['test/webdev.js', String(API)], { cwd: ROOT }, /Mock API on/);
     ui = await start('node', ['node_modules/vite/bin/vite.js', '--port', String(UI), '--strictPort'], { cwd: path.join(ROOT, 'frontend'),
       env: Object.assign({}, process.env, { VIC_API: 'http://localhost:' + API, NO_COLOR: '1' }) }, new RegExp('localhost:' + UI));
-    browser = await chromium.launch({ executablePath: shell() });
+    browser = await chromium.launch(); // headless: playwright-core's chromium-headless-shell
     for (const [as, pages] of ROLES) {
       const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } }), page = await ctx.newPage();
       let errs = [];
