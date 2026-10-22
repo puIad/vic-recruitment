@@ -391,8 +391,10 @@ on `webState`, `webAnalytics()` (admins only) and the Interviewee Changes tab (m
 Reset all binomes), so load-test run 4 measures it. The pages are live on Vercel from `35f1874` (frontend only, no
 script deploy): Schedule with This week on My binome ([#138](https://github.com/puIad/vic-recruitment-2026/pull/138))
 and Analytics with the applicant profile ([#139](https://github.com/puIad/vic-recruitment-2026/pull/139); no 2025
-curve, the 2025 file isn't on disk). Not yet checked live by the owner. Left: Change history showing Interviewee
-Changes, and the Playwright smoke run (`npm run test:ui`).
+curve, the 2025 file isn't on disk). Change history shows Interviewee Changes (Moved, Edit accepted filters), and
+`npm run test:ui` (`test/ui.smoke.js`) opens every page as an admin, an admin in a binome and a member
+([#140](https://github.com/puIad/vic-recruitment-2026/pull/140), live from `cdb8ab8`). The launch scope is built; none
+of it has been checked live by the owner yet.
 
 ## Later (not needed for launch)
 
