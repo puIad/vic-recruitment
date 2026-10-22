@@ -10,6 +10,7 @@ import { pageIndex } from "@/config/nav"
 import { useActions } from "@/lib/vic/actions"
 import { alertLabel, STATUS_LABEL } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
+import { useProfile } from "@/lib/vic/analytics"
 import { cn } from "@/lib/utils"
 import { MemberNames } from "@/components/member-name"
 
@@ -40,6 +41,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
   const inBinome = useVic((s) => !!s.member)
   const refresh = useVic((s) => s.refresh)
   const { sync } = useActions()
+  const showProfile = useProfile((s) => s.show)
   const [q, setQ] = React.useState("")
 
   if (!open && q) setQ("")
@@ -93,7 +95,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
               <>
                 <Group heading="Candidates">
                   {state.interviewees.map((i) => (
-                    <Item key={i.code} value={`${i.code} ${i.name} ${i.binome} candidate`} onSelect={() => go(`/interviewees?q=${encodeURIComponent(i.code)}`)}>
+                    <Item key={i.code} value={`${i.code} ${i.name} ${i.binome} candidate`} onSelect={() => { onOpenChange(false); showProfile(i.code) }}>
                       <UserSearch className="size-4 text-muted-foreground" />
                       <span className="font-bold">{i.code}</span>
                       <span className="truncate">{i.name}</span>
