@@ -358,15 +358,16 @@ function mailPairedBinomes() {
   if (!n) return say_('Every member of a locked binome has already been emailed their binome.');
   if (ui.alert('Email ' + n + ' members their binome?', 'Each gets "You are in binome B.NN" with their partner and the sheet link.',
     ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
-  const r = mailPaired_(loadCtx_());
+  const r = withLock_(() => mailPaired_(loadCtx_()), 60000); // one sender at a time: two runs would mail the same members
+  if (!r) return busy_();
   say_('Sent ' + r.sent + ' emails.' + (r.failed.length ? '\n\nNot sent (run this again later): ' + r.failed.join(', ') : ''));
 }
 
 function lockBinomesCore_(budgetMs) {
   const t0 = Date.now(), budget = Math.max(30000, Math.min(270000, Number(budgetMs) || 270000));
-  let created = 0, stopped = false, locked;
+  let created = 0, stopped = false, mailed;
   const held = withLock_(() => {
-    const ctx = loadCtx_(); locked = ctx;
+    const ctx = loadCtx_();
     const BI = ctx.bin.I;
     for (let i = 0; i < ctx.bin.data.length; i++) {
       const r = ctx.bin.data[i];
@@ -384,10 +385,10 @@ function lockBinomesCore_(budgetMs) {
     }
     indexCtx_(ctx);
     saveMemberMap_(ctx);
+    mailed = mailPaired_(ctx);
     return true;
   }, 60000);
   if (!held) return busy_();
-  const mailed = mailPaired_(locked);
   // the sync after the sheets are created (creating them is not in its total); placing stops 4 min after this call started,
   // leaving 2 for the save, alerts, mails (one per member of each binome that got someone), tracker and snapshot
   const c = runCycle_({ kind: 'post-lock', pull: false, timing: false, tracker: true, wait: 60000, assignBy: t0 + 240000 });
