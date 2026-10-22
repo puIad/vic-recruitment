@@ -181,7 +181,8 @@ console.log('MAIL OK');
 // ---- the themed mails (docs/registration-form.md, The mails): the ticket and the confirmation ----
 {
   const crypto = require('crypto');
-  // hashes of each sample as it rendered before the theme (main at 86ae089): the rejection and the team mails never change
+  // hashes of each sample as it rendered before the theme (main at 86ae089): the theme never touches the rejection or a team
+  // mail. A deliberate change to one of them: re-hash its mailSample_ (subject, from, html; sha256, 16 hex) and update it here
   const BEFORE = { REJECT: 'df5381a2244ef163', NEW_IV: '84c9defbf652d4a2', ALERT: 'fdca2ff1e9d5c3f3', JOINED: '65d455d5f3f0e787',
     LEFT: '6e36ae12140a8500', PAIRED: 'b2d7c5863ab08333', COVER: 'bbcdbbdf01e30cff', COVERED: 'a5cee67a598d8c50' };
   settings(Object.fromEntries(R('MAILS.reduce(function (a, m) { return a.concat(m.fields.map(function (f) { return "MAIL_" + m.id + "_" + f[0].toUpperCase(); })); }, [])').map(k => [k, ''])));
@@ -207,8 +208,7 @@ console.log('MAIL OK');
   themed(t.html, '#69c4af', 'ticket');
   assert(/>Your ticket is ready</.test(t.html) && /Type this ticket on the registration form to prove this ENP address is yours\. It works for 10 minutes\. If you did not ask for it, ignore this mail\./.test(t.html), 'the default wording');
   assert(/>Your ticket<\/div><div[^>]*>482913</.test(t.html), 'the six digits in the code box, under its label');
-  assert.deepStrictEqual(R(`mailDef_('CODE')`), { id: 'CODE', name: 'Registration ticket', to: 'candidate', vars: ['code'],
-    fields: R(`mailDef_('CODE').fields`) });
+  assert.deepStrictEqual(R(`[mailDef_('CODE').name, mailDef_('CODE').to, mailDef_('CODE').vars]`), ['Registration ticket', 'candidate', ['code']]);
   assert.deepStrictEqual(R(`mailDef_('CODE').fields.map(function (f) { return f[0]; })`), ['subject', 'heading', 'above', 'codeLabel']);
 
   // the confirmation: same wording, the stripe in the 1st choice's house on the form

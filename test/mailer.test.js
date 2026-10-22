@@ -73,6 +73,8 @@ masterFails = true; clock += 61000;
 assert.deepStrictEqual(post(ok), { ok: true });
 assert(/>Your ticket is ready</.test(sent.pop().htmlBody), 'the defaults when the Master cannot be read');
 masterFails = false;
+post(ok);
+assert(/>Edited again</.test(sent.pop().htmlBody), 'a failed read is not cached: the next mail reads the Master again');
 
 // ---- a send that fails answers so ----
 ctx.MailApp.sendEmail = () => { throw new Error('quota'); };

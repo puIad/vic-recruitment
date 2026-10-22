@@ -8,7 +8,7 @@ const MAIL = {
   logo: 'https://vic-recruitment.vercel.app/brand/vic-logo-white.png',
   candidateFrom: 'VIC Recruitment', // sender name on candidate mails; team mails keep mail_()'s 'VIC Recruitment Bot'
   // the themed look (the ticket and the confirmation): night header, serif heading (clients ignore web fonts)
-  night: '#141e27', serif: "Georgia,'Times New Roman',serif", codeFill: '#f3f4f6',
+  night: '#141e27', serif: "Georgia,'Times New Roman',serif",
 };
 // severity chip: [text, soft fill] (DESIGN.md danger / warning / info)
 const MAIL_SEV = { HIGH: ['#c11e00', '#ffece5'], MEDIUM: ['#915200', '#fff0c5'], INFO: ['#005b91', '#e2f3ff'] };
@@ -71,11 +71,12 @@ function mailAlerts_(rows) {
     }).join('') + '</table>';
 }
 
-/** One value to keep, shown large (the registrant's code, the ticket). accent: the themed look's stripe colour. */
-function mailCode_(label, value, accent) {
-  const fill = accent ? MAIL.codeFill : '#e6f5f1';
+/** One value to keep, shown large (the registrant's code, the ticket). theme: the themed look's stripe colour, which also
+ *  edges the box (on Bright Gray, so a house colour never sits on the aquamarine tint). */
+function mailCode_(label, value, theme) {
+  const fill = theme ? MAIL.page : '#e6f5f1';
   return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px"><tr>' +
-    '<td bgcolor="' + fill + '" style="background:' + fill + ';border-left:4px solid ' + (accent || MAIL.aqua) + ';border-radius:8px;padding:12px 24px 14px;font-family:' + MAIL.font + '">' +
+    '<td bgcolor="' + fill + '" style="background:' + fill + ';border-left:4px solid ' + (theme || MAIL.aqua) + ';border-radius:8px;padding:12px 24px 14px;font-family:' + MAIL.font + '">' +
     '<div style="font-size:12px;line-height:1.4;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:' + MAIL.muted + '">' + esc_(label) + '</div>' +
     '<div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:1px;color:' + MAIL.ink + '">' + esc_(value) + '</div></td></tr></table>';
 }

@@ -60,21 +60,22 @@ function sameSecret_(given, expected) {
 }
 
 /** {subject, heading, above, codeLabel}: the Master's MAIL_CODE_* rows, blank = the default; cached 60 s. An unreadable
- *  Master gives the defaults, so the ticket still goes out. Read like the bound script's S_(): the last filled row wins. */
+ *  Master gives the defaults (not cached), so the ticket still goes out. Read like the bound script's S_(): the last filled row wins. */
 function wording_(masterId) {
   const cache = CacheService.getScriptCache(), hit = cache.get('wording');
   if (hit) return JSON.parse(hit);
   const saved = {};
+  let read = true;
   try {
     const sh = SpreadsheetApp.openById(masterId).getSheetByName('Settings');
     if (sh) sh.getDataRange().getValues().slice(1).forEach(r => { if (String(r[0]).trim() && r[1] !== '') saved[String(r[0]).trim()] = r[1]; });
-  } catch (err) { console.error('Master not readable, default wording: ' + err); }
+  } catch (err) { read = false; console.error('Master not readable, default wording: ' + err); }
   const w = {};
   Object.keys(MAILER.defaults).forEach(f => {
     const v = saved['MAIL_CODE_' + f.toUpperCase()];
     w[f] = v != null && String(v).trim() ? String(v).trim() : MAILER.defaults[f];
   });
-  cache.put('wording', JSON.stringify(w), MAILER.cacheSeconds);
+  if (read) cache.put('wording', JSON.stringify(w), MAILER.cacheSeconds); // a failed read is retried on the next mail
   return w;
 }
 
@@ -89,25 +90,24 @@ const MAIL = {
   aqua: '#69c4af', ink: '#141e27', page: '#efefef', muted: '#5b6773', line: '#dfe3e8',
   font: "Gilroy,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif",
   logo: 'https://vic-recruitment.vercel.app/brand/vic-logo-white.png',
-  night: '#141e27', serif: "Georgia,'Times New Roman',serif", codeFill: '#f3f4f6',
+  night: '#141e27', serif: "Georgia,'Times New Roman',serif",
 };
 const MAIL_TEXT = 'font-family:' + MAIL.font + ';font-size:15px;line-height:1.55;color:' + MAIL.ink + ';';
 
 function esc_(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 function themedHtml_(o) {
-  const head = MAIL.night, stripe = o.theme, h1 = MAIL.serif;
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
     '<meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>' + esc_(o.title) + '</title></head>' +
     '<body style="margin:0;padding:0;background:' + MAIL.page + '">' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="' + MAIL.page + '" style="background:' + MAIL.page + '">' +
     '<tr><td align="center" style="padding:24px 12px">' +
     '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden">' +
-    '<tr><td bgcolor="' + head + '" style="background:' + head + ';padding:20px 32px">' +
+    '<tr><td bgcolor="' + MAIL.night + '" style="background:' + MAIL.night + ';padding:20px 32px">' +
     '<img src="' + MAIL.logo + '" width="120" height="48" alt="VIC" style="display:block;border:0;outline:none;color:#ffffff;font-family:' + MAIL.font + ';font-size:26px;font-weight:bold"></td></tr>' +
-    '<tr><td bgcolor="' + stripe + '" style="background:' + stripe + ';height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>' +
+    '<tr><td bgcolor="' + o.theme + '" style="background:' + o.theme + ';height:4px;line-height:4px;font-size:0">&nbsp;</td></tr>' +
     '<tr><td style="padding:28px 32px 12px;' + MAIL_TEXT + '">' +
-    '<h1 style="margin:0 0 14px;font-family:' + h1 + ';font-size:22px;line-height:1.3;font-weight:800;color:' + MAIL.ink + '">' + esc_(o.title) + '</h1>' +
+    '<h1 style="margin:0 0 14px;font-family:' + MAIL.serif + ';font-size:22px;line-height:1.3;font-weight:800;color:' + MAIL.ink + '">' + esc_(o.title) + '</h1>' +
     (o.intro ? mailP_(o.intro) : '') + (o.blocks || []).join('') +
     '</td></tr>' +
     '<tr><td style="padding:16px 32px 24px;border-top:1px solid ' + MAIL.line + ';font-family:' + MAIL.font + ';font-size:12px;line-height:1.5;color:' + MAIL.muted + '">' +
@@ -120,10 +120,10 @@ function mailP_(text) {
     esc_(p.trim()).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>') + '</p>').join('');
 }
 
-function mailCode_(label, value, accent) {
-  const fill = MAIL.codeFill;
+function mailCode_(label, value, theme) {
+  const fill = MAIL.page;
   return '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px"><tr>' +
-    '<td bgcolor="' + fill + '" style="background:' + fill + ';border-left:4px solid ' + accent + ';border-radius:8px;padding:12px 24px 14px;font-family:' + MAIL.font + '">' +
+    '<td bgcolor="' + fill + '" style="background:' + fill + ';border-left:4px solid ' + theme + ';border-radius:8px;padding:12px 24px 14px;font-family:' + MAIL.font + '">' +
     '<div style="font-size:12px;line-height:1.4;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:' + MAIL.muted + '">' + esc_(label) + '</div>' +
     '<div style="font-size:30px;line-height:1.2;font-weight:800;letter-spacing:1px;color:' + MAIL.ink + '">' + esc_(value) + '</div></td></tr></table>';
 }
