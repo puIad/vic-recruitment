@@ -28,7 +28,7 @@ const MEMBER: TourStep[] = [
 
 const ADMIN: TourStep[] = [
   { id: "welcome", path: "/", title: "Welcome to the control room", body: "A quick round of every page. It takes about two minutes, and Help replays it whenever you need." },
-  { id: "overview", path: "/", target: "overview-cards", title: "Overview", body: "What needs a person right now, and how far the launch is. Start here each time." },
+  { id: "overview", path: "/", target: "overview-todo", title: "Overview", body: "What needs a person right now, worst first. Each row opens its page already filtered. Start here each time." },
   { id: "alerts", path: "/alerts", target: "alerts-toolbar", title: "Alerts", body: "What the script found, worst first. Filter by severity, tick several, then repair, nudge their binomes or keep them out in one go." },
   { id: "binomes", path: "/binomes", target: "binomes-toolbar", title: "Binomes", body: "Each pair's status, access and progress. Change members and Move interviewee are here; open a binome's menu for its access and tag." },
   { id: "interviewees", path: "/interviewees", target: "interviewees-toolbar", title: "Interviewees", body: "Every candidate, their binome, status and risk. Search by code or name; restore a candidate kept out by mistake." },
