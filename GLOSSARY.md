@@ -16,7 +16,8 @@ _Avoid_: registration form (for the Google one), old form, legacy form
 
 **Email code**:
 The 6-digit code mailed to a candidate's ENP address on the registration form's first screen. Typing it proves the
-address and unlocks the rest of the form.
+address and unlocks the rest of the form. The form and its mail call it the **ticket**, so it is never confused with a
+candidate's code (like `IT.42`) in the confirmation.
 _Avoid_: OTP, verification link, magic link
 
 **House**:
