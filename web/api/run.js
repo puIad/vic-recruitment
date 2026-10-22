@@ -6,7 +6,7 @@
 // seen marks the drops still on screen (slice 4); the sync reads the records through api/drops.js.
 const S = require('../lib/session'), P = require('../lib/pending');
 
-const ALLOWED = ['webAccess', 'webState', 'webRun', 'webPulse'], PENDING = ['accept', 'pendingMark'];
+const ALLOWED = ['webAccess', 'webState', 'webRun', 'webPulse', 'webAnalytics'], PENDING = ['accept', 'pendingMark'];
 const ACCEPT_LIFE_MS = 30 * 60e3; // the accept step seals a token with at least this long to live (issue 56)
 const TIMEOUT_MS = 285000; // under maxDuration 300 (vercel.json)
 const POLL_LIMIT_MS = 25000; // webAccess / webPulse: the page gives up on them at 20 s, so the function must not run on to 285 s

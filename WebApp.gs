@@ -630,7 +630,7 @@ function buildState_(ctx) {
 
   const look = quickLookups_(ctx), opened = binAccess_(), hand = ctx.binomes.some(b => b.status === 'DRAFT') ? handDrafts_() : [];
   lap('bLookups'); const teamSrc = findTeamSource_(ss_()); lap('bTeamSrc');
-  const history = historyRows_(); lap('bHistory');
+  const history = historyRows_(), ivHistory = ivHistoryRows_(); lap('bHistory');
   const masterUrl = ss_().getUrl(); lap('bMasterUrl');
 
   return {
@@ -645,7 +645,7 @@ function buildState_(ctx) {
       assignmentsOpen: bool_(s.ASSIGNMENTS_OPEN), testMode: bool_(s.TEST_MODE),
       shareFiles: bool_(s.SHARE_FILES_WITH_BINOME) && !bool_(s.TEST_MODE),
       notifyBinome: bool_(s.NOTIFY_BINOME_ON_ALERT), notifyNew: bool_(s.NOTIFY_BINOME_ON_NEW_INTERVIEWEE),
-      syncEvery: num_(s.SYNC_EVERY_MINUTES, 15), digestHour: num_(s.DIGEST_HOUR, 8), admins: adminEmails_(),
+      syncEvery: num_(s.SYNC_EVERY_MINUTES, 15), digestHour: num_(s.DIGEST_HOUR, 8), admins: adminEmails_(), tz: String(s.TIMEZONE),
     },
     mails: MAILS.map(m => ({ id: m.id, name: m.name, to: m.to, vars: m.vars,
       fields: m.fields.map(f => ({ key: 'MAIL_' + m.id + '_' + f[0].toUpperCase(), field: f[0], def: f[1] })) })),
@@ -662,6 +662,7 @@ function buildState_(ctx) {
     covers: (ctx.covers || []).map(c => ({ row: c.row, binome: c.binome, name: c.name, email: c.email, outName: c.outName,
       codes: c.codes, live: coverLive_(ctx, c), reason: c.reason })),
     history: history,
+    ivHistory: ivHistory,
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
@@ -678,7 +679,10 @@ function buildState_(ctx) {
       fix: r[A.Type] === 'MANUAL_EDIT' ? editFixes_(String(r[A.Key]), base) : [], q: quickInfo_(ctx, r, look) })),
     muted: heldAlerts_(ctx),
     interviewees: ctx.iv.data.filter(r => r[I.Code]).map(r => ({ code: String(r[I.Code]), binome: String(r[I.Binome]), status: r[I.Status],
-      name: (String(r[I['First Name']]) + ' ' + String(r[I['Family Name']])).trim(), risk: r[I.Risk] === '' ? null : Number(r[I.Risk]) })),
+      name: (String(r[I['First Name']]) + ' ' + String(r[I['Family Name']])).trim(), risk: r[I.Risk] === '' ? null : Number(r[I.Risk]),
+      // Schedule (docs/plans.md): the interview time the sync read from the binome sheet ('' typed or unreadable = null)
+      dept: String(r[I['1st Choice']]), contacted: String(r[I.Contacted]), at: ms_(r[I['Interview At']]),
+      assignedAt: ms_(r[I['Assigned At']]), avail: String(r[I.Availability]) })),
     screening: { on: screenOn_(), holdAt: num_(s.SCREEN_HOLD_AT, 50), linked: !!String(s.VIC_MEMBERS_SHEET || '').trim(), members: membersStatus_() },
   };
 }
@@ -691,6 +695,34 @@ function historyRows_() {
     out: s(r[C['Out Name']]) || s(r[C['Out Email']]), inn: s(r[C['In Name']]) || s(r[C['In Email']]),
     codes: splitCodes_(r[C.Interviewees]), reason: s(r[C.Reason]), status: s(r[C.Status]),
   })).filter(h => h.at || h.binome).reverse().slice(0, 300);
+}
+
+/** The Interviewee Changes tab (moves, accepted hand edits) for Change history, newest first (last 300); [] before its first row. */
+function ivHistoryRows_() {
+  const sh = ss_().getSheetByName(TAB.IV_CHANGES);
+  if (!sh) return [];
+  const C = idx_(IC_H), s = v => String(v == null ? '' : v).trim();
+  return loadTable_(TAB.IV_CHANGES, IC_H).data.slice(-300).reverse().map(r => ({
+    at: fmt_(r[C.When], 'dd/MM/yyyy HH:mm'), by: s(r[C.By]), code: s(r[C.Code]), what: s(r[C.What]), from: s(r[C.From]), to: s(r[C.To]) }));
+}
+
+/** Analytics (docs/plans.md › Analytics): one row per registration in Interviewees, duplicates included (their status says so),
+ *  admins only. Read-only, no lock, and never on a poll: the page asks when Analytics or a profile opens. No phone, Facebook or
+ *  Discord. Times are ms, shown in tz. */
+function webAnalytics() {
+  if (access_().role !== 'admin') throw new Error('Not allowed');
+  const t = loadTable_(TAB.IV, IV_H), I = t.I, s = v => String(v == null ? '' : v).trim();
+  return { v: API_VERSION, tz: String(S_().TIMEZONE), rows: t.data.filter(r => r[I.Code] || r[I['Response Key']]).map(r => ({
+    code: s(r[I.Code]), binome: s(r[I.Binome]), status: s(r[I.Status]), flags: s(r[I.Flags]), risk: r[I.Risk] === '' ? null : Number(r[I.Risk]),
+    registered: ms_(r[I['Registered At']]), assignedAt: ms_(r[I['Assigned At']]), contactedAt: ms_(r[I['Contacted Seen At']]),
+    interviewAt: ms_(r[I['Interview At']]), submittedAt: ms_(r[I['Interview Submitted At']]),
+    first: s(r[I['First Name']]), family: s(r[I['Family Name']]), email: s(r[I.Email]), typedEmail: s(r[I['Typed Email']]),
+    field: s(r[I.Field]), year: s(r[I.Year]), c1: s(r[I['1st Choice']]), c2: s(r[I['2nd Choice']]),
+    birth: birthInfo(r[I['Birth Date']], r[I['Registered At']], r[I.Year], r[I.Field]),
+    discovered: s(r[I['Discovered VIC']]), whyVic: s(r[I['Why VIC']]), motivation: s(r[I.Motivation]), clubs: s(r[I['Other Clubs']]),
+    deptQuestions: s(r[I['Department Questions']]), avail: s(r[I.Availability]), anything: s(r[I['Anything to add']]),
+    contacted: s(r[I.Contacted]), notes: s(r[I['Binome Notes']]), finalDep: s(r[I['Final Affectation']]),
+  })) };
 }
 
 const SETTING_ENUMS ={ INSTANT_EMAIL_MIN_SEVERITY: ['HIGH', 'MEDIUM', 'INFO'], BALANCE_BY: ['ACTIVE', 'TOTAL'], SYNC_EVERY_MINUTES: [1, 5, 10, 15, 30],
