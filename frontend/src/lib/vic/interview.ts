@@ -8,6 +8,9 @@ export function useBinomeBase() {
 }
 export const interviewPath = (base: string, code: string) => `${base}/interview/${encodeURIComponent(code)}`
 
+/** The Recruitment Process Guideline (a PDF in Drive), linked from My binome and the top of every interview form. */
+export const GUIDELINE_URL = "https://drive.google.com/file/d/1kRqXbClYuvvRlqihR6rx56-ukFlQCg_7/view?usp=drivesdk"
+
 export type Answers = Record<string, string>
 
 /** What the page holds for one question: text, scores as "1".."10" (the script reads them back as numbers). */

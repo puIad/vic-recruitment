@@ -2,7 +2,7 @@ import * as React from "react"
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom"
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
 import { toast } from "sonner"
-import { AlertTriangle, ArrowLeft, ArrowUpRight, Check, ClipboardPen, Eye, History, Lock, RotateCcw, SendHorizontal, Undo2 } from "lucide-react"
+import { AlertTriangle, ArrowLeft, ArrowUpRight, BookOpen, Check, ClipboardPen, Eye, History, Lock, RotateCcw, SendHorizontal, Undo2 } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { PageHeader } from "@/components/page-header"
@@ -15,7 +15,7 @@ import { ApiError, call } from "@/lib/vic/api"
 import { Spinner } from "@/lib/vic/confirm"
 import { cellText } from "@/lib/vic/format"
 import {
-  asText, branchOf, clearDraft, missingOf, readDraft, sameAnswers, sectionsInPlay, toSend, useBinomeBase, writeDraft, type Answers,
+  asText, branchOf, clearDraft, GUIDELINE_URL, missingOf, readDraft, sameAnswers, sectionsInPlay, toSend, useBinomeBase, writeDraft, type Answers,
 } from "@/lib/vic/interview"
 import { useVic } from "@/lib/vic/store"
 import type { InterviewData, InterviewQuestion, InterviewSaved, InterviewSection, RunOut } from "@/lib/vic/types"
@@ -154,6 +154,13 @@ function Question({ q, value, onChange, readOnly, invalid, registered }: {
         <div className="min-w-0">
           <p id={labelId} className="whitespace-pre-line text-[0.9375rem] font-semibold leading-snug text-foreground">{tidy(q.title)}</p>
           {q.help && <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{tidy(q.help)}</p>}
+          {q.link && (
+            <Button asChild variant="outline" size="sm" className="mt-2">
+              <a href={q.link.url} target="_blank" rel="noopener noreferrer">
+                {q.link.label} <ArrowUpRight />
+              </a>
+            </Button>
+          )}
         </div>
         {!q.required && <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground">Optional</span>}
       </div>
@@ -451,6 +458,19 @@ export default function InterviewPage() {
           )}
         </div>
 
+        <Note
+          icon={BookOpen}
+          tone="info"
+          action={
+            <Button asChild size="sm" variant="outline" className="bg-background">
+              <a href={GUIDELINE_URL} target="_blank" rel="noopener noreferrer">
+                Open the guideline <ArrowUpRight />
+              </a>
+            </Button>
+          }
+        >
+          <b className="font-bold">Recruitment Process Guideline.</b> Read it before you start the interview.
+        </Note>
         {conflict && (
           <Note
             icon={AlertTriangle}

@@ -201,6 +201,10 @@ const INTERVIEW_SECTIONS = [
   { id: 'FLER', title: 'Finance, Logistics & External Relations' }, { id: 'final', title: 'TA9RIR AL MASIR' },
 ];
 const INTERVIEW_BRANCH = 'firstChoice', INTERVIEW_FINAL = 'finalDep';
+// What the interviewee is shown during a question, opened from the dashboard form (the Google Form's "#IT Designs" note).
+const INTERVIEW_LINKS = {
+  itDesign: { label: 'Open the IT designs folder', url: 'https://drive.google.com/drive/folders/18nCJBZ4okd4tNXwV0_jWKrxQNWZ0q426' },
+};
 // [id, section, title, options (a list = choice, 'text' = paragraph, none = a score from 1 to 10), 0 = optional, help]
 const INTERVIEW_QUESTIONS = [
   ['intro', 'first', 'Introduce yourself'],
@@ -211,7 +215,7 @@ const INTERVIEW_QUESTIONS = [
   ['itPurpose', 'IT', 'According to you, what are the main purposes of the IT Department?'],
   ['itPressure', 'IT', 'Can you manage tasks when working under tight deadlines or high-pressure situations? '],
   ['itFeedback', 'IT', 'You’ve spent many hours on a design, but your mentor or HOD says it doesn’t meet the criteria and must be redone.\nWould you accept this feedback? Do you consider yourself open to constructive criticism?'],
-  ['itDesign', 'IT', 'What is your opinion on this design? Feel free to share any thoughts, ideas, or critiques and what could be improved? ', null, 1, '#IT Designs'],
+  ['itDesign', 'IT', 'What is your opinion on this design? Feel free to share any thoughts, ideas, or critiques and what could be improved? ', null, 1],
   ['commPurpose', 'COMM', 'For you, what are the main purposes of the COMM Department?'],
   ['commSocial', 'COMM', 'Are you following VIC’s Social Media? Share something you liked and something you think could be improved', null, 1, 'Hna also check ida rah mfollowi l vic hh'],
   ['commIdeas', 'COMM', 'Can you come up with out-of-the-box ideas? If so, where do you draw your inspiration from? '],
@@ -239,7 +243,8 @@ const INTERVIEW_QUESTIONS = [
   ['conclusion', 'final', 'Commentaire et Conclusion du TP', 'text', 1, 'General comments and thoughts about this member\nIda bedeltolhm Dep wla 7echitoh say here why\nIda chikor bzf mention it'],
   ['anything', 'final', 'Anything to add?', 'text', 0],
 ].map(q => ({ id: q[0], section: q[1], title: q[2], type: Array.isArray(q[3]) ? 'choice' : q[3] || 'score',
-  options: Array.isArray(q[3]) ? q[3] : null, required: q[4] !== 0, help: q[5] || '', branch: q[0] === INTERVIEW_BRANCH }));
+  options: Array.isArray(q[3]) ? q[3] : null, required: q[4] !== 0, help: q[5] || '', branch: q[0] === INTERVIEW_BRANCH,
+  link: INTERVIEW_LINKS[q[0]] || null }));
 // The binome sheet's second tab (added after the main one, so getSheets()[0] is unchanged): one row per interview of its
 // candidates, written by its members from the dashboard (Source Dashboard) or by the sync (Source Google Form, read-only).
 const IA_TAB = 'Interview Answers';
