@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Table2,
+  Ticket,
   UserPlus,
   Users,
   type LucideIcon,
@@ -180,8 +181,10 @@ export const SETTING_UI: Record<string, SettingUi> = {
 
 /* ---------- Settings › Emails ---------- */
 
-/** The nine mails: a plain label, who gets it and when, an icon, and the switch that turns it on (if it has one). */
-export const MAIL_UI: Record<string, { label: string; help: string; icon: LucideIcon; switch?: string }> = {
+/** The ten mails: a plain label, who gets it and when, an icon, the switch that turns it on (if it has one), and a
+ *  placeholder line where this mail's placeholder means something else than PLACEHOLDER_HELP says. */
+export const MAIL_UI: Record<string, { label: string; help: string; icon: LucideIcon; switch?: string; vars?: Record<string, string> }> = {
+  CODE: { label: "Registration ticket", help: "Sent by the registration form to the ENP address a candidate types, with the six-digit ticket that proves it is theirs. Always on: the form cannot start without it.", icon: Ticket, vars: { code: "The six-digit ticket" } },
   CONFIRM: { label: "Registrant confirmation", help: "Sent once to each new registrant, with their code.", icon: MailCheck, switch: "CONFIRM_REGISTRANTS" },
   REJECT: { label: "Rejection", help: "Sent to declined applicants when an admin presses Send rejections in Maintenance. This is the text the dialog starts from.", icon: MailX },
   NEW_IV: { label: "New interviewees", help: "Sent to both members of a binome when new candidates are given to them.", icon: MailPlus, switch: "NOTIFY_BINOME_ON_NEW_INTERVIEWEE" },

@@ -234,6 +234,6 @@ function stampConfirmations_(ctx) {
 function sendConfirmations_(ctx) {
   const I = ctx.iv.I;
   ctx.confirm.forEach(r => mailSend_(String(r[I.Email]).trim(),
-    mailFrom_('CONFIRM', { first: String(r[I['First Name']]).trim(), code: String(r[I.Code]) })));
+    mailFrom_('CONFIRM', { first: String(r[I['First Name']]).trim(), code: String(r[I.Code]) }, { dept: r[I['1st Choice']] })));
   ctx.confirm = [];
 }

@@ -39,6 +39,13 @@ const CONFIG = {
 // subject, heading, text above, the generated part (code box, list, alert table), text below. One Settings row per field,
 // MAIL_<ID>_<FIELD>; blank = the default here. Subject, heading and code label are plain; the other texts: a blank line starts a paragraph, **x** is bold.
 const MAILS = [
+  // the registration form's ticket (docs/registration-form.md, The mails): sent by the mailer (mailer/Code.gs), which reads
+  // these rows from the Master; no On/Off switch, since off would break the form's first screen
+  { id: 'CODE', name: 'Registration ticket', to: 'candidate', vars: ['code'], fields: [
+    ['subject', 'Your ticket for Platform 9¾: {code}'],
+    ['heading', 'Your ticket is ready'],
+    ['above', 'Type this ticket on the registration form to prove this ENP address is yours. It works for 10 minutes. If you did not ask for it, ignore this mail.'],
+    ['codeLabel', 'Your ticket']] },
   { id: 'CONFIRM', name: 'Registrant confirmation', to: 'candidate', vars: ['first', 'code'], fields: [
     ['subject', 'VIC Recruitment 2026: registration received'],
     ['heading', 'Thanks for registering, {first}!'],
@@ -171,6 +178,12 @@ const HOUSE = {
   COMM: { name: 'Gryffindor', main: '#740001', accent: '#D3A625', light: '#F5DCDC' },
   FLER: { name: 'Hufflepuff', main: '#372E29', accent: '#ECB939', light: '#FBEFC8' },
   HR: { name: 'Slytherin', main: '#1A472A', accent: '#AAAAAA', light: '#DCEBDF' },
+};
+// The houses on the registration form and its mails (GLOSSARY.md, House; owner, 22 Oct): IT and COMM the other way round
+// from HOUSE on purpose. The colour is the confirmation's stripe; an unknown department gets aquamarine (MAIL.aqua).
+const FORM_HOUSE = {
+  IT: { name: 'Gryffindor', colour: '#FF6A5E' }, COMM: { name: 'Ravenclaw', colour: '#7FB0FF' },
+  FLER: { name: 'Hufflepuff', colour: '#F4BB35' }, HR: { name: 'Slytherin', colour: '#46D392' },
 };
 const CONTACT_OPTIONS = ['Not yet', 'Yes', 'No answer', 'Withdrew'];
 

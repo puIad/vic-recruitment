@@ -129,7 +129,7 @@ function MailCard({ m, f }: { m: MailDef; f: SettingsForm }) {
           <p className="mb-2 text-sm font-bold">Fill in automatically</p>
           <div className="flex flex-wrap gap-2">
             {m.vars.map((name) => (
-              <Button key={name} type="button" size="sm" variant="outline" title={PLACEHOLDER_HELP[name]} onClick={() => insert(name)} className="font-mono">
+              <Button key={name} type="button" size="sm" variant="outline" title={ui.vars?.[name] ?? PLACEHOLDER_HELP[name]} onClick={() => insert(name)} className="font-mono">
                 {`{${name}}`}
               </Button>
             ))}

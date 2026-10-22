@@ -62,6 +62,7 @@ assert(lina[IV.Code] && /CONFIRMED \d\d\/\d\d\/\d{4}/.test(lina[IV.Flags]), 'the
 const mine = outbox().find(m => m.to === 'lina.amrani@g.enp.edu.dz');
 assert(mine.htmlBody.includes('>' + lina[IV.Code] + '<'), 'their code');
 assert.strictEqual(mine.name, 'VIC Recruitment', 'a candidate mail');
+assert(mine.htmlBody.includes('<td bgcolor="#FF6A5E" style="background:#FF6A5E;height:4px;'), 'a Google Form registrant whose 1st choice is IT: the Gryffindor stripe');
 const ines = outbox().find(m => m.to === 'ines.kaci@g.enp.edu.dz').htmlBody;
 assert(ines.includes('Ines&lt;i&gt;&quot;') && !ines.includes('Ines<i>'), 'the name is escaped');
 const binMail = outbox().find(m => /New interviewee/.test(m.subject));
@@ -151,7 +152,7 @@ console.log('MAIL OK');
 // ---- editable mail texts (MAILS, Settings › Emails) ----
 {
   const keys = R('SETTINGS_DEFAULTS.map(function (r) { return r[0]; })'), mk = R('MAILS.reduce(function (a, m) { return a.concat(m.fields.map(function (f) { return "MAIL_" + m.id + "_" + f[0].toUpperCase(); })); }, [])');
-  assert.strictEqual(mk.length, 31, '31 fields');
+  assert.strictEqual(mk.length, 35, '35 fields');
   assert(mk.every(k => keys.includes(k) && k.length <= 41 && /^[A-Z_]+$/.test(k)), 'every field has its Settings row, within the pending key pattern');
   assert.strictEqual(new Set(keys).size, keys.length, 'keys unique');
   // blank rows = today's text; an edit reaches the mail, escaped
@@ -166,7 +167,7 @@ console.log('MAIL OK');
   assert.throws(() => settings({ MAIL_CONFIRM_ABOVE: 'x'.repeat(2001) }), /over 2000/);
   settings({ MAIL_CONFIRM_HEADING: run("mailDef_('CONFIRM').fields[1][1]") });
   assert.strictEqual(call('webState').settingsAll.find(x => x.key === 'MAIL_CONFIRM_HEADING').value, '', 'default text saved blank');
-  assert(call('webState').mails.length === 9, 'webState.mails');
+  assert(call('webState').mails.length === 10, 'webState.mails');
   // preview: sample data, nothing written, send reaches only the caller
   run('__outbox.length = 0');
   const pv = call('webRun', 'mailPreview', { id: 'COVERED', texts: { text: 'Hi {first}, {cover} covers {codes}' } }).result;
@@ -175,4 +176,88 @@ console.log('MAIL OK');
   const sent = call('webRun', 'mailPreview', { id: 'LEFT', send: true }).result;
   assert(outbox().every(m => /^\[TEST\] /.test(m.subject)), 'test subject');
   console.log('editable mails ok; test send', sent.sent);
+}
+
+// ---- the themed mails (docs/registration-form.md, The mails): the ticket and the confirmation ----
+{
+  const crypto = require('crypto');
+  // hashes of each sample as it rendered before the theme (main at 86ae089): the rejection and the team mails never change
+  const BEFORE = { REJECT: 'df5381a2244ef163', NEW_IV: '84c9defbf652d4a2', ALERT: 'fdca2ff1e9d5c3f3', JOINED: '65d455d5f3f0e787',
+    LEFT: '6e36ae12140a8500', PAIRED: 'b2d7c5863ab08333', COVER: 'bbcdbbdf01e30cff', COVERED: 'a5cee67a598d8c50' };
+  settings(Object.fromEntries(R('MAILS.reduce(function (a, m) { return a.concat(m.fields.map(function (f) { return "MAIL_" + m.id + "_" + f[0].toUpperCase(); })); }, [])').map(k => [k, ''])));
+  Object.keys(BEFORE).forEach(id => {
+    const m = R(`mailSample_('${id}')`);
+    assert.strictEqual(crypto.createHash('sha256').update(m.subject + '\n' + m.from + '\n' + m.html).digest('hex').slice(0, 16), BEFORE[id], id + ' renders as before');
+  });
+
+  const NIGHT = '#141e27', SERIF = "Georgia,'Times New Roman',serif";
+  const stripe = html => (html.match(/<td bgcolor="(#[0-9a-fA-F]{6})" style="background:\1;height:4px;/) || [])[1];
+  const header = html => (html.match(/<tr><td bgcolor="(#[0-9a-fA-F]{6})"[^>]*><img src="https:\/\/vic-recruitment\.vercel\.app\/brand\/vic-logo-white\.png"/) || [])[1];
+  const themed = (html, colour, label) => {
+    assert.strictEqual(header(html), NIGHT, label + ': night header with the white logo');
+    assert.strictEqual(stripe(html), colour, label + ': the stripe');
+    assert(new RegExp('<h1 style="[^"]*font-family:' + SERIF.replace(/[()]/g, '\$&') + ';').test(html), label + ': a Georgia-fallback serif heading');
+    assert(!/<img(?![^>]*vic-logo-white)/.test(html), label + ': no image beyond the logo');
+  };
+
+  // the ticket: aquamarine, the six digits in the code box, the spec's wording, from "VIC Recruitment"
+  const t = R(`mailFrom_('CODE', { code: '482913' })`);
+  assert.strictEqual(t.subject, 'Your ticket for Platform 9¾: 482913');
+  assert.strictEqual(t.from, 'VIC Recruitment');
+  themed(t.html, '#69c4af', 'ticket');
+  assert(/>Your ticket is ready</.test(t.html) && /Type this ticket on the registration form to prove this ENP address is yours\. It works for 10 minutes\. If you did not ask for it, ignore this mail\./.test(t.html), 'the default wording');
+  assert(/>Your ticket<\/div><div[^>]*>482913</.test(t.html), 'the six digits in the code box, under its label');
+  assert.deepStrictEqual(R(`mailDef_('CODE')`), { id: 'CODE', name: 'Registration ticket', to: 'candidate', vars: ['code'],
+    fields: R(`mailDef_('CODE').fields`) });
+  assert.deepStrictEqual(R(`mailDef_('CODE').fields.map(function (f) { return f[0]; })`), ['subject', 'heading', 'above', 'codeLabel']);
+
+  // the confirmation: same wording, the stripe in the 1st choice's house on the form
+  const HOUSES = { IT: '#FF6A5E', COMM: '#7FB0FF', FLER: '#F4BB35', HR: '#46D392', '': '#69c4af', ART: '#69c4af' };
+  Object.keys(HOUSES).forEach(dep => {
+    const c = R(`mailFrom_('CONFIRM', { first: 'Lina', code: 'IT.07' }, { dept: ${J(dep)} })`);
+    themed(c.html, HOUSES[dep], 'confirmation ' + (dep || 'blank'));
+    assert(/Thanks for registering, Lina!/.test(c.html) && />IT\.07</.test(c.html), 'the wording stays');
+  });
+  assert.strictEqual(R("HOUSE.IT.name") + ' ' + R("HOUSE.COMM.name"), 'Ravenclaw Gryffindor', 'the sheets keep their own houses');
+  assert.strictEqual(stripe(R(`mailSample_('CONFIRM')`).html), '#FF6A5E', 'the preview shows an IT registrant: Gryffindor');
+  assert.strictEqual(stripe(R(`mailSample_('CODE')`).html), '#69c4af', 'the ticket preview');
+  console.log('themed mails ok');
+}
+
+// ---- the ticket on Settings › Emails: {code} only, Preview and Send me a test, no switch, saved edits win ----
+{
+  const ticket = call('webState').mails.find(m => m.id === 'CODE');
+  assert.deepStrictEqual([ticket.name, ticket.to, ticket.vars, ticket.fields.map(f => f.key)], ['Registration ticket', 'candidate', ['code'],
+    ['MAIL_CODE_SUBJECT', 'MAIL_CODE_HEADING', 'MAIL_CODE_ABOVE', 'MAIL_CODE_CODELABEL']]);
+  assert.throws(() => settings({ MAIL_CODE_ABOVE: 'Hi {first}' }), /unknown placeholder \{first\}\. This mail knows \{code\}/);
+  run('__outbox.length = 0');
+  const pv = call('webRun', 'mailPreview', { id: 'CODE', texts: { heading: 'Platform {code}' } }).result;
+  assert(/>Platform 482913</.test(pv.html) && pv.subject === 'Your ticket for Platform 9¾: 482913' && !outbox().length, 'preview with sample digits, nothing sent');
+  const sent = call('webRun', 'mailPreview', { id: 'CODE', send: true }).result;
+  const got = outbox().pop();
+  assert(sent.sent && got.subject === '[TEST] Your ticket for Platform 9¾: 482913' && got.name === 'VIC Recruitment' && got.htmlBody.includes('#141e27'), 'Send me a test: themed, from VIC Recruitment');
+  run('__outbox.length = 0');
+  call('webRun', 'mailPreview', { id: 'CONFIRM', send: true });
+  assert(outbox().pop().htmlBody.includes('background:#FF6A5E;height:4px'), 'the confirmation test arrives themed in a house');
+  settings({ MAIL_CONFIRM_HEADING: 'Welcome, {first}' });
+  const c = R(`mailFrom_('CONFIRM', { first: 'Ann', code: 'HR.3' }, { dept: 'HR' })`).html;
+  assert(/>Welcome, Ann</.test(c) && c.includes('background:#46D392;height:4px'), 'a saved confirmation edit keeps winning, in the house look');
+  settings({ MAIL_CONFIRM_HEADING: '' });
+  assert(!R('SETTINGS_DEFAULTS').some(r => /^CODE|TICKET/.test(r[0])), 'no On/Off setting for the ticket');
+  console.log('ticket settings ok');
+}
+
+// ---- drift: the mailer (mailer/Code.gs) holds its own copy of the themed look; the same sample must give the same bytes ----
+{
+  const fs = require('fs'), vm = require('vm');
+  const mailer = vm.createContext({ console, JSON, Math });
+  vm.runInContext(fs.readFileSync(__dirname + '/../mailer/Code.gs', 'utf8'), mailer, { filename: 'mailer/Code.gs' });
+  const viaMailer = (w, code) => JSON.parse(JSON.stringify(vm.runInContext(`ticketMail_(${J(w)}, ${J(code)})`, mailer)));
+  const defaults = Object.fromEntries(R(`mailDef_('CODE').fields`));
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(vm.runInContext('MAILER.defaults', mailer))), defaults, 'the mailer has the Config.gs defaults');
+  const viaScript = texts => { const m = R(`mailFrom_('CODE', { code: '073519' }, { texts: ${J(texts)} })`); return { subject: m.subject, html: m.html }; };
+  assert.deepStrictEqual(viaMailer(defaults, '073519'), viaScript({}), 'the default ticket: byte-equal');
+  const edited = { subject: 'Ticket {code} & more', heading: 'Hi <there> "{code}"', above: 'First **line**\nsame paragraph\n\nSecond {code} {other}', codeLabel: 'Ticket {code}' };
+  assert.deepStrictEqual(viaMailer(edited, '073519'), viaScript(edited), 'edited wording: byte-equal');
+  console.log('mailer drift ok');
 }

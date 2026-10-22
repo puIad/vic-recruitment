@@ -387,7 +387,7 @@ In order. Each step says where to do it.
 - **Schedule** (calendar of the interviews set, plus admin events saved in the Master) and **Analytics** (a profile
   for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).
 - **Binome desk** dropped (2026-10-04) and removed from the UI (2026-10-18).
-- **Registration form** on the vic-enp site at `/apply`, the Google Form as fallback: specified in [docs/registration-form.md](docs/registration-form.md) (wayfinder map #110), built 23 and 24 Oct, live check the evening of 24 Oct.
+- **Registration form** on the vic-enp site at `/apply`, the Google Form as fallback: specified in [docs/registration-form.md](docs/registration-form.md) (wayfinder map #110), built 23 and 24 Oct, live check the evening of 24 Oct. Slice S2 ([#128](https://github.com/puIad/vic-recruitment-2026/issues/128)): the themed ticket and confirmation, the Registration ticket card on Settings › Emails and the mailer's source (`mailer/Code.gs`, deployed by the owner as `vic.rh`, setup step 7).
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.
 - Retired the Apps Script web app's old dashboard (2026-10-17): `Index.html` and `NoAccess.html` are deleted, and its
