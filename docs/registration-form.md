@@ -76,8 +76,9 @@ the main folder. The comp is a throwaway: port its markup, copy and behaviour, n
   registered; the domain is closed to ENP and the code limits apply, so this stands.
 - **Draft:** saved to localStorage on every change (answers, 1st-choice house, step). A reload inside the hour goes
   straight back in; after 60 minutes only the ticket is asked again and the answers stay. Cleared on a successful send.
-- **Type and look:** Gilroy for everything, plus Cormorant Garamond (OFL, self-hosted) on step titles and the letter
-  only. Not the Magic School download (no licence, imitates the film's lettering). Colours from the comp's `HOUSES`
+- **Type and look:** the landing's production body font for everything (Outfit while no Gilroy web licence is
+  assumed, VIC-ENP open question 11; it follows the landing if that changes; owner, 22 Oct), plus Cormorant Garamond
+  (OFL, self-hosted) on step titles and the letter only. Not the Magic School download (no licence, imitates the film's lettering). Colours from the comp's `HOUSES`
   table; the contrast table in the comp's README holds (white text at least 4.5:1 on every wash).
 - **Never:** crests, film stills, book quotes, title lettering, the logo on parchment art, hidden or delayed required
   questions, or anything that slows or breaks the form inside Instagram's browser. Tier 0 and `prefers-reduced-motion`
