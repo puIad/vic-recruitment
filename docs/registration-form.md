@@ -292,11 +292,17 @@ secrets are never pasted into chat, a ticket or the repo.
 
    Random strings: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. `VITE_APPLY_URL` stays
    the Google Form's responder link until the live check passes.
-7. **The mailer**, once S2 posts `mailer/Code.gs` (target the evening of 23 Oct): sign in to script.google.com as
-   `vic.rh`, New project, paste the file, Project Settings > Script properties: `MAILER_SECRET` (same string as in
-   Vercel), `EMAIL_DOMAIN` = `g.enp.edu.dz`, `MASTER_ID` = the real Master's id. Deploy > New deployment > Web app,
-   Execute as **Me**, access **Anyone**; authorize the mail and spreadsheet scopes. Copy the web app URL into
-   `MAILER_URL`. `vic.rh` must be able to open the Master.
+7. **The mailer** (deployed 22 Oct as `vic.rh` with clasp: project "VIC Mailer", deployment `@2`, the ids in
+   `mailer/.clasp.json`). Open the project at script.google.com as `vic.rh`: run any function once and approve the
+   mail and read-only spreadsheet scopes; Project Settings > Script properties: `MAILER_SECRET` (same string as in
+   Vercel), `EMAIL_DOMAIN` = `g.enp.edu.dz`, `MASTER_ID` = the real Master's id. Deploy > Manage deployments: check
+   "Who has access" reads **Anyone** (if only "Anyone within g.enp.edu.dz" is offered, the domain blocks anonymous web
+   apps and the site cannot reach the mailer: stop and say so). The web app URL
+   `https://script.google.com/macros/s/AKfycbxYwtgUziRMwwL9zqOHLNTThs2zsTxcu_zkrsz3h-TyibiKWfwPolgtwUW12DUZ3vBL/exec`
+   goes into `MAILER_URL`. `vic.rh` must be able to open the Master. A later change to `mailer/Code.gs`:
+   `cd mailer`, `npx clasp --user vicrh push --force`, then
+   `npx clasp --user vicrh update-deployment AKfycbxYwtgUziRMwwL9zqOHLNTThs2zsTxcu_zkrsz3h-TyibiKWfwPolgtwUW12DUZ3vBL`
+   (same URL).
 
 **By the morning of 24 Oct**
 
