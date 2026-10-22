@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>PROTOTYPE: VIC registration form comp</title>
+<!--
+  PROTOTYPE (throwaway), wayfinder ticket "The registration form's themed comp" (puIad/vic-recruitment-2026#122).
+  Question: one page or steps, step order and grouping, how the wizarding theme shows at each beat,
+  how errors, checks at entry and a saved draft look. Synthetic answers only; nothing is sent anywhere.
+  Three structures behind ?v=A|B|C (arrows or the bar at the bottom):
+    A  the long letter   one scrolling page, a road down the left edge
+    B  the journey       8 grouped steps, one screen each, a rail of stops
+    C  one at a time     one question per screen, house wash as the room
+  Deep links: ?v=B&beat=sorting&house=HR   beats: letter ticket questions sorting dept interview done owl received
+  Runs from any static server (python -m http.server) or the single-file build (build.py).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:Gilroy;font-weight:400;font-display:swap;src:url(../../frontend/src/assets/fonts/Gilroy-Regular.woff2) format("woff2")}
+@font-face{font-family:Gilroy;font-weight:700;font-display:swap;src:url(../../frontend/src/assets/fonts/Gilroy-Bold.woff2) format("woff2")}
+@font-face{font-family:Gilroy;font-weight:900;font-display:swap;src:url(../../frontend/src/assets/fonts/Gilroy-Heavy.woff2) format("woff2")}
+/* owner's own download (FontMesa, all rights reserved): local only, never committed */
+@font-face{font-family:"Magic School";font-display:swap;src:url(fonts/MagicSchoolOne.ttf) format("truetype")}
+
+@property --bg{syntax:"<color>";inherits:true;initial-value:#141E27}
+@property --bg2{syntax:"<color>";inherits:true;initial-value:#141E27}
+@property --accent{syntax:"<color>";inherits:true;initial-value:#69C4AF}
+@property --ink{syntax:"<color>";inherits:true;initial-value:#0A1C18}
+:root{
+  --night:#141E27;--bg:#141E27;--bg2:#1c2c3a;--accent:#69C4AF;--ink:#0A1C18;
+  --text:#fff;--muted:#A3AFBA;--line:rgba(255,255,255,.16);--card:rgba(255,255,255,.06);
+  --paper:#EFEFEF;--paper-ink:#141E27;--paper-body:#3b4954;
+  --radius:16px;--proto-h:58px;
+  --serif:"Magic School","Cormorant Garamond",Georgia,serif;
+  --serif-soft:"Cormorant Garamond",Georgia,serif;
+  --sans:Gilroy,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  transition:--bg .7s ease,--bg2 .7s ease,--accent .7s ease,--ink .7s ease;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{margin:0;min-height:100dvh;color:var(--text);font:400 16px/1.55 var(--sans);
+  background:radial-gradient(130% 60% at 50% -5%,var(--bg2) 0%,var(--bg) 62%) fixed,var(--bg);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:var(--accent);color:var(--ink)}
+/* charter: static grain at 7% and a vignette, never animated */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(120% 90% at 50% 40%,transparent 55%,rgba(0,0,0,.38))}
+#sky{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55;
+  background:
+   radial-gradient(1.2px 1.2px at 12% 14%,#fff,transparent),radial-gradient(1px 1px at 78% 9%,#fff,transparent),
+   radial-gradient(1.4px 1.4px at 44% 22%,#fff,transparent),radial-gradient(1px 1px at 90% 31%,#fff,transparent),
+   radial-gradient(1px 1px at 6% 47%,#fff,transparent),radial-gradient(1.2px 1.2px at 63% 55%,#fff,transparent),
+   radial-gradient(1px 1px at 30% 71%,#fff,transparent),radial-gradient(1.3px 1.3px at 88% 78%,#fff,transparent),
+   radial-gradient(1px 1px at 52% 90%,#fff,transparent),radial-gradient(1px 1px at 18% 93%,#fff,transparent)}
+#app{position:relative;z-index:1;max-width:460px;margin:0 auto;min-height:100dvh;padding:0 20px calc(var(--proto-h) + 96px);outline:0}
+@media(min-width:520px){#app{border-inline:1px solid rgba(255,255,255,.06)}}
+h1,h2,h3,p{margin:0}
+.serif{font-family:var(--serif);font-weight:400;letter-spacing:.01em}
+.soft{font-family:var(--serif-soft);font-style:italic;font-weight:500}
+.eyebrow{font:700 13px/1 var(--sans);color:var(--accent);letter-spacing:.02em}
+.muted{color:var(--muted)}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0 8px;min-height:64px}
+.top img{height:34px;width:auto;display:block}
+.chip{white-space:nowrap;display:inline-flex;align-items:center;gap:6px;font:700 12.5px/1 var(--sans);color:var(--muted);padding:8px 11px;border:1px solid var(--line);border-radius:99px;background:rgba(0,0,0,.18)}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--accent);display:block}
+.chip.lock i{background:none;border:1.5px solid var(--accent)}
+.chip.pulse i{animation:pulse 1s ease 2}
+@keyframes pulse{50%{transform:scale(1.7);opacity:.5}}
+
+/* buttons */
+.btn{appearance:none;border:0;cursor:pointer;font:700 17px/1 var(--sans);height:56px;padding:0 26px;border-radius:99px;
+  background:var(--accent);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  transition:transform .15s ease,filter .15s ease}
+.btn:active{transform:scale(.985)}
+.btn:focus-visible,.opt:focus-visible,.tile:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,.link:focus-visible,.rate button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--text);box-shadow:inset 0 0 0 1.5px var(--line);width:auto}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.link{appearance:none;background:none;border:0;color:var(--accent);font:700 15px/1.2 var(--sans);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px 0}
+.link[disabled]{color:var(--muted);text-decoration:none;cursor:default}
+
+.actions{position:sticky;bottom:calc(var(--proto-h) + 6px);z-index:5;display:flex;gap:10px;padding:18px 0 10px;margin-top:20px;
+  background:linear-gradient(to top,var(--bg) 55%,transparent)}
+.actions .btn:first-child:not(:only-child){flex:0 0 auto}
+.actions .btn.grow{flex:1}
+
+/* fields */
+.field{margin:0 0 26px;scroll-margin-top:80px}
+.field>label,.field>.lab{display:block;font:700 16px/1.35 var(--sans);margin-bottom:6px}
+.opt-tag{font:400 13px/1 var(--sans);color:var(--muted);margin-left:6px}
+.help{font-size:13.5px;line-height:1.45;color:var(--muted);margin:-2px 0 10px}
+input[type=text],input[type=tel],input[type=email],input[type=date],textarea,select{
+  width:100%;font:400 16px/1.4 var(--sans);color:var(--text);background:rgba(255,255,255,.07);color-scheme:dark;
+  border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;min-height:52px;appearance:none;transition:border-color .2s,background .2s}
+textarea{min-height:128px;resize:vertical}
+input::placeholder,textarea::placeholder{color:#7f8c97}
+input:focus,textarea:focus,select:focus{border-color:var(--accent);background:rgba(255,255,255,.1);outline:none;box-shadow:0 0 0 3px color-mix(in oklab,var(--accent) 35%,transparent)}
+.opts{display:grid;gap:8px}
+.opts.cols{grid-template-columns:1fr 1fr}
+.opts.cols3{grid-template-columns:repeat(3,1fr)}
+.opt{appearance:none;display:flex;align-items:center;gap:12px;text-align:left;width:100%;min-height:52px;padding:10px 14px;color:var(--text);
+  font:700 15px/1.3 var(--sans);background:rgba(255,255,255,.05);border:1.5px solid var(--line);border-radius:14px;cursor:pointer;transition:border-color .2s,background .2s}
+.opt .mk{flex:none;width:22px;height:22px;border:2px solid #6c7a86;border-radius:50%;display:grid;place-items:center}
+.opt.many .mk{border-radius:6px}
+.opt[aria-checked=true]{border-color:var(--accent);background:color-mix(in oklab,var(--accent) 16%,transparent)}
+.opt[aria-checked=true] .mk{border-color:var(--accent);background:var(--accent)}
+.opt[aria-checked=true] .mk::after{content:"";width:9px;height:5px;border:2px solid var(--ink);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.opt:not(.many)[aria-checked=true] .mk::after{width:8px;height:8px;border:0;background:var(--ink);border-radius:50%;transform:none}
+.opt small{display:block;font:400 12.5px/1.3 var(--sans);color:var(--muted)}
+.rate{display:flex;gap:8px}
+.rate button{appearance:none;flex:1;height:52px;border-radius:14px;color:var(--text);font:900 18px/1 var(--sans);background:rgba(255,255,255,.05);border:1.5px solid var(--line);cursor:pointer}
+.rate button[aria-checked=true]{background:var(--accent);color:var(--ink);border-color:var(--accent)}
+.rate-ends{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:6px}
+.other{margin-top:8px}
+/* errors: a light chip, so it reads on every wash and never fights the red house */
+.msg{display:none}
+.field.err .msg,.ticket-err{display:flex}
+.msg,.ticket-err{align-items:flex-start;gap:8px;margin-top:9px;padding:9px 12px;border-radius:12px;background:#FFE7DF;color:#6B1B07;font:700 14px/1.35 var(--sans)}
+.msg::before,.ticket-err::before{content:"!";flex:none;width:19px;height:19px;border-radius:50%;background:#6B1B07;color:#FFE7DF;display:grid;place-items:center;font:900 12px/1 var(--sans);margin-top:1px}
+.field.err input,.field.err textarea,.field.err .opt,.field.err .rate button{border-color:#FFB9A4}
+.field.err input,.field.err textarea{border-width:2px}
+.ok-note{display:flex;gap:8px;align-items:center;color:var(--accent);font:700 14px/1.3 var(--sans)}
+.proto-note{margin:14px 0 0;padding:9px 12px;border:1.5px dashed rgba(255,255,255,.35);border-radius:12px;font:400 12.5px/1.45 var(--sans);color:#d6dde3}
+.proto-note b{color:#fff}
+
+/* letter */
+.hero{padding:10px 0 4px;text-align:center}
+.hero h1{font-size:44px;line-height:1.05;margin:6px 0 4px}
+.letter{position:relative;margin:22px 0 22px;background:var(--paper);color:var(--paper-ink);border-radius:20px;padding:30px 24px 26px;
+  box-shadow:0 26px 60px -20px rgba(0,0,0,.65),inset 0 0 0 1px rgba(20,30,39,.08)}
+.letter .greet{font:italic 600 30px/1.1 var(--serif-soft);margin-bottom:14px}
+.letter p{color:var(--paper-body);font-size:16.5px;line-height:1.6;margin-bottom:12px}
+.letter p b{color:var(--paper-ink)}
+.letter .sign{font:700 15px/1.3 var(--sans);color:var(--paper-ink);margin:16px 0 0}
+.seal{position:absolute;right:20px;bottom:-22px;width:58px;height:58px;border-radius:50%;background:var(--accent);color:var(--ink);display:grid;place-items:center;
+  font:900 22px/1 var(--sans);box-shadow:0 8px 18px -6px rgba(0,0,0,.6),inset 0 0 0 4px rgba(0,0,0,.08)}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 4px}
+.meta .chip{color:#d8e0e6}
+.back-card{border:1.5px solid color-mix(in oklab,var(--accent) 60%,transparent);background:color-mix(in oklab,var(--accent) 10%,transparent);border-radius:16px;padding:16px;margin:0 0 20px}
+.back-card b{display:block;font-size:17px;margin-bottom:2px}
+.back-card .row{display:flex;gap:14px;align-items:center;margin-top:10px}
+.small{font-size:13.5px}
+
+/* ticket / platform */
+.ticket{margin:18px 0 8px}
+.ticket h2{font-size:38px;line-height:1.05;margin:6px 0 10px}
+.ticket .lead{color:#dbe3e9;margin-bottom:20px}
+.slots{position:relative}
+.slots input{letter-spacing:.62em;text-indent:.28em;font:900 30px/1 var(--sans);text-align:left;padding:0 0 0 18px;height:68px;font-variant-numeric:tabular-nums;background-image:none}
+.stub{border:1.5px solid var(--line);border-radius:18px;background:var(--card);padding:18px;position:relative}
+.stub::before,.stub::after{content:"";position:absolute;top:50%;width:18px;height:18px;border-radius:50%;background:var(--bg);margin-top:-9px;border:1.5px solid var(--line)}
+.stub::before{left:-10px;clip-path:inset(0 0 0 50%)}.stub::after{right:-10px;clip-path:inset(0 50% 0 0)}
+.countdown{font:700 14px/1 var(--sans);color:var(--muted)}
+.verified{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:color-mix(in oklab,var(--accent) 14%,transparent);border:1.5px solid color-mix(in oklab,var(--accent) 55%,transparent);font:700 15px/1.3 var(--sans)}
+.verified .tick{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);display:grid;place-items:center}
+.verified .tick::after{content:"";width:10px;height:5.5px;border:2.5px solid var(--ink);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.verified small{display:block;font:400 13px/1.3 var(--sans);color:var(--muted)}
+.hp{position:absolute;left:-9999px;opacity:0;height:0;width:0}
+
+/* journey rails */
+.rail{display:flex;align-items:center;gap:0;margin:8px 0 18px}
+.rail .stop{flex:none;width:12px;height:12px;border-radius:50%;border:2px solid #5b6a77;background:var(--bg);transition:all .4s}
+.rail .seg{flex:1;height:2px;background:#33424f;position:relative}
+.rail .seg::after{content:"";position:absolute;inset:0;background:var(--accent);transform-origin:left;transform:scaleX(0);transition:transform .5s}
+.rail .done.seg::after{transform:scaleX(1)}
+.rail .stop.done{background:var(--accent);border-color:var(--accent)}
+.rail .stop.now{width:20px;height:20px;border-color:var(--accent);background:var(--bg);box-shadow:0 0 0 5px color-mix(in oklab,var(--accent) 28%,transparent)}
+.stopline{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
+.stopline .eyebrow{white-space:nowrap}
+.step-title{font-size:40px;line-height:1.05;margin:4px 0 6px}
+.step-sub{color:#cfd8df;margin-bottom:24px}
+.stepwrap{animation:rise .45s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* A: the road */
+.road{position:relative;padding-left:46px}
+.road::before{content:"";position:absolute;left:14px;top:12px;bottom:0;width:2px;background:#33424f}
+.road .fill{position:absolute;left:14px;top:12px;width:2px;background:var(--accent);height:0;transition:height .6s ease}
+.gsec{position:relative;padding-bottom:18px;scroll-margin-top:70px}
+.gsec .pin{position:absolute;left:-46px;top:6px;width:30px;height:30px;border-radius:50%;background:var(--bg);border:2px solid #5b6a77;display:grid;place-items:center;font:900 13px/1 var(--sans);color:var(--muted);transition:all .4s}
+.gsec.done .pin{background:var(--accent);border-color:var(--accent);color:var(--ink)}
+.gsec.live .pin{border-color:var(--accent);color:var(--text);box-shadow:0 0 0 5px color-mix(in oklab,var(--accent) 25%,transparent)}
+.gsec h2{font-size:34px;line-height:1.08;margin:3px 0 6px}
+.gsec .sub{color:#cfd8df;margin-bottom:22px}
+.gsec.ghost{opacity:.5}
+.gsec.ghost .skeleton{border:1.5px dashed var(--line);border-radius:14px;padding:16px;font-size:14.5px;color:var(--muted)}
+.topbar{position:sticky;top:0;z-index:6;margin:0 -20px;padding:10px 20px 8px;background:linear-gradient(var(--bg) 70%,transparent)}
+.topbar .bar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.topbar .thin{height:3px;border-radius:3px;background:#2b3945;margin-top:8px;overflow:hidden}
+.topbar .thin i{display:block;height:100%;background:var(--accent);width:0;transition:width .5s}
+.summary{display:none;margin:0 0 16px;padding:12px 14px;border-radius:14px;background:#FFE7DF;color:#6B1B07;font:700 14.5px/1.35 var(--sans)}
+.summary.on{display:block}
+.summary button{all:unset;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+
+/* sorting */
+.sorting h2{font-size:42px;line-height:1.04;margin:6px 0 8px}
+.tiles{display:grid;gap:12px;margin:20px 0 6px}
+.tile{appearance:none;text-align:left;width:100%;cursor:pointer;color:var(--text);padding:18px 18px 16px;border-radius:20px;border:1.5px solid var(--line);
+  background:linear-gradient(135deg,color-mix(in oklab,var(--h) 22%,transparent),rgba(255,255,255,.03));font-family:var(--sans);position:relative;overflow:hidden;
+  transition:transform .25s ease,border-color .3s,box-shadow .3s}
+.tile::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--h)}
+.tile .code{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.tile .code b{font:900 34px/1 var(--sans)}
+.tile .code span{font:italic 600 24px/1 var(--serif-soft);color:var(--h)}
+.tile .dn{font:700 14px/1.3 var(--sans);color:#e6ecf0;margin-bottom:6px}
+.tile p{font-size:14.5px;line-height:1.5;color:#c7d1d9}
+.tile[aria-checked=true]{border-color:var(--h);box-shadow:0 0 0 3px color-mix(in oklab,var(--h) 40%,transparent),0 18px 40px -18px var(--h);transform:scale(1.015)}
+.tile[aria-checked=true]::after{content:"Your 1st choice";position:absolute;right:14px;top:14px;font:700 12px/1 var(--sans);background:var(--h);color:#0b0b0b;padding:6px 10px;border-radius:99px}
+.tiles.picked .tile[aria-checked=false]{opacity:.62}
+.second{margin-top:26px}
+.second .opts{grid-template-columns:1fr 1fr}
+.opt .dot{flex:none;width:12px;height:12px;border-radius:50%;background:var(--h)}
+.opt[disabled]{opacity:.4;cursor:not-allowed}
+.badge{display:inline-flex;align-items:center;gap:7px;font:700 13px/1 var(--sans);padding:7px 11px;border-radius:99px;border:1.5px solid var(--h);color:var(--text);background:color-mix(in oklab,var(--h) 18%,transparent)}
+.badge i{width:9px;height:9px;border-radius:50%;background:var(--h)}
+.washnote{margin-top:14px;font-size:14px;color:#cfd8df}
+
+/* C */
+.c-wrap{min-height:calc(100dvh - 64px);display:flex;flex-direction:column}
+.c-top{position:sticky;top:0;z-index:6;margin:0 -20px;padding:12px 20px 10px;background:linear-gradient(var(--bg) 72%,transparent)}
+.c-line{position:relative;height:4px;border-radius:4px;background:#2b3945;margin:10px 0 6px}
+.c-line i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--accent);transition:width .5s}
+.c-line b{position:absolute;top:-4px;width:12px;height:12px;border-radius:50%;background:var(--bg);border:2px solid #5b6a77;transform:translateX(-50%)}
+.c-line b.on{background:var(--accent);border-color:var(--accent)}
+.c-count{display:flex;justify-content:space-between;font:700 13px/1 var(--sans);color:var(--muted)}
+.c-body{flex:1;display:flex;flex-direction:column;justify-content:center;padding:16px 0 10px;animation:rise .4s ease both}
+.c-q{font:900 31px/1.12 var(--sans);letter-spacing:-.02em;margin:8px 0 8px}
+.c-help{color:#cfd8df;font-size:15px;margin-bottom:22px}
+.c-body .field{margin:0}
+.c-body .field>label,.c-body .field>.lab{display:none}
+.c-body .help{display:none}
+.c-section{font:italic 600 24px/1 var(--serif-soft);color:var(--accent)}
+.c-body .field>.opt-tag{display:none}
+.review{display:grid;gap:8px;margin:6px 0 4px}
+.review div{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;border:1.5px solid var(--line);border-radius:14px;background:var(--card);font-size:14.5px}
+.review span{color:var(--muted)}.review b{text-align:right}
+
+/* owl */
+.owlpage{min-height:100dvh;display:grid;place-content:center;text-align:center;gap:10px;padding:40px 0;overflow:hidden}
+.sky{position:relative;height:150px;overflow:visible}
+.flyer{position:absolute;top:30px;left:50%;width:150px;margin-left:-75px;animation:fly 3.2s cubic-bezier(.35,.1,.3,1) both}
+@keyframes fly{0%{transform:translate(-120vw,34px) rotate(-6deg)}55%{transform:translate(0,-6px) rotate(0)}100%{transform:translate(0,0) rotate(0)}}
+.wing{transform-origin:60px 36px;animation:flap .42s ease-in-out 8 alternate both}
+.wing.r{transform-origin:60px 36px;animation-direction:alternate-reverse}
+@keyframes flap{from{transform:scaleY(1)}to{transform:scaleY(.35)}}
+.owlpage h1{font-size:40px;line-height:1.05}
+.dots span{display:inline-block;animation:blink 1.2s infinite both}.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+
+/* done */
+.done h1{font-size:48px;line-height:1.02;margin:10px 0 10px}
+.receipt{margin:22px 0;padding:18px;border-radius:20px;border:1.5px solid var(--line);background:var(--card)}
+.receipt li{margin:0 0 10px;list-style:none;display:flex;gap:12px}
+.receipt ul{margin:0;padding:0}
+.receipt li i{flex:none;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--ink);font:900 13px/24px var(--sans);text-align:center;font-style:normal}
+.done .seal{position:static;margin:0 auto 6px;width:72px;height:72px;font-size:30px}
+
+/* prototype bar */
+#proto{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 8px);transform:translateX(-50%);z-index:50;display:flex;align-items:center;gap:2px;
+  background:#fff;color:#111;border-radius:99px;padding:4px;box-shadow:0 8px 28px rgba(0,0,0,.5);font:700 13px/1 var(--sans);max-width:calc(100vw - 16px)}
+#proto button{appearance:none;border:0;background:none;color:#111;font:inherit;height:42px;min-width:42px;border-radius:99px;cursor:pointer;padding:0 10px;white-space:nowrap}
+#proto button:hover{background:#eee}
+#plabel{padding:0 8px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw;text-align:center}
+#pmenu{position:fixed;left:50%;bottom:calc(var(--proto-h) + 14px);transform:translateX(-50%);z-index:49;width:min(420px,calc(100vw - 16px));background:#fff;color:#111;border-radius:20px;
+  padding:14px;box-shadow:0 20px 50px rgba(0,0,0,.55);font:400 14px/1.4 var(--sans);max-height:70dvh;overflow:auto}
+#pmenu[hidden]{display:none}
+#pmenu h4{margin:0 0 6px;font:900 12px/1 var(--sans);text-transform:none;color:#555;letter-spacing:.04em}
+#pmenu .g{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+#pmenu .g button{border:1.5px solid #cfd5da;background:#fff;color:#111;border-radius:99px;padding:8px 12px;font:700 13px/1 var(--sans);cursor:pointer}
+#pmenu .g button[aria-pressed=true]{background:#111;color:#fff;border-color:#111}
+#pmenu .hint{font-size:12.5px;color:#555;margin:0}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .flyer{transform:none}
+}
+</style>
+</head>
+<body>
+<div id="sky" aria-hidden="true"></div>
+<div id="app" tabindex="-1"></div>
+<div id="pmenu" hidden></div>
+<div id="proto" role="toolbar" aria-label="Prototype controls">
+  <button data-p="prev" aria-label="Previous variant">&#8249;</button>
+  <span id="plabel"></span>
+  <button data-p="next" aria-label="Next variant">&#8250;</button>
+  <button data-p="menu" aria-label="Prototype menu" aria-expanded="false">Jump</button>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const LOGO = "../../frontend/public/brand/vic-logo-on-dark.svg";
+const DEADLINE = "29 October, 23:59";
+const MAILBOX = "vic.rh@g.enp.edu.dz";
+const CODE_OK = "123456";
+const RESEND_S = 30;
+
+const HOUSES = {
+  IT:  {house:"Gryffindor", dept:"Information & Technology", bg:"#2A0F14", bg2:"#4A1822", accent:"#FF6A5E", ink:"#2A0A0D", copy:"Brings ideas to life through design, the creative force behind VIC’s visuals, designs, reels, videos, goodies, and everything that shapes our visual identity."},
+  COMM:{house:"Ravenclaw",  dept:"Communication",            bg:"#0D1A38", bg2:"#17306A", accent:"#7FB0FF", ink:"#08142D", copy:"The voice of VIC! Responsible for sharing our events and activities across social media platforms and creating engaging, creative content."},
+  FLER:{house:"Hufflepuff", dept:"Finance, Logistics & External Relations", bg:"#261C08", bg2:"#4C3A0E", accent:"#F4BB35", ink:"#241A05", copy:"Represents VIC to the outside world: finding sponsors, building partnerships, and maintaining strong external relations."},
+  HR:  {house:"Slytherin",  dept:"Human Resources",          bg:"#0A2218", bg2:"#114330", accent:"#46D392", ink:"#06251A", copy:"The heart of the club, the people behind the harmony. HR manages internal organization, motivates members, and ensures a strong and positive club atmosphere."}
+};
+const HORDER = ["COMM","FLER","HR","IT"]; // the Google Form's choice order
+
+const FIELDS = ["Computer Science","PREPA","DATA","INDUS","AUTO","ELN","ELT","ELT-HV","GCHIM","GP-ENV","HYDRAU","GC","MTRX","MECA","GM-AUTO","MINIER","QHSE"].slice(1);
+const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const YN = ["Yes","No","A Little"];
+
+// exact Google Form wording (trailing spaces trimmed for display only)
+const Q = {
+  1:{t:"First Name",type:"short",req:1,ac:"given-name"},
+  2:{t:"Family Name",type:"short",req:1,ac:"family-name"},
+  4:{t:"Birth Date",type:"date",req:1},
+  5:{t:"Phone Number",type:"tel",req:1,ac:"tel",ph:"0555 12 34 56"},
+  6:{t:"Facebook Link",type:"short",req:1,help:"You must have a facebook account as it is our main platform of communication.",ph:"facebook.com/your.name"},
+  7:{t:"Discord Username",type:"short",req:1,help:"You must have a discord account as it is our secondary platform of communication."},
+  8:{t:"Field of Study",type:"chips",req:1,choices:FIELDS},
+  9:{t:"Year of Study",type:"one",req:1,choices:["1ST","2ND","3RD"],help:"Note: 3RD is for 5th Year students.",cols:3},
+  10:{t:"How did you discover VIC?",type:"many",req:1,choices:["Friends","Social Media","Stand","Open Day"],other:1},
+  11:{t:"Why do you want to be part of the Vision & Innovation Club family?",type:"long",req:1},
+  12:{t:"Have you had previous experience in other clubs? If yes, please mention them.",type:"long"},
+  13:{t:"What's your first department choice?",type:"dept1",req:1},
+  14:{t:"What's your 2nd department choice?",type:"dept2",req:1},
+  15:{t:"Why did you choose the IT Department as your top preference?",type:"long",req:1},
+  16:{t:"Do you have any experience with Graphic Design?",type:"one",req:1,choices:YN,cols:3},
+  17:{t:"Do you have any experience with Video Editing?",type:"one",req:1,choices:YN,cols:3},
+  18:{t:"Do you have any experience with Photography and/or Videography?",type:"one",req:1,choices:YN,cols:3},
+  19:{t:"Do you have any experience with Web Development?",type:"one",req:1,choices:["Yes","No","A little"],cols:3},
+  20:{t:"Why did you choose the COMM Department as your top preference?",type:"long",req:1},
+  21:{t:"Are you following the trends on social media?",type:"one",req:1,choices:["Yes","No"],other:1},
+  22:{t:"Which languages are you the most familiar with?",type:"many",req:1,choices:["English","French","Arabic"]},
+  23:{t:"How would you rate your language level across the languages you chose?",type:"rate",req:1},
+  24:{t:"Why did you choose the HR Department as your top preference?",type:"long",req:1},
+  25:{t:"Are you comfortable using Google Tools (Sheets, Forms, Docs)",type:"one",req:1,choices:YN,cols:3},
+  26:{t:"Do you enjoy working in a team?",type:"one",req:1,choices:["Yes","No","I'd like to work on it"]},
+  27:{t:"Why did you choose the FLER Department as your top preference?",type:"long",req:1},
+  28:{t:"Would you have time to visit companies during the week if needed?",type:"one",req:1,choices:["Yes","No"],other:1},
+  29:{t:"How confident are you in your communication skills?",type:"rate",req:1},
+  30:{t:"Which days or times are you usually available for an interview?",type:"many",choices:DAYS,help:"You can select more than one day.",cols:1},
+  31:{t:"Will you be able to attend your interview on time once the date is shared?",type:"one",choices:["Yes","No"],cols:3},
+  32:{t:"Anything to add?",type:"long"}
+};
+const DEPTQ = {IT:[15,16,17,18,19],COMM:[20,21,22,23],HR:[24,25,26],FLER:[27,28,29]};
+
+// A and B share these groups of the 31 questions (email is proven on the ticket screen, so Q3 is not asked again)
+const GROUPS = [
+  {id:"who",   t:"Who you are",              sub:"The basics, so we know who is writing.",              q:[1,2,4,5]},
+  {id:"reach", t:"Where we can reach you",   sub:"Facebook and Discord are how VIC keeps in touch.",    q:[6,7]},
+  {id:"study", t:"Your studies",             sub:"Where you are at ENP.",                               q:[8,9]},
+  {id:"story", t:"Your story",               sub:"Tell us how you got here, in your own words.",        q:[10,11,12]},
+  {id:"choose",t:"The choosing",             sub:"",                                                    q:[13,14], sorting:true},
+  {id:"dept",  t:"",                         sub:"",                                                    q:null, dynamic:true},
+  {id:"interview",t:"Interview details",     sub:"Next comes an in-person interview for those selected. Tell us when suits you.", q:[30,31]},
+  {id:"last",  t:"Almost done",              sub:"One last chance to add something. Double-check, then send.", q:[32], review:true}
+];
+
+/* ---------- state ---------- */
+const SKEY="vic-proto-draft", PKEY="vic-proto-proof";
+const S = {
+  v:"A", screen:"letter", step:0, qi:0, house:null, ans:{}, err:{},
+  email:"", sentTo:"", sent:0, tries:0, resendAt:0, tkErr:"", tkNote:"", proof:false, saved:false, savedAt:0, resumed:false
+};
+const store = {
+  get(k,s){try{return JSON.parse((s?sessionStorage:localStorage).getItem(k))}catch(e){return null}},
+  set(k,v,s){try{(s?sessionStorage:localStorage).setItem(k,JSON.stringify(v))}catch(e){}},
+  del(k,s){try{(s?sessionStorage:localStorage).removeItem(k)}catch(e){}}
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;","> ":"&gt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const app = $("#app");
+const VNAME = {A:"Long letter",B:"Journey",C:"One at a time"};
+
+/* ---------- house wash ---------- */
+function applyHouse(){
+  const r=document.documentElement.style, h=S.house&&HOUSES[S.house];
+  r.setProperty("--bg",h?h.bg:"#141E27");
+  r.setProperty("--bg2",h?h.bg2:"#1c2c3a");
+  r.setProperty("--accent",h?h.accent:"#69C4AF");
+  r.setProperty("--ink",h?h.ink:"#0A1C18");
+  document.body.dataset.house=S.house||"";
+}
+
+/* ---------- draft ---------- */
+let saveT;
+function saveDraft(){
+  clearTimeout(saveT);
+  store.set(SKEY,{ans:S.ans,house:S.house,step:S.step,qi:S.qi,at:Date.now()});
+  saveT=setTimeout(()=>{
+    S.saved=true;S.savedAt=Date.now();
+    document.querySelectorAll(".draftchip").forEach(c=>{c.classList.remove("pulse");void c.offsetWidth;c.classList.add("pulse");c.querySelector("span").textContent="Saved on this phone"});
+  },350);
+}
+function hasDraft(){const d=store.get(SKEY);return d&&d.ans&&Object.keys(d.ans).length>0}
+function loadDraft(){const d=store.get(SKEY);if(!d)return false;S.ans=d.ans||{};S.house=d.house||null;S.step=d.step||0;S.qi=d.qi||0;S.resumed=true;return true}
+function draftChip(){return `<span class="chip draftchip" role="status" aria-live="polite"><i></i><span>${hasDraft()||S.saved?"Saved on this phone":"Saves on this phone"}</span></span>`}
+
+/* ---------- synthetic answers ---------- */
+function fill(upto){
+  const a=S.ans;
+  Object.assign(a,{1:"Test",2:"Candidate",4:"2005-04-12",5:"0555 000 000",6:"https://facebook.com/test.candidate",7:"test_candidate",8:"DATA",9:"2ND",10:["Friends","Social Media"],11:"A synthetic answer written for the comp, to show how a long answer looks once it is typed.",12:""});
+  if(upto==="story")return;
+  if(!S.house)S.house="IT";
+  a[13]=S.house; if(!a[14])a[14]=HORDER.find(h=>h!==S.house)==="COMM"?"COMM":"COMM";
+  if(a[14]===S.house)a[14]=S.house==="HR"?"IT":"HR";
+  if(upto==="choose")return;
+  for(const q of DEPTQ[S.house]){const d=Q[q];a[q]=d.type==="long"?"Synthetic answer for the department block.":d.type==="rate"?"4":d.type==="many"?[d.choices[0]]:d.choices[0]}
+  if(upto==="dept")return;
+  a[30]=["Sunday","Tuesday"];a[31]="Yes";
+}
+
+/* ---------- field renderer ---------- */
+const lab = q => esc(q.t);
+function valOf(id){return S.ans[id]}
+function field(id){
+  const q=Q[id], v=valOf(id), e=S.err[id], idx="f"+id;
+  const tag=q.req?"":`<span class="opt-tag">optional</span>`;
+  const head=(q.type==="short"||q.type==="tel"||q.type==="date"||q.type==="long")
+    ? `<label for="${idx}">${lab(q)}${tag}</label>` : `<div class="lab" id="${idx}-l">${lab(q)}${tag}</div>`;
+  const help=q.help?`<p class="help" id="${idx}-h">${esc(q.help)}</p>`:"";
+  let body="";
+  if(q.type==="short"||q.type==="tel"){
+    body=`<input id="${idx}" data-q="${id}" type="${q.type==="tel"?"tel":"text"}" ${q.ac?`autocomplete="${q.ac}"`:"autocomplete=off"} ${q.type==="tel"?'inputmode="tel"':""} ${q.ph?`placeholder="${esc(q.ph)}"`:""} value="${esc(v||"")}" ${q.help?`aria-describedby="${idx}-h"`:""}>`;
+  }else if(q.type==="date"){
+    body=`<input id="${idx}" data-q="${id}" type="date" value="${esc(v||"")}" min="1980-01-01" max="2012-12-31">`;
+  }else if(q.type==="long"){
+    body=`<textarea id="${idx}" data-q="${id}" rows="4">${esc(v||"")}</textarea>`;
+  }else if(q.type==="chips"){
+    body=`<div class="opts cols3" role="radiogroup" aria-labelledby="${idx}-l">${q.choices.map(c=>`<button type="button" class="opt" role="radio" aria-checked="${v===c}" data-act="one" data-q="${id}" data-v="${esc(c)}"><span>${esc(c)}</span></button>`).join("")}</div>`;
+  }else if(q.type==="one"){
+    const cols=q.cols===3?"cols3":q.cols===1?"":"";
+    body=`<div class="opts ${cols}" role="radiogroup" aria-labelledby="${idx}-l">${q.choices.map(c=>`<button type="button" class="opt" role="radio" aria-checked="${v===c}" data-act="one" data-q="${id}" data-v="${esc(c)}"><span class="mk"></span><span>${esc(c)}</span></button>`).join("")}${q.other?`<button type="button" class="opt" role="radio" aria-checked="${v==="__other"}" data-act="one" data-q="${id}" data-v="__other"><span class="mk"></span><span>Other</span></button>`:""}</div>${q.other&&v==="__other"?`<input class="other" data-q="o${id}" type="text" placeholder="Tell us more" value="${esc(S.ans["o"+id]||"")}" aria-label="Other, ${esc(q.t)}">`:""}`;
+  }else if(q.type==="many"){
+    const arr=Array.isArray(v)?v:[];
+    body=`<div class="opts ${q.cols===1?"":"cols"}" role="group" aria-labelledby="${idx}-l">${q.choices.map(c=>`<button type="button" class="opt many" role="checkbox" aria-checked="${arr.includes(c)}" data-act="many" data-q="${id}" data-v="${esc(c)}"><span class="mk"></span><span>${esc(c)}</span></button>`).join("")}${q.other?`<button type="button" class="opt many" role="checkbox" aria-checked="${arr.includes("__other")}" data-act="many" data-q="${id}" data-v="__other"><span class="mk"></span><span>Other</span></button>`:""}</div>${q.other&&arr.includes("__other")?`<input class="other" data-q="o${id}" type="text" placeholder="Tell us more" value="${esc(S.ans["o"+id]||"")}" aria-label="Other, ${esc(q.t)}">`:""}`;
+  }else if(q.type==="rate"){
+    body=`<div class="rate" role="radiogroup" aria-labelledby="${idx}-l">${[1,2,3,4,5].map(n=>`<button type="button" role="radio" aria-checked="${String(v)===String(n)}" data-act="one" data-q="${id}" data-v="${n}" aria-label="${n} of 5">${n}</button>`).join("")}</div><div class="rate-ends"><span>1 · just starting</span><span>5 · very strong</span></div>`;
+  }else if(q.type==="dept1"||q.type==="dept2"){
+    return q.type==="dept1"?sortingFirst():sortingSecond();
+  }
+  return `<div class="field ${e?"err":""}" data-fq="${id}">${head}${help}${body}<div class="msg" role="alert">${esc(e||"")}</div></div>`;
+}
+function refreshField(id){
+  const el=document.querySelector(`[data-fq="${id}"]`); if(!el)return;
+  const q=Q[id];
+  if(q.type==="dept1"||q.type==="dept2"){render(true);return}
+  const t=document.createElement("div");t.innerHTML=field(id);el.replaceWith(t.firstElementChild);
+}
+
+/* ---------- validation (soft checks are comp proposals; the Google Form has none) ---------- */
+function check(id){
+  const q=Q[id], v=S.ans[id];
+  const empty=v==null||v===""||(Array.isArray(v)&&v.length===0);
+  if(q.req&&empty) return q.type==="one"||q.type==="chips"||q.type==="rate"||q.type==="dept1"||q.type==="dept2"?"Pick one to go on.":q.type==="many"?"Pick at least one.":"This one needs an answer.";
+  if(empty) return "";
+  if((v==="__other"||(Array.isArray(v)&&v.includes("__other")))&&!(S.ans["o"+id]||"").trim()) return "Tell us what “Other” is.";
+  if(id===5&&String(v).replace(/\D/g,"").length<9) return "That number looks short. Algerian numbers have 10 digits, like 0555 12 34 56.";
+  if(id===6&&!/(facebook\.com|fb\.com|fb\.me)/i.test(v)) return "Paste the link to your Facebook profile. It contains facebook.com.";
+  if(id===4){const y=new Date().getFullYear()-new Date(v).getFullYear();if(!(y>=15&&y<=40))return "Check the year. That would make you "+y+".";}
+  if(id===14&&v===S.ans[13]) return "Pick a different department from your 1st choice.";
+  return "";
+}
+function validate(ids){
+  let first=null,n=0;
+  for(const id of ids){const m=check(id);if(m){S.err[id]=m;n++;if(first==null)first=id}else delete S.err[id]}
+  return {n,first};
+}
+function idsOfGroup(g){return g.dynamic?(S.house?DEPTQ[S.house]:[]):g.q}
+function allIds(){return GROUPS.flatMap(idsOfGroup)}
+
+/* ---------- shared screens ---------- */
+function topBar(chips){return `<header class="top"><img src="${LOGO}" alt="Vision & Innovation Club"><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${chips||""}</div></header>`}
+function emailChip(){return S.proof?`<span class="chip lock" title="Proven with your email code"><i></i><span>${esc(S.email)}</span></span>`:""}
+
+function letterBlock(){
+  const resume=hasDraft()&&!S.resumed;
+  const d=store.get(SKEY)||{};
+  return `
+  ${resume?`<div class="back-card" role="region" aria-label="Saved draft"><b>Welcome back.</b>Your answers are saved on this phone. Pick up where you stopped${S.proof?"":", after a fresh ticket"}.
+    <div class="row"><button class="btn grow" style="height:48px;font-size:15px" data-act="resume">Continue</button><button class="link" data-act="clear">Start over</button></div></div>`:""}
+  <section class="hero"><p class="eyebrow">Registrations 2026</p><h1 class="serif">Your letter has arrived</h1></section>
+  <article class="letter" aria-label="Letter from the VIC team">
+    <p class="greet">Dear future VICer,</p>
+    <p>The Vision &amp; Innovation Club is opening its doors, and we would love to see you inside. <b>Registrations close on ${DEADLINE}.</b></p>
+    <p>You will board at <b>Platform 9¾</b> with a code we send to your ENP mail, answer a few short stops, and then you choose your department. It takes about ten minutes, and your answers wait for you on this phone if you need to stop.</p>
+    <p class="sign">The VIC team</p>
+    <div class="seal" aria-hidden="true">✦</div>
+  </article>
+  <div class="meta" aria-hidden="true"><span class="chip"><i></i>About 10 minutes</span><span class="chip"><i></i>31 questions</span><span class="chip"><i></i>ENP mail only</span></div>`;
+}
+
+function ticketBlock(){
+  const sent=S.sentTo&&!S.proof, left=Math.max(0,Math.ceil((S.resendAt-Date.now())/1000));
+  if(S.proof) return `<div class="verified" id="ticket"><span class="tick"></span><div>Ticket checked<small>${esc(S.email)} is yours. It stays locked for this visit.</small></div></div>`;
+  const expired=S.tkNote==="expired";
+  return `<section class="ticket" id="ticket" aria-labelledby="tk-h">
+    <p class="eyebrow">Step one</p><h2 class="serif" id="tk-h">Platform 9¾</h2>
+    ${expired?`<div class="back-card"><b>Your ticket ran out.</b>It lasts an hour. Your answers are still saved on this phone, so ask for a new one and carry on.</div>`:""}
+    <p class="lead">${sent?`We sent a 6-digit ticket to <b>${esc(S.sentTo)}</b>. It stays valid for 10 minutes.`:"Enter your ENP address and we will mail you a 6-digit ticket. Typing it in proves the address is yours."}</p>
+    ${!sent?`
+      <div class="field ${S.tkErr?"err":""}" style="margin:0 0 18px"><label for="tk-email">ENP email</label>
+        <input id="tk-email" type="email" inputmode="email" autocomplete="email" placeholder="name@g.enp.edu.dz" value="${esc(S.email)}" data-tk="email">
+        <div class="help" style="margin:8px 0 0">Only addresses ending in @g.enp.edu.dz can register here.</div>
+        ${S.tkErr?`<div class="ticket-err" role="alert">${S.tkErr}</div>`:""}</div>
+      <input class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" name="website">
+      <button class="btn" data-act="send">Send my ticket</button>
+      <div class="proto-note"><b>Prototype:</b> any <b>name@g.enp.edu.dz</b> works. Try a Gmail address for the domain error, or one with <b>dup</b> in it for “already registered”. The code is <b>${CODE_OK}</b>.</div>`
+    :`
+      <div class="stub"><div class="field ${S.tkErr?"err":""}" style="margin:0"><label for="tk-code" class="muted" style="font-size:13px;font-weight:700">Your 6-digit ticket</label>
+        <div class="slots"><input id="tk-code" data-tk="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······" pattern="[0-9]*" aria-describedby="tk-note"></div>
+        ${S.tkErr?`<div class="ticket-err" role="alert">${S.tkErr}</div>`:""}</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 16px">
+        <button class="link" data-act="resend" ${left>0?"disabled":""} id="resend">${left>0?`Send another in ${left}s`:"Send another ticket"}</button>
+        <button class="link" data-act="wrongmail" style="color:var(--muted)">Wrong address?</button></div>
+      <button class="btn" data-act="verify">Board</button>
+      <div class="proto-note" id="tk-note"><b>Prototype:</b> the code is <b>${CODE_OK}</b>. Anything else counts as a wrong try (5 allowed). Resend 3 times to see the hourly limit.</div>`}
+  </section>`;
+}
+
+/* send / verify (all fake) */
+function doSend(resend){
+  if(!resend){
+    const e=(S.email||"").trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+$/.test(e)){S.tkErr="Enter your ENP address, like name@g.enp.edu.dz.";return false}
+    if(!e.endsWith("@g.enp.edu.dz")){S.tkErr="Only ENP addresses (ending @g.enp.edu.dz) can register here. Use your student mail, not Gmail.";return false}
+    S.email=e;
+  }
+  if(S.sent>=3){S.tkErr="You have asked for 3 tickets this hour. Try again in 58 minutes.";return false}
+  S.sent++;S.sentTo=S.email;S.tkErr="";S.tries=0;S.resendAt=Date.now()+RESEND_S*1000;return true;
+}
+function doVerify(code){
+  if(code.length<6){S.tkErr="Type all 6 digits.";return false}
+  if(S.tries>=5){S.tkErr="Too many tries. Ask for a new ticket.";return false}
+  if(code!==CODE_OK){S.tries++;const l=5-S.tries;S.tkErr=l>0?`That code does not match. ${l} ${l===1?"try":"tries"} left.`:"Too many tries. Ask for a new ticket.";return false}
+  if(/dup/.test(S.email)){S.tkErr="This address already has a registration. We have it, so there is nothing more to do. Check your ENP inbox for our mail.";S.tkDup=true;return false}
+  S.proof=true;S.tkErr="";store.set(PKEY,{email:S.email,at:Date.now()},true);return true;
+}
+
+/* sorting: the department choice */
+function sortingFirst(){
+  const v=S.ans[13], e=S.err[13];
+  return `<div class="field sorting ${e?"err":""}" data-fq="13">
+    <div class="lab" id="f13-l" style="position:absolute;left:-9999px">${lab(Q[13])}</div>
+    <div class="tiles ${v?"picked":""}" role="radiogroup" aria-labelledby="f13-l">${HORDER.map(k=>{const h=HOUSES[k];return `
+      <button type="button" class="tile" style="--h:${h.accent}" role="radio" aria-checked="${v===k}" data-act="house" data-h="${k}">
+        <div class="code"><b>${k}</b><span>${h.house}</span></div><div class="dn">${h.dept}</div><p>${h.copy}</p></button>`}).join("")}</div>
+    <div class="msg" role="alert">${esc(e||"")}</div>
+    ${v?`<p class="washnote">The room takes ${HOUSES[v].house}’s colour. Pick another and it changes with you.</p>`:`<p class="washnote muted">Take your time. Nothing is final until you send the letter.</p>`}
+  </div>`;
+}
+function sortingSecond(){
+  const v=S.ans[14], e=S.err[14], first=S.ans[13];
+  return `<div class="field ${e?"err":""}" data-fq="14">
+    <div class="lab" id="f14-l">${lab(Q[14])}</div>
+    <p class="help">If the first doesn’t work out. It adds a badge, not a new colour.</p>
+    <div class="opts" role="radiogroup" aria-labelledby="f14-l">${HORDER.map(k=>{const h=HOUSES[k];return `<button type="button" class="opt" style="--h:${h.accent}" role="radio" aria-checked="${v===k}" ${k===first?"disabled":""} data-act="one" data-q="14" data-v="${k}"><span class="dot"></span><span>${k}<small>${h.house}${k===first?" · your 1st":""}</small></span></button>`}).join("")}</div>
+    ${v?`<div style="margin-top:12px"><span class="badge" style="--h:${HOUSES[v].accent}"><i></i>2nd choice · ${HOUSES[v].house}</span></div>`:""}
+    <div class="msg" role="alert">${esc(e||"")}</div></div>`;
+}
+function pickHouse(k){
+  S.ans[13]=k;S.house=k;delete S.err[13];
+  if(S.ans[14]===k)delete S.ans[14];
+  applyHouse();saveDraft();
+}
+
+/* review */
+function reviewBlock(){
+  const a=S.ans,h=S.house&&HOUSES[S.house];
+  const rows=[["Name",`${a[1]||"-"} ${a[2]||""}`],["Email",S.email||"you@g.enp.edu.dz"],["1st choice",h?`${S.house} · ${h.house}`:"-"],["2nd choice",a[14]?`${a[14]} · ${HOUSES[a[14]].house}`:"-"]];
+  return `<div class="review" aria-label="Your answers in short">${rows.map(r=>`<div><span>${r[0]}</span><b>${esc(r[1])}</b></div>`).join("")}</div>`;
+}
+
+function owlPage(){
+  return `<div class="owlpage" role="status" aria-live="polite"><div class="sky" aria-hidden="true"><div class="flyer">${owlSVG()}</div></div>
+    <p class="eyebrow">Owl post</p><h1 class="serif">Off it goes<span class="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></h1>
+    <p class="muted">Sending your letter to the VIC team.</p></div>`;
+}
+function owlSVG(){
+  return `<svg viewBox="0 0 150 110" width="150" height="110" fill="none"><g fill="var(--accent)">
+    <g class="wing"><path d="M62 34C40 14 14 18 4 34c14-2 26 4 34 14 8 10 18 8 24-2z"/></g>
+    <g class="wing r"><path d="M70 34c22-20 48-16 58 0-14-2-26 4-34 14-8 10-18 8-24-2z"/></g>
+    <ellipse cx="66" cy="50" rx="17" ry="22"/><circle cx="66" cy="26" r="14"/><path d="M54 16l-2-10 9 6zM78 16l2-10-9 6z"/></g>
+    <circle cx="59.5" cy="25" r="7" fill="#EFEFEF"/><circle cx="72.5" cy="25" r="7" fill="#EFEFEF"/>
+    <circle cx="60" cy="25.5" r="3.4" fill="#141E27"/><circle cx="72" cy="25.5" r="3.4" fill="#141E27"/><path d="M66 30l-3.4 6h6.8z" fill="#F4BB35"/>
+    <path d="M66 70v10" stroke="var(--accent)" stroke-width="3"/>
+    <g transform="translate(46 80)"><rect width="40" height="26" rx="3" fill="#EFEFEF"/><path d="M0 2l20 14L40 2" stroke="#8795a1" stroke-width="2"/><circle cx="20" cy="16" r="5" fill="var(--accent)"/></g></svg>`;
+}
+function doneScreen(){
+  const h=S.house&&HOUSES[S.house];
+  return `${topBar("")}<section class="done"><div class="seal" aria-hidden="true">✦</div>
+    <p class="eyebrow" style="text-align:center">Delivered</p><h1 class="serif" style="text-align:center">Received</h1>
+    <p style="text-align:center;font-size:18px;color:#e4eaef">We have your registration${h?`, written in ${h.house} colours`:""}. Thank you for taking the first step.</p>
+    <div class="receipt"><ul>
+      <li><i>1</i><span>Watch your ENP inbox. We will write to you about what comes next.</span></li>
+      <li><i>2</i><span>Keep your Facebook and Discord handy, since that is where VIC reaches you.</span></li>
+      <li><i>3</i><span>Questions? Write to <b>${MAILBOX}</b>.</span></li></ul></div>
+    <p class="muted small" style="text-align:center">This is a receipt, not an answer. Nothing is decided yet.</p></section>`;
+}
+
+/* ---------- VARIANT A: the long letter ---------- */
+function groupHTML(g,i,state){
+  const n=i+1;
+  if(g.dynamic){
+    if(!S.house) return `<section class="gsec ghost" id="g-dept" data-beat="dept"><span class="pin">${n}</span><p class="eyebrow">Your department</p><h2 class="serif">Waiting for your choosing</h2><div class="skeleton">The questions for your department appear here once you have chosen. Each department asks 3 to 5.</div></section>`;
+    const h=HOUSES[S.house];
+    return `<section class="gsec ${state}" id="g-dept" data-beat="dept"><span class="pin">${n}</span><p class="eyebrow">${h.house} · ${S.house}</p><h2 class="serif">${esc(h.dept)}</h2><p class="sub">A few questions just for this team.</p>${DEPTQ[S.house].map(field).join("")}</section>`;
+  }
+  if(g.sorting) return `<section class="gsec ${state}" id="g-choose" data-beat="sorting"><span class="pin">${n}</span><p class="eyebrow">Stop ${n}</p><h2 class="serif">The choosing</h2><p class="sub">Four departments, one first choice. Read each, then tap the one that calls to you. Your house takes the colour of the room.</p>${field(13)}<div class="second">${field(14)}</div></section>`;
+  return `<section class="gsec ${state}" id="g-${g.id}" data-beat="${g.id==="who"?"questions":g.id}"><span class="pin">${n}</span><p class="eyebrow">Stop ${n}</p><h2 class="serif">${g.t}</h2><p class="sub">${g.sub}</p>${g.q.map(field).join("")}${g.review?reviewBlock():""}</section>`;
+}
+function groupState(g){
+  const ids=idsOfGroup(g);if(!ids.length)return "";
+  const filled=ids.filter(id=>{const v=S.ans[id];return !(v==null||v===""||(Array.isArray(v)&&!v.length))||!Q[id].req});
+  const done=ids.every(id=>!check(id)&&(S.ans[id]!=null&&S.ans[id]!==""||!Q[id].req))&&ids.some(id=>S.ans[id]!=null&&S.ans[id]!=="");
+  return done?"done":"";
+}
+function renderA(){
+  const live=GROUPS.findIndex(g=>groupState(g)!=="done"&&(g.dynamic?!!S.house:true));
+  const st=GROUPS.map((g,i)=>{let s=groupState(g);if(!s&&i===(live<0?GROUPS.length:live))s="live";return s});
+  const doneN=st.filter(s=>s==="done").length;
+  const pct=S.proof?Math.round(doneN/GROUPS.length*100):0;
+  return `<div class="topbar"><div class="bar"><img src="${LOGO}" alt="Vision & Innovation Club" style="height:30px">${draftChip()}</div>${S.proof?`<div class="thin" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i></div>`:""}</div>
+    <div id="sec-letter" data-beat="letter">${letterBlock()}</div>
+    <div class="road" style="margin-top:36px"><span class="fill" style="height:${S.proof?Math.max(8,pct*0.9):0}%"></span>
+      <section class="gsec ${S.proof?"done":"live"}" id="sec-ticket" data-beat="ticket"><span class="pin">${S.proof?"":"0"}</span>${ticketBlock()}</section>
+      ${S.proof?`<div class="summary" id="summary" role="alert"></div>
+      ${GROUPS.map((g,i)=>groupHTML(g,i,st[i])).join("")}
+      <div class="actions" style="margin-left:-46px"><button class="btn" data-act="submit">Send by owl</button></div>`:`<p class="muted small" style="margin-top:6px">The rest of the letter unlocks once your ticket is checked.</p>`}
+    </div>`;
+}
+
+/* ---------- VARIANT B: the journey ---------- */
+function stepsB(){return GROUPS.filter(g=>!g.dynamic||S.house||true)}
+function renderB(){
+  if(S.screen==="letter") return `${topBar(draftChip())}${letterBlock()}<div class="actions"><button class="btn" data-act="start">Go to Platform 9¾</button></div>`;
+  if(S.screen==="ticket") return `${topBar(draftChip())}${ticketBlock()}`;
+  const g=GROUPS[S.step], n=GROUPS.length, i=S.step;
+  const rail=`<div class="rail" aria-hidden="true">${GROUPS.map((_,k)=>`${k?`<span class="seg ${k<=i?"done":""}"></span>`:""}<span class="stop ${k<i?"done":k===i?"now":""}"></span>`).join("")}</div>`;
+  let title=g.t,sub=g.sub,eyebrow=`Stop ${i+1} of ${n}`,inner="";
+  if(g.dynamic){const h=HOUSES[S.house||"IT"];title=h.dept;eyebrow=`Stop ${i+1} of ${n} · ${h.house}`;sub="A few questions just for this team.";inner=DEPTQ[S.house||"IT"].map(field).join("")}
+  else if(g.sorting){title="The choosing";sub="Four departments, one first choice. Read each, then tap the one that calls to you. Your house takes the colour of the room.";inner=field(13)+`<div class="second">${field(14)}</div>`}
+  else inner=g.q.map(field).join("")+(g.review?reviewBlock():"");
+  const last=i===n-1;
+  return `${topBar(emailChip()+draftChip())}${rail}
+    <div class="stepwrap" id="stepwrap" data-beat="${g.id}"><div class="stopline"><span class="eyebrow">${eyebrow}</span></div>
+    <h2 class="serif step-title">${title}</h2>${sub?`<p class="step-sub">${sub}</p>`:`<div style="height:14px"></div>`}
+    <div class="summary" id="summary" role="alert"></div>${inner}</div>
+    <div class="actions">${i>0?`<button class="btn ghost" data-act="back" aria-label="Back">Back</button>`:""}<button class="btn grow" data-act="${last?"submit":"next"}">${last?"Send by owl":"Continue"}</button></div>`;
+}
+
+/* ---------- VARIANT C: one at a time ---------- */
+function seqC(){
+  const s=[];
+  for(const g of GROUPS){
+    if(g.dynamic){const ids=S.house?DEPTQ[S.house]:[15,16,17,18];ids.forEach(id=>s.push({q:id,g:g.id}));continue}
+    if(g.sorting){s.push({q:13,g:"choose"});s.push({q:14,g:"choose"});continue}
+    g.q.forEach(id=>s.push({q:id,g:g.id}));
+    if(g.review)s.push({review:1,g:"last"});
+  }
+  return s;
+}
+function renderC(){
+  if(S.screen==="letter") return `${topBar(draftChip())}${letterBlock()}<div class="actions"><button class="btn" data-act="start">Go to Platform 9¾</button></div>`;
+  if(S.screen==="ticket") return `${topBar(draftChip())}${ticketBlock()}`;
+  const seq=seqC(), i=Math.min(S.qi,seq.length-1), cur=seq[i];
+  const bounds=[];let last=null;seq.forEach((s,k)=>{if(last&&s.g!==last)bounds.push(k);last=s.g});
+  const pct=Math.round(i/(seq.length-1)*100);
+  const gName={who:"Who you are",reach:"Where we can reach you",study:"Your studies",story:"Your story",choose:"The choosing",dept:S.house?HOUSES[S.house].dept:"Your department",interview:"Interview details",last:"Almost done"}[cur.g];
+  const c=cur.review
+    ? `<p class="c-section">${gName}</p><h2 class="c-q">Ready to join the family?</h2><p class="c-help">Check the short version, then send your letter.</p>${reviewBlock()}`
+    : `<p class="c-section">${gName}</p>${cur.q===13?`<h2 class="c-q serif" style="font-weight:400;font-size:44px;line-height:1.02">The choosing</h2><p class="c-help">Tap the department that calls to you. Your house takes the colour of the room.</p>`:`<h2 class="c-q">${esc(Q[cur.q].t)}${Q[cur.q].req?"":` <span class="opt-tag">optional</span>`}</h2>${Q[cur.q].help?`<p class="c-help">${esc(Q[cur.q].help)}</p>`:`<div style="height:14px"></div>`}`}${field(cur.q)}`;
+  const isLast=!!cur.review;
+  return `<div class="c-wrap"><div class="c-top"><div style="display:flex;justify-content:space-between;align-items:center"><img src="${LOGO}" alt="Vision & Innovation Club" style="height:28px">${draftChip()}</div>
+    <div class="c-line" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${pct}%"></i>${bounds.map(b=>`<b class="${b<=i?"on":""}" style="left:${b/(seq.length-1)*100}%"></b>`).join("")}</div>
+    <div class="c-count"><span>${i+1} of ${seq.length}</span><span>${S.house?HOUSES[S.house].house:""}</span></div></div>
+    <div class="c-body" id="stepwrap" data-beat="${cur.g==="who"?"questions":cur.g==="choose"?"sorting":cur.g}"><div class="summary" id="summary" role="alert"></div>${c}</div>
+    <div class="actions">${i>0?`<button class="btn ghost" data-act="back">Back</button>`:""}<button class="btn grow" data-act="${isLast?"submit":"next"}">${isLast?"Send by owl":"Continue"}</button></div></div>`;
+}
+
+/* ---------- render ---------- */
+function render(keep){
+  const y=window.scrollY;
+  applyHouse();
+  let html;
+  if(S.screen==="owl")html=owlPage();
+  else if(S.screen==="done")html=doneScreen();
+  else html=S.v==="A"?renderA():S.v==="B"?renderB():renderC();
+  app.innerHTML=html;
+  $("#plabel").textContent=`${S.v} · ${VNAME[S.v]}`;
+  if(keep)window.scrollTo(0,y);
+  else if(!(S.v==="A"&&S.screen!=="owl"&&S.screen!=="done"))window.scrollTo(0,0);
+  tickCountdown();
+}
+let cdT;
+function tickCountdown(){
+  clearInterval(cdT);
+  const r=$("#resend");if(!r)return;
+  cdT=setInterval(()=>{const b=$("#resend");if(!b){clearInterval(cdT);return}
+    const left=Math.max(0,Math.ceil((S.resendAt-Date.now())/1000));
+    b.textContent=left>0?`Send another in ${left}s`:"Send another ticket";b.disabled=left>0;if(!left)clearInterval(cdT)},500);
+}
+
+/* ---------- navigation ---------- */
+function toTicket(){S.screen="ticket";render()}
+function afterProof(){
+  S.screen="form";
+  if(S.v==="A"){render();setTimeout(()=>{const g=$("#g-who");g&&g.scrollIntoView({behavior:"smooth",block:"start"})},50)} else render();
+}
+function stepIds(){
+  if(S.v==="B"){return idsOfGroup(GROUPS[S.step])}
+  const seq=seqC(),cur=seq[Math.min(S.qi,seq.length-1)];return cur.review?[]:[cur.q];
+}
+function showSummary(v){
+  const el=$("#summary");if(!el)return;
+  if(!v.n){el.classList.remove("on");return}
+  el.innerHTML=`${v.n===1?"One answer needs a look":v.n+" answers need a look"}. <button data-act="gofirst" data-id="${v.first}">Take me to the first</button>`;el.classList.add("on");
+}
+function go(dir){
+  if(dir>0){
+    const v=validate(stepIds());
+    if(v.n){render(true);showSummary(v);const f=document.querySelector(`[data-fq="${v.first}"]`);f&&f.scrollIntoView({behavior:"smooth",block:"center"});return}
+  }
+  if(S.v==="B"){S.step=Math.max(0,Math.min(GROUPS.length-1,S.step+dir))}
+  else{S.qi=Math.max(0,S.qi+dir);const L=seqC().length;if(S.qi>=L)S.qi=L-1}
+  saveDraft();render();
+}
+function submit(){
+  const v=validate(allIds());
+  if(v.n){
+    if(S.v==="B"){ // jump to the first step holding an error
+      const gi=GROUPS.findIndex(g=>idsOfGroup(g).includes(v.first));if(gi>=0)S.step=gi}
+    if(S.v==="C"){const k=seqC().findIndex(s=>s.q===v.first);if(k>=0)S.qi=k}
+    render(true);showSummary(v);
+    const f=document.querySelector(`[data-fq="${v.first}"]`);f&&f.scrollIntoView({behavior:"smooth",block:"center"});return}
+  S.screen="owl";render();
+  clearTimeout(window._owl);window._owl=setTimeout(()=>{if(S.screen==="owl"){S.screen="done";render()}},window.matchMedia("(prefers-reduced-motion: reduce)").matches?900:3600);
+}
+
+/* ---------- events ---------- */
+app.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const a=b.dataset.act;
+  if(a==="start")toTicket();
+  else if(a==="send"){S.email=($("#tk-email")||{}).value||S.email;if(doSend(false)){render();setTimeout(()=>{const c=$("#tk-code");c&&c.focus()},60)}else render(true)}
+  else if(a==="resend"){if(doSend(true))render(true);else render(true)}
+  else if(a==="wrongmail"){S.sentTo="";S.tkErr="";render(true)}
+  else if(a==="verify"){const c=($("#tk-code")||{}).value||"";if(doVerify(c)){afterProof()}else render(true)}
+  else if(a==="resume"){loadDraft();if(S.proof){S.screen="form"}else S.screen="ticket";render()}
+  else if(a==="clear"){store.del(SKEY);S.ans={};S.house=null;S.step=0;S.qi=0;S.saved=false;render(true)}
+  else if(a==="next")go(1);
+  else if(a==="back")go(-1);
+  else if(a==="submit")submit();
+  else if(a==="house"){pickHouse(b.dataset.h);S.err[14]&&delete S.err[14];render(true);
+    if(S.v==="C")setTimeout(()=>go(1),650)}
+  else if(a==="one"){const id=+b.dataset.q,v=b.dataset.v;S.ans[id]=v;delete S.err[id];
+    if(id===14){S.ans[14]=v}
+    saveDraft();refreshField(id);
+    if(S.v==="C"&&id!==14&&!Q[id].other&&v!=="__other")setTimeout(()=>go(1),420)}
+  else if(a==="many"){const id=+b.dataset.q,v=b.dataset.v;const arr=Array.isArray(S.ans[id])?S.ans[id].slice():[];
+    const k=arr.indexOf(v);k>=0?arr.splice(k,1):arr.push(v);S.ans[id]=arr;delete S.err[id];saveDraft();refreshField(id)}
+  else if(a==="gofirst"){const f=document.querySelector(`[data-fq="${b.dataset.id}"]`);f&&f.scrollIntoView({behavior:"smooth",block:"center"})}
+});
+app.addEventListener("input",e=>{
+  const t=e.target;
+  if(t.dataset.tk==="email"){S.email=t.value;return}
+  if(t.dataset.tk==="code"){t.value=t.value.replace(/\D/g,"").slice(0,6);if(t.value.length===6){S.tkErr="";if(doVerify(t.value))afterProof();else render(true)}return}
+  if(t.dataset.q){
+    const k=t.dataset.q;S.ans[k[0]==="o"?k:+k]=t.value;
+    const f=t.closest(".field");if(f&&f.classList.contains("err")){const id=+(f.dataset.fq);delete S.err[id];f.classList.remove("err")}
+    saveDraft();
+  }
+});
+
+/* ---------- prototype bar ---------- */
+function setV(v,noRender){
+  S.v=v;const u=new URL(location.href);u.searchParams.set("v",v);history.replaceState(null,"",u);
+  if(!noRender){S.screen=S.screen==="owl"||S.screen==="done"?S.screen:(S.proof?"form":S.screen);render()}
+}
+function cycle(d){const L=["A","B","C"];setV(L[(L.indexOf(S.v)+d+3)%3])}
+function jump(beat){
+  clearTimeout(window._owl);
+  const needProof=!["letter","ticket"].includes(beat);
+  if(beat==="letter"){S.screen="letter";S.proof=false}
+  else if(beat==="ticket"){S.screen="ticket";S.proof=false;S.sentTo="";S.tkErr="";S.tkNote="";S.sent=0}
+  else{
+    S.proof=true;S.email=S.email||"test.candidate@g.enp.edu.dz";store.set(PKEY,{email:S.email,at:Date.now()},true);
+    S.screen="form";
+    if(beat==="questions"){S.step=0;S.qi=0}
+    else if(beat==="sorting"){fill("story");S.house=null;delete S.ans[13];delete S.ans[14];S.step=4;S.qi=seqC().findIndex(s=>s.q===13)}
+    else if(beat==="dept"){fill("choose");S.step=5;S.qi=seqC().findIndex(s=>s.g==="dept")}
+    else if(beat==="interview"){fill("dept");S.step=6;S.qi=seqC().findIndex(s=>s.g==="interview")}
+    else if(beat==="done"){fill("all");S.step=7;S.qi=seqC().findIndex(s=>s.g==="last")}
+    else if(beat==="owl"){fill("all");S.screen="owl"}
+    else if(beat==="received"){fill("all");S.screen="done"}
+  }
+  render();
+  if(beat==="owl"){window._owl=setTimeout(()=>{if(S.screen==="owl"){S.screen="done";render()}},3600)}
+  if(S.v==="A"&&S.screen!=="owl"&&S.screen!=="done"){
+    setTimeout(()=>{const t=document.querySelector(`[data-beat="${beat}"]`);t&&t.scrollIntoView({behavior:"auto",block:"start"})},40)}
+}
+function menu(){
+  const m=$("#pmenu");
+  const beats=[["letter","Letter"],["ticket","Platform 9¾"],["questions","Questions"],["sorting","Choosing"],["dept","Department"],["interview","Interview"],["done","Almost done"],["owl","Owl post"],["received","Received"]];
+  m.innerHTML=`<h4>JUMP TO A BEAT (fills synthetic answers up to it)</h4><div class="g">${beats.map(b=>`<button data-j="${b[0]}">${b[1]}</button>`).join("")}</div>
+  <h4>HOUSE (changes the 1st choice)</h4><div class="g">${["none",...HORDER].map(k=>`<button data-h="${k}" aria-pressed="${(S.house||"none")===k}">${k==="none"?"Plain night":k+" · "+HOUSES[k].house}</button>`).join("")}</div>
+  <h4>STATES</h4><div class="g"><button data-s="expire">Ticket expired (60 min later)</button><button data-s="skipwait">Skip resend wait</button><button data-s="fill">Fill the rest</button><button data-s="clear">Clear draft and restart</button><button data-s="reload">Reload (draft survives)</button></div>
+  <p class="hint">Variants: ← → keys or the arrows. Everything stays on this device; nothing is sent.</p>`;
+}
+document.getElementById("proto").addEventListener("click",e=>{
+  const b=e.target.closest("[data-p]");if(!b)return;
+  if(b.dataset.p==="prev")cycle(-1);else if(b.dataset.p==="next")cycle(1);
+  else{const m=$("#pmenu");m.hidden=!m.hidden;b.setAttribute("aria-expanded",String(!m.hidden));if(!m.hidden)menu()}
+});
+$("#pmenu").addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.j){jump(b.dataset.j);$("#pmenu").hidden=true}
+  else if(b.dataset.h){const k=b.dataset.h;if(k==="none"){S.house=null;delete S.ans[13]}else{S.house=k;S.ans[13]=k;if(S.ans[14]===k)delete S.ans[14]}applyHouse();saveDraft();render(true);menu()}
+  else if(b.dataset.s==="expire"){S.proof=false;S.sentTo="";S.tkErr="";S.tkNote="expired";store.del(PKEY,true);S.screen="ticket";render();$("#pmenu").hidden=true}
+  else if(b.dataset.s==="skipwait"){S.resendAt=0;render(true)}
+  else if(b.dataset.s==="fill"){fill("all");saveDraft();render(true)}
+  else if(b.dataset.s==="clear"){store.del(SKEY);store.del(PKEY,true);location.href=location.pathname+"?v="+S.v}
+  else if(b.dataset.s==="reload"){saveDraft();setTimeout(()=>location.reload(),400)}
+});
+addEventListener("keydown",e=>{
+  const t=e.target;if(/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)||t.isContentEditable)return;
+  if(e.key==="ArrowLeft")cycle(-1);else if(e.key==="ArrowRight")cycle(1)
+});
+
+/* ---------- boot ---------- */
+(function boot(){
+  const p=new URLSearchParams(location.search);
+  S.v=["A","B","C"].includes((p.get("v")||"").toUpperCase())?p.get("v").toUpperCase():"A";
+  const pr=store.get(PKEY,true);
+  if(pr&&Date.now()-pr.at<60*60*1000){S.proof=true;S.email=pr.email}
+  if(S.proof){if(hasDraft())loadDraft();S.screen="form"} // reload inside the hour: straight back in
+  const h=p.get("house");if(h&&HOUSES[h]){S.house=h;S.ans[13]=h}
+  render();
+  const beat=p.get("beat");if(beat)jump(beat);
+})();
+</script>
+</body>
+</html>
