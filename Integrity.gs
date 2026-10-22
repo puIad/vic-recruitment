@@ -269,7 +269,13 @@ function fixEdit_(ctx, mode, key) {
   const p = editPairs_(ctx, ctx.base || { bin: {}, iv: {} }).filter(x => x.kind === k.kind && x.id === k.id)[0];
   if (!p || !p.prev) throw new Error('nothing to go back to: fix it in the tab, the alert then closes by itself.');
   let msg;
-  if (mode === 'accept') msg = k.kind === 'iv' && k.group === '*' ? dropInterviewee_(ctx, p.prev) : 'accepted as it is now.';
+  if (mode === 'accept') {
+    msg = k.kind === 'iv' && k.group === '*' ? dropInterviewee_(ctx, p.prev) : 'accepted as it is now.';
+    const fs = k.group === '*' ? ['Binome'] : EDIT_GROUPS[k.kind][k.group], I = k.kind === 'iv' ? ctx.iv.I : ctx.bin.I;
+    const was = fs.map(f => f + ': ' + p.prev[f]).join(', ');
+    logIvChange_(ctx, k.kind === 'iv' ? p.prev.Code || p.id : p.id, 'Edit accepted', was,
+      p.row ? fs.map(f => f + ': ' + p.row[I[f]]).join(', ') : 'row deleted');
+  }
   else if (mode === 'revert') msg = revertEdit_(ctx, p, k.group);
   else if (mode === 'apply') msg = applyEdit_(ctx, p, k.group);
   else throw new Error('unknown fix ' + mode);

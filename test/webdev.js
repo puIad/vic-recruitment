@@ -46,7 +46,34 @@ if (pairing) {
 } else if (!empty) {
   s.call('webRun', 'importTeam', { link: '' }); s.call('webRun', 'draft'); s.call('webRun', 'lock');
   s.run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,1,6).setValues([['Late Member','late@g.enp.edu.dz','IT','IT',false,'']]);})()"); // shows the Unpaired card
-  s.addRegistrations(40, 3); s.call('webRun', 'sync'); s.backdateAssignments(3); s.call('webRun', 'sync');
+  s.addRegistrations(40, 3);
+  // Analytics: field and year of study, how they heard of VIC, why VIC, clubs; three birth dates typed with this year (guessed)
+  s.run(`(function () { var reg = master.getSheetByName('Registration Responses'), F = [['PREPA', '1ST'], ['PREPA', '2ND'], ['DATA', '1ST'], ['ELT', '2ND'], ['MECA', '3RD'], ['GC', '1ST']],
+    D = ['Friends', 'Social Media', 'Friends, Stand', 'Open Day', 'Social Media, Other: a member, Lina', 'Stand'],
+    W = ['To learn new skills and meet motivated people', 'I want to organise events and grow my network', 'My friends told me VIC is the most active club at ENP'];
+    for (var k = reg.cells.length - 40, i = 0; k < reg.cells.length; k++, i++) { var r = reg.cells[k];
+      r[9] = F[i % F.length][0]; r[10] = F[i % F.length][1]; r[11] = D[i % D.length]; r[12] = W[i % W.length]; r[13] = i % 4 === 0 ? 'Yes, Enactus' : '';
+      if (i % 13 === 4) r[5] = '0' + (1 + i % 9) + '/06/' + new Date().getFullYear(); } })()`);
+  s.call('webRun', 'sync'); s.backdateAssignments(3); s.call('webRun', 'sync');
+  // Schedule: interview dates typed in the binome sheets (Algiers time, UTC+1): this week, one clash, one in the past, one unreadable
+  const day = ms => { const d = new Date(ms + 3600e3), p = n => String(n).padStart(2, '0');
+    return [p(d.getUTCDate()) + '/' + p(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear(), p(d.getUTCHours()) + ':' + p(d.getUTCMinutes())]; };
+  const slots = [[-1, '10:00'], [0, '14:00'], [1, '09:30'], [1, '10:00'], [2, '11:00'], [3, '15:30'], [4, '13:00']].map(([k, t]) => [day(Date.now() + k * 864e5)[0], t]);
+  s.run(`(function () { var c = loadCtx_(), slots = ${JSON.stringify(slots)}, n = 0;
+    c.binomes.filter(function (b) { return b.status === 'ACTIVE'; }).forEach(function (b) { var sh = binomeSheet_(c, b); if (!sh) return;
+      for (var row = 2; row <= bfLastRow_(sh) && row < 4; row++, n++) { var s = slots[n % slots.length];
+        sh.getRange(row, bfCol_('Contacted')).setValue('Yes');
+        sh.getRange(row, bfCol_('Interview Date')).setValue(s[0]); sh.getRange(row, bfCol_('Interview Time')).setValue(s[1]); } }); })()`);
+  s.call('webRun', 'sync');
+  { // a clash (two interviews of one binome 30 min apart) and a date the sync can't read; from the end: row 2 gets a hand edit below
+    const set = (code, field, v) => s.run(`(function () { var c = loadCtx_(), b = c.binByCode[c.ivByCode[${JSON.stringify(code)}][c.iv.I.Binome]], sh = binomeSheet_(c, b);
+      sh.getRange(findFileRow_(sh, ${JSON.stringify(code)}), bfCol_(${JSON.stringify(field)})).setValue(${JSON.stringify(v)}); })()`);
+    const dated = s.call('webState').interviewees.filter(x => x.at).reverse(), a = dated.find(x => dated.some(y => y !== x && y.binome === x.binome));
+    const b = a && dated.find(y => y !== a && y.binome === a.binome), bad = dated.find(x => a && x.binome !== a.binome);
+    if (b) { const [d, t] = day(a.at + 30 * 6e4); set(b.code, 'Interview Date', d); set(b.code, 'Interview Time', t); }
+    if (bad) set(bad.code, 'Interview Date', 'next Sunday');
+    s.call('webRun', 'sync');
+  }
   // registration and interview-form problems, so the Alerts page shows its quick fixes
   const bs = s.call('webState').binomes.filter(b => b.people.length === 2);
   s.run(`(function () { var reg = master.getSheetByName('Registration Responses'), ir = master.getSheetByName('Interview Responses'), t = Date.now() - 864e5;
@@ -63,6 +90,11 @@ if (pairing) {
   const two = s.call('webState').binomes.filter(b => b.people.length === 2);
   s.call('webRun', 'changeMember', { binome: two[0].code, outEmail: two[0].people[0].email, inName: 'Outside Person', inEmail: 'outside@g.enp.edu.dz', reason: 'left the club' });
   s.call('webRun', 'swapMembers', { binomeA: two[1].code, emailA: two[1].people[0].email, binomeB: two[2].code, emailB: two[2].people[0].email });
+  { // a move, so Change history has an Interviewee Changes row too
+    const st = s.call('webState'), iv = st.interviewees.find(x => x.status === 'ASSIGNED');
+    const to = iv && st.binomes.find(b => b.code !== iv.binome && b.status === 'ACTIVE' && (b.tag === 'ALL' || b.tag.includes(iv.code.split('.')[0])));
+    if (to) s.call('webRun', 'reassign', { code: iv.code, binome: to.code });
+  }
   if (process.argv.includes('--screening')) seedScreening();
 }
 function seedScreening() {

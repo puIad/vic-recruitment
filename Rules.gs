@@ -143,6 +143,25 @@ function parseLooseDate(v) {
   return isNaN(d) ? null : d;
 }
 
+/** Expected birth year from the year of study (docs/plans.md › Birth dates): the count starts again at 1ST after PREPA, so the
+ *  overall year is n for PREPA and n + 2 for any other field, and the birth year is the registration year − 17 − that. null = unknown. */
+function guessBirthYear(year, field, regDate) {
+  const n = { '1ST': 1, '2ND': 2, '3RD': 3 }[String(year || '').trim().toUpperCase()], f = String(field || '').trim().toUpperCase();
+  if (!n || !f || !(regDate instanceof Date)) return null;
+  return regDate.getFullYear() - 17 - (f === 'PREPA' ? n : n + 2);
+}
+
+/** A birth date for Analytics: {date: yyyy-MM-dd (or the text as typed when unreadable), suspect, guess: yyyy-MM-dd or ''}.
+ *  Suspect = unreadable, or an age outside 15–35 at registration (BAD_BIRTHDATE's bounds); the guess keeps the day and month. */
+function birthInfo(birth, regDate, year, field) {
+  if (birth === '' || birth == null) return { date: '', suspect: false, guess: '' };
+  const bd = parseLooseDate(birth), ref = regDate instanceof Date ? regDate : new Date();
+  const p = n => String(n).padStart(2, '0'), md = bd ? p(bd.getMonth() + 1) + '-' + p(bd.getDate()) : '';
+  const age = bd ? (ref - bd) / (365.25 * 24 * 3600 * 1000) : NaN, y = guessBirthYear(year, field, ref);
+  const suspect = !bd || age < 15 || age > 35;
+  return { date: bd ? bd.getFullYear() + '-' + md : String(birth), suspect: suspect, guess: suspect && bd && y ? y + '-' + md : '' };
+}
+
 /**
  * Registration anomalies. rec: {ts, collected, typedEmail, first, family, birth, phone, c1, c1raw, c2}
  * existing: [{code, email, typedEmail, name, phone}]

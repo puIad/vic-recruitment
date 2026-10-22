@@ -211,6 +211,20 @@ assert(/moved to/.test(out.messages[0]), out.messages[0]);
 assert.strictEqual(call('webState').interviewees.find(x => x.code === iv.code).binome, target.code);
 out = call('webRun', 'reassign', { code: 'XX.99', binome: target.code });
 assert(/Unknown code/.test(out.messages[0]));
+{ // the move is in Change history (Interviewee Changes); the refused one is not
+  const h = call('webState').ivHistory;
+  assert.deepStrictEqual([h[0].code, h[0].what, h[0].from, h[0].to, h[0].by], [iv.code, 'Moved', iv.binome, target.code, 'admin@g.enp.edu.dz'], JSON.stringify(h));
+  assert(/^\d\d\/\d\d\/\d{4} \d\d:\d\d$/.test(h[0].at), h[0].at);
+  // Schedule fields: times as ms, the zone they are shown in
+  const st2 = call('webState'), x = st2.interviewees.find(y => y.code === iv.code);
+  assert.deepStrictEqual([st2.settings.tz, typeof x.assignedAt, x.at, x.dept, typeof x.avail], ['Africa/Algiers', 'number', null, iv.code.split('.')[0], 'string'], JSON.stringify(x));
+}
+{ // Analytics: one row per registration, no phone / Facebook / Discord, birth dates checked
+  const an = call('webAnalytics'), r = an.rows.find(y => y.code === iv.code);
+  assert.deepStrictEqual([an.v, an.tz, an.rows.length >= call('webState').interviewees.length, r.binome, typeof r.registered], [3, 'Africa/Algiers', true, target.code, 'number']);
+  assert(['phone', 'facebook', 'discord'].every(k => !(k in r)) && !/0555\d{6}/.test(JSON.stringify(an)), 'no contact details beyond the email');
+  assert(/^2005-03-0\d$/.test(r.birth.date) && !r.birth.suspect && r.birth.guess === '', JSON.stringify(r.birth));
+}
 
 const ids = st.alerts.slice(0, 2).map(a => a.id);
 out = call('webRun', 'resolve', { ids });
@@ -413,6 +427,8 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   fix('Accept', [open().find(e => e.code === z.code).id]);
   call('webRun', 'sync');
   assert.deepStrictEqual([ivRows().length, open().length], [n0 - 1, 0], 'accepted: stays deleted, never re-imported');
+  const acc = call('webState').ivHistory[0];
+  assert.deepStrictEqual([acc.code, acc.what, acc.from, acc.to], [z.code, 'Edit accepted', 'Binome: ' + z.binome, 'row deleted'], J(acc));
 
   // Binomes tab: a member swapped by hand → Apply runs Change members (history row, file title); a tag / code edit → Revert
   const c = active.find(b => b.people.length === 2 && b.code !== to.code);
@@ -1047,6 +1063,7 @@ assert(!('switchUrl' in call('webState')), 'no switch-account link any more');
 run('var __realSession = Session; var __as = e => { Session = { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }; __as("stranger@g.enp.edu.dz")');
 assert.throws(() => call('webState'), /Not allowed/);
 assert.throws(() => call('webRun', 'sync'), /Not allowed/);
+assert.throws(() => call('webAnalytics'), /Not allowed/, 'Analytics: admins only');
 assert.deepStrictEqual(run('JSON.stringify(access_())'), JSON.stringify({ ok: false, role: '', email: 'stranger@g.enp.edu.dz', reason: 'READ_ONLY', owner: false }));
 assert(/vic-recruitment\.vercel\.app/.test(run('doGet()._html')), 'the same link page for an account without access');
 run('var __open = SpreadsheetApp.openById; SpreadsheetApp.openById = () => { throw new Error("You do not have permission to access the requested document.") }; _ssOpened = null');

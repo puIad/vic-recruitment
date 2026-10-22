@@ -76,7 +76,22 @@ function moveInterviewee_(ctx, code, binomeText) {
   indexCtx_(ctx);
   ctx.alerts.add({ severity: 'INFO', type: 'REASSIGNED', status: 'AUTO-FIXED', code: code, binome: target.code,
     msg: code + ' moved from ' + (old ? old.code : 'nobody') + ' to ' + target.code + ' by ' + Session.getActiveUser().getEmail() + kept, key: '' });
+  logIvChange_(ctx, code, 'Moved', old ? old.code : '', target.code);
   return code + ' moved to ' + target.code + kept;
+}
+
+/** One row in the Interviewee Changes tab (created on first write) for Change history. A failed write never undoes the change. */
+function logIvChange_(ctx, code, what, from, to) {
+  try {
+    const ss = ss_();
+    let sh = ss.getSheetByName(TAB.IV_CHANGES);
+    if (!sh) {
+      sh = ss.insertSheet(TAB.IV_CHANGES);
+      sh.getRange(1, 1, 1, IC_H.length).setValues([IC_H]).setFontWeight('bold').setBackground('#1f3864').setFontColor('#ffffff');
+      sh.setFrozenRows(1);
+    }
+    sh.appendRow([ctx.now, Session.getActiveUser().getEmail(), String(code), what, String(from), String(to)].map(plain_));
+  } catch (e) { console.warn('Interviewee Changes not written: ' + e.message); }
 }
 
 /** code's Interview Answers row goes along to the new binome's sheet, as its gold cells do: written there first, then removed from

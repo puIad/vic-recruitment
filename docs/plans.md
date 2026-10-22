@@ -37,6 +37,7 @@ Grilled with the owner on 2026-10-22. Where this list and the sections below dis
 | Analytics: 2025 curve | Lined up by day N of the opening, not by calendar date. Daily counts only, derived once from the local 2025 file and kept as a constant: no personal data in the repo. |
 | Analytics: profile | Opens from the Analytics table, an Interviewees row and Ctrl K, as planned. |
 | History | Interviewee moves and accepted hand edits are logged in a **new** Master tab **Interviewee Changes** (`When, By, Code, What, From, To`), created on first write. Member Changes is left alone: the cover and swap logic reads it. Change history shows both tabs, with Moved and Edit accepted filters. |
+| Script, as built | Analytics reads **Interviewees only**: since 2026-10-04 it carries every answer Analytics needs (Birth Date, Discovered VIC, Why VIC, Other Clubs, Department Questions), so there is no join with Registration Responses. Times on `interviewees[]` and in `webAnalytics` are ms with `settings.tz` / `tz` (no `formatDate` per value in the publish), and `at` replaces the planned `date` / `time` pair. The birth-year guess is `guessBirthYear` / `birthInfo` in Rules.gs, sent with each row. |
 | UI tests | A Playwright smoke run against the mock (`test/webdev.js`), headless Chrome for Testing, as an admin and as a member: every page opens with no console error and no error screen, the new pages included. Its own `npm run test:ui`; `npm test`, which gates the script deploys, stays browser-free. |
 
 ## Schedule

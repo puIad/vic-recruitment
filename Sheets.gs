@@ -43,6 +43,8 @@ function fmt_(d, pattern, tz) { // tz: a caller that can't open the Master (a me
   _snapT.fmtN = (_snapT.fmtN || 0) + 1; _snapT.fmtMs = (_snapT.fmtMs || 0) + Date.now() - t0;
   return out;
 }
+/** A Date as ms for the dashboard (it formats them in settings.tz), else null: no formatDate call per value. */
+const ms_ = d => (d instanceof Date && !isNaN(d) ? d.getTime() : null);
 /** FNV-1a (32 bits) plus the length: tells two snapshots apart (publishState_); not for anything secret. */
 function hash_(s) {
   let h = 0x811c9dc5;

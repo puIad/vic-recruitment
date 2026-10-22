@@ -2,7 +2,7 @@
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
 const ctx = vm.createContext({ console });
 require('./gs')(ctx);
-vm.runInContext('globalThis.__x = {screenApplication,namesSwapped,parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,makePair,draftMix,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,tagFor,normPhone,bestNameMatch,unpairedMembers};', ctx);
+vm.runInContext('globalThis.__x = {screenApplication,namesSwapped,parseBinomeCode,parseIntervieweeCode,resolveInterview,draftPairs,makePair,draftMix,pickBinome,nextCode,checkRegistration,buildInterviewAt,timingIssues,tagDepts,tagFor,normPhone,bestNameMatch,unpairedMembers,guessBirthYear,birthInfo};', ctx);
 const X = ctx.__x;
 const D = iso => vm.runInContext('new Date("' + iso + '")', ctx);
 let pass = 0; const t = (name, fn) => { try { fn(); pass++; } catch (e) { console.log('FAIL', name, '\n ', e.message); process.exitCode = 1; } };
@@ -318,5 +318,17 @@ t('names typed the wrong way round', () => {
   assert.strictEqual(X.namesSwapped('Benali', 'Ali', 'x.y.z@g.enp.edu.dz'), false, 'not two parts');
   assert.strictEqual(X.namesSwapped('Benali', '', 'ali.benali@g.enp.edu.dz'), false, 'an empty field');
   assert.strictEqual(X.namesSwapped('Bénali', 'Ali', 'ali.benali@g.enp.edu.dz'), true, 'accents');
+});
+t('birth year guessed from the year of study', () => {
+  const reg = D('2025-10-26T10:00:00');
+  assert.deepStrictEqual(['PREPA|1ST', 'prepa|2ND', 'DATA|1ST', 'ELT|3RD'].map(k => X.guessBirthYear(k.split('|')[1], k.split('|')[0], reg)), [2007, 2006, 2005, 2003]);
+  assert.deepStrictEqual([X.guessBirthYear('', 'PREPA', reg), X.guessBirthYear('1ST', '', reg), X.guessBirthYear('1ST', 'PREPA', '')], [null, null, null]);
+  const B = (b, y, f) => JSON.parse(JSON.stringify(X.birthInfo(b, reg, y, f)));
+  assert.deepStrictEqual(B('14/05/2025', '1ST', 'PREPA'), { date: '2025-05-14', suspect: true, guess: '2007-05-14' }, 'the current year typed: guessed');
+  assert.deepStrictEqual(B('14/05/2006', '1ST', 'PREPA'), { date: '2006-05-14', suspect: false, guess: '' }, 'a plausible date stays');
+  assert.deepStrictEqual(B(D('1980-02-03T00:00:00'), '2ND', 'MECA'), { date: '1980-02-03', suspect: true, guess: '2004-02-03' }, 'a Date from the sheet');
+  assert.deepStrictEqual(B('sometime', '1ST', 'PREPA'), { date: 'sometime', suspect: true, guess: '' }, 'unreadable: no day to keep');
+  assert.deepStrictEqual(B('14/05/2025', '', 'PREPA'), { date: '2025-05-14', suspect: true, guess: '' }, 'no year of study: no guess');
+  assert.deepStrictEqual(B('', '1ST', 'PREPA'), { date: '', suspect: false, guess: '' });
 });
 console.log(pass + ' tests passed' + (process.exitCode ? ' (with failures)' : ''));

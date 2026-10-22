@@ -160,6 +160,77 @@ export interface Interviewee {
   name: string
   /** screening risk 0–100; null = not scored; absent on an older script */
   risk?: number | null
+  /** Schedule (docs/plans.md); all absent on an older script. 1st choice */
+  dept?: string
+  /** the binome sheet's Contacted ("Not yet", "Yes", …) */
+  contacted?: string
+  /** interview time read from the binome sheet, ms (show it in settings.tz); null = no date, or one the sync can't read (BAD_DATE) */
+  at?: number | null
+  /** ms; null = not assigned */
+  assignedAt?: number | null
+  /** their availability answer from the registration */
+  avail?: string
+}
+
+/** One row of the Interviewee Changes tab: a move (from / to = binome codes) or an accepted hand edit (from / to = "Field: value";
+ *  to = "row deleted" for a deleted row; code = the binome's code for a Binomes-tab edit). at dd/MM/yyyy HH:mm. */
+export interface IvHistoryRow {
+  at: string
+  by: string
+  code: string
+  what: "Moved" | "Edit accepted" | string
+  from: string
+  to: string
+}
+
+/** A birth date as Analytics shows it (Rules.gs birthInfo): date yyyy-MM-dd (or the text as typed when unreadable); suspect =
+ *  unreadable or an age outside 15–35; guess = the same day and month with the year expected from the year of study, or "". */
+export interface BirthInfo {
+  date: string
+  suspect: boolean
+  guess: string
+}
+
+/** One registration for Analytics (webAnalytics; duplicates included, their status says so). Times are ms or null; show them in tz. */
+export interface AnalyticsRow {
+  code: string
+  binome: string
+  status: Status | ""
+  flags: string
+  risk: number | null
+  registered: number | null
+  assignedAt: number | null
+  contactedAt: number | null
+  interviewAt: number | null
+  submittedAt: number | null
+  first: string
+  family: string
+  email: string
+  typedEmail: string
+  field: string
+  year: string
+  c1: string
+  c2: string
+  birth: BirthInfo
+  /** "How did you discover VIC?": the checked options joined by commas, plus any Other text */
+  discovered: string
+  whyVic: string
+  /** why their 1st-choice department */
+  motivation: string
+  clubs: string
+  /** the 1st choice's own questions, one "question answer" per line */
+  deptQuestions: string
+  avail: string
+  anything: string
+  contacted: string
+  notes: string
+  finalDep: string
+}
+
+export interface AnalyticsState {
+  v: number
+  tz: string
+  rows: AnalyticsRow[]
 }
 
 /** Settings › Screening: the switch, the threshold, and the last read of the VIC members sheet (at "" = never). */
@@ -260,6 +331,8 @@ export interface WebState {
     syncEvery: number
     digestHour: number
     admins: string[]
+    /** the Master's TIMEZONE, for the ms times; absent on an older script */
+    tz?: string
   }
   settingsAll: SettingRow[]
   /** absent on a script from before the Emails page */
@@ -270,6 +343,8 @@ export interface WebState {
   unpaired: Unpaired[]
   covers: Cover[]
   history: HistoryRow[]
+  /** moves and accepted hand edits, newest first; absent on an older script */
+  ivHistory?: IvHistoryRow[]
   teamList: TeamMember[]
   binomes: Binome[]
   alertCounts: Record<Severity, number>
