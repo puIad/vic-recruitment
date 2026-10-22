@@ -36,7 +36,8 @@ export function ApplicantProfile() {
   const { data, loading, error, load } = useAnalytics()
 
   React.useEffect(() => {
-    if (open) void load()
+    // the sheet opens from live lists (Interviewees, Ctrl K): re-read a copy older than 5 min, the old one stays on screen meanwhile
+    if (open) void load(Date.now() - useAnalytics.getState().loadedAt > 5 * 60e3)
   }, [open, load])
 
   const row = React.useMemo(() => {

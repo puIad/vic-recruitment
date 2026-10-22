@@ -1,17 +1,26 @@
 import { BaseLayout } from "@/components/layouts/base-layout"
-import { PlaceholderBanner } from "@/components/page-header"
-import { Calendar } from "./components/calendar"
-import { events, eventDates } from "./data"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useVic } from "@/lib/vic/store"
+import { Schedule } from "./components/schedule"
 
-/** Placeholder: the template's Calendar app, filled with sample interview slots. */
+/** Every interview the binomes have set in their sheets, read-only: the sheets are the source (docs/plans.md › Schedule). */
 export default function SchedulePage() {
+  const state = useVic((s) => s.state)
+  const loadedAt = useVic((s) => s.loadedAt)
   return (
-    <BaseLayout title="Schedule" description="Every interview slot, by day." watermark="Schedule">
-      <PlaceholderBanner
-        idea="One calendar of every interview the binomes have booked, coloured by department. It shows clashes (a binome double-booked, a candidate with two slots), free days, and what is overdue, without opening 49 sheets."
-        needs="Each binome sheet already holds a date and time per candidate (the overdue check reads it). Add them to webState (code, binome, start), then replace the sample events. Adding or moving a slot stays in the binome's own sheet."
-      />
-      <Calendar events={events} eventDates={eventDates} />
+    <BaseLayout
+      title="Schedule"
+      description="Every interview the binomes have set in their sheets, coloured by first choice. To move one, edit the binome sheet."
+      watermark="Schedule"
+    >
+      {state ? (
+        <Schedule state={state} loadedAt={loadedAt} />
+      ) : (
+        <div className="grid gap-6 min-[1800px]:grid-cols-[minmax(0,1fr)_21rem]" aria-busy="true">
+          <Skeleton className="h-[42rem] rounded-xl" />
+          <Skeleton className="h-80 rounded-xl" />
+        </div>
+      )}
     </BaseLayout>
   )
 }
