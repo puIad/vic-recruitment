@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Navigate } from "react-router-dom"
-import { AlertTriangle, ArrowUpRight, CalendarClock, CircleCheck, Database, Lock, PanelRightOpen, PauseCircle, RotateCcw, UserRoundCheck } from "lucide-react"
+import { AlertTriangle, ArrowUpRight, BookOpen, CalendarClock, CircleCheck, Database, Lock, PanelRightOpen, PauseCircle, RotateCcw, UserRoundCheck } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { DotGrid, RingSlot } from "@/components/brand/motifs"
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { alertLabel, cellText, fullName, initials, SEVERITY, SHEET_LABEL, sheetTime, STAGES } from "@/lib/vic/format"
+import { GUIDELINE_URL } from "@/lib/vic/interview"
 import { useVic } from "@/lib/vic/store"
 import { REASON, useMemberView } from "@/lib/vic/pending"
 import type { Candidate, FieldEntry, MemberAlert, MemberState } from "@/lib/vic/types"
@@ -269,13 +270,20 @@ export default function MyBinomePage() {
         </>
       }
       actions={
-        m.fileUrl && (
-          <Button asChild>
-            <a href={m.fileUrl} target="_blank" rel="noopener noreferrer">
-              Open my binome sheet <ArrowUpRight />
+        <>
+          <Button asChild variant="outline">
+            <a href={GUIDELINE_URL} target="_blank" rel="noopener noreferrer">
+              <BookOpen /> Recruitment guideline
             </a>
           </Button>
-        )
+          {m.fileUrl && (
+            <Button asChild>
+              <a href={m.fileUrl} target="_blank" rel="noopener noreferrer">
+                Open my binome sheet <ArrowUpRight />
+              </a>
+            </Button>
+          )}
+        </>
       }
     >
       {m.status === "PAUSED" && (
