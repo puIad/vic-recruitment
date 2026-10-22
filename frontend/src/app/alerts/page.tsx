@@ -48,16 +48,25 @@ export default function AlertsPage() {
   const [q, setQ] = React.useState("")
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
   const activeId = params.get("id")
-  // ?type= narrows the inbox to one kind of alert (the Overview's to-do rows link here with it)
-  const kind = params.get("type")
+  // ?type=A,B narrows the inbox to those kinds of alert (the Overview's to-do rows link here with it)
+  const typeParam = params.get("type")
+  const types = React.useMemo(() => (typeParam ? new Set(typeParam.split(",")) : null), [typeParam])
+  const ofType = React.useCallback((a: Alert | HeldAlert) => !types || types.has(a.type), [types])
+  const typed = React.useMemo(() => (types ? alerts.filter(ofType) : alerts), [alerts, types, ofType])
+  const typedCounts = React.useMemo(() => {
+    if (!types) return counts
+    const c = { HIGH: 0, MEDIUM: 0, INFO: 0 }
+    typed.forEach((a) => c[a.severity]++)
+    return c
+  }, [types, typed, counts])
 
-  const editCount = alerts.filter((a) => a.type === "MANUAL_EDIT").length
+  const editCount = typed.filter((a) => a.type === "MANUAL_EDIT").length
   const matches = React.useCallback(
     (a: Alert | HeldAlert) => {
       const s = q.trim().toLowerCase()
-      return (!kind || a.type === kind) && (!s || `${a.id} ${a.type} ${alertLabel(a.type)} ${a.code} ${a.binome} ${a.msg}`.toLowerCase().includes(s))
+      return ofType(a) && (!s || `${a.id} ${a.type} ${alertLabel(a.type)} ${a.code} ${a.binome} ${a.msg}`.toLowerCase().includes(s))
     },
-    [q, kind]
+    [q, ofType]
   )
   const isMuted = filter === "MUTED"
   const shown = React.useMemo(
@@ -82,7 +91,7 @@ export default function AlertsPage() {
     else next.delete("id")
     setParams(next, { replace: true })
   }
-  const clearKind = () => {
+  const clearTypes = () => {
     const next = new URLSearchParams(params)
     next.delete("type")
     setParams(next, { replace: true })
@@ -128,12 +137,12 @@ export default function AlertsPage() {
         <div role="group" aria-label="Filter by severity" className="flex flex-wrap gap-1.5">
           {(
             [
-              ["ALL", "All", alerts.length],
-              ["HIGH", "High", counts?.HIGH || 0],
-              ["MEDIUM", "Medium", counts?.MEDIUM || 0],
-              ["INFO", "Info", counts?.INFO || 0],
+              ["ALL", "All", typed.length],
+              ["HIGH", "High", typedCounts?.HIGH || 0],
+              ["MEDIUM", "Medium", typedCounts?.MEDIUM || 0],
+              ["INFO", "Info", typedCounts?.INFO || 0],
               ["EDITS", "Manual edits", editCount],
-              ["MUTED", "Muted", muted.length],
+              ["MUTED", "Muted", types ? muted.filter(ofType).length : muted.length],
             ] as const
           ).filter(([v, , n]) => v !== "MUTED" || n > 0 || filter === "MUTED").map(([v, label, n]) => (
             <button
@@ -151,12 +160,12 @@ export default function AlertsPage() {
             </button>
           ))}
         </div>
-        {kind && (
+        {types && (
           <p className="flex items-center gap-2 text-sm">
             <span className="text-muted-foreground">Only</span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent py-0.5 pl-3 pr-1 font-semibold text-accent-foreground">
-              {alertLabel(kind)}
-              <button type="button" onClick={clearKind} aria-label={`Show every kind of alert, not only ${alertLabel(kind)}`} className="flex size-5 items-center justify-center rounded-full hover:bg-background/70">
+            <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-accent py-0.5 pl-3 pr-1 font-semibold text-accent-foreground" title={[...types].map(alertLabel).join(", ")}>
+              <span className="truncate">{types.size === 1 ? alertLabel([...types][0]) : `${types.size} kinds of alert`}</span>
+              <button type="button" onClick={clearTypes} aria-label="Show every kind of alert" className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-background/70">
                 <X className="size-3.5" />
               </button>
             </span>

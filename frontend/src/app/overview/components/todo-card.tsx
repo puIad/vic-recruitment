@@ -13,16 +13,6 @@ import { cn } from "@/lib/utils"
 const BAR: Record<Severity, string> = { HIGH: "bg-danger", MEDIUM: "bg-warning", INFO: "bg-info" }
 const COUNT: Record<Severity, string> = { HIGH: "text-danger", MEDIUM: "text-warning", INFO: "text-info" }
 
-/** One line under the label, for the rows that aren't an alert type (an alert's own label says enough). */
-const HINT: Record<string, string> = {
-  paused: "New registrants wait unassigned until it's back on",
-  sharing: "Binome members can't open their sheets",
-  test: "Emails reach the admins only, binome sheets stay unshared",
-  held: "Screening held them for a person to read first",
-  unpaired: "Left without a binome after lock: place them",
-  more: "Open the inbox for the rest",
-}
-
 /** What needs a person today, one row per kind, worst first; each row opens its page already filtered. "All clear" is a designed state, not an empty list. */
 export function TodoCard({ wide }: { wide?: boolean }) {
   const s = useVic((x) => x.state)
@@ -65,7 +55,7 @@ export function TodoCard({ wide }: { wide?: boolean }) {
                   <span className={cn("h-8 w-1 shrink-0 rounded-full", BAR[r.tone])} aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold">{r.label}</span>
-                    {HINT[r.key] && <span className="block truncate text-xs text-muted-foreground">{HINT[r.key]}</span>}
+                    {r.hint && <span className="block truncate text-xs text-muted-foreground">{r.hint}</span>}
                   </span>
                   {r.count !== null && <span className={cn("num shrink-0 text-xl font-extrabold leading-none", COUNT[r.tone])}>{r.count}</span>}
                   <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden="true" />

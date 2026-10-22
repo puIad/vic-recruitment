@@ -1,5 +1,5 @@
 import { BaseLayout } from "@/components/layouts/base-layout"
-import { isOut } from "@/lib/vic/format"
+import { registrants } from "@/lib/vic/overview"
 import { useVic } from "@/lib/vic/store"
 import { TodoCard } from "./components/todo-card"
 import { LaunchCard } from "./components/launch-card"
@@ -9,7 +9,7 @@ import { BinomesBehind } from "./components/binomes-behind"
 /** The admin's to-do (issue 144): what needs a person today, the launch until lock, the pipeline in a row, the binomes behind. Nothing here writes. */
 export default function OverviewPage() {
   const s = useVic((x) => x.state)
-  const registered = s ? Object.keys(s.counts.byStatus).reduce((t, k) => t + (isOut(k) ? 0 : s.counts.byStatus[k]), 0) : 0
+  const registered = s ? registrants(s.counts.byStatus) : 0
   const description = s
     ? `${registered} registrants across ${s.binomes.filter((b) => b.status !== "DRAFT").length} locked binomes.`
     : "Loading the Master…"

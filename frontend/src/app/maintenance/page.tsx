@@ -92,7 +92,7 @@ export default function MaintenancePage() {
         </CardContent>
       </Card>
       <p className="text-sm text-muted-foreground">
-        Thresholds, sharing and email live in <Link to="/settings/timing" className="font-semibold text-primary hover:underline">Settings</Link>. Past runs are listed under Activity: click Live in the top bar.
+        Thresholds, sharing and email live in <Link to="/settings/timing" className="font-semibold text-primary hover:underline">Settings</Link>. Past runs are listed under Activity: open the live status ring in the top bar.
       </p>
     </BaseLayout>
   )

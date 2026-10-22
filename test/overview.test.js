@@ -75,7 +75,8 @@ t('past six kinds of alert, the rest fold into one row linking to the whole inbo
   const rows = O.todoRows(state({ settings, counts: { byStatus: { HELD: 1 }, byDep: {} } }), alerts);
   assert.deepStrictEqual(keys(rows), ['MANUAL_EDIT', 'NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'BAD_EMAIL', 'held', 'more', 'test']);
   const more = rows[7];
-  assert.deepStrictEqual([more.label, more.count, more.tone, more.to], ['3 more kinds of alert', 5 + 4 + 2, 'MEDIUM', '/alerts']); // BAD_PHONE, MISSING_NAME, INTEGRITY
+  assert.deepStrictEqual([more.label, more.count, more.tone], ['3 more kinds of alert', 5 + 4 + 2, 'MEDIUM']);
+  assert.strictEqual(more.to, '/alerts?type=BAD_PHONE,MISSING_NAME,INTEGRITY', 'the inbox filtered to the kinds it folded');
 });
 
 const binome = (code, open, interviewed, assigned, withdrew = 0, status = 'ACTIVE') => ({ code, status, open, interviewed, assigned, withdrew, members: [], people: [], tag: '', fileUrl: '' });
@@ -98,6 +99,22 @@ t('binomes behind: locked binomes by open alerts, then the lowest interviewed sh
 t('binomes behind shows at most six', () => {
   const list = Array.from({ length: 9 }, (_, i) => binome('B0' + (i + 1), 0, i, 10));
   assert.deepStrictEqual(O.binomesBehind(list).map((b) => b.code), ['B01', 'B02', 'B03', 'B04', 'B05', 'B06']);
+});
+
+t('review and unpaired alerts stay as alert rows when no held or unpaired row covers them, so the card is never falsely clear', () => {
+  const rows = O.todoRows(state({ locked: false }), [alert('NEEDS_REVIEW'), alert('UNPAIRED_MEMBER')]);
+  assert.deepStrictEqual(rows.map((r) => [r.key, r.count]), [['UNPAIRED_MEMBER', 1], ['NEEDS_REVIEW', 1]]); // a tie: by label
+});
+
+t('every row that is not an alert type carries a one-line hint', () => {
+  const settings = { assignmentsOpen: false, testMode: true, shareFiles: false };
+  const rows = O.todoRows(state({ settings, unpaired: [{ email: 'a@g.enp.edu.dz' }], counts: { byStatus: { HELD: 1 }, byDep: {} } }), [alert('NO_DATE')]);
+  assert.ok(rows.filter((r) => r.key !== 'NO_DATE').every((r) => r.hint), 'paused, held, unpaired, test');
+  assert.strictEqual(rows.find((r) => r.key === 'NO_DATE').hint, undefined);
+});
+
+t('registrants count everyone but duplicates and declined', () => {
+  assert.strictEqual(O.registrants({ ASSIGNED: 5, HELD: 2, WITHDRAWN: 1, DUPLICATE: 3, DECLINED: 4 }), 8);
 });
 
 console.log(`overview: ${n} passed`);
