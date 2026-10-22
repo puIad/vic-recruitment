@@ -3,6 +3,17 @@
 The club's recruitment: candidates register, binomes interview them, admins watch it all from the dashboard. The
 Google Sheets hold the data; the dashboard is how people act on it.
 
+## Registering
+
+**Registration form**:
+The form on VIC's own site where a candidate registers, opened by the landing page's Apply button.
+_Avoid_: apply form, registration app, application form
+
+**Google Form**:
+VIC's Google registration form, kept always available so candidates can still register when the registration form
+can't take them.
+_Avoid_: registration form (for the Google one), old form, legacy form
+
 ## Binomes
 
 **Binome**:
