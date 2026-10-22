@@ -37,7 +37,7 @@ Master (bound script, vic.rh): the timed sync (5 min) ─► checks, screening, 
 | Place | `/apply` and `api/` in the vic-enp Vercel project, its own Upstash Redis; the landing's "no cookies, no forms" rule now holds for the landing page itself; `/apply` and `/api` may set one HttpOnly cookie, only after the code is verified | [Where the registration form lives](https://github.com/puIad/vic-recruitment-2026/issues/117) |
 | Email proof | 6-digit code on screen 1, `@g.enp.edu.dz` only, mailer owned by `vic.rh`, 3/email/h, 60/IP/h (10 until 22 Oct: a lecture hall on the ENP Wi-Fi or one carrier's NAT shares an IP), 30 s resend, 10 min, 5 tries, honeypot, localStorage draft only, **no** link to the Google Form anywhere | [How candidates prove their email](https://github.com/puIad/vic-recruitment-2026/issues/118) (amended by [When candidates reach the Google Form](https://github.com/puIad/vic-recruitment-2026/issues/121); the IP limit by the owner on [puIad/vic-enp#70](https://github.com/puIad/vic-enp/pull/70)) |
 | Theme | Full Harry Potter theme with house names and series words, chosen knowingly with no Warner permission, no disclaimer, no plain switch. IT Gryffindor, COMM Ravenclaw, FLER Hufflepuff, HR Slytherin. The Master and binome sheets keep their own colours | [The wizarding theme inside VIC's charter](https://github.com/puIad/vic-recruitment-2026/issues/119) |
-| Write path | Service-account key, `INSERT_ROWS`, `RAW`, columns by header, Timestamp as a serial in the Master's time zone, Redis lock first, timed sync at 5 min | [How a registration reaches the Master](https://github.com/puIad/vic-recruitment-2026/issues/120), [Can the Cloud project create a service account key?](https://github.com/puIad/vic-recruitment-2026/issues/116) |
+| Write path | Service-account key, `INSERT_ROWS`, `RAW`, columns by header, Timestamp as a serial in the Master's time zone, Redis lock first, appends one at a time behind `lock:append` with row 1 kept 60 s (the load test, [#133](https://github.com/puIad/vic-recruitment-2026/issues/133)), timed sync at 5 min | [How a registration reaches the Master](https://github.com/puIad/vic-recruitment-2026/issues/120), [Can the Cloud project create a service account key?](https://github.com/puIad/vic-recruitment-2026/issues/116) |
 | Fallback | The one switch is `VITE_APPLY_URL`; no hand-over of answers; both forms' questions freeze after the live check | [When candidates reach the Google Form](https://github.com/puIad/vic-recruitment-2026/issues/121) |
 | Comp | Direction A, the long letter; the comp is `prototype/registration-form` (never merged), its README lists everything accepted | [The registration form's themed comp](https://github.com/puIad/vic-recruitment-2026/issues/122) |
 | Mails | Themed layout for two mails only (code mail, confirmation); code mail is a new editable mail on Settings > Emails | [The code mail and the confirmation in the theme](https://github.com/puIad/vic-recruitment-2026/issues/123) |
@@ -96,7 +96,7 @@ Request bodies are capped (50 KB) and every field is validated server side.
 |---|---|---|
 | `POST /api/code` | `{ local, website }` (`website` is the honeypot, must be empty) | `200 {status:"sent", resendIn:30}`; `200 {status:"registered"}` when `reg:<sha256(email)>` exists; `429 {retryIn}` over a limit or inside the 30 s gap; `400` bad shape. A filled honeypot answers `200 {status:"sent"}` and sends nothing |
 | `POST /api/verify` | `{ local, code }` | `200 {expiresAt}` and `Set-Cookie vic_apply` (HttpOnly, Secure, SameSite=Lax, `Path=/`, 60 min); `400 {triesLeft}` wrong code; `410` expired or none; `429` after 5 tries |
-| `POST /api/submit` | `{ answers }` (cookie required) | `200 {status:"received"}`; `401` no or stale cookie (the form returns to the ticket, answers kept); `409 {status:"registered"}`; `422 {fields:[…]}` structure invalid; `503 {status:"not_saved"}` append failed after retries (lock released) |
+| `POST /api/submit` | `{ answers }` (cookie required) | `200 {status:"received"}`; `401` no or stale cookie (the form returns to the ticket, answers kept); `409 {status:"registered"}`; `422 {fields:[…]}` structure invalid; `503 {status:"not_saved"}` append failed after retries, or no turn at the append within 30 s (lock released) |
 | `GET /api/health` | none | `200 {redis, mailer, sheets, headers}`, each `"ok"` or `"fail"`, nothing else. Rate limited. The owner opens it in a browser |
 
 - **Email** is always `lowercase(local) + "@" + EMAIL_DOMAIN`; a `local` containing `@` or whitespace is a 400. The
@@ -106,10 +106,15 @@ Request bodies are capped (50 KB) and every field is validated server side.
 - **Redis keys** (prefix `KEY_PREFIX`, empty in production, `prev:` in previews so a preview never touches production's
   keys): `otp:<sha256(email)>` holds `sha256(code)` for 10 min with a tries counter; `rl:e:<h>` and `rl:ip:<h>` count
   codes per hour (IP hashed too); `gap:<h>` is the 30 s resend gap; `reg:<sha256(email)>` is the registration mark and
-  the submit lock. No plain email, code or IP is ever stored.
-- **Submit order:** validate, `SET reg:<h> NX` (the lock; failure means `409`), append, done. If the append fails after
-  its retries, `DEL reg:<h>` and answer `503`. An ambiguous timeout may leave a second row; the script marks it
-  DUPLICATE (HIGH alert, no second mail). The mark has no expiry before the final reset.
+  the submit lock; `lock:append` (2 s) lets one append through at a time; `headers` keeps row 1 of the tab for 60 s.
+  No plain email, code or IP is ever stored.
+- **Submit order:** validate, `SET reg:<h> NX` (the lock; failure means `409`), wait for a turn at `lock:append`, append,
+  done. The Sheets token is fetched before the wait. A send waits for its turn until 30 s into the submit (polling every
+  150 to 300 ms); with no turn by then it answers `503`. The turn holds the send's own token and is freed only while
+  still held, so an append that outlives the 2 s never frees the next send's turn. A Redis error at the turn counts as
+  the turn: the send appends without it rather than fail. If the append fails after its retries, or no turn comes,
+  `DEL reg:<h>` and answer `503`. An ambiguous timeout may leave a second row; the script marks it DUPLICATE (HIGH
+  alert, no second mail). The mark has no expiry before the final reset.
 - **Health** checks: Redis `PING`; the mailer with `{secret, ping:true}` (sends nothing); the Sheets API by reading
   row 1 of the Registration Responses tab and confirming **every header the site writes is present** (a header drift
   between the form and the site is caught here, before a candidate hits it).
@@ -119,13 +124,17 @@ Request bodies are capped (50 KB) and every field is validated server side.
 
 ## The row
 
-`api/submit` reads row 1 of the tab once per submit and writes each answer under the header it belongs to; a column
-added to the form never shifts the site's answers. The site's question list holds the form's titles exactly.
+`api/submit` writes each answer under the header it belongs to, from row 1 of the tab; a column added to the form never
+shifts the site's answers. Row 1 is read inside the turn and kept 60 s in Redis (`headers`), so a burst reads it once:
+30 sends reading it at once timed out in the load test. A column change therefore reaches the site within a minute;
+`/api/health` still reads row 1 live. The site's question list holds the form's titles exactly.
 
 - The tab has **34 columns** (header row read on 2026-10-19): Timestamp, Email address (collected by the form), then the
   32 questions of [registration-questions.md](registration-questions.md) in order.
-- `valueInputOption=RAW`, `insertDataOption=INSERT_ROWS`, range the tab name, retry with exponential backoff and jitter
-  on 429 and 5xx (the quota is 60 writes a minute for the service account; 273 registrations came in all of 2025).
+- `valueInputOption=RAW`, `insertDataOption=INSERT_ROWS`, range the tab name. The token, the row 1 read and the append
+  each get 3 tries with exponential backoff and jitter on 429, 5xx and timeouts (the quota is 60 writes a minute for the
+  service account; 273 registrations came in all of 2025). An append Google accepted is never retried, even when its
+  answer can't be read.
 - `Timestamp`: the submit time as a sheet serial in the Master's time zone (`Africa/Algiers`, from
   `appsscript.json`), integer part days since 1899-12-30. **Birth Date** is written the same way (a date serial).
   The live check and the load test confirm both read back as Dates like a form row.
@@ -244,6 +253,13 @@ the appended cells), so Apps Script `getValues` would return a Date. If an appen
 behind a short Redis lock (`SET lock:append NX`, 2 s) and rerun; a clean run means no lock. If the cells do not
 inherit the date format, apply it to the written range in the same append flow and rerun. The test script lives in
 vic-enp `scripts/` and reads nothing but the synthetic rows.
+
+**Done on 22 Oct** ([#133](https://github.com/puIad/vic-recruitment-2026/issues/133),
+[vic-enp#73](https://github.com/puIad/vic-enp/pull/73)): `npm run loadtest` in vic-enp. Without the lock, 13 of 30
+were saved: appends timed out and ran into 429s. The lock went in, and the row 1 cache and the token retry came out of
+later failing runs. The last three runs passed 30 of 30 in 13 to 15 s, with the slowest append at 1.2 s. The dates
+needed no change: the inserted rows inherit `DATE_TIME` and `DATE`. A turn takes about 0.45 s, so the 30 s wait covers
+roughly 60 sends at once. The copy holds the synthetic rows 277 to 478 from these runs.
 
 ### Doc edits that ride with the build
 
