@@ -1,8 +1,9 @@
 # Plans: Schedule, Analytics, pending changes, settings cleanup, email texts
 
 The owner's decisions of 2026-10-04 on the "Coming up" pages. Schedule and Analytics are the only pages still to
-build, next after the 2026-10-19 audit fixes; none of it is needed for launch, and both are placeholders today
-([frontend.md](frontend.md#placeholders-sample-data-each-labelled-and-what-makes-them-real)). Two later plans are
+build, and both are placeholders today
+([frontend.md](frontend.md#placeholders-sample-data-each-labelled-and-what-makes-them-real)). On 2026-10-22 the owner
+moved them **before launch** (25 Oct), with cuts: see [Launch scope](#launch-scope-2026-10-22) just below. Two later plans are
 done and kept here as a record: pending changes ([build plan](#pending-changes-the-build-plan): slices 1 to 5 live
 2026-10-18 with the owner's switch off, audit fixes live 2026-10-19) and the [settings
 cleanup](#settings-cleanup-the-build-plan) (both PRs live 2026-10-19). The [email texts](#email-texts-the-build-plan)
@@ -18,6 +19,25 @@ Settings › Emails page where admins edit the mails to candidates and binome me
 
 Both pages follow the usual order ([HANDOFF](../HANDOFF.md#how-changes-ship)): the script ships first and only
 adds fields, so no `API_VERSION` bump. The UI treats a missing field as empty, so it still works on an older script.
+
+### Launch scope (2026-10-22)
+
+Grilled with the owner on 2026-10-22. Where this list and the sections below disagree, this list wins.
+
+| Item | Decision |
+|---|---|
+| When | Before launch (25 Oct). Schedule and Analytics are built in parallel. |
+| Script | **One** script PR first, carrying everything both pages and the history need: the Schedule fields on `webState`, `webAnalytics()`, and the Interviewee Changes log. It ships **before load-test run 4**, so the sign-off covers it; if it slips, run 4 goes ahead without it and the script waits until after launch. |
+| Then | Two frontend sessions in parallel worktrees, one for Schedule (with the member view), one for Analytics (with the profile). The Change history UI and the UI smoke test come last. |
+| Coming up group | Stays in the sidebar as it is until the pages are real. |
+| Schedule: admin events | **Cut** for launch: no Events tab, no event actions. The calendar is interviews only, read-only. |
+| Schedule: members | **Added**: My binome gets a week view of the binome's own interviews, with a No date yet list and clashes marked, reusing the Schedule components read-only. It needs nothing new from the script: the member state already carries Interview Date and Time. |
+| Analytics: birth dates | Suspect dates show the guessed year, marked as guessed, and the stats use it. **No saving** at launch: no Analytics Fixes tab, no `fixRegistration`. |
+| Analytics: stats | The owner's five (year of study, age and birthdays, field, how they heard, general motivation) plus four suggested ones: registrations per day, department demand (with the field × department heatmap), funnel and speed, data quality. The other suggested stats wait. |
+| Analytics: 2025 curve | Lined up by day N of the opening, not by calendar date. Daily counts only, derived once from the local 2025 file and kept as a constant: no personal data in the repo. |
+| Analytics: profile | Opens from the Analytics table, an Interviewees row and Ctrl K, as planned. |
+| History | Interviewee moves and accepted hand edits are logged in a **new** Master tab **Interviewee Changes** (`When, By, Code, What, From, To`), created on first write. Member Changes is left alone: the cover and swap logic reads it. Change history shows both tabs, with Moved and Edit accepted filters. |
+| UI tests | A Playwright smoke run against the mock (`test/webdev.js`), headless Chrome for Testing, as an admin and as a member: every page opens with no console error and no error screen, the new pages included. Its own `npm run test:ui`; `npm test`, which gates the script deploys, stays browser-free. |
 
 ## Schedule
 
@@ -40,6 +60,8 @@ in their sheets. It never changes them.
   which treats the sheet as the source.
 
 ### Admin events (secondary)
+
+Cut for launch on 2026-10-22 ([Launch scope](#launch-scope-2026-10-22)); kept here for later.
 
 - Trim the template's "Add event" form to: title, date, start and end time (or all day), category (Meeting, Deadline,
   Other), notes. The events show on the same calendar with their own colour, and can be hidden with a filter.
@@ -91,6 +113,8 @@ Opens from the Analytics table, an Interviewees row and the command palette (Ctr
 - Availability, flags (duplicate, email, phone, birth date) and the binome's notes.
 
 ### Birth dates: guess and correct the year
+
+At launch only the guess is shown; saving a fix waits ([Launch scope](#launch-scope-2026-10-22)).
 
 The year of study counts again from 1 after prépa (2025 data: `PREPA` 1ST/2ND, then `DATA` 1ST is the 3rd year at
 ENP). So:
