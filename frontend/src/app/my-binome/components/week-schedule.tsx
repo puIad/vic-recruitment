@@ -35,7 +35,7 @@ export function WeekSchedule({ m, onOpen }: { m: MemberState; onOpen: (code: str
             {inWeek.length ? `${inWeek.length} interview${inWeek.length > 1 ? "s" : ""}, ${BLOCK_MIN} min each, as set in your sheet` : "No interview set in your sheet this week"}
             {clashes > 0 && (
               <span className={cn("ml-2 inline-flex items-center gap-1 font-semibold", CLASH.tone)}>
-                <CLASH.icon className="size-3.5" aria-hidden="true" /> {clashes} less than 45 min apart
+                <CLASH.icon className="size-3.5" aria-hidden="true" /> {clashes} less than {BLOCK_MIN} min apart
               </span>
             )}
           </CardDescription>

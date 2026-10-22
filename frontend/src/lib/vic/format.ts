@@ -147,12 +147,28 @@ export function cellText(v: string | number | boolean | undefined): string {
   return v === undefined || v === null ? "" : String(v).trim()
 }
 
-/** dd/MM/yyyy (+ HH:mm) as a timestamp, or NaN. */
+/** A binome sheet's Interview Date (+ Interview Time) as a local timestamp, reading the same forms as the script
+ *  (Rules.gs buildInterviewAt): 9/11/2026, 9.11.26, 9-11-2026, 2026-11-09; 14:30, 14h30, 14h, 14. No time = midnight;
+ *  NaN = no date, or a date or time it can't read. */
 export function sheetTime(date: unknown, time?: unknown): number {
-  const d = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(date ?? "").trim())
-  if (!d) return NaN
-  const t = /^(\d{1,2}):(\d{2})/.exec(String(time ?? "").trim())
-  return new Date(+d[3], +d[2] - 1, +d[1], t ? +t[1] : 0, t ? +t[2] : 0).getTime()
+  const ds = String(date ?? "").trim()
+  const ts = String(time ?? "").trim()
+  let y: number, mo: number, d: number, m: RegExpExecArray | null
+  if ((m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/.exec(ds))) [d, mo, y] = [+m[1], +m[2], +m[3]]
+  else if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(ds))) [y, mo, d] = [+m[1], +m[2], +m[3]]
+  else return NaN
+  if (y < 100) y += 2000
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return NaN
+  let hh = 0
+  let mm = 0
+  if (ts) {
+    const t = /^(\d{1,2})\s*(?:[:hH]\s*(\d{2})?)?\s*(?:min)?$/.exec(ts)
+    if (!t) return NaN
+    hh = +t[1]
+    mm = t[2] ? +t[2] : 0
+    if (hh > 23 || mm > 59) return NaN
+  }
+  return new Date(y, mo - 1, d, hh, mm).getTime()
 }
 
 export const fullName = (c: Candidate) => `${cellText(c["First Name"])} ${cellText(c["Family Name"])}`.trim()

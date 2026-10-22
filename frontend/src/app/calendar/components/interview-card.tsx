@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { MemberName } from "@/components/member-name"
 import { cn } from "@/lib/utils"
 import type { Binome } from "@/lib/vic/types"
-import { CLASH, DEP, deptVars, endOf, hhmm, STATE_BY_KEY, type ScheduleItem } from "../schedule"
+import { BLOCK_MIN, CLASH, DEP, deptVars, endOf, hhmm, STATE_BY_KEY, type ScheduleItem } from "../schedule"
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -53,7 +53,7 @@ export function InterviewCard({ item, binome, clashWith, tzLabel, onClose }: { i
                 <p className="flex gap-2.5 rounded-xl bg-warning-soft px-3 py-2.5 text-sm text-warning">
                   <CLASH.icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   <span>
-                    <b className="font-bold">Clash.</b> Less than 45 min from{" "}
+                    <b className="font-bold">Clash.</b> Less than {BLOCK_MIN} min from{" "}
                     {clashWith.map((c, i) => (
                       <React.Fragment key={c.code}>
                         {i > 0 && ", "}

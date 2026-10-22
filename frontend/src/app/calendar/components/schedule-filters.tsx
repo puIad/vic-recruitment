@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { CLASH, DEP, deptKey, deptVars, DEPTS, hhmm, STATES, type Filters, type IvState, type ScheduleItem } from "../schedule"
+import { BLOCK_MIN, CLASH, DEP, deptKey, deptVars, DEPTS, hhmm, STATES, type Filters, type IvState, type ScheduleItem } from "../schedule"
 import { DatePicker } from "./date-picker"
 
 const ALL = "all"
@@ -123,7 +123,7 @@ export function ScheduleFilters({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">No binome has two interviews less than 45 min apart.</p>
+          <p className="text-sm text-muted-foreground">No binome has two interviews less than {BLOCK_MIN} min apart.</p>
         )}
       </section>
     </div>
