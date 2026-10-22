@@ -36,7 +36,7 @@ export function ApplicantProfile() {
   const { data, loading, error, load } = useAnalytics()
 
   React.useEffect(() => {
-    // the sheet opens from live lists (Interviewees, Ctrl K): re-read a copy older than 5 min, the old one stays on screen meanwhile
+    // the sheet opens from live lists (Interviewees, Ctrl K): re-read a copy older than 5 min; the old one stays on screen meanwhile
     if (open) void load(Date.now() - useAnalytics.getState().loadedAt > 5 * 60e3)
   }, [open, load])
 
@@ -75,7 +75,12 @@ export function ApplicantProfile() {
                   <Skeleton className="h-32 rounded-xl" />
                 </>
               ) : (
-                <p className="text-sm text-muted-foreground">It may have registered after this page loaded its list: reload Analytics to read the Master again.</p>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">It may have registered after the list was read.</p>
+                  <Button size="sm" variant="outline" onClick={() => void load(true)}>
+                    <RotateCw /> Read the Master again
+                  </Button>
+                </div>
               )}
             </div>
           </>

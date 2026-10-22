@@ -14,6 +14,7 @@ Everything runs on an in-memory mock of the Apps Script services (`test/mockgas.
 | `test/quick.test.js` | the Alerts page's quick actions: fixes in Master + binome sheet with no manual edit flagged, duplicates, snooze / expiry / mute / unmute, odd values, exclude, interview forms, links, every sheet repair (dry run first), sharing, the email preview and send |
 | `test/tour.test.js` | the onboarding tour's steps per role (admin, member, admin in a binome) and when it starts by itself: per role and email, versioned, blocked storage counts as seen ([onboarding-tour.md](onboarding-tour.md)) |
 | `test/load.js` | not in `npm test`: 100 editors at once through the real proxy, against a calibrated Apps Script stand-in or (read-only) production: [load-test.md](load-test.md) |
+| `test/ui.smoke.js` | not in `npm test` (needs a browser): `npm run test:ui` starts the mock and Vite on ports 3311 / 5311, opens every dashboard page in headless Chrome for Testing (the build `playwright-core` pins) as an admin, an admin in a binome and a member, and fails on a console error, an uncaught exception or an error screen. Browser: `npx playwright-core install chromium-headless-shell` once (again after a `playwright-core` bump) |
 | `test/realdata.js` | not in `npm test`: replays the 2025 data; needs `test/data/` exports (personal data, git-ignored, not on disk) |
 
 The mock can't catch Apps Script quirks (protections, validations, locale parsing, trigger auth): live checks below.
