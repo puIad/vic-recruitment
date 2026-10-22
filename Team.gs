@@ -370,8 +370,8 @@ function retiredFolder_() {
 
 /**
  * Start over with a new organizing team (OT). Moves every binome sheet to the "Retired binomes" folder (named with the
- * reset date, so a second reset's [B.01] is not mistaken for the first, and no longer shared with the old members), empties Binomes, Team
- * and Member Changes, sends every interviewee back to UNASSIGNED (codes and registration data stay; what the binomes had
+ * reset date, so a second reset's [B.01] is not mistaken for the first, and no longer shared with the old members), empties Binomes, Team,
+ * Member Changes and Interviewee Changes (the new binomes reuse the codes), sends every interviewee back to UNASSIGNED (codes and registration data stay; what the binomes had
  * written is cleared), closes the alerts of the old binomes and forgets what the script knew about them. Registrations
  * deleted by hand stay deleted. The phrase is checked here, not only in the dashboard. Returns null when the script is busy.
  */
@@ -393,7 +393,7 @@ function resetBinomesCore_(phrase) {
       } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); }
     });
     const nBinomes = ctx.binomes.length, nTeam = ctx.team.data.filter(r => String(r[ctx.team.I.Email]).trim()).length;
-    [[TAB.BINOMES, BIN_H], [TAB.TEAM, TEAM_H], [TAB.CHANGES, MC_H]].forEach(t => {
+    [[TAB.BINOMES, BIN_H], [TAB.TEAM, TEAM_H], [TAB.CHANGES, MC_H], [TAB.IV_CHANGES, IC_H]].forEach(t => {
       const sh = ss_().getSheetByName(t[0]);
       if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, t[1].length).clearContent();
       if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 1).clearNote().setBackground(null);

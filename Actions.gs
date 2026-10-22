@@ -83,14 +83,14 @@ function moveInterviewee_(ctx, code, binomeText) {
 /** One row in the Interviewee Changes tab (created on first write) for Change history. A failed write never undoes the change. */
 function logIvChange_(ctx, code, what, from, to) {
   try {
-    const ss = ss_(), txt = v => { v = String(v == null ? '' : v); return /^[=+\-@]/.test(v) ? "'" + v : v; }; // a value, never a formula
+    const ss = ss_();
     let sh = ss.getSheetByName(TAB.IV_CHANGES);
     if (!sh) {
       sh = ss.insertSheet(TAB.IV_CHANGES);
       sh.getRange(1, 1, 1, IC_H.length).setValues([IC_H]).setFontWeight('bold').setBackground('#1f3864').setFontColor('#ffffff');
       sh.setFrozenRows(1);
     }
-    sh.appendRow([ctx.now, Session.getActiveUser().getEmail(), txt(code), what, txt(from), txt(to)]);
+    sh.appendRow([ctx.now, Session.getActiveUser().getEmail(), String(code), what, String(from), String(to)].map(plain_));
   } catch (e) { console.warn('Interviewee Changes not written: ' + e.message); }
 }
 

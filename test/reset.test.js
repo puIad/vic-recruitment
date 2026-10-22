@@ -8,6 +8,12 @@ call('webRun', 'lock');
 addRegistrations(12, 3);
 call('webRun', 'sync');
 let st = call('webState');
+{ // a move before the reset: its Interviewee Changes row names binomes that will not exist after it
+  const m = st.interviewees.find(i => i.binome), to = st.binomes.find(b => b.code !== m.binome && (b.tag === 'ALL' || b.tag.includes(m.code.split('.')[0])));
+  call('webRun', 'reassign', { code: m.code, binome: to.code });
+  assert.strictEqual(call('webState').ivHistory.length, 1);
+  st = call('webState');
+}
 const had = st.binomes.length, files = st.binomes.map(b => b.fileUrl.split('/d/')[1]);
 assert(had > 0 && st.interviewees.some(i => i.binome), 'locked, with interviewees placed');
 // a dashboard interview form (docs/interview-form.md part 2): its Master copy outlives the binome sheets the reset trashes
@@ -42,7 +48,7 @@ files.forEach(id => {
 assert.strictEqual(dashRows(), ivA.code, 'Reset keeps the Master copy of the dashboard forms');
 
 st = call('webState');
-assert.deepStrictEqual([st.binomes.length, st.team.total, st.locked, st.history.length], [0, 0, false, 0]);
+assert.deepStrictEqual([st.binomes.length, st.team.total, st.locked, st.history.length, st.ivHistory.length], [0, 0, false, 0, 0]);
 assert(st.interviewees.length > 0 && st.interviewees.every(i => i.code && !i.binome && i.status === 'UNASSIGNED'), 'interviewees kept, back to Unassigned');
 assert.deepStrictEqual(st.alerts.filter(a => a.binome || /MANUAL_EDIT|INTEGRITY|UNPAIRED/.test(a.type)), [], 'old-binome alerts closed');
 
