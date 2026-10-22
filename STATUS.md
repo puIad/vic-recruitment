@@ -388,9 +388,11 @@ Moved before launch with cuts: [plans.md › Launch scope](docs/plans.md#launch-
 live: [#137](https://github.com/puIad/vic-recruitment-2026/pull/137) merged as `644ccd6`, web app **@128** / API
 **@129**, Vercel production READY from `644ccd6` with no runtime errors. It adds the interview time and Schedule fields
 on `webState`, `webAnalytics()` (admins only) and the Interviewee Changes tab (moves and accepted hand edits, emptied by
-Reset all binomes), so load-test run 4 measures it. Next, in parallel: the Schedule page (with the members' week view)
-and the Analytics page (with the applicant profile); then Change history showing Interviewee Changes, and the
-Playwright smoke run (`npm run test:ui`).
+Reset all binomes), so load-test run 4 measures it. The pages are live on Vercel from `35f1874` (frontend only, no
+script deploy): Schedule with This week on My binome ([#138](https://github.com/puIad/vic-recruitment-2026/pull/138))
+and Analytics with the applicant profile ([#139](https://github.com/puIad/vic-recruitment-2026/pull/139); no 2025
+curve, the 2025 file isn't on disk). Not yet checked live by the owner. Left: Change history showing Interviewee
+Changes, and the Playwright smoke run (`npm run test:ui`).
 
 ## Later (not needed for launch)
 
