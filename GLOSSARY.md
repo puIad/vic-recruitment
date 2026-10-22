@@ -14,6 +14,11 @@ VIC's Google registration form, kept always available so candidates can still re
 can't take them.
 _Avoid_: registration form (for the Google one), old form, legacy form
 
+**Email code**:
+The 6-digit code mailed to a candidate's ENP address on the registration form's first screen. Typing it proves the
+address and unlocks the rest of the form.
+_Avoid_: OTP, verification link, magic link
+
 ## Binomes
 
 **Binome**:
