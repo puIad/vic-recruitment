@@ -14,6 +14,7 @@ import type { Candidate, FieldEntry, MemberAlert, MemberState } from "@/lib/vic/
 import { cn } from "@/lib/utils"
 import { CandidateSheet, CandidatesTable } from "./components/candidates"
 import { Note } from "./components/note"
+import { WeekSchedule } from "./components/week-schedule"
 
 /** A binome's candidates never wait for a binome: the pipeline starts at Assigned. */
 const MEMBER_STAGES = STAGES.filter((s) => s.key !== "UNASSIGNED")
@@ -304,6 +305,8 @@ export default function MyBinomePage() {
         <ProgressCard m={m} />
         <AlertsCard alerts={m.alerts} fromSheet={m.fromSheet} onOpen={openCode} />
       </div>
+
+      <WeekSchedule m={m} onOpen={openCode} />
 
       <section aria-labelledby="cand-title" className="space-y-3" data-tour="binome-candidates">
         <div className="flex flex-wrap items-end justify-between gap-2">

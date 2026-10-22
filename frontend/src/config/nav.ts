@@ -64,7 +64,7 @@ export const navGroups: NavGroup[] = [
   {
     label: "Coming up",
     items: [
-      { title: "Schedule", url: "/schedule", icon: CalendarDays, soon: true },
+      { title: "Schedule", url: "/schedule", icon: CalendarDays },
       { title: "Analytics", url: "/analytics", icon: ChartNoAxesCombined, soon: true },
     ],
   },
