@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowRightLeft, Building2, Repeat, Search, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
+import { ArrowRightLeft, Building2, MoveRight, PenLine, Repeat, Search, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,10 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { useVic } from "@/lib/vic/store"
-import type { HistoryRow } from "@/lib/vic/types"
+import type { HistoryRow, IvHistoryRow } from "@/lib/vic/types"
 import { MemberName } from "@/components/member-name"
 
-type Kind = "replace" | "swap" | "cover" | "tag"
+type Kind = "replace" | "swap" | "cover" | "tag" | "moved" | "edit"
 
 const ALL = "all" // the Binome dropdown's "All binomes": Select items can't hold an empty value
 
@@ -21,7 +21,21 @@ const KINDS: Record<Kind, { label: string }> = {
   swap: { label: "Swapped" },
   cover: { label: "Cover" },
   tag: { label: "Department" },
+  moved: { label: "Moved" },
+  edit: { label: "Edit accepted" },
 }
+
+/** An Interviewee Changes row in Member Changes' shape: MOVED (out → inn = the binomes) or EDIT (out → inn = "Field: value").
+ *  Both file under the binome they end in (an edit: the one it names, if any); the binome filter also finds the one they left. */
+function fromIv(r: IvHistoryRow): HistoryRow {
+  const moved = r.what === "Moved"
+  const named = (s: string) => (/\bB\.\d+/.exec(s) ?? [])[0]
+  const binome = moved ? r.to : /^B\.\d+$/.test(r.code) ? r.code : named(r.to) ?? named(r.from) ?? ""
+  return { at: r.at, by: r.by, type: moved ? "MOVED" : "EDIT", binome, out: r.from, inn: r.to, codes: [r.code], reason: "", status: "" }
+}
+
+/** dd/MM/yyyy HH:mm → a key that sorts by time */
+const timeKey = (at: string) => at.replace(/^(\d\d)\/(\d\d)\/(\d{4}) (\d\d:\d\d)$/, "$3$2$1$4")
 
 /** What a Member Changes row means: a swap is two PERMANENT rows whose reason the script writes as "swap B.01 ↔ B.02". */
 function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon; what: React.ReactNode; text: string } {
@@ -35,6 +49,20 @@ function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon;
       icon: UsersRound,
       what: <>{inn} covers {codes}{out && <> instead of {out}</>}</>,
       text: `${h.inn} covers ${codes}${h.out ? ` instead of ${h.out}` : ""}`,
+    }
+  }
+  if (h.type === "MOVED") {
+    const code = h.codes[0]
+    return { kind: "moved", title: "Moved", icon: MoveRight, what: <>{code}: {h.out || "nobody"} → <b>{h.inn}</b></>, text: `${code} ${h.out} → ${h.inn}` }
+  }
+  if (h.type === "EDIT") {
+    const code = h.codes[0]
+    return {
+      kind: "edit",
+      title: "Edit accepted",
+      icon: PenLine,
+      what: <>{code}: <span className="text-muted-foreground">{h.out}</span> → {h.inn}</>,
+      text: `${code} ${h.out} → ${h.inn}`,
     }
   }
   if (h.type === "TAG") {
@@ -64,9 +92,15 @@ function outcome(h: HistoryRow): { label: string; variant: "success" | "warning"
   return s === "DONE" || !s ? { label: "Done", variant: "success" } : { label: s, variant: "outline" }
 }
 
-/** Audit trail of everything done to binome members after lock, read from the Member Changes tab. */
+/** Audit trail after lock: binome members (Member Changes tab), interviewee moves and accepted hand edits (Interviewee Changes). */
 export default function HistorySettings() {
-  const history = useVic((x) => x.state?.history)
+  const members = useVic((x) => x.state?.history)
+  const ivHistory = useVic((x) => x.state?.ivHistory)
+  // both tabs, newest first (sort is stable: same-minute rows keep their tab's order)
+  const history = React.useMemo(
+    () => members && [...members, ...(ivHistory ?? []).map(fromIv)].sort((a, b) => timeKey(b.at).localeCompare(timeKey(a.at))),
+    [members, ivHistory]
+  )
   const binomes = useVic((x) => x.state?.binomes)
   const [q, setQ] = React.useState("")
   const [kind, setKind] = React.useState<Kind | "">("")
@@ -82,24 +116,24 @@ export default function HistorySettings() {
     const needle = q.trim().toLowerCase()
     return (history ?? [])
       .map((h) => ({ h, d: describe(h) }))
-      .filter(({ h, d }) => (!kind || d.kind === kind) && (binome === ALL || h.binome === binome) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
+      .filter(({ h, d }) => (!kind || d.kind === kind) && (binome === ALL || h.binome === binome || ((h.type === "MOVED" || h.type === "EDIT") && h.out.includes(binome))) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
   }, [history, q, kind, binome])
 
   if (!history)
     return (
-      <BaseLayout title="Change history" description="Who changed which binome, cover or department, and when." watermark="History">
+      <BaseLayout title="Change history" description="Who changed which binome, cover, department or interviewee, and when." watermark="History">
         <Skeleton className="h-96 w-full rounded-2xl" />
       </BaseLayout>
     )
 
   return (
-    <BaseLayout title="Change history" description="Who changed which binome, cover or department, and when." watermark="History">
+    <BaseLayout title="Change history" description="Who changed which binome, cover, department or interviewee, and when." watermark="History">
       <Card>
-        <CardHeader className="gap-4">
+        <CardHeader className="grid-cols-1 gap-4">
           <div>
             <CardTitle className="text-lg font-bold">Timeline</CardTitle>
             <CardDescription>
-              Every member change, swap, cover and department change made after lock, newest first. Read from the Member Changes tab, so it is the same record the script checks.
+              Every member change, swap, cover and department change made after lock, and every interviewee move and accepted hand edit, newest first. Read from the Member Changes and Interviewee Changes tabs.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -125,13 +159,16 @@ export default function HistorySettings() {
                 ))}
               </SelectContent>
             </Select>
+            {/* six filters: on a phone the row scrolls instead of widening the card */}
+            <div className="max-w-full overflow-x-auto">
             <ToggleGroup type="single" variant="outline" size="sm" value={kind} onValueChange={(v) => setKind(v as Kind | "")} aria-label="Filter by change">
               {(Object.keys(KINDS) as Kind[]).map((k) => (
-                <ToggleGroupItem key={k} value={k} className="px-3">
+                <ToggleGroupItem key={k} value={k} className="px-3 whitespace-nowrap">
                   {KINDS[k].label}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -139,7 +176,7 @@ export default function HistorySettings() {
             <div className="space-y-1 py-10 text-center">
               <p className="font-bold">{history.length ? "No match" : "Nothing changed yet"}</p>
               <p className="text-sm text-muted-foreground">
-                {history.length ? "Nothing fits these filters." : "Replacing, swapping or covering members, or changing a department, after lock (Binomes page) will show up here."}
+                {history.length ? "Nothing fits these filters." : "Replacing, swapping or covering members, changing a department, moving an interviewee or accepting a hand edit will show up here."}
               </p>
             </div>
           ) : (

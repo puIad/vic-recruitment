@@ -53,22 +53,20 @@ stay remembered. Used live on 2026-10-03 to redo the binomes.
 ## Placeholders (sample data, each labelled) and what makes them real
 
 **Change history is real**: `webState.history` reads the Member Changes tab (`historyRows_` in WebApp.gs, newest first,
-last 300); Settings › Change history shows it with search, a Replaced / Swapped / Cover / Department filter and a Binome dropdown. It only knows what
-that tab logs: member replacements, swaps and covers. Interviewee moves and accepted hand edits are not in it (they
-only leave an INFO alert).
+last 300) and `webState.ivHistory` the Interviewee Changes tab (`ivHistoryRows_`: every interviewee move and accepted hand
+edit, written by `logIvChange_`); Settings › Change history merges both, newest first, with search, a Replaced / Swapped
+/ Cover / Department / Moved / Edit accepted filter and a Binome dropdown (a move shows under both its binomes).
 
 | Page | State |
 |---|---|
-| Schedule (template calendar) | Planned: [plans.md › Schedule](plans.md#schedule) |
-| Analytics (template dashboard 2) | Planned: [plans.md › Analytics](plans.md#analytics) |
+| Schedule | Built: interviews from the binome sheets, read-only ([#138](https://github.com/puIad/vic-recruitment-2026/pull/138)); admin events cut for launch ([plans.md](plans.md#launch-scope-2026-10-22)) |
+| Analytics | Built: stats and the applicant profile on `webAnalytics` ([#139](https://github.com/puIad/vic-recruitment-2026/pull/139)); birth-date fixes not saved yet |
 | Binome desk (template chat) | Dropped 2026-10-04 and removed 2026-10-18 ([plans.md](plans.md)) |
 
 ## Still open
 
-- Schedule and Analytics ([plans.md](plans.md)).
-- Log interviewee moves and accepted hand edits in a history source, then show them in Change history.
-- No automated tests for the UI itself; `test/vercel.test.js` only checks its RPC wrapper and `API_VERSION`. The data
-  layer is thin enough to add cases against `webdev.js`.
+- UI tests: `npm run test:ui` (`test/ui.smoke.js`) only checks that every page opens, as an admin, an admin in a binome and
+  a member, with no console error and no error screen. Interactions are not covered.
 - `npm run lint` passes with 0 errors. One warning stays: `react-hooks/incompatible-library` on TanStack's `useReactTable` in
   `data-table.tsx` (the React Compiler skips that component; nothing to fix). `only-export-components` is off for
   `src/components/ui` (shadcn files) and the `src/lib/vic/*.tsx` hook modules, which only costs a full reload in dev.

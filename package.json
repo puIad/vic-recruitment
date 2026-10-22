@@ -4,6 +4,7 @@
   "description": "Apps Script for the VIC 2026 recruitment master sheet",
   "scripts": {
     "test": "node test/unit.test.js && node test/e2e.test.js && node test/web.test.js && node test/vercel.test.js && node test/reset.test.js && node test/quick.test.js && node test/screen.test.js && node test/tour.test.js && node test/schedule.test.js && node test/mail.test.js && node test/mailer.test.js && node test/pipeline.test.js && node test/apply.test.js && npm run load:check",
+    "test:ui": "node test/ui.smoke.js",
     "load:check": "node test/load.js --minutes 2 --scale 20 --members 8 --admins 2 --save-every 0.3 --alert-every 0.5 --setting-every 1 --pending-off-at 1 --assert",
     "push": "clasp push",
     "deploy": "npm test && clasp push --force && clasp update-deployment AKfycbzxnJu_H6deI9m77t-VjiyLNgmwY4gyzmWoNr-a62PCGB69o301SePMxUGMIlVgMjgT -d \"apply entry\" && clasp update-deployment AKfycbxiWVKDnvlHrug29Sj76apXUdAdxSf2adzc-9A0_t560ojXMBreEferXkZR0TIT-DZU -d \"apply entry\"",
@@ -22,7 +23,8 @@
   },
   "homepage": "https://github.com/puIad/vic-recruitment-2026#readme",
   "devDependencies": {
-    "@google/clasp": "^3.4.1"
+    "@google/clasp": "^3.4.1",
+    "playwright-core": "1.64.0"
   },
   "private": true
 }
