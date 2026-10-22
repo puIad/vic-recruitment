@@ -257,8 +257,7 @@ function newBinomeCore_(a) {
     const told = [];
     members.forEach(m => {
       try {
-        if (mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: b.code, members: names },
-          { cta: { label: 'Open the binome sheet', url: file.getUrl() }, footer: mailTeamFooter_(file.getUrl()) }))) told.push(b.code + '|' + m.email);
+        if (pairedMail_(b.code, m, names, file.getUrl())) told.push(b.code + '|' + m.email);
       } catch (e) { issues.push('email to ' + m.email + ' not sent (' + e.message + ')'); }
     });
     if (told.length) pairedMark_(told);

@@ -338,14 +338,18 @@ function pairedTodo_(ctx) {
   }));
   return out;
 }
+/** The PAIRED mail for member m of binome `code` (names: both members), sent by Lock, the catch-up and Pair two…. */
+function pairedMail_(code, m, names, url) {
+  return mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: code, members: names },
+    { cta: { label: 'Open the binome sheet', url: url }, footer: mailTeamFooter_(url) }));
+}
 /** Send PAIRED to everyone pairedTodo_ lists. TEST_MODE skips non-admins and leaves them untold, so going live sends theirs.
  *  Returns {sent, failed[] (emails)}. */
 function mailPaired_(ctx) {
   const keys = [], failed = [], test = bool_(S_().TEST_MODE);
   pairedTodo_(ctx).forEach(t => {
     const names = t.b.members.map(m => m.name).join(' & ');
-    const ok = mailSend_(t.m.email, mailFrom_('PAIRED', { first: t.m.name.split(' ')[0], binome: t.b.code, members: names },
-      { cta: { label: 'Open the binome sheet', url: t.b.fileUrl }, footer: mailTeamFooter_(t.b.fileUrl) }));
+    const ok = pairedMail_(t.b.code, t.m, names, t.b.fileUrl);
     if (ok) keys.push(t.key); else if (!test) failed.push(t.m.email);
   });
   if (keys.length) pairedMark_(keys);
