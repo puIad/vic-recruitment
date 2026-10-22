@@ -382,10 +382,18 @@ In order. Each step says where to do it.
 8. **After recruitment:** hand over the Cloud project, Vercel and the trigger owner
    ([vercel.md](docs/vercel.md#still-open)).
 
+## Next: Schedule, Analytics, move history (owner, 2026-10-22)
+
+Moved before launch with cuts: [plans.md › Launch scope](docs/plans.md#launch-scope-2026-10-22). The script part is
+live: [#137](https://github.com/puIad/vic-recruitment-2026/pull/137) merged as `644ccd6`, web app **@128** / API
+**@129**, Vercel production READY from `644ccd6` with no runtime errors. It adds the interview time and Schedule fields
+on `webState`, `webAnalytics()` (admins only) and the Interviewee Changes tab (moves and accepted hand edits, emptied by
+Reset all binomes), so load-test run 4 measures it. Next, in parallel: the Schedule page (with the members' week view)
+and the Analytics page (with the applicant profile); then Change history showing Interviewee Changes, and the
+Playwright smoke run (`npm run test:ui`).
+
 ## Later (not needed for launch)
 
-- **Schedule** (calendar of the interviews set, plus admin events saved in the Master) and **Analytics** (a profile
-  for each applicant and stats, birth-year fixes included) are planned in [docs/plans.md](docs/plans.md).
 - **Binome desk** dropped (2026-10-04) and removed from the UI (2026-10-18).
 - **Registration form** on the vic-enp site at `/apply`, the Google Form as fallback: specified in [docs/registration-form.md](docs/registration-form.md) (wayfinder map #110), built 23 and 24 Oct, live check the evening of 24 Oct. Slice S2 ([#128](https://github.com/puIad/vic-recruitment-2026/issues/128)): the themed ticket and confirmation, the Registration ticket card on Settings › Emails and the mailer's source (`mailer/Code.gs`, deployed as `vic.rh`, setup step 7). Live 22 Oct: the bound script at @126/@127 (both themed test mails checked by the owner); the mailer at @2, refusing a wrong secret, and a real ticket mail sent straight to it reached an admin inbox from vic.rh. Left for S4: `/api/health` reporting `mailer: ok` and the round trip through `/apply` once S1 is in.
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
