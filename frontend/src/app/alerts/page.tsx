@@ -48,14 +48,16 @@ export default function AlertsPage() {
   const [q, setQ] = React.useState("")
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
   const activeId = params.get("id")
+  // ?type= narrows the inbox to one kind of alert (the Overview's to-do rows link here with it)
+  const kind = params.get("type")
 
   const editCount = alerts.filter((a) => a.type === "MANUAL_EDIT").length
   const matches = React.useCallback(
     (a: Alert | HeldAlert) => {
       const s = q.trim().toLowerCase()
-      return !s || `${a.id} ${a.type} ${alertLabel(a.type)} ${a.code} ${a.binome} ${a.msg}`.toLowerCase().includes(s)
+      return (!kind || a.type === kind) && (!s || `${a.id} ${a.type} ${alertLabel(a.type)} ${a.code} ${a.binome} ${a.msg}`.toLowerCase().includes(s))
     },
-    [q]
+    [q, kind]
   )
   const isMuted = filter === "MUTED"
   const shown = React.useMemo(
@@ -79,6 +81,12 @@ export default function AlertsPage() {
     if (id) next.set("id", id)
     else next.delete("id")
     setParams(next, { replace: true })
+  }
+  const clearKind = () => {
+    const next = new URLSearchParams(params)
+    next.delete("type")
+    setParams(next, { replace: true })
+    clear()
   }
   // with an alert open, up/down walk the list instead of scrolling it (typing fields and menus keep their arrows)
   React.useEffect(() => {
@@ -143,6 +151,17 @@ export default function AlertsPage() {
             </button>
           ))}
         </div>
+        {kind && (
+          <p className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Only</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent py-0.5 pl-3 pr-1 font-semibold text-accent-foreground">
+              {alertLabel(kind)}
+              <button type="button" onClick={clearKind} aria-label={`Show every kind of alert, not only ${alertLabel(kind)}`} className="flex size-5 items-center justify-center rounded-full hover:bg-background/70">
+                <X className="size-3.5" />
+              </button>
+            </span>
+          </p>
+        )}
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code, binome, text" aria-label="Search alerts" className="h-10 rounded-full pl-9" />

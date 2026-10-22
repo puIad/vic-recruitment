@@ -55,7 +55,7 @@ drafts: keep them to one or two sentences, in the dashboard's own words (see `GL
 | # | Page | Target | Card |
 |---|---|---|---|
 | 1 | `/` | none (centered) | Welcome to the control room. A quick round of every page; it takes about two minutes. |
-| 2 | `/` | `overview-cards`: the Needs attention and Launch sequence row | Overview: launch progress and what needs a person right now. |
+| 2 | `/` | `overview-todo`: the To do card | Overview: what needs a person right now, worst first; each row opens its page already filtered. |
 | 3 | `/alerts` | `alerts-toolbar`: the severity filter and search | Alerts: what the script found, worst first. Select some to repair, send to a binome, keep out or mail the binomes in one go. |
 | 4 | `/binomes` | `binomes-toolbar`: search, status filter, Move interviewee, Change members | Binomes: each pair's status, who can open it and how far they are. Pairing and access are changed from here. |
 | 5 | `/interviewees` | `interviewees-toolbar` | Interviewees: every candidate, their binome and risk. Search by code or name; restore a candidate kept out by mistake. |

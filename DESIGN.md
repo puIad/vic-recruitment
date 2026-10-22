@@ -209,7 +209,7 @@ Success (teal), warning (amber), danger (tangelo-red) and info (blue) each ship 
 
 A sidebar shell (shadcn template, restyled): Dark Jungle Green sidebar with the white-wordmark logo, grouped nav, a test-mode notice and the account; a top header with search, live status, bell, palette, theme toggle and the blue Sync now button; a content column of stacked cards; a gradient hairline footer. The sidebar collapses to icons and to a sheet on mobile.
 
-Spacing runs on a 4px base: card padding 24px (header and content px-6, gap 24px), control gaps 8 to 12px, page gutters 16px mobile and 24px from lg. Overview leads with one wide Pipeline card, then Needs attention beside the Launch sequence. On phones cards stack, tables scroll, and the sign-in disc becomes a gradient band (11rem, cover gradient, white logo) from which the card rises.
+Spacing runs on a 4px base: card padding 24px (header and content px-6, gap 24px), control gaps 8 to 12px, page gutters 16px mobile and 24px from lg. Overview leads with the To do card (beside the Launch sequence until binomes are locked), then a one-row Pipeline strip and Binomes behind. On phones cards stack, tables scroll, and the sign-in disc becomes a gradient band (11rem, cover gradient, white logo) from which the card rises.
 
 ## Elevation & Depth
 

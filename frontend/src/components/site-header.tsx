@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { CommandSearch, SearchTrigger } from "@/components/command-search"
 import { ModeToggle } from "@/components/mode-toggle"
+import { ActivityList } from "@/components/activity-list"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
 import { alertLabel, SEVERITY } from "@/lib/vic/format"
@@ -34,16 +35,15 @@ function MiniRing({ spinning, tick }: { spinning: boolean; tick: number }) {
   )
 }
 
-function LiveStatus({ member }: { member?: boolean }) {
-  const updated = useVic((s) => s.state?.updated)
+/** A member's live status: click to reload. */
+function LiveStatus() {
   const loadedAt = useVic((s) => s.loadedAt)
-  const syncEvery = useVic((s) => s.state?.settings.syncEvery)
   const refreshing = useVic((s) => s.refreshing)
   const busy = useVic((s) => s.busy)
   const tick = useVic((s) => s.tick)
   const refresh = useVic((s) => s.refresh)
   // a member's slice carries no "updated": the time this page last read it
-  const time = member ? (loadedAt ? new Date(loadedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "…") : updated ? updated.split(" ")[1] : "…"
+  const time = loadedAt ? new Date(loadedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "…"
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -60,12 +60,53 @@ function LiveStatus({ member }: { member?: boolean }) {
           </span>
         </button>
       </TooltipTrigger>
-      <TooltipContent>
-        {member
-          ? "What you type in your binome sheet shows here after the script's next sync, within 15 s of it. Click to reload now."
-          : `Changes in the Master show up within 15 s. The script also syncs every ${syncEvery ?? 15} min. Click to reload now.`}
-      </TooltipContent>
+      <TooltipContent>What you type in your binome sheet shows here after the script's next sync, within 15 s of it. Click to reload now.</TooltipContent>
     </Tooltip>
+  )
+}
+
+/** An admin's live status opens this session's Activity (what they ran, errors in red), with Refresh now inside. */
+function LiveActivity() {
+  const updated = useVic((s) => s.state?.updated)
+  const time = updated ? updated.split(" ")[1] : "…"
+  const syncEvery = useVic((s) => s.state?.settings.syncEvery)
+  const refreshing = useVic((s) => s.refreshing)
+  const busy = useVic((s) => s.busy)
+  const tick = useVic((s) => s.tick)
+  const refresh = useVic((s) => s.refresh)
+  const activity = useVic((s) => s.activity)
+  const failed = activity.some((a) => a.error)
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="relative flex h-9 items-center gap-2 rounded-full px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+          aria-label={`Activity and live status. Last updated ${time}${failed ? ". An action failed" : ""}`}
+        >
+          <MiniRing spinning={refreshing} tick={tick} />
+          {failed && <span className="absolute left-7 top-1.5 size-2 rounded-full bg-danger ring-2 ring-background" aria-hidden="true" />}
+          <span className="hidden md:inline">
+            <span className="font-bold text-foreground">Live</span> · updated {time}
+          </span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] rounded-2xl p-0">
+        <div className="border-b px-4 py-3">
+          <p className="font-bold">Activity</p>
+          <p className="text-xs text-muted-foreground">What you ran in this session</p>
+        </div>
+        <div className="px-4 py-3">
+          <ActivityList activity={activity} />
+        </div>
+        <div className="flex items-center gap-3 border-t px-4 py-3">
+          <p className="min-w-0 flex-1 text-xs text-muted-foreground">Updated {time}. Master changes show within 15 s; the script syncs every {syncEvery ?? 15} min.</p>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => refresh()}>
+            {refreshing ? <Spinner /> : <RefreshCw />} Refresh
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -151,7 +192,7 @@ function MemberHeader() {
           </p>
         )}
         <div className="ml-auto flex items-center gap-1.5">
-          <LiveStatus member />
+          <LiveStatus />
           <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Customize palette and layout" title="Customize" onClick={() => useUi.getState().setCustomizerOpen(true)}>
             <SwatchBook />
           </Button>
@@ -203,7 +244,7 @@ function AdminHeader() {
                 <span className="sr-only sm:hidden">Test mode is on</span>
               </Link>
             )}
-            <LiveStatus />
+            <LiveActivity />
             <AlertsBell />
             <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Customize palette and layout" title="Customize" onClick={() => useUi.getState().setCustomizerOpen(true)}>
               <SwatchBook />
