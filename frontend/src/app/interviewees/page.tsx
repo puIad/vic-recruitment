@@ -15,6 +15,7 @@ import { useActions } from "@/lib/vic/actions"
 import { cn } from "@/lib/utils"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
+import { useProfile } from "@/lib/vic/analytics"
 import type { Interviewee } from "@/lib/vic/types"
 
 const NONE: Interviewee[] = []
@@ -24,7 +25,7 @@ const columns: ColumnDef<Interviewee>[] = [
   {
     accessorKey: "code",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
-    cell: ({ row }) => <span className="font-bold text-primary">{row.original.code}</span>,
+    cell: ({ row }) => <ProfileLink code={row.original.code} />,
   },
   {
     accessorKey: "name",
@@ -65,6 +66,21 @@ const columns: ColumnDef<Interviewee>[] = [
     cell: ({ row }) => <RowAction iv={row.original} />,
   },
 ]
+
+/** The code opens the applicant profile (admins only: members never see this page). */
+function ProfileLink({ code }: { code: string }) {
+  const show = useProfile((s) => s.show)
+  return (
+    <button
+      type="button"
+      onClick={() => show(code)}
+      className="rounded font-bold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      aria-label={`Open the profile of ${code}`}
+    >
+      {code}
+    </button>
+  )
+}
 
 function RiskBadge({ risk }: { risk: number }) {
   const holdAt = useVic((s) => s.state?.screening?.holdAt ?? 50)
