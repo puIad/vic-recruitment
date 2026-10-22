@@ -32,7 +32,7 @@ OWN-WORLD: White and #efefef surfaces, Dark Jungle Green #141e27 sidebar and ink
 
 STORY: A team lead opens it before an interview day and sees in seconds how many candidates wait, which alerts are worst, and what to run next. Every write previews and confirms first. When nothing is wrong the screen says so plainly.
 
-FIRST VIEWPORT: Overview at 1440. Left: Dark Jungle Green sidebar, white-wordmark logo, grouped nav, test-mode notice, account. Right: header with search, live status, bell, palette, theme, blue Sync now. Page title "Overview" in Gilroy Heavy blue with the outlined word behind it, then one Pipeline card (registrant count, department chips, status bar from cobalt to aquamarine, six stage counts), then Needs attention beside the Launch sequence.
+FIRST VIEWPORT: Overview at 1440. Left: Dark Jungle Green sidebar, white-wordmark logo, grouped nav, test-mode notice, account. Right: header with search, live status, bell, palette, theme, blue Sync now. Page title "Overview" in Gilroy Heavy blue with the outlined word behind it, then the To do card (one row per kind of thing waiting on a person, worst first, each opening its page filtered; beside the Launch sequence until binomes are locked), a one-row Pipeline strip (registrant count, department chips, status bar from cobalt to aquamarine, shares, Full breakdown) and Binomes behind (since #144, 2026-10-23).
 
 FORM: Pinned by the user's brief (IT Charter 2026); no concept-seed run, no seed key. Shell and components come from the ShadcnStore dashboard template, restyled.
 

@@ -1,6 +1,6 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-19. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-23. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
@@ -147,7 +147,12 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
 - **Dashboard:** the new UI (`frontend/`, Vite + React + shadcn in the VIC charter look) has served production since
   [#14](https://github.com/puIad/vic-recruitment-2026/pull/14) (2026-10-03). The old hand-written `web/index.html` was
   deleted the same night. Map of the UI: [docs/frontend.md](docs/frontend.md).
-  Latest Vercel: `f41499a` (2026-10-19 17:44 UTC, [#102](https://github.com/puIad/vic-recruitment-2026/pull/102)): polls
+  Latest Vercel: `a3712af` (2026-10-22 23:50 UTC, [#146](https://github.com/puIad/vic-recruitment-2026/pull/146)): the
+  Overview as the admin's to-do (section below); real build (316 packages, `tsc -b && vite build`, 3,477 modules,
+  "Deployment completed"), no runtime errors right after it. Between `f41499a` and it, production also took the PRs
+  merged from #103 to #145 (among them the Emails page, the onboarding tour, the themed mails, Schedule, Analytics, the
+  sidebar groups, paired mails): `git log --merges f41499a..a3712af`. Before them `f41499a`
+  (2026-10-19 17:44 UTC, [#102](https://github.com/puIad/vic-recruitment-2026/pull/102)): polls
   every 5 s for admins and 30 s for members, the idle backoff, the 25 s Google limit on polls, the sync's sweep over `pcx`
   (Launch checklist above). Before it `e76ea6e` (2026-10-19 00:44 UTC, [#95](https://github.com/puIad/vic-recruitment-2026/pull/95)), the merge
   of the pipeline audit fixes and the department change. Since `de42102` (2026-10-18) production moved through
@@ -395,6 +400,25 @@ curve, the 2025 file isn't on disk). Change history shows Interviewee Changes (M
 `npm run test:ui` (`test/ui.smoke.js`) opens every page as an admin, an admin in a binome and a member
 ([#140](https://github.com/puIad/vic-recruitment-2026/pull/140), live from `cdb8ab8`). The launch scope is built; none
 of it has been checked live by the owner yet.
+
+## Overview as the admin's to-do (#144, 2026-10-23)
+
+Live on Vercel from `a3712af` ([#146](https://github.com/puIad/vic-recruitment-2026/pull/146), frontend only, no script
+deploy). The Overview reads only and links out (`lib/vic/overview.ts`, tested by `test/overview.test.js`):
+
+- **To do:** one row per kind, worst first. Assignments paused and sheet sharing off lead, then open alerts by type
+  (with the author's pending changes), applications on hold and members without a binome after lock; test mode trails.
+  Past six kinds of alert the rest fold into one row. Each row opens Alerts (`?type=A,B`), Binomes or Settings already
+  filtered.
+- **Launch sequence** beside it until binomes are locked, then gone.
+- **Pipeline strip:** one row with registrants, first choices, the stage bar, the contacted / scheduled / interviewed
+  shares and Full breakdown → Analytics. By first choice is gone.
+- **Binomes behind:** locked binomes by open alerts, then the lowest share interviewed.
+- **Activity** moved to the top bar: an admin's live status opens it (Refresh inside), with a red dot when the last
+  action failed.
+
+Not checked live by the owner yet. Not seen on screen at all: the layout before lock and the "All clear" state (the
+mock is locked with open alerts).
 
 ## Later (not needed for launch)
 
