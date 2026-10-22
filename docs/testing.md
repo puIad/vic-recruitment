@@ -95,6 +95,10 @@ if A reused an existing member, put back their Team row and Exclude as they were
 Change members, and end any active cover. Other admins using Change members / Cover / Apply need edit access to the
 Binome Sheets folder.
 
+**After the registration form's live check** ([registration-form.md](registration-form.md#the-live-check-evening-of-24-oct)): the same
+clean-up for its rows, and also flush the site's Redis (every `reg:`, `otp:` and `rl:` key), or the admins' addresses stay
+"already registered"; delete the Master TEST COPY.
+
 **Reset all binomes** (Maintenance › Danger zone; only while nothing is shared and before registrations matter): a
 wrong phrase is refused; "I confirm to reset the binomes" moves every binome sheet to the "Retired binomes" folder, empties Binomes, Team and Member
 Changes, and closes the binome alerts. Then Import team → Draft → Lock. Passed live on 2026-10-03 (49 → 31 binomes).

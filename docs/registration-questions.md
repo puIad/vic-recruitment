@@ -134,7 +134,7 @@ Closing text block, titled `Thank you!␣`: "Please double-check all your inform
 
 ## Check against the Master's Registration Responses headers
 
-`docs/registration-app.md` ("Today's flow", point 2) lists 34 columns: Timestamp, Email address (collected by the form), then
+The 19 Oct plan (read from the Master's header row on 2026-10-19) listed 34 columns: Timestamp, Email address (collected by the form), then
 the 32 questions above (14 + IT 5 + COMM 4 + HR 3 + FLER 3 + interview 2 + Anything to add 1). The count matches and every
 named column has its question. Department blocks match the doc's "IT 4, COMM 3, HR 2, FLER 2" own questions after each
 "Why did you choose…" (questions 16 to 19, 21 to 23, 25 to 26, 28 to 29). The check was against that doc's wording, not the sheet's

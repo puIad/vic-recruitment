@@ -612,7 +612,7 @@ on, one mail edit saved as pending and applied.
 
 ### The registration app
 
-The registration app ([registration-app.md](registration-app.md), planned on 2026-10-19) writes rows into
+The registration form ([registration-form.md](registration-form.md), specified on 2026-10-22) writes rows into
 Registration Responses, so the sync sends the confirmation exactly as for a form row, with the saved text after PR 2.
 Two rules keep it that way: the confirmation stays the script's only copy of its wording (the app never keeps its
 own), and it stays the only mail carrying the code, which the sync gives out. The app's own code mail (the email
