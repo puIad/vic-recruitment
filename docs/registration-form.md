@@ -261,7 +261,8 @@ secrets are never pasted into chat, a ticket or the repo.
 
 **By midday on 23 Oct**
 
-1. Cloud project `vic-recruitment` (number 444885197277): enable the **Google Sheets API**.
+1. Google Sheets API enabled on the service account's Cloud project (done 22 Oct in `vic-26-registrations`, not the
+   dashboard's `vic-recruitment` project, number 444885197277).
 2. Create a service account `vic-registration` with **no roles**. Copy its email address.
 3. Create a **JSON key** for it (the policy allows it, checked 22 Oct). Keep the file on your machine. For Vercel, encode
    it on one line: `base64 -w0 key.json` in Git Bash, or in PowerShell
@@ -273,7 +274,8 @@ secrets are never pasted into chat, a ticket or the repo.
 **By the evening of 23 Oct**
 
 5. **Redis:** a new Upstash Redis for the vic-enp project (Vercel > Storage, connected to `vic-enp` only), in the same
-   region as the functions (Frankfurt like the dashboard's). It adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
+   region as the functions (iad1, Washington: neither project sets a region; the dashboard's Redis is us-east-1). It
+   adds `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
 6. **Vercel env vars** on the `vic-enp` project. Production and Preview are set separately; **Preview points at the
    copy**, never the real Master:
 
