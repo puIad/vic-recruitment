@@ -19,6 +19,12 @@ The 6-digit code mailed to a candidate's ENP address on the registration form's 
 address and unlocks the rest of the form.
 _Avoid_: OTP, verification link, magic link
 
+**House**:
+The wizarding name and colours a department wears on the registration form, its mails and the sheets: IT is
+Gryffindor (red), COMM is Ravenclaw (blue), FLER is Hufflepuff (golden), HR is Slytherin (green). A candidate's house
+is the one of their 1st-choice department.
+_Avoid_: team colour, department theme
+
 ## Binomes
 
 **Binome**:
