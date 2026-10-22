@@ -324,9 +324,52 @@ function lockCheck_() {
   return { drafts: drafts.length, share: bool_(S_().SHARE_FILES_WITH_BINOME) && !bool_(S_().TEST_MODE), problems: problems };
 }
 
+/** 'code|email' of every member told by a PAIRED mail (Lock, Pair two…, the catch-up), in PAIRED_SENT: each is told once. */
+function pairedSent_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('PAIRED_SENT') || '[]'); } catch (e) { return []; } }
+function pairedMark_(keys) {
+  PropertiesService.getScriptProperties().setProperty('PAIRED_SENT', JSON.stringify(pairedSent_().concat(keys)));
+}
+/** The members of locked binomes not told yet: [{b, m, key}]. */
+function pairedTodo_(ctx) {
+  const done = pairedSent_(), out = [];
+  activeOrPaused_(ctx).forEach(b => b.members.forEach(m => {
+    const key = b.code + '|' + m.email;
+    if (m.email && done.indexOf(key) < 0) out.push({ b: b, m: m, key: key });
+  }));
+  return out;
+}
+/** The PAIRED mail for member m of binome `code` (names: both members), sent by Lock, the catch-up and Pair two…. */
+function pairedMail_(code, m, names, url) {
+  return mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: code, members: names },
+    { cta: { label: 'Open the binome sheet', url: url }, footer: mailTeamFooter_(url) }));
+}
+/** Send PAIRED to everyone pairedTodo_ lists. TEST_MODE skips non-admins and leaves them untold, so going live sends theirs.
+ *  Returns {sent, failed[] (emails)}. */
+function mailPaired_(ctx) {
+  const keys = [], failed = [], test = bool_(S_().TEST_MODE);
+  pairedTodo_(ctx).forEach(t => {
+    const names = t.b.members.map(m => m.name).join(' & ');
+    const ok = pairedMail_(t.b.code, t.m, names, t.b.fileUrl);
+    if (ok) keys.push(t.key); else if (!test) failed.push(t.m.email);
+  });
+  if (keys.length) pairedMark_(keys);
+  return { sent: keys.length, failed: failed };
+}
+
+/** Menu: send the PAIRED mail to the members of locked binomes who never got it (binomes locked before Lock sent it). */
+function mailPairedBinomes() {
+  const ui = SpreadsheetApp.getUi(), n = pairedTodo_(loadCtx_()).length;
+  if (!n) return say_('Every member of a locked binome has already been emailed their binome.');
+  if (ui.alert('Email ' + n + ' members their binome?', 'Each gets "You are in binome B.NN" with their partner and the sheet link.',
+    ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  const r = withLock_(() => mailPaired_(loadCtx_()), 60000); // one sender at a time: two runs would mail the same members
+  if (!r) return busy_();
+  say_('Sent ' + r.sent + ' emails.' + (r.failed.length ? '\n\nNot sent (run this again later): ' + r.failed.join(', ') : ''));
+}
+
 function lockBinomesCore_(budgetMs) {
   const t0 = Date.now(), budget = Math.max(30000, Math.min(270000, Number(budgetMs) || 270000));
-  let created = 0, stopped = false;
+  let created = 0, stopped = false, mailed;
   const held = withLock_(() => {
     const ctx = loadCtx_();
     const BI = ctx.bin.I;
@@ -346,6 +389,7 @@ function lockBinomesCore_(budgetMs) {
     }
     indexCtx_(ctx);
     saveMemberMap_(ctx);
+    mailed = mailPaired_(ctx);
     return true;
   }, 60000);
   if (!held) return busy_();
@@ -353,6 +397,7 @@ function lockBinomesCore_(budgetMs) {
   // leaving 2 for the save, alerts, mails (one per member of each binome that got someone), tracker and snapshot
   const c = runCycle_({ kind: 'post-lock', pull: false, timing: false, tracker: true, wait: 60000, assignBy: t0 + 240000 });
   say_('Locked ' + created + ' binomes.' + (stopped ? '\n\nPaused before the time limit: lock again to finish the rest.' : '') +
+    (mailed.failed.length ? '\n\nBinome email not sent to: ' + mailed.failed.join(', ') + ' (menu › Email binome members their binome).' : '') +
     (c && c.leftWaiting ? '\n' + c.leftWaiting + ' waiting registrants will be assigned by the next sync.' : '\nAny waiting registrants have been assigned.'));
 }
 
@@ -418,7 +463,7 @@ function resetBinomesCore_(phrase) {
     });
     // forget the old binomes; registrations deleted on purpose (iv entry 0) stay remembered so they are not re-imported
     const props = PropertiesService.getScriptProperties();
-    ['FILE_SEEN', 'FILE_READ', 'INTEG_NEXT', 'BIN_ACCESS', 'DRAFT_HAND'].forEach(k => props.deleteProperty(k));
+    ['FILE_SEEN', 'FILE_READ', 'INTEG_NEXT', 'BIN_ACCESS', 'DRAFT_HAND', 'PAIRED_SENT'].forEach(k => props.deleteProperty(k));
     const old = loadBaseline_(), fresh = loadCtx_();
     fresh.base = { bin: {}, iv: {} };
     Object.keys((old && old.iv) || {}).forEach(k => { if (old.iv[k] === 0) fresh.base.iv[k] = 0; });

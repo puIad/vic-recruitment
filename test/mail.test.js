@@ -50,8 +50,34 @@ assert(p.every(x => /CONFIRMED \d\d\/\d\d\/\d{4}$/.test(x)), 'stamped in Flags: 
 
 call('webRun', 'importTeam', { link: '' }); call('webRun', 'draft'); call('webRun', 'lock');
 
-// ---- through the sync: sent once, after the save, escaped ----
+// ---- PAIRED after a lock in TEST_MODE: only admins were told, so the catch-up tells the rest, once ----
+const paired = () => outbox().filter(m => /You are in binome B\.\d\d$/.test(m.subject));
+const locked = R('activeOrPaused_(loadCtx_()).reduce(function (n, b) { return n + b.members.length; }, 0)');
 settings({ TEST_MODE: false });
+run('__outbox.length = 0');
+const todo = R('pairedTodo_(loadCtx_()).length');
+assert(todo > 0 && todo <= locked, 'members not told by the test-mode lock: ' + todo + ' of ' + locked);
+assert.deepStrictEqual(R('mailPaired_(loadCtx_())'), { sent: todo, failed: [] });
+assert.strictEqual(paired().length, todo, 'one PAIRED per untold member');
+assert(paired().every(m => /Open the binome sheet/.test(m.htmlBody)), 'with the sheet link');
+run('__outbox.length = 0');
+assert.deepStrictEqual([R('mailPaired_(loadCtx_())').sent, R('pairedTodo_(loadCtx_()).length'), paired().length], [0, 0, 0], 'never twice');
+
+// ---- PAIRED from a live lock: every member of every locked binome, nothing left for the catch-up ----
+{
+  const w = require('./seed')();
+  w.call('webRun', 'saveSettings', { values: { TEST_MODE: false } });
+  w.call('webRun', 'importTeam', { link: '' }); w.call('webRun', 'draft');
+  w.run('__outbox.length = 0');
+  w.call('webRun', 'lock');
+  const want = JSON.parse(JSON.stringify(w.run('activeOrPaused_(loadCtx_()).reduce(function (a, b) { return a.concat(b.members.map(function (m) { return m.email + " " + b.code; })); }, [])'))).sort();
+  const got = JSON.parse(JSON.stringify(w.run('__outbox.slice()'))).filter(m => /You are in binome/.test(m.subject)).map(m => m.to + ' ' + m.subject.split(' ').pop()).sort();
+  assert(want.length > 0, 'binomes locked');
+  assert.deepStrictEqual(got, want, 'lock emails each member their own binome');
+  assert.strictEqual(w.run('pairedTodo_(loadCtx_()).length'), 0, 'nothing left for the catch-up');
+}
+
+// ---- through the sync: sent once, after the save, escaped ----
 run('__outbox.length = 0');
 apply('lina.amrani@g.enp.edu.dz', 'Lina', 'Amrani');
 apply('ines.kaci@g.enp.edu.dz', 'Ines<i>"', 'Kaci');

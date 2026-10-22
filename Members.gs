@@ -155,11 +155,11 @@ function applyMemberPlans_(ctx, plans, reason) {
     if (same) return;
     const pending = ctx.iv.data.filter(r => r[I.Binome] === b.code && PENDING_STATUSES.indexOf(r[I.Status]) >= 0);
     const members = b.members.map(m => m.name).join(' & ');
-    if (p.inn) mailSend_(p.inn.email, mailFrom_('JOINED', { first: p.inn.name.split(' ')[0], binome: b.code, members: members }, {
+    if (p.inn && mailSend_(p.inn.email, mailFrom_('JOINED', { first: p.inn.name.split(' ')[0], binome: b.code, members: members }, {
       blocks: pending.length ? [mailP_('Interviewees still in progress:'), mailList_(pending.map(r => [r[I.Code],
         r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' + String(r[I.Status]).toLowerCase() +
         (r[I['Interview Date']] ? ' · ' + r[I['Interview Date']] + ' ' + r[I['Interview Time']] : '')]))] : [],
-      cta: { label: 'Open the binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) }));
+      cta: { label: 'Open the binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) }))) pairedMark_([b.code + '|' + p.inn.email]);
     if (p.out && p.out.email) mailSend_(p.out.email, mailFrom_('LEFT', { first: (p.out.name || '').split(' ')[0], binome: b.code,
       replaced: p.inn ? ' (replaced by ' + p.inn.name + ')' : '' }, { footer: mailTeamFooter_() }));
   });
@@ -254,12 +254,13 @@ function newBinomeCore_(a) {
       sh.getRange(sh.getLastRow() + 1, 1, 2, MC_H.length).setValues(members.map(m =>
         [ctx.now, by, 'PERMANENT', b.code, '', '', m.name, m.email, '', a.reason || 'new binome', 'DONE']));
     } catch (e) { issues.push('Member Changes history not written (' + e.message + ')'); }
+    const told = [];
     members.forEach(m => {
       try {
-        mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: b.code, members: names },
-          { cta: { label: 'Open the binome sheet', url: file.getUrl() }, footer: mailTeamFooter_(file.getUrl()) }));
+        if (pairedMail_(b.code, m, names, file.getUrl())) told.push(b.code + '|' + m.email);
       } catch (e) { issues.push('email to ' + m.email + ' not sent (' + e.message + ')'); }
     });
+    if (told.length) pairedMark_(told);
     const what = b.code + ' created (' + b.tag + '): ' + names;
     ctx.alerts.add({ severity: 'INFO', type: 'MEMBER_CHANGED', status: 'AUTO-FIXED', code: '', binome: b.code,
       msg: what + ' by ' + by + (a.reason ? ' (' + a.reason + ')' : ''), key: '' });
