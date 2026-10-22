@@ -20,9 +20,9 @@ address and unlocks the rest of the form.
 _Avoid_: OTP, verification link, magic link
 
 **House**:
-The wizarding name and colours a department wears on the registration form, its mails and the sheets: IT is
-Gryffindor (red), COMM is Ravenclaw (blue), FLER is Hufflepuff (golden), HR is Slytherin (green). A candidate's house
-is the one of their 1st-choice department.
+The wizarding name and colours a department wears on the registration form and its mails: IT is Gryffindor (red),
+COMM is Ravenclaw (blue), FLER is Hufflepuff (golden), HR is Slytherin (green). A candidate's house is the one of their
+1st-choice department. The Master and binome sheets keep their own colours, with IT and COMM the other way round.
 _Avoid_: team colour, department theme
 
 ## Binomes
