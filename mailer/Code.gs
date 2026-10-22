@@ -1,6 +1,7 @@
 /* ---------- The VIC mailer: the registration form's ticket mail (docs/registration-form.md, The mails) ----------
  * A standalone Apps Script owned by vic.rh, not the Master's bound script (that one's web app runs as the visitor).
- * Deploy: Web app, Execute as Me, access Anyone. Script properties: MAILER_SECRET (the site's MAILER_SECRET),
+ * Deployed with clasp from this folder (mailer/.clasp.json, mailer/appsscript.json: Web app, Execute as Me, access
+ * Anyone; docs/registration-form.md, setup step 7). Script properties: MAILER_SECRET (the site's MAILER_SECRET),
  * EMAIL_DOMAIN (g.enp.edu.dz), MASTER_ID (the Master's id; vic.rh must be able to open it).
  *
  * doPost takes JSON:
