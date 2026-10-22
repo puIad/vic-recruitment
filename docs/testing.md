@@ -96,9 +96,16 @@ if A reused an existing member, put back their Team row and Exclude as they were
 Change members, and end any active cover. Other admins using Change members / Cover / Apply need edit access to the
 Binome Sheets folder.
 
-**After the registration form's live check** ([registration-form.md](registration-form.md#the-live-check-evening-of-24-oct)): the same
-clean-up for its rows, and also flush the site's Redis (every `reg:`, `otp:` and `rl:` key), or the admins' addresses stay
-"already registered"; delete the Master TEST COPY.
+**After the registration form's live check** ([registration-form.md](registration-form.md#the-live-check-evening-of-24-oct)), the same
+evening, after `VITE_APPLY_URL` is switched:
+1. Delete the live-check rows: A, B and C's `/apply` rows and the Google Form duplicate, in Registration Responses,
+   Interviewees and Alerts, and A's rows in the binome sheets. Sync now, then **Accept edits**.
+2. Flush the site's Redis, or the admins' addresses stay "already registered": Upstash console › the site's database ›
+   CLI, `SCAN 0 COUNT 1000` to see that only the site's keys are there (`reg:`, `otp:`, `rl:`, `lock:`, and `prev:` from
+   previews), then `FLUSHDB`, and `DBSIZE` reads 0.
+3. Review Registration Responses for any row that is not from an admin address (a candidate who found `/apply` or the
+   Google Form early).
+4. Delete the Master TEST COPY.
 
 **Reset all binomes** (Maintenance › Danger zone; only while nothing is shared and before registrations matter): a
 wrong phrase is refused; "I confirm to reset the binomes" moves every binome sheet to the "Retired binomes" folder, empties Binomes, Team and Member
