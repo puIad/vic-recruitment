@@ -29,7 +29,7 @@ Grilled with the owner on 2026-10-22. Where this list and the sections below dis
 | When | Before launch (25 Oct). Schedule and Analytics are built in parallel. |
 | Script | **One** script PR first, carrying everything both pages and the history need: the Schedule fields on `webState`, `webAnalytics()`, and the Interviewee Changes log. It ships **before load-test run 4**, so the sign-off covers it; if it slips, run 4 goes ahead without it and the script waits until after launch. |
 | Then | Two frontend sessions in parallel worktrees, one for Schedule (with the member view), one for Analytics (with the profile). The Change history UI and the UI smoke test come last. |
-| Coming up group | Stays in the sidebar as it is until the pages are real. |
+| Coming up group | Stays in the sidebar as it is until the pages are real. Dropped 2026-10-22 once both were live: Schedule and Analytics moved to Control room. |
 | Schedule: admin events | **Cut** for launch: no Events tab, no event actions. The calendar is interviews only, read-only. |
 | Schedule: members | **Added**: My binome gets a week view of the binome's own interviews, with a No date yet list and clashes marked, reusing the Schedule components read-only. It needs nothing new from the script: the member state already carries Interview Date and Time. |
 | Analytics: birth dates | Suspect dates show the guessed year, marked as guessed, and the stats use it. **No saving** at launch: no Analytics Fixes tab, no `fixRegistration`. |
