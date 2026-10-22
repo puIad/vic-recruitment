@@ -52,6 +52,8 @@ export const navGroups: NavGroup[] = [
       { title: "Alerts", url: "/alerts", icon: Bell, badge: "alerts" },
       { title: "Binomes", url: "/binomes", icon: Users },
       { title: "Interviewees", url: "/interviewees", icon: ListChecks },
+      { title: "Schedule", url: "/schedule", icon: CalendarDays },
+      { title: "Analytics", url: "/analytics", icon: ChartNoAxesCombined },
     ],
   },
   {
@@ -59,13 +61,6 @@ export const navGroups: NavGroup[] = [
     items: [
       { title: "Team", url: "/team", icon: UsersRound },
       { title: "My binome", url: "/my-binome", icon: UserRoundCheck, inBinome: true },
-    ],
-  },
-  {
-    label: "Coming up",
-    items: [
-      { title: "Schedule", url: "/schedule", icon: CalendarDays },
-      { title: "Analytics", url: "/analytics", icon: ChartNoAxesCombined },
     ],
   },
   {

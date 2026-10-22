@@ -25,7 +25,8 @@ in `c64f118` (`git show c64f118^:web/index.html` if it is ever needed). How to r
 
 ## Where things are in the UI
 
-The sidebar has four groups: Control room, People, Coming up, System. Alerts carries a live count.
+The sidebar has three groups: Control room (Overview, Alerts, Binomes, Interviewees, Schedule, Analytics), People,
+System. Alerts carries a live count.
 
 | Place | What it does |
 |---|---|
