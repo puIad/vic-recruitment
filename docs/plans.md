@@ -615,7 +615,9 @@ on, one mail edit saved as pending and applied.
 The registration form ([registration-form.md](registration-form.md), specified on 2026-10-22) writes rows into
 Registration Responses, so the sync sends the confirmation exactly as for a form row, with the saved text after PR 2.
 Two rules keep it that way: the confirmation stays the script's only copy of its wording (the app never keeps its
-own), and it stays the only mail carrying the code, which the sync gives out. The app's own code mail (the email
-check before the form) is sent by a separate mailer script, not Mail.gs, so it is not on the Emails page. If its
-wording should be editable too, the mailer reads its rows from the Master's Settings tab and the page gets a card
-for it; that is the owner's call once the app is built.
+own), and it stays the only mail carrying the code, which the sync gives out. The form's ticket mail (the email check
+before the form) is sent by a separate mailer script owned by `vic.rh` (`mailer/Code.gs`), not Mail.gs, but its wording
+is editable: it is the **Registration ticket** card on the Emails page (`CODE` in `MAILS`, no On/Off switch), and the
+mailer reads those rows from the Master's Settings tab ([#123](https://github.com/puIad/vic-recruitment-2026/issues/123),
+built in [#128](https://github.com/puIad/vic-recruitment-2026/issues/128)). The ticket and the confirmation wear the
+form's themed look, the confirmation's stripe in its 1st choice's house; the other mails keep the charter layout.
