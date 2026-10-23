@@ -6,9 +6,12 @@ now a pointer). Every decision below is a resolved ticket on that map; the ticke
 Vocabulary is [GLOSSARY.md](../GLOSSARY.md): **registration form** (the new one), **Google Form** (the fallback),
 **email code** (called the **ticket** to candidates), **house**.
 
-Nothing here is built. The owner signs this spec; the build runs on 23 and 24 Oct, the live check on the evening of
-24 Oct, opening on 25 Oct. If the registration form has not passed its live check by the morning of 25 Oct, opening
-goes on the Google Form and the registration form takes over once it passes.
+**Built and live.** The spec was signed and built on 22 Oct, ahead of the 23 and 24 Oct plan below, as tickets
+[#126](https://github.com/puIad/vic-recruitment-2026/issues/126) to [#134](https://github.com/puIad/vic-recruitment-2026/issues/134), all closed with the map on 22 Oct. The live check
+passed the same evening ([#134](https://github.com/puIad/vic-recruitment-2026/issues/134)): production's `VITE_APPLY_URL`
+is `/apply` since 20:43 UTC, `/api/health` answers all `ok`, and the freeze is on. The Master and Redis cleanup after
+it were done by the owner and not re-checked. The Google Form stays the fallback: setting `VITE_APPLY_URL` back to its
+responder link is the one switch. The sections below are the plan as written; the dates in them are the planned ones.
 
 ## What it is
 

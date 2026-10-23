@@ -6,6 +6,11 @@ else: [docs/](docs/README.md).
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
 
+**Where it stands, 2026-10-23.** Opening is 25 Oct. Built and live: everything in the launch scope, the registration
+form at `/apply` (section below) and the Overview as the admin's to-do. Still open: load-test task 10 (run 3 did not
+sign off, no run 4 yet), the owner's live checks of Schedule, Analytics, Change history and the Overview, and the
+owner's launch steps under "Left, owner". The sections below keep their dates.
+
 ## Launch checklist (2026-10-17)
 
 One list of what is done and what is left before the registration form opens. Details are in the sections below.
@@ -119,7 +124,8 @@ Left, owner (in order):
    ([load-test.md](docs/load-test.md#task-10--load-test-again-then-sign-off)). Still the gate before members get the
    dashboard. Run 3 (2026-10-19) did not sign it off; a fourth run follows the fixes listed above.
 4. Launch, the last step: TEST_MODE off → Re-share binome sheets → pending changes on (Settings › General; on since
-   2026-10-19, so check it is still on) → share the registration form → watch Alerts.
+   2026-10-19, so check it is still on) → share the registration form (`vic-enp.vercel.app/apply`, live since
+   2026-10-22; the Google Form is the fallback) → watch Alerts.
 
 Owner answered on 2026-10-19 and done: screening tested (flags the good from the bad), B.08's
 `rami.ahmane@g.enp.edu.dz` is correct, the 2026 forms reworded, admin edit access to the Binome Sheets folder and the
@@ -138,8 +144,8 @@ members can't open it. Fixed in [#104](https://github.com/puIad/vic-recruitment-
 The confirmation's settled wording and the "VIC Recruitment" sender on candidate mails are live
 ([#99](https://github.com/puIad/vic-recruitment-2026/pull/99), web app @108 / API @109 from `3a834de`, 2026-10-19).
 Owner's live check open: a TEST registration from an ADMIN_EMAIL address that is not on the Team, Sync now, the
-confirmation arrives from "VIC Recruitment" with the new text. The Settings › Emails editor comes after launch
-([plans.md](docs/plans.md), Email texts, PR 2 and PR 3).
+confirmation arrives from "VIC Recruitment" with the new text. The Settings › Emails editor is live
+([#106](https://github.com/puIad/vic-recruitment-2026/pull/106), [#107](https://github.com/puIad/vic-recruitment-2026/pull/107); [plans.md](docs/plans.md), Email texts).
 Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done.
 
 ## Live now
@@ -420,10 +426,27 @@ deploy). The Overview reads only and links out (`lib/vic/overview.ts`, tested by
 Not checked live by the owner yet. Not seen on screen at all: the layout before lock and the "All clear" state (the
 mock is locked with open alerts).
 
+## Registration form at `/apply` (live 2026-10-22)
+
+The registration form on the vic-enp site, with the Google Form as fallback: [docs/registration-form.md](docs/registration-form.md)
+(wayfinder map [#110](https://github.com/puIad/vic-recruitment-2026/issues/110), tickets #126 to #134, all closed on
+22 Oct). Built on 22 Oct, ahead of the 23 and 24 Oct plan, and its live check passed that evening
+([#134](https://github.com/puIad/vic-recruitment-2026/issues/134)): production's `VITE_APPLY_URL` is `/apply` since
+20:43 UTC, `/api/health` answers all `ok` (redis, mailer, sheets, headers; checked again 2026-10-23), and the freeze is on.
+Every CTA on `vic-enp.vercel.app` now opens it; setting `VITE_APPLY_URL` back to the Google Form's responder link is the
+fallback switch.
+
+- Mails (S2, [#128](https://github.com/puIad/vic-recruitment-2026/issues/128)): the themed ticket and confirmation, the
+  Registration ticket card on Settings › Emails, and the mailer (`mailer/Code.gs`, deployed as `vic.rh`, @2). The bound
+  script at @126 / @127, both themed test mails checked by the owner.
+- Master: `SYNC_EVERY_MINUTES` is 5 since #129. No load-test run has measured the dashboard at that pace.
+- Left: the Master and Redis cleanup after the live check were done by the owner and not re-checked; the owner's
+  real-phone check of `/apply` inside Instagram on Android and iPhone is part of the landing's launch
+  ([vic-enp#45](https://github.com/puIad/vic-enp/issues/45)).
+
 ## Later (not needed for launch)
 
 - **Binome desk** dropped (2026-10-04) and removed from the UI (2026-10-18).
-- **Registration form** on the vic-enp site at `/apply`, the Google Form as fallback: specified in [docs/registration-form.md](docs/registration-form.md) (wayfinder map #110), built 23 and 24 Oct, live check the evening of 24 Oct. Slice S2 ([#128](https://github.com/puIad/vic-recruitment-2026/issues/128)): the themed ticket and confirmation, the Registration ticket card on Settings › Emails and the mailer's source (`mailer/Code.gs`, deployed as `vic.rh`, setup step 7). Live 22 Oct: the bound script at @126/@127 (both themed test mails checked by the owner); the mailer at @2, refusing a wrong secret, and a real ticket mail sent straight to it reached an admin inbox from vic.rh. Left for S4: `/api/health` reporting `mailer: ok` and the round trip through `/apply` once S1 is in.
 - **Binome view**, an idea kept but not planned: members use the dashboard instead of their binome sheet, and the
   script fills the sheet for them.
 - Retired the Apps Script web app's old dashboard (2026-10-17): `Index.html` and `NoAccess.html` are deleted, and its
