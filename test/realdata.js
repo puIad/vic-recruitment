@@ -71,7 +71,7 @@ const otEmails = R["'OT Database'!A1:Z200"].values.slice(1).map(r => r[3]).filte
 const ints = R['Responses!A1:D368'].values.slice(1);
 const pool = Array.from(new Set(otEmails.concat(ints.map(r => r[1])).map(e => String(e).trim().toLowerCase())));
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-const MANUAL = { 'sabah belhadj': 'sabah.bel_hadj@g.enp.edu.dz', 'toufik bekkar': 'toufik.bekkar@g.enp.edu.dz', 'hanane amyri': 'hananeamyri@gmail.com', 'meriem saadoun': 'meriem.sadoun@g.enp.edu.dz' };
+const MANUAL = fs.existsSync(__dirname + '/../data/manual.json') ? JSON.parse(fs.readFileSync(__dirname + '/../data/manual.json', 'utf8')) : {}; // name → email for members fuzzy matching misses; personal data, git-ignored
 function emailFor(name) {
   if (MANUAL[norm(name)]) return MANUAL[norm(name)];
   const toks = norm(name).split(' ').filter(t => t.length >= 3);
