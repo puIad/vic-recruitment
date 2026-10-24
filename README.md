@@ -82,8 +82,8 @@ candidate data.
 
 ## Fonts and brand assets
 
-- **Gilroy**, the club's typeface, is a commercial font. VIC uses it under its own licence, and the files in
-  `assets/Gilroy/` and `frontend/src/assets/fonts/` are not licensed for reuse or redistribution. If you fork this
+- **Gilroy**, the club's typeface, is a commercial font. The files in `assets/Gilroy/` and
+  `frontend/src/assets/fonts/` are the club's own copies and are not licensed for reuse or redistribution. If you fork this
   project, swap in a font you have the rights to.
 - The VIC name and logo belong to the Vision & Innovation Club and are not open for reuse.
 - The dashboard started from the ShadcnStore dashboard template, MIT licensed
