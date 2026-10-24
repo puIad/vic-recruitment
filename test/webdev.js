@@ -31,17 +31,17 @@ P.deps.send = async (topic, payload, opts) => { const out = await published(topi
 const pairing = process.argv.includes('--pairing'), empty = process.argv.includes('--empty') || pairing;
 if (pairing) {
   s.run(`master.insertSheet('OT 2026').cells = [["Section", "First Name", "Last Name", "Email"],
-    ["Committee Board", "Aymene", "Khaled", "aymene@g.enp.edu.dz"], ["Council Board", "Sabrina", "Aknine", "sabrina@g.enp.edu.dz"],
-    ["HR", "Ikram", "Mahi", "ikram@g.enp.edu.dz"], ["", "Zineb", "Taibi", "zineb@g.enp.edu.dz"], ["", "Djamila", "Cherifi", "djamila@g.enp.edu.dz"],
+    ["Committee Board", "Nassim", "Ouarab", "nassim@g.enp.edu.dz"], ["Council Board", "Dalila", "Tazrout", "dalila@g.enp.edu.dz"],
+    ["HR", "Warda", "Tebbal", "warda@g.enp.edu.dz"], ["", "Houria", "Mokrane", "houria@g.enp.edu.dz"], ["", "Lamia", "Hadrane", "lamia@g.enp.edu.dz"],
     ["", "Nada", "Rahmani", "nada.rahmani@g.enp.edu.dz"], ["", "Hiba", "Saadi", "hiba.saadi@g.enp.edu.dz"], ["", "Wafa", "Djebbar", "wafa.djebbar@g.enp.edu.dz"],
     ["", "Imene", "Boudiaf", "imene.boudiaf@g.enp.edu.dz"], ["", "Rania", "Mekki", "rania.mekki@g.enp.edu.dz"], ["", "Selma", "Haddad", "selma.haddad@g.enp.edu.dz"],
-    ["IT", "Sara", "Bouznad", "sara@g.enp.edu.dz"], ["", "Madjid", "Medjkane", "madjid@g.enp.edu.dz"], ["", "Ilyes", "Hamdi", "ilyes.hamdi@g.enp.edu.dz"],
+    ["IT", "Nawel", "Chikhi", "nawel@g.enp.edu.dz"], ["", "Hakim", "Sahraoui", "hakim@g.enp.edu.dz"], ["", "Ilyes", "Hamdi", "ilyes.hamdi@g.enp.edu.dz"],
     ["", "Omar", "Ferhat", "omar.ferhat@g.enp.edu.dz"], ["", "Anis", "Belaid", "anis.belaid@g.enp.edu.dz"], ["", "Yanis", "Ouali", "yanis.ouali@g.enp.edu.dz"],
-    ["COMM", "Aya", "Gharbi", "aya@g.enp.edu.dz"], ["", "Lyna", "Toumi", "lyna.toumi@g.enp.edu.dz"], ["", "Meriem", "Kaci", "meriem.kaci@g.enp.edu.dz"],
-    ["FLER", "Yasmine", "Ait Ahmed", "yasmine@g.enp.edu.dz"], ["", "Nour", "Amrani", "nour.amrani@g.enp.edu.dz"], ["", "Walid", "Saidi", "walid.saidi@g.enp.edu.dz"]]`);
+    ["COMM", "Nesma", "Laribi", "nesma@g.enp.edu.dz"], ["", "Lyna", "Toumi", "lyna.toumi@g.enp.edu.dz"], ["", "Meriem", "Kaci", "meriem.kaci@g.enp.edu.dz"],
+    ["FLER", "Thiziri", "Ait Hamou", "thiziri@g.enp.edu.dz"], ["", "Nour", "Amrani", "nour.amrani@g.enp.edu.dz"], ["", "Walid", "Saidi", "walid.saidi@g.enp.edu.dz"]]`);
   s.call('webRun', 'importTeam', { link: '' });
   s.call('webRun', 'teamSet', { email: 'selma.haddad@g.enp.edu.dz', experienced: true }); // ticked by hand: interviewed before, not in the 2025 list
-  [['nada.rahmani', 'sara'], ['hiba.saadi', 'aya'], ['wafa.djebbar', 'ilyes.hamdi']].forEach(([a, b]) =>
+  [['nada.rahmani', 'nawel'], ['hiba.saadi', 'nesma'], ['wafa.djebbar', 'ilyes.hamdi']].forEach(([a, b]) =>
     s.call('webRun', 'draftPair', { emailA: a + '@g.enp.edu.dz', emailB: b + '@g.enp.edu.dz' }));
 } else if (!empty) {
   s.call('webRun', 'importTeam', { link: '' }); s.call('webRun', 'draft'); s.call('webRun', 'lock');

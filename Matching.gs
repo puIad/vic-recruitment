@@ -115,7 +115,7 @@ function resolveInterview(input, ctx) {
   const subName = (ctx.nameByEmail && ctx.nameByEmail[sub]) || sub || 'unknown submitter';
   const byCode = {}; ctx.binomes.forEach(b => { byCode[b.code] = b; });
   const ivByCode = {}; ctx.interviewees.forEach(i => { if (i.code) ivByCode[i.code] = i; });
-  // exact email, or a personal email that clearly carries the member's first + last name (e.g. sabrinaaknine89@gmail.com)
+  // exact email, or a personal email that clearly carries the member's first + last name (e.g. dalilatazrout89@gmail.com)
   const memberVia = (b, email) => {
     if (!b || !email) return '';
     if (b.members.some(m => m.email && m.email.toLowerCase() === email)) return 'exact';

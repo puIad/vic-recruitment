@@ -63,15 +63,15 @@ assert.deepStrictEqual(st.interviewees.map(i => i.code).sort(), codes, 'same int
 call('webRun', 'importTeam', { link: '' });
 st = call('webState');
 assert(st.teamList.length === 13 && st.teamList.every(m => m.experienced), 'the 2025 team itself: everyone pre-ticked');
-['romaissa', 'sabrina', 'aymene', 'yasmine'].forEach(n => call('webRun', 'teamSet', { email: n + '@g.enp.edu.dz', experienced: false }));
-[['ikram', 'yasmine'], ['zineb', 'aya'], ['aymene', 'sara']].forEach(([a, b]) => call('webRun', 'draftPair', { emailA: a + '@g.enp.edu.dz', emailB: b + '@g.enp.edu.dz' }));
+['feriel', 'dalila', 'nassim', 'thiziri'].forEach(n => call('webRun', 'teamSet', { email: n + '@g.enp.edu.dz', experienced: false }));
+[['warda', 'thiziri'], ['houria', 'nesma'], ['nassim', 'nawel']].forEach(([a, b]) => call('webRun', 'draftPair', { emailA: a + '@g.enp.edu.dz', emailB: b + '@g.enp.edu.dz' }));
 assert.deepStrictEqual(call('webState').binomes.map(b => b.code + ' ' + b.tag + ' ' + b.status), ['B.01 FLER & HR DRAFT', 'B.02 COMM & HR DRAFT', 'B.03 ALL DRAFT']);
 let drew = call('webRun', 'draft', { keep: true }).messages[0];
 assert(/^Drew \d+ more binomes from the 7 free members; the 3 pairs already made stay\./.test(drew), drew);
 st = call('webState');
 const drafted = st.binomes.flatMap(b => b.people.map(p => p.email));
 assert.deepStrictEqual([drafted.length, new Set(drafted).size, st.binomes.slice(0, 3).map(b => b.people.map(p => p.email.split('@')[0]).join('+'))],
-  [13, 13, ['ikram+yasmine', 'zineb+aya', 'aymene+sara']], 'everyone drafted once, the hand-made pairs first and as made');
+  [13, 13, ['warda+thiziri', 'houria+nesma', 'nassim+nawel']], 'everyone drafted once, the hand-made pairs first and as made');
 // out of time after creating the sheets: nobody is placed by the Lock call, the next sync places each of them once
 run('var __rc = runCycle_; runCycle_ = function (o) { return __rc(Object.assign({}, o, { assignBy: 0 })); };');
 const waiting = call('webState').interviewees.filter(i => i.status === 'UNASSIGNED').length;
