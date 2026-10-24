@@ -7,7 +7,8 @@
  * doPost takes JSON:
  *   {secret, to, code}  one ticket mail to `to` (an address in EMAIL_DOMAIN), `code` six digits, sent as "VIC Recruitment"
  *                       from this account (replies land in its mailbox). Answers {ok:true} or {ok:false, reason}.
- *   {secret, ping:true} answers {ok:true} and sends nothing (the site's /api/health).
+ *   {secret, ping:true} answers {ok:true, quota} and sends nothing (the site's /api/health): quota is MailApp's recipients
+ *                       left today for vic.rh, shared with the Master's mails; left out if Google won't say.
  * The wording is the Master's Settings rows MAIL_CODE_* (Settings › Emails, Registration ticket), blank = the defaults
  * below, cached 60 s. TEST_MODE does not reach this script.
  *
@@ -32,7 +33,7 @@ function doPost(e) {
   if (!body || typeof body !== 'object') return answer_({ ok: false, reason: 'bad request' });
   const props = PropertiesService.getScriptProperties();
   if (!sameSecret_(body.secret, props.getProperty('MAILER_SECRET'))) return answer_({ ok: false, reason: 'secret' });
-  if (body.ping === true) return answer_({ ok: true });
+  if (body.ping === true) return answer_(pong_());
   const domain = String(props.getProperty('EMAIL_DOMAIN') || '').trim().replace(/^@/, '').toLowerCase();
   const to = typeof body.to === 'string' ? body.to.trim().toLowerCase() : '';
   // one plain address: MailApp would read a comma as a second recipient
@@ -46,6 +47,11 @@ function doPost(e) {
     return answer_({ ok: false, reason: 'send' });
   }
   return answer_({ ok: true });
+}
+
+/** The ping's answer: ok, and how many mails vic.rh can still send today when Google says. */
+function pong_() {
+  try { return { ok: true, quota: MailApp.getRemainingDailyQuota() }; } catch (err) { return { ok: true }; }
 }
 
 function answer_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
