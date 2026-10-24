@@ -1,4 +1,4 @@
-# VIC Recruitment 2026
+# VIC Recruitment
 
 The tooling behind the 2026 recruitment of the **Vision & Innovation Club (VIC)**, a student club at the École
 Nationale Polytechnique (ENP) in Algiers. Each season ENP students apply to join the club and are interviewed by
