@@ -15,12 +15,12 @@ __forms[CONFIG.INTERVIEW_FORM_ID] = new MockForm(CONFIG.INTERVIEW_FORM_ID, 'Inte
 var master = new MockSS('Master'); SpreadsheetApp._active = master;
 var db = new MockSS('DB'); __files[CONFIG.TEAM_DB_DEFAULT_ID] = __files[db.id]; __files[CONFIG.TEAM_DB_DEFAULT_ID].obj = db;
 db.sheets[0].cells = [["","First Name","Last Name ","Email Adress","Phone"],
- ["Committe Board","Aymene","KHALED","aymene@g.enp.edu.dz",""],["","Romaissa","BOUTELDJA","romaissa@g.enp.edu.dz",""],
- ["Council Board","Sabrina","AKNINE","sabrina@g.enp.edu.dz",""],
- ["FLER","Yasmine","AIT AHMED","yasmine@g.enp.edu.dz",""],["","Hadjer","KHIER","hadjer@g.enp.edu.dz",""],
- ["COMM","Aya","GHARBI","aya@g.enp.edu.dz",""],
- ["HR","Ikram","MAHI","ikram@g.enp.edu.dz",""],["","Zineb","TAIBI","zineb@g.enp.edu.dz",""],["","Djamila","CHERIFI","djamila@g.enp.edu.dz",""],["","Rami","AHMANE","rami@g.enp.edu.dz",""],
- ["IT","Sara","BOUZNAD","sara@g.enp.edu.dz",""],["","Marya","DJALAB","marya@g.enp.edu.dz",""],["","Madjid","MEDJKANE","madjid@g.enp.edu.dz",""]];
+ ["Committe Board","Nassim","OUARAB","nassim@g.enp.edu.dz",""],["","Feriel","HAMIDOU","feriel@g.enp.edu.dz",""],
+ ["Council Board","Dalila","TAZROUT","dalila@g.enp.edu.dz",""],
+ ["FLER","Thiziri","AIT HAMOU","thiziri@g.enp.edu.dz",""],["","Lilia","BENSAAD","lilia@g.enp.edu.dz",""],
+ ["COMM","Nesma","LARIBI","nesma@g.enp.edu.dz",""],
+ ["HR","Warda","TEBBAL","warda@g.enp.edu.dz",""],["","Houria","MOKRANE","houria@g.enp.edu.dz",""],["","Lamia","HADRANE","lamia@g.enp.edu.dz",""],["","Fares","OUKACI","fares@g.enp.edu.dz",""],
+ ["IT","Nawel","CHIKHI","nawel@g.enp.edu.dz",""],["","Kahina","REMILI","kahina@g.enp.edu.dz",""],["","Hakim","SAHRAOUI","hakim@g.enp.edu.dz",""]];
 function regRow(ts, collected, first, fam, typed, birth, phone, c1, c2) {
   var r = new Array(REG_H.length).fill('');
   r[0]=ts; r[1]=collected; r[2]=first; r[3]=fam; r[4]=typed; r[5]=birth; r[6]=phone; r[14]=c1; r[15]=c2; r[21]='Sunday, Tuesday';

@@ -14,12 +14,12 @@ var master = new MockSS('Master'); SpreadsheetApp._active = master;
 // team database laid out like 2025
 var db = new MockSS('DB'); __files[CONFIG.TEAM_DB_DEFAULT_ID] = __files[db.id]; __files[CONFIG.TEAM_DB_DEFAULT_ID].obj = db;
 db.sheets[0].cells = [["","First Name","Last Name ","Email Adress","Phone"],
- ["Committe Board","Aymene","KHALED","aymene@g.enp.edu.dz",""],["","Romaissa","BOUTELDJA","romaissa@g.enp.edu.dz",""],
- ["Council Board","Sabrina","AKNINE","sabrina@g.enp.edu.dz",""],
- ["FLER","Yasmine","AIT AHMED","yasmine@g.enp.edu.dz",""],["","Hadjer","KHIER","hadjer@g.enp.edu.dz",""],
- ["COMM","Aya","GHARBI","aya@g.enp.edu.dz",""],
- ["HR","Ikram","MAHI","ikram@g.enp.edu.dz",""],["","Zineb","TAIBI","zineb@g.enp.edu.dz",""],["","Djamila","CHERIFI","djamila@g.enp.edu.dz",""],["","Rami","AHMANE","rami@g.enp.edu.dz",""],
- ["IT","Sara","BOUZNAD","sara@g.enp.edu.dz",""],["","Marya","DJALAB","marya@g.enp.edu.dz",""],["","Madjid","MEDJKANE","madjid@g.enp.edu.dz",""]];
+ ["Committe Board","Nassim","OUARAB","nassim@g.enp.edu.dz",""],["","Feriel","HAMIDOU","feriel@g.enp.edu.dz",""],
+ ["Council Board","Dalila","TAZROUT","dalila@g.enp.edu.dz",""],
+ ["FLER","Thiziri","AIT HAMOU","thiziri@g.enp.edu.dz",""],["","Lilia","BENSAAD","lilia@g.enp.edu.dz",""],
+ ["COMM","Nesma","LARIBI","nesma@g.enp.edu.dz",""],
+ ["HR","Warda","TEBBAL","warda@g.enp.edu.dz",""],["","Houria","MOKRANE","houria@g.enp.edu.dz",""],["","Lamia","HADRANE","lamia@g.enp.edu.dz",""],["","Fares","OUKACI","fares@g.enp.edu.dz",""],
+ ["IT","Nawel","CHIKHI","nawel@g.enp.edu.dz",""],["","Kahina","REMILI","kahina@g.enp.edu.dz",""],["","Hakim","SAHRAOUI","hakim@g.enp.edu.dz",""]];
 `);
 
 run('setup()');
@@ -57,12 +57,12 @@ function regRow(ts, collected, first, fam, typed, birth, phone, c1, c2) {
   return r;
 }
 var old = new Date(Date.now() - 3*24*3600e3);
-reg.cells.push(regRow(old,'a1@g.enp.edu.dz','Amine','Test','a1@g.enp.edu.dz','12/06/2006','554781447','IT','HR'));
-reg.cells.push(regRow(old,'k@g.enp.edu.dz','Kenza','Ait','Kenza@g.enp edu.dz','27/10/2025','0549844729','IT','IT'));
-reg.cells.push(regRow(old,'h1@g.enp.edu.dz','Naima','Benarab','h1@g.enp.edu.dz','05/03/2005','0555441863','HR','IT'));
-reg.cells.push(regRow(old,'f1@g.enp.edu.dz','Farouk','Dahlouk','f1@g.enp.edu.dz','01/09/2005','0554710192','COMM','FLER'));
-reg.cells.push(regRow(old,'fl@g.enp.edu.dz','Lina','Fler','fl@g.enp.edu.dz','01/09/2005','0554710100','FLER','HR'));
-reg.cells.push(regRow(new Date(old.getTime()+1000),'a1@g.enp.edu.dz','Amine','Test','a1@g.enp.edu.dz','12/06/2006','554781447','COMM','HR'));
+reg.cells.push(regRow(old,'a1@g.enp.edu.dz','Amine','Test','a1@g.enp.edu.dz','12/06/2006','555020447','IT','HR'));
+reg.cells.push(regRow(old,'k@g.enp.edu.dz','Kenza','Ait','Kenza@g.enp edu.dz','27/10/2025','0555020729','IT','IT'));
+reg.cells.push(regRow(old,'h1@g.enp.edu.dz','Naima','Toualbi','h1@g.enp.edu.dz','05/03/2005','0555020863','HR','IT'));
+reg.cells.push(regRow(old,'f1@g.enp.edu.dz','Farouk','Meziane','f1@g.enp.edu.dz','01/09/2005','0555020192','COMM','FLER'));
+reg.cells.push(regRow(old,'fl@g.enp.edu.dz','Lina','Fler','fl@g.enp.edu.dz','01/09/2005','0555020100','FLER','HR'));
+reg.cells.push(regRow(new Date(old.getTime()+1000),'a1@g.enp.edu.dz','Amine','Test','a1@g.enp.edu.dz','12/06/2006','555020447','COMM','HR'));
 `);
 run('onFormSubmitHandler({})');
 let ivs = run('master.getSheetByName("Interviewees").getDataRange().getValues().slice(1)');
@@ -70,7 +70,7 @@ console.log('Interviewees:', ivs.map(r => (r[0] || '-') + '→' + (r[1] || '-') 
 assert.strictEqual(ivs.length, 6);
 assert.strictEqual(ivs[5][2], 'DUPLICATE');
 assert.strictEqual(ivs[0][0], 'IT.01'); assert.strictEqual(ivs[1][0], 'IT.02'); assert.strictEqual(ivs[2][0], 'HR.01');
-assert.strictEqual(ivs[0][9], '0554781447', 'phone normalized');
+assert.strictEqual(ivs[0][9], '0555020447', 'phone normalized');
 assert(ivs.slice(0, 5).every(r => r[1]), 'all non-dups assigned');
 const binTags = {}; bins.forEach(r => { binTags[r[0]] = r[5]; });
 ivs.slice(0, 5).forEach(r => { const d = r[14]; const tag = binTags[r[1]]; assert(tag === 'ALL' || tag.includes(d), r[0] + ' routed to ' + r[1] + ' [' + tag + ']'); });

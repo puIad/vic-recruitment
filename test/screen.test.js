@@ -57,7 +57,7 @@ assert(history('VIC_MEMBER_DECLINED').every(x => x[8] === 'AUTO-FIXED' && x[7] =
 assert(!open().some(a => /member\.one/.test(a.msg)), 'no open alert about them');
 
 // ---- a team member applying counts as a VIC member too ----
-apply('sara@g.enp.edu.dz', 'Sara', 'Bouznad', VIC, DEPT);
+apply('nawel@g.enp.edu.dz', 'Nawel', 'Chikhi', VIC, DEPT);
 // ---- junk is held, a decent one is assigned, swapped names are put right ----
 apply('junk.one@g.enp.edu.dz', 'Junk', 'One', '..', '.');
 apply('good.one@g.enp.edu.dz', 'Good', 'One', VIC, DEPT);
@@ -65,7 +65,7 @@ apply('kenza.haddad@g.enp.edu.dz', 'Haddad', 'Kenza', VIC, DEPT, 'COMM');
 apply('short.one@g.enp.edu.dz', 'Short', 'One', 'I love this club', 'I love technology');
 apply('idk.one@g.enp.edu.dz', 'Idk', 'One', VIC, 'I don’t know');
 sync();
-assert.strictEqual(ivRow('sara@g.enp.edu.dz')[IV.Status], 'DECLINED', 'Team tab emails are members');
+assert.strictEqual(ivRow('nawel@g.enp.edu.dz')[IV.Status], 'DECLINED', 'Team tab emails are members');
 const junk = ivRow('junk.one@g.enp.edu.dz');
 assert.deepStrictEqual([junk[IV.Status], junk[IV.Binome], junk[IV.Risk]], ['HELD', '', 100]);
 assert(junk[IV.Code] && !inSheets(junk[IV.Code]), 'held: a code, in no binome sheet');
