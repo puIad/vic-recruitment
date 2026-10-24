@@ -1,15 +1,45 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-23. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-10-24. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
 
-**Where it stands, 2026-10-23.** Opening is 25 Oct. Built and live: everything in the launch scope, the registration
-form at `/apply` (section below) and the Overview as the admin's to-do. Still open: load-test task 10 (run 3 did not
-sign off, no run 4 yet), the owner's live checks of Schedule, Analytics, Change history and the Overview, and the
-owner's launch steps under "Left, owner". The sections below keep their dates.
+**Where it stands, 2026-10-24.** Applications open **Monday 26 Oct 2026 at 18:00** and close **Thursday 5 Nov at
+18:00**, Algiers time (vic-enp decisions 130 and 147). Built and live: everything in the launch scope, the registration
+form at `/apply` (section below) and the Overview as the admin's to-do. The owner's launch steps are done (section
+below), and load-test task 10 is **signed off by the owner** without a fourth run. Left: the owner's live checks of
+Schedule, Analytics, Change history and the Overview. The sections below keep their dates.
+
+## Launch steps done (owner, 2026-10-24)
+
+- The 273 test candidates and every test registration are cleaned out; the final binome reset is done.
+- Timing limits are set to the owner's values; screening is **on**.
+- **TEST_MODE is off**, and the members have the dashboard.
+- A real registration from an admin address went through end to end; screening declined it silently, as it does for a
+  VIC member, which is the expected outcome.
+- The Google Form fallback stays closed and its link isn't shared.
+- **Load-test task 10: signed off by the owner** (2026-10-24: "trust the process, if anything bad happens we fix on the
+  spot"). Run 4 was not done, so #104 (members' sheet read) and the 5-minute sync under load are first seen live on
+  opening night.
+- Pre-launch fixes on the site (vic-enp [#97](https://github.com/puIad/vic-enp/pull/97), decisions 145 to 149): every
+  outcome of the registration API counted per hour in the site's Redis (`stats:<hour>`, 30 days) with the troubling
+  ones and the mailer's remaining quota on `/api/health`, 300 tickets an hour per connection (was 60), the close on
+  5 Nov, and `/apply` keeping a ticket on its way across a reload. The mailer's ping now reports
+  `MailApp.getRemainingDailyQuota()` (this repo, `mailer/Code.gs`): it needs a mailer deploy (below).
+
+**Left, owner: move the mailer to a new URL** (2026-10-24). The old web app URL was written in
+`docs/registration-form.md` until today and stays in this public repo's history, so the mailer moves to a new
+deployment, which also ships the quota in the ping. As `vic.rh`, before 26 Oct 18:00:
+
+1. `cd mailer`, `npx clasp --user vicrh push --force`, then `npx clasp --user vicrh create-deployment -d "quota"`. The
+   new web app URL is `https://script.google.com/macros/s/<the new deployment id>/exec`. Keep it out of the repo and
+   any chat.
+2. Vercel › vic-enp › Settings › Environment Variables: `MAILER_URL` = the new URL, Production and Preview.
+3. Merge vic-enp [#97](https://github.com/puIad/vic-enp/pull/97), or Redeploy production, so the new value is live.
+   `vic-enp.vercel.app/api/health` reads `mailer: ok` with a `mailQuota` number.
+4. Apps Script › Deploy › Manage deployments: archive the old deployment (`@2`). From then the old URL answers nothing.
 
 ## Launch checklist (2026-10-17)
 
@@ -115,7 +145,7 @@ Owner, 2026-10-17: the OAuth client secret rotated, Setup run as `vic.rh`, the m
 [open question](docs/decisions.md#open-questions) answered (board members are ordinary team members, no ALL
 binomes; the confirmation email is planned; `SAME_CHOICES` becomes INFO; new-interviewee mails stay on).
 
-Left, owner (in order):
+Left, owner (in order), all done on 2026-10-24 (see "Launch steps done" at the top):
 
 1. Clean the 273 test candidates out of the production binomes (brief step 6, "Clean up before launch"), and the
    preview registration with them.
@@ -302,7 +332,7 @@ Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-change
   and Montserrat, new gold columns Interview Done / Rating /10 / Final Affectation (synced to Interviewees), more of the
   registration shown. The 32 old sheets rebuild themselves, 6 per sync. **Run setup again (owner) once** to restyle the
   Master. Dashboard: Vercel production at `fef4bc6`'s UI (unchanged).
-- **TEST_MODE is on**: mail goes to admins only, nothing is shared. Keep it until launch.
+- **TEST_MODE is off** since 2026-10-24 (owner): mail and sharing are no longer held back to the admins.
 - **Master: production binomes** (2026-10-15: Setup, Reset all binomes, Import team, pairs made on the Pairing
   panel, Lock; TEST_MODE on). This replaced the 32 test binomes of 2026-10-03.
   - Team: 65 rows (34 HR, 12 IT, 10 FLER, 9 COMM, no board / ALL rows), one FLER member excluded; 37 ticked

@@ -38,7 +38,7 @@ Master (bound script, vic.rh): the timed sync (5 min) ─► checks, screening, 
 | Topic | Decision | Ticket |
 |---|---|---|
 | Place | `/apply` and `api/` in the vic-enp Vercel project, its own Upstash Redis; the landing's "no cookies, no forms" rule now holds for the landing page itself; `/apply` and `/api` may set one HttpOnly cookie, only after the code is verified | [Where the registration form lives](https://github.com/puIad/vic-recruitment-2026/issues/117) |
-| Email proof | 6-digit code on screen 1, `@g.enp.edu.dz` only, mailer owned by `vic.rh`, 3/email/h, 60/IP/h (10 until 22 Oct: a lecture hall on the ENP Wi-Fi or one carrier's NAT shares an IP), 30 s resend, 10 min, 5 tries, honeypot, localStorage draft only, **no** link to the Google Form anywhere | [How candidates prove their email](https://github.com/puIad/vic-recruitment-2026/issues/118) (amended by [When candidates reach the Google Form](https://github.com/puIad/vic-recruitment-2026/issues/121); the IP limit by the owner on [puIad/vic-enp#70](https://github.com/puIad/vic-enp/pull/70)) |
+| Email proof | 6-digit code on screen 1, `@g.enp.edu.dz` only, mailer owned by `vic.rh`, 3/email/h, 300/IP/h (10 until 22 Oct, 60 until 24 Oct: a residence or campus Wi-Fi or one carrier's NAT shares an IP; vic-enp decision 146), 30 s resend, 10 min, 5 tries, honeypot, localStorage draft only, **no** link to the Google Form anywhere | [How candidates prove their email](https://github.com/puIad/vic-recruitment-2026/issues/118) (amended by [When candidates reach the Google Form](https://github.com/puIad/vic-recruitment-2026/issues/121); the IP limit by the owner on [puIad/vic-enp#70](https://github.com/puIad/vic-enp/pull/70)) |
 | Theme | Full Harry Potter theme with house names and series words, chosen knowingly with no Warner permission, no disclaimer, no plain switch. IT Gryffindor, COMM Ravenclaw, FLER Hufflepuff, HR Slytherin. The Master and binome sheets keep their own colours | [The wizarding theme inside VIC's charter](https://github.com/puIad/vic-recruitment-2026/issues/119) |
 | Write path | Service-account key, `INSERT_ROWS`, `RAW`, columns by header, Timestamp as a serial in the Master's time zone, Redis lock first, appends one at a time behind `lock:append` with row 1 kept 60 s (the load test, [#133](https://github.com/puIad/vic-recruitment-2026/issues/133)), timed sync at 5 min | [How a registration reaches the Master](https://github.com/puIad/vic-recruitment-2026/issues/120), [Can the Cloud project create a service account key?](https://github.com/puIad/vic-recruitment-2026/issues/116) |
 | Fallback | The one switch is `VITE_APPLY_URL`; no hand-over of answers; both forms' questions freeze after the live check | [When candidates reach the Google Form](https://github.com/puIad/vic-recruitment-2026/issues/121) |
@@ -170,7 +170,8 @@ Master's bound script: that one's web app runs as the visitor. `doPost` takes JS
 - `{secret, to, code}`: compares `secret` to the `MAILER_SECRET` script property in constant time; `to` must end in the
   `EMAIL_DOMAIN` script property (`@g.enp.edu.dz`) and `code` must be six digits; sends one mail as "VIC Recruitment"
   from `vic.rh` (replies land in its mailbox); answers `{ok:true}` or `{ok:false, reason}`.
-- `{secret, ping:true}`: answers `{ok:true}` and sends nothing (the health check).
+- `{secret, ping:true}`: answers `{ok:true, quota}` and sends nothing (the health check); `quota` is
+  `MailApp.getRemainingDailyQuota()`, shown on the site's `/api/health` as `mailQuota` (from 2026-10-24).
 - It reads `MAIL_CODE_SUBJECT`, `MAIL_CODE_HEADING`, `MAIL_CODE_ABOVE` and `MAIL_CODE_CODELABEL` from the Master's
   Settings tab at send time (the script property `MASTER_ID`; `vic.rh` must be able to read the Master), blank means the
   default, cached 60 s. It holds its own copy of the themed layout. The site still sends only `{secret, to, code}`.
@@ -318,12 +319,11 @@ secrets are never pasted into chat, a ticket or the repo.
    mail and read-only spreadsheet scopes; Project Settings > Script properties: `MAILER_SECRET` (same string as in
    Vercel), `EMAIL_DOMAIN` = `g.enp.edu.dz`, `MASTER_ID` = the real Master's id. Deploy > Manage deployments: check
    "Who has access" reads **Anyone** (if only "Anyone within g.enp.edu.dz" is offered, the domain blocks anonymous web
-   apps and the site cannot reach the mailer: stop and say so). The web app URL
-   `https://script.google.com/macros/s/AKfycbxYwtgUziRMwwL9zqOHLNTThs2zsTxcu_zkrsz3h-TyibiKWfwPolgtwUW12DUZ3vBL/exec`
-   goes into `MAILER_URL`. `vic.rh` must be able to open the Master. A later change to `mailer/Code.gs`:
-   `cd mailer`, `npx clasp --user vicrh push --force`, then
-   `npx clasp --user vicrh update-deployment AKfycbxYwtgUziRMwwL9zqOHLNTThs2zsTxcu_zkrsz3h-TyibiKWfwPolgtwUW12DUZ3vBL`
-   (same URL).
+   apps and the site cannot reach the mailer: stop and say so). The web app URL goes into `MAILER_URL` and **nowhere
+   else**: not in this repo, a ticket or a chat (anyone holding it can call the mailer; the secret stops a send, not the
+   call). `vic.rh` must be able to open the Master. A later change to `mailer/Code.gs`: `cd mailer`,
+   `npx clasp --user vicrh push --force`, then `npx clasp --user vicrh update-deployment <deployment id>` (same URL;
+   the id is the part of `MAILER_URL` between `/s/` and `/exec`, or `npx clasp --user vicrh list-deployments`).
 
 **By the morning of 24 Oct**
 

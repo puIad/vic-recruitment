@@ -4,7 +4,7 @@ const assert = require('assert'), crypto = require('crypto'), fs = require('fs')
 
 const sent = [], reads = { n: 0 }, store = {};
 let settingsRows = [['Key', 'Value'], ['MAIL_CODE_SUBJECT', ''], ['MAIL_CODE_HEADING', '  '], ['ADMIN_EMAIL', 'x@g.enp.edu.dz']];
-let clock = 0, masterFails = false;
+let clock = 0, masterFails = false, quotaFails = false;
 const ctx = vm.createContext({
   console: { log() {}, error() {} }, JSON, Math, Date: { now: () => clock },
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => ({ MAILER_SECRET: 'long-secret', EMAIL_DOMAIN: 'g.enp.edu.dz', MASTER_ID: 'MASTER' })[k] || null }) },
@@ -16,7 +16,7 @@ const ctx = vm.createContext({
     get: k => (store[k] && store[k].until > clock ? store[k].v : null),
     put: (k, v, s) => { store[k] = { v: v, until: clock + s * 1000 }; },
   }) },
-  MailApp: { sendEmail: o => sent.push(o) },
+  MailApp: { sendEmail: o => sent.push(o), getRemainingDailyQuota: () => (quotaFails ? (() => { throw new Error('quota'); })() : 1294) },
   ContentService: { MimeType: { JSON: 'json' }, createTextOutput: s => ({ setMimeType: () => ({ body: JSON.parse(s) }) }) },
   Utilities: { DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
     computeDigest: (alg, s) => [...crypto.createHash('sha256').update(String(s), 'utf8').digest()].map(b => (b > 127 ? b - 256 : b)) },
@@ -26,7 +26,10 @@ const post = body => vm.runInContext('doPost', ctx)({ postData: { contents: type
 const ok = { secret: 'long-secret', to: 'test.person@g.enp.edu.dz', code: '204816' };
 
 // ---- the ping: answers, sends nothing, and needs the secret like a send ----
-assert.deepStrictEqual(post({ secret: 'long-secret', ping: true }), { ok: true });
+assert.deepStrictEqual(post({ secret: 'long-secret', ping: true }), { ok: true, quota: 1294 }, 'the ping says how many mails are left today');
+quotaFails = true;
+assert.deepStrictEqual(post({ secret: 'long-secret', ping: true }), { ok: true }, 'no quota when Google will not say, still ok');
+quotaFails = false;
 assert.deepStrictEqual(post({ secret: 'wrong', ping: true }), { ok: false, reason: 'secret' });
 assert.strictEqual(sent.length, 0, 'a ping sends nothing');
 

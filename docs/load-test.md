@@ -19,7 +19,7 @@ the task itself and the files it lists.
 | 7 | [My binome page (read-only) and member polling](#task-7--my-binome-page-read-only-and-member-polling) | M | 3, 6 | ☑ [#28](https://github.com/puIad/vic-recruitment-2026/pull/28), UI only, live on Vercel from `b9f84c0`; a real member sign-in is still open |
 | 8 | [Members edit their binome from the dashboard](#task-8--members-edit-their-binome-from-the-dashboard) | L | 7 | ☑ [#29](https://github.com/puIad/vic-recruitment-2026/pull/29) (@67/@68) and the access follow-up [#30](https://github.com/puIad/vic-recruitment-2026/pull/30) (@69/@70); the live check of #30 in Notes is still open |
 | 9 | [Triggers on the club account](#task-9--triggers-on-the-club-account) | S | 1 | ◐ code check merged and deployed ([#20](https://github.com/puIad/vic-recruitment-2026/pull/20)); the owner's steps are still to do |
-| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9, pending-changes slices 2–5 | ◐ rewritten for the launch dashboard and the pending path (2026-10-19); sign-off run 3 did not sign off (Notes) |
+| 10 | [Load test again, then sign off](#task-10--load-test-again-then-sign-off) | M | 3, 5, 8, 9, pending-changes slices 2–5 | ✓ signed off by the owner on 2026-10-24 without a fourth run (run 3 did not sign off; Notes) |
 
 Tasks 1, 2 and 9 can go in any order; 9 is mostly steps for the owner.
 
@@ -727,6 +727,10 @@ editor of the protections; make sure the Master's owner stays able to edit the p
 ---
 
 ## Task 10 — Load test again, then sign off
+
+**Signed off by the owner, 2026-10-24, without run 4:** "sign it off, trust the process, if anything bad happens we fix
+on the spot". What run 4 would have checked is first seen live on opening night (26 Oct, 18:00): #104's member sheet
+read, the 5-minute sync and its publish phase under real load, and the read times.
 
 **Why.** The first load test (2026-10-05, [appendix](#appendix-the-evidence)) measured a dashboard that no longer exists:
 every refresh rebuilt the Master, members had no page, and every save went through the script lock. Rewritten on
