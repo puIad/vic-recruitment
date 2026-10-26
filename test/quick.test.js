@@ -349,6 +349,14 @@ let oddCode;
   assert(mk && mk.q.repair === 'retry', JSON.stringify(mk));
   quick('repair', mk.id);
   assert.strictEqual(sheetRow(b.code, it.code)[BFI['Interview Done']], true, 'Repair wrote the mark');
+  // "keep the latest form" on a second form, same sheet refusing: the choice stands, the alert retries the mark
+  run(`(function () { master.getSheetByName('Interview Responses').cells.push([new Date(Date.now() + 2e4), '${b.people[0].email}', '${b.code}', '${it.code}', 'intro', 'IT', 'IT', '']); })()`);
+  call('webRun', 'sync');
+  const dup = find('DUPLICATE_INTERVIEW', x => x.code === it.code);
+  run('markInterviewInFile_ = function () { throw new Error("The sheet is protected"); }');
+  try { out = quick('keepForm', dup.id, { which: 'latest' }); } finally { run('markInterviewInFile_ = __mk'); }
+  assert(/latest form \(row \d+\) counts.*the mark in the sheet of B\.\d\d failed/.test(out.messages[0]), out.messages[0]);
+  assert(find('FILE_ERROR', x => x.code === it.code && /^Cannot mark/.test(x.msg)), 'an alert to retry the mark');
 }
 
 // ---- alert IDs: numbered from the highest one there is (rows deleted by hand never free an ID), and past A-9999 ----

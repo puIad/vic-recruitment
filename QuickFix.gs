@@ -369,13 +369,17 @@ function pickCandidate_(ctx, ref, codeText) {
   if (x[I['Interview Submitted At']]) return 'form linked to ' + code + ', who already had a form (Interview Log row ' + x[I['Interview Log Row']] + '): that first one still counts.';
   x[I['Interview Submitted At']] = row[L['Submitted At']]; x[I['Interview Log Row']] = i + 2; x[I.Status] = ST.INTERVIEWED;
   const b = ctx.binByCode[x[I.Binome]];
-  // the link is saved either way: a sheet that refuses the mark raises the alert whose Repair writes it again (as logInterview_)
-  if (b) try { markInterviewInFile_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)'); } catch (e) {
+  return 'form linked to ' + code + ', now interviewed' + (b ? markOrAlert_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)') : '') + '.';
+}
+
+/** The interview mark in b's sheet after the Master already changed: a sheet that refuses it raises the alert whose Repair writes
+ *  it again (as logInterview_), never a failure of the action. '' or the note to add to the reply. */
+function markOrAlert_(ctx, b, code, text) {
+  try { markInterviewInFile_(ctx, b, code, text); return ''; } catch (e) {
     ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: code, binome: b.code, key: 'FILE|' + b.code + '|' + code,
       msg: 'Cannot mark ' + code + ' in the file of ' + b.code + ': ' + e.message });
-    return 'form linked to ' + code + ', now interviewed; the mark in the sheet of ' + b.code + ' failed (an alert lets you retry it).';
+    return '; the mark in the sheet of ' + b.code + ' failed (an alert lets you retry it)';
   }
-  return 'form linked to ' + code + ', now interviewed.';
 }
 
 /** DUPLICATE_INTERVIEW: which of the two forms counts. The other Interview Log row is marked IGNORED. */
@@ -393,8 +397,8 @@ function keepForm_(ctx, ref, which) {
   noteLog_(ctx, fi, 'IGNORED', 'replaced by the later form in row ' + (i + 2));
   x[I['Interview Submitted At']] = second[L['Submitted At']]; x[I['Interview Log Row']] = i + 2;
   const b = ctx.binByCode[x[I.Binome]];
-  if (b) markInterviewInFile_(ctx, b, code, '✅ ' + fmt_(second[L['Submitted At']], 'dd/MM HH:mm') + ' (latest form)');
-  return 'the latest form (row ' + (i + 2) + ') counts; row ' + (fi + 2) + ' is marked IGNORED.';
+  return 'the latest form (row ' + (i + 2) + ') counts; row ' + (fi + 2) + ' is marked IGNORED' +
+    (b ? markOrAlert_(ctx, b, code, '✅ ' + fmt_(second[L['Submitted At']], 'dd/MM HH:mm') + ' (latest form)') : '') + '.';
 }
 
 /* ---------- binome sheets and files ---------- */
