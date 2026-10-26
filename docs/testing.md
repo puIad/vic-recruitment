@@ -75,7 +75,7 @@ Also: undoing an edit by hand closes its alert by itself; ticking several manual
 
 **Odd values** — in a test binome sheet, then Sync now: Interview Date `15/10/2025` → MEDIUM year typo; time `03:00` →
 INFO; a date while Contacted = "Not yet" → INFO. Correct each, then **Sync now** → closed. (The 1-minute trigger only
-re-reads a binome sheet once Drive bumps its "last updated" time, which can take several minutes; Sync now forces it.)
+re-reads a binome sheet once Drive bumps its "last updated" time, which can take several minutes; Sync now forces it, except for a sheet it read in the last 2 minutes.)
 
 **Full sheet check** — in one test binome sheet, then Check integrity, undo, check again (alert closes):
 delete a row → HIGH "missing from its sheet" (Move interviewee to that same binome puts it back); add a tab in front →

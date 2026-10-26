@@ -127,6 +127,15 @@ addRegistrations(12, 3);
 out = call('webRun', 'sync');
 assert.deepStrictEqual(out.messages, ['Everything is up to date.'], 'Sync now runs no sheet check');
 assert.deepStrictEqual(call('webRun', 'integrity', {}).messages, ['Sheet check: 7 of 7 binome sheets checked, 0 problems found.']);
+// Sync now again within FORCE_FRESH_S: only sheets Drive calls changed are read (each read is a Sheets API call, 60/min per user)
+call('webRun', 'sync');
+let apiBefore = run('__apiCalls');
+call('webRun', 'sync');
+assert.strictEqual(run('__apiCalls') - apiBefore, 0, 'a repeated Sync now reads no sheet read moments ago');
+run('__touch(loadCtx_().binomes.filter(function (b) { return b.fileId; })[0].fileId)');
+apiBefore = run('__apiCalls');
+call('webRun', 'sync');
+assert.strictEqual(run('__apiCalls') - apiBefore, 1, 'a sheet Drive calls changed is still read');
 // the prefetch's dates: a serial is wall time in the sheet's zone (the mock's +01:00)
 assert.strictEqual(run('serialDate_(46321.5, "Africa/Algiers").toISOString()'), '2026-10-26T11:00:00.000Z');
 assert.deepStrictEqual(call('webState').alerts.filter(a => /MANUAL_EDIT|INTEGRITY/.test(a.type)), [], 'the script never flags its own writes');

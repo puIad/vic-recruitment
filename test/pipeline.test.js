@@ -48,7 +48,7 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
 {
   const r = ivRows()[1], bin = r[IV.Binome], code = r[IV.Code];
   const rowOfCode = () => run(`__files[${J(fileId(bin))}].obj.sheets[0].cells`).findIndex(c => c[BFI.Code] === code) + 1;
-  run(`__files[${J(fileId(bin))}].obj.sheets[0].cells[${rowOfCode() - 1}][BFI.Contacted] = 'Yes'`);
+  run(`__files[${J(fileId(bin))}].obj.sheets[0].cells[${rowOfCode() - 1}][BFI.Contacted] = 'Yes'; __touch(${J(fileId(bin))})`); // typed: Drive's "last updated" moves
   const n = sheetRows(bin).length;
   run(`(function(){var ctx=loadCtx_(); appendToBinomeFile_(ctx, ctx.binByCode[${J(bin)}], ctx.ivByCode[${J(code)}]);})()`);
   assert.strictEqual(sheetRows(bin).length, n, 'no second row');
@@ -59,7 +59,7 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
 // 3: a code on two rows: the pull reads the first, like memberSet
 {
   const r = ivRows()[2], bin = r[IV.Binome], code = r[IV.Code];
-  run(`(function(){var c=__files[${J(fileId(bin))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}){ var d=c[i].slice(); d[BFI.Contacted]='Not yet'; c.push(d); c[i][BFI.Contacted]='Yes'; break; } })()`);
+  run(`(function(){var c=__files[${J(fileId(bin))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}){ var d=c[i].slice(); d[BFI.Contacted]='Not yet'; c.push(d); c[i][BFI.Contacted]='Yes'; break; } __touch(${J(fileId(bin))}); })()`);
   call('webRun', 'sync');
   assert.strictEqual(ivRows().find(x => x[IV.Code] === code)[IV.Contacted], 'Yes', 'first row wins');
 }
@@ -83,11 +83,11 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
   const r = ivRows().find(x => x[IV.Binome] && x[IV.Status] === 'ASSIGNED'), bin = r[IV.Binome], code = r[IV.Code];
   const day = new Date(Date.now() + 3 * 864e5);
   const dd = ('0' + day.getDate()).slice(-2) + '/' + ('0' + (day.getMonth() + 1)).slice(-2) + '/' + day.getFullYear();
-  run(`(function(){var c=__files[${J(fileId(bin))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}) { c[i][BFI['Interview Date']]=${J(dd)}; c[i][BFI['Interview Time']]=''; c[i][BFI.Contacted]='Yes'; } })()`);
+  run(`(function(){var c=__files[${J(fileId(bin))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}) { c[i][BFI['Interview Date']]=${J(dd)}; c[i][BFI['Interview Time']]=''; c[i][BFI.Contacted]='Yes'; } __touch(${J(fileId(bin))}); })()`);
   call('webRun', 'sync');
   call('webRun', 'integrity', {});
   assert.deepStrictEqual(st0().alerts.filter(a => a.type === 'ODD_VALUE' && /AM\/PM/.test(a.msg) && a.code === code), [], 'no HOUR alert without a time');
-  run(`(function(){var c=__files[${J(fileId(bin))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}) c[i][BFI['Interview Time']]='03:00'; })()`);
+  run(`(function(){var c=__files[${J(fileId(bin))}].obj.sheets[0].cells; for(var i=1;i<c.length;i++) if(c[i][BFI.Code]===${J(code)}) c[i][BFI['Interview Time']]='03:00'; __touch(${J(fileId(bin))}); })()`);
   call('webRun', 'sync'); call('webRun', 'integrity', {});
   assert(st0().alerts.some(a => a.type === 'ODD_VALUE' && /AM\/PM/.test(a.msg) && a.code === code), 'still fires for a real odd time');
 }
