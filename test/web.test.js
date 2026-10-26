@@ -260,6 +260,16 @@ assert(/Unknown code/.test(out.messages[0]));
   const fresh = call('webState').interviewees.find(x => x.name === 'Nadia Kerroum');
   assert(fresh && num(fresh.code) > num(del.code), 'a new code, not ' + del.code + ': ' + (fresh && fresh.code));
   assert(!call('webState').interviewees.some(x => x.code === del.code), 'not re-imported');
+  // an answer without an email below it is keyed by its row number: the deleted one's answer stays, and nothing comes back twice
+  run(`master.getSheetByName('Registration Responses').cells.push(regRow(new Date(), '', 'Sans', 'Mail', '', '01/03/2005', '0555999998', 'IT', 'HR'))`);
+  call('webRun', 'sync');
+  const count = () => call('webState').interviewees.length, n = count(), rows = regRows();
+  out = call('webRun', 'deleteApplication', { code: fresh.code });
+  assert(/answer stays in Registration Responses/.test(out.messages[0]), out.messages[0]);
+  assert.deepStrictEqual([regRows(), count()], [rows, n - 1], 'answer kept, interviewee gone');
+  call('webRun', 'sync');
+  const st3 = call('webState');
+  assert.deepStrictEqual([st3.interviewees.length, st3.interviewees.filter(x => x.name === 'Sans Mail').length, st3.interviewees.some(x => x.name === 'Nadia Kerroum')], [n - 1, 1, false], 'nobody imported again');
 }
 
 const ids = st.alerts.slice(0, 2).map(a => a.id);
@@ -671,7 +681,7 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   assert(n > 3, 'split in ' + n);
   for (let i = 0; i < n; i++) assert(Buffer.byteLength(run('__props.BASELINE_' + i)) <= 9216, 'chunk ' + i + ' fits');
   assert.strictEqual(J(run('loadBaseline_().iv.k399')), J({ Code: 'IT.399', Binome: 'B.01', Status: 'ASSIGNED', 'First Name': 'Éloïse Zoé', 'Family Name': 'Bénédicte', Email: 'e399@g.enp.edu.dz', 'Assigned At': '2026-10-01T08:00:00.000Z', 'Interview Submitted At': '', 'Interview Log Row': '', Screening: '' }));
-  assert.strictEqual(run('(function(){ var iv = loadBaseline_().iv; return Object.keys(iv).filter(function(k){ return iv[k] === 0; }).length; })()'), 1, 'the accepted deletion is remembered');
+  assert.strictEqual(run('(function(){ var iv = loadBaseline_().iv; return Object.keys(iv).filter(function(k){ return iv[k] === 0; }).length; })()'), 2, 'the accepted deletion and the deleted application whose answer stayed are remembered');
   run('saveBaseline_(__b0)');
   assert.deepStrictEqual([run('__props.BASELINE_N'), run('"BASELINE_" + (' + n + ' - 1) in __props')], [run('__n0'), false], 'old chunks deleted');
   call('webRun', 'sync');

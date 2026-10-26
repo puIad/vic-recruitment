@@ -127,13 +127,17 @@ function deleteApplication_(ctx, code) {
   const reg = key ? responseSheet_('REG') : null;
   if (reg && reg.getLastRow() > 1) {
     const data = reg.getDataRange().getValues(), H = regHeaders_(data[0]), get = (row, j) => (j >= 0 ? row[j] : '');
-    let found = false;
-    for (let k = data.length - 1; k >= 1 && !found; k--) {
-      const ts = get(data[k], H.ts), email = String(get(data[k], H.collected)).trim().toLowerCase() || String(get(data[k], H.typed)).trim();
-      if (ts && (responseKey_(ts, email, k + 1) === key || serialKey_(ts, email) === key)) { reg.deleteRow(k + 1); found = true; }
+    const email = row => String(get(row, H.collected)).trim().toLowerCase() || String(get(row, H.typed)).trim();
+    let at = -1;
+    for (let k = data.length - 1; k >= 1 && at < 0; k--) {
+      const ts = get(data[k], H.ts);
+      if (ts && (responseKey_(ts, email(data[k]), k + 1) === key || serialKey_(ts, email(data[k])) === key)) at = k;
     }
-    if (!found) kept.push('their answer was not found in Registration Responses');
-    else if (ctx.base) delete ctx.base.iv[key]; // nothing left to re-import: the baseline need not remember it
+    // a later answer without an email is keyed by its row number: deleting this row would shift it and import it again,
+    // so this one stays (the baseline remembers it, so it is never imported again either)
+    if (at < 0) kept.push('their answer was not found in Registration Responses');
+    else if (data.slice(at + 1).some(row => get(row, H.ts) && !email(row))) kept.push('their answer stays in Registration Responses (a later answer has no email): delete it there by hand only once no answer without an email is below it');
+    else { reg.deleteRow(at + 1); if (ctx.base) delete ctx.base.iv[key]; } // nothing left to re-import: the baseline need not remember it
   }
   const A = ctx.alerts.table.I;
   ctx.alerts.resolveWhere(x => String(x[A.Interviewee]) === code || (!!key && String(x[A.Key]).indexOf(key) >= 0), 'RESOLVED');
