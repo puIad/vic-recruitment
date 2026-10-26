@@ -140,6 +140,7 @@ function MainAction({ iv }: { iv: Interviewee }) {
 export default function IntervieweesPage() {
   const list = useVic((s) => s.state?.interviewees) ?? NONE
   const loading = useVic((s) => !s.state)
+  const showProfile = useProfile((s) => s.show)
   const [params, setParams] = useSearchParams()
   const q = params.get("q") || ""
   const setQ = (v: string) => {
@@ -183,6 +184,7 @@ export default function IntervieweesPage() {
         data={data}
         loading={loading}
         getRowId={(i) => i.code}
+        onRowClick={(i) => showProfile(i.code)}
         pageSize={25}
         initialSorting={[{ id: "code", desc: false }]}
         empty={

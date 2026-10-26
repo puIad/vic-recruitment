@@ -180,6 +180,7 @@ export function CandidatesTable({ candidates, fromSheet, onOpen, member }: { can
       columns={cols}
       data={data}
       getRowId={(c) => cellText(c.Code)}
+      onRowClick={(c) => onOpen(cellText(c.Code))}
       pageSize={25}
       initialSorting={[{ id: "Code", desc: false }]}
       initialVisibility={HIDDEN}

@@ -34,6 +34,8 @@ interface DataTableProps<TData, TValue> {
   pageSize?: number
   /** a stable id per row (default: index), so selection survives refreshes */
   getRowId?: (row: TData) => string
+  /** a tap anywhere on a row (outside its buttons, links and inputs) */
+  onRowClick?: (row: TData) => void
 }
 
 /** The template's data table (TanStack): sorting, faceted filters, column visibility, pagination. Generic over the row type. */
@@ -47,6 +49,7 @@ export function DataTable<TData, TValue>({
   initialVisibility = {},
   pageSize = 10,
   getRowId,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(initialVisibility)
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -107,7 +110,20 @@ export function DataTable<TData, TValue>({
               ))
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && "selected"}>
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                  onClick={
+                    onRowClick &&
+                    ((e) => {
+                      // a control inside the row keeps its own action; a text selection is not a tap
+                      if ((e.target as HTMLElement).closest("button, a, input, select, textarea, label, [role=checkbox], [role=menuitem]")) return
+                      if (window.getSelection()?.toString()) return
+                      onRowClick(row.original)
+                    })
+                  }
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</TableCell>
                   ))}
