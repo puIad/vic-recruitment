@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useConfirm } from "./confirm"
 import { useVic } from "./store"
-import { acceptAlerts } from "./pending"
+import { acceptAlerts, acceptFix } from "./pending"
 import type { Alert, MailDraft, QuickOut, RepairKind } from "./types"
 
 /**
@@ -140,7 +140,7 @@ export function useQuick() {
         }
         return q("edit", [a.id], { values }, `Fix ${name(a)}`)
       },
-      setCell: (a: Alert, args: { contacted?: string; date?: string; time?: string }) => q("setCell", [a.id], args, `Fix ${a.code}`),
+      setCell: async (a: Alert, args: { contacted?: string; date?: string; time?: string }) => ((await acceptFix(a, args)) ? pending([a.id]) : q("setCell", [a.id], args, `Fix ${a.code}`)),
       exclude: (a: Alert) => q("exclude", [a.id], {}, "Exclude"),
       pickCandidate: (a: Alert, code: string) => q("pickCandidate", [a.id], { code }, `Link the form to ${code}`),
 

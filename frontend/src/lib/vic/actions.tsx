@@ -202,6 +202,8 @@ export function useActions() {
         return !!out
       },
       async teamSet(email: string, experienced: boolean) {
+        // a pending change when the owner's switch is on: the pill shows it at once and the next click needs no wait
+        if ((await useVic.getState().accept([{ kind: "team", email, value: experienced, seen: !experienced, at: Date.now() }])) === "ok") return true
         const out = await go("teamSet", { email, experienced }, experienced ? "Mark experienced" : "Mark new")
         await refresh(true)
         return !!out

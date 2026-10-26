@@ -169,11 +169,11 @@ function AlertsBell() {
 function SyncButton() {
   const { sync } = useActions()
   const busy = useVic((s) => s.busy)
-  const action = useVic((s) => s.busyAction)
+  const syncing = useVic((s) => s.jobs.some((j) => j.action === "sync"))
   return (
-    <Button onClick={sync} disabled={busy} title="Sync the forms into the sheets now" className="shadow-xs">
-      {busy && action === "sync" ? <Spinner /> : <RefreshCw />}
-      <span className="hidden sm:inline">{busy && action === "sync" ? "Syncing…" : "Sync now"}</span>
+    <Button onClick={sync} disabled={busy || syncing} title="Sync the forms into the sheets now" className="shadow-xs">
+      {syncing ? <Spinner /> : <RefreshCw />}
+      <span className="hidden sm:inline">{syncing ? "Syncing…" : "Sync now"}</span>
     </Button>
   )
 }

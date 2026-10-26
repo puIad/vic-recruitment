@@ -363,7 +363,7 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
   const state = useVic((s) => s.state)
   const testMode = useVic((s) => s.state?.settings.testMode)
   const busy = useVic((s) => s.busy)
-  const action = useVic((s) => s.busyAction)
+  const jobs = useVic((s) => s.jobs), runs = (a: string) => jobs.some((j) => j.action === a)
   const accepting = useVic((s) => s.accepting > 0)
   const over = useSettingsView()
   const { saveSettings } = useActions()
@@ -488,7 +488,7 @@ export function SettingsPage({ group, top, slots, extra }: { group: SettingsGrou
             Discard
           </Button>
           <Button disabled={!dirty || busy || accepting || Object.entries(edits).some(([k, v]) => mailProblemFor(k, v, state?.mails))} onClick={() => commit(edits)}>
-            {busy && action === "saveSettings" && <Spinner />} Save changes
+            {runs("saveSettings") && <Spinner />} Save changes
           </Button>
         </div>
       </div>

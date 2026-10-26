@@ -38,7 +38,7 @@ export default function AlertsPage() {
   const { alerts, muted, counts, marks } = useAlertView()
   const loading = useVic((s) => !s.state)
   const busy = useVic((s) => s.busy)
-  const action = useVic((s) => s.busyAction)
+  const jobs = useVic((s) => s.jobs), runs = (a: string) => jobs.some((j) => j.action === a)
   const { resolve, editAccept } = useActions()
   const quick = useQuick()
   const isMobile = useIsMobile()
@@ -217,11 +217,11 @@ export default function AlertsPage() {
           {picked.length > 0 && <SnoozeMenu alerts={picked} onDone={clear} />}
           {editCount > 0 && (!picked.length || selectedEdits.length > 0) && (
             <Button size="sm" variant="outline" disabled={busy || !selectedEdits.length} onClick={async () => { if (await editAccept(selectedEdits.map((a) => a.id))) setSelected(new Set()) }} title="Take the selected manual edits as they are now">
-              {busy && action === "editAccept" ? <Spinner /> : <CheckCheck />} Accept edits
+              {runs("editAccept") ? <Spinner /> : <CheckCheck />} Accept edits
             </Button>
           )}
           <Button size="sm" disabled={busy || !selected.size} onClick={async () => { if (await resolve(Array.from(selected))) setSelected(new Set()) }}>
-            {busy && action === "resolve" ? <Spinner /> : <CircleCheck />} Mark resolved
+            {runs("resolve") ? <Spinner /> : <CircleCheck />} Mark resolved
           </Button>
             </>
           )}

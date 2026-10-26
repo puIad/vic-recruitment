@@ -27,7 +27,7 @@ const NOW_LABEL: Record<string, string> = { none: "No access", view: "Can view",
 export function AccessDialog({ binome, onClose }: { binome: Binome | null; onClose: () => void }) {
   const run = useVic((s) => s.run)
   const refresh = useVic((s) => s.refresh)
-  const busy = useVic((s) => s.busy)
+  const busy = useVic((s) => s.busy || s.jobs.some((j) => j.action === "binomeAccess"))
   const [live, setLive] = React.useState<BinomeAccessOut | null>(null)
   const [error, setError] = React.useState("")
   const [pick, setPick] = React.useState<AccessLevel | null>(null)

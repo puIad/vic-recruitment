@@ -123,10 +123,12 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
   `SETTINGS_DEFAULTS`.
 - Tokens never reach browser JS and are never logged.
 - **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions; [slice 3](plans.md#slice-3-save-settings-and-my-binome-fields):
-  Save settings for admins and My binome fields for members). Off until
+  Save settings for admins and My binome fields for members; since 2026-10-26 also an admin's Experienced tick on the
+  Pairing panel and the alerts' Fix of Contacted or the interview date and time). Off until
   the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message (a sign-in still deletes its `pcr:` key).
   - The accept step in `api/run.js` refreshes the token when under 30 min is left, writes the author's Redis record first
-    (hash `pc:<email>`, one field per cell: `alert:<id>`, `setting:<key>`, `field:<code>:<column>`), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
+    (hash `pc:<email>`, one field per cell: `alert:<id>`, `setting:<key>`, `field:<code>:<column>`, `team:<email>`,
+    `bfield:<code>:<column>`), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
     carrying `seal({email, at, ate})` and the change ids. The token is never in Redis or the logs. Either write failing =
     that save is a direct write (code `DIRECT`); another change format = code `FORMAT` (the page asks for a reload).
   - The consumer `api/apply.js` (`experimentalTriggers` queue/v2beta in `vercel.json`, no max concurrency: it would count
@@ -150,6 +152,16 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
     first install in Frankfurt), connected to this project only. Env vars `KV_REST_API_URL` / `KV_REST_API_TOKEN` (the
     code also takes `UPSTASH_REDIS_REST_*`). The record only ever adds fields: every deployment shares it.
   - A bad script deploy: `npm run rollback -- <version>` (only versions named "apply entry").
+  - Added 2026-10-26: `team` (the Team tab's Experienced cell, then the draft notes, as `teamSet_`) and `bfield` (Contacted,
+    Interview Date or Interview Time in any binome sheet, the cells `setCell_` writes; the Master takes them at the next sync,
+    which reads that sheet). A Fix sends its cells and the alert's Resolve in one accept step. Their drops have no row of
+    their own, so the drops dialog asks about them. The other newer actions (screening approve / decline / restore, delete,
+    department change, pairing, the interview form) stay direct writes: they place candidates, send emails or move rows.
+- **One write at a time, in the tab** (`run` in `frontend/src/lib/vic/store.ts`): a direct write no longer grays out the page.
+  Each click waits its turn in `jobs` and goes to the script after the one before it (the script would take them in turn
+  anyway); read-only calls (previews, links, Lock check) run beside the line, and the same click again while it waits is
+  the same run. Only Import team, Lock, Draw / Redraw, Reset and Setup still gray out everything while they run. The
+  "leave site?" warning holds while a click still waits.
 
 ## Still open
 

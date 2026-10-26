@@ -1,6 +1,8 @@
 // Pending changes (docs/plans.md › Slices 2 to 4): the author's record in Upstash Redis, the accept step and the queue publish.
-// Record = hash pc:<email>, one field per cell ("alert:A-0012", "setting:DIGEST_HOUR", "field:IT.12:Rating"), each a JSON entry:
-//   {id, cell, kind (alert | setting | field), alert?, op?, until? (alerts), key? (settings), code?, field? (My binome),
+// Record = hash pc:<email>, one field per cell ("alert:A-0012", "setting:DIGEST_HOUR", "field:IT.12:Rating", "team:<email>",
+// "bfield:IT.12:Contacted"), each a JSON entry:
+//   {id, cell, kind (alert | setting | field | team | bfield), alert?, op?, until? (alerts), key? (settings), code?, field? (My binome
+//    and bfield), email? (team: the member), binome? (bfield),
 //    value (what the author wants), seen (what their screen showed), at (the click),
 //    state: pending | applied | met | dropped, by (apply-by = the sealed token's end), wrote? (Google's write or check
 //    time), sheet? (the sheet's value on a drop), reason?, again? (Apply mine anyway offered), droppedAt?, shown?,
@@ -72,16 +74,22 @@ function save(email, entries, gone) {
 }
 
 const GOLD = ['Contacted', 'Interview Date', 'Interview Time', 'Interview Done', 'Rating', 'Final Affectation', 'Notes']; // BF_EDITABLE
+const ADMIN_GOLD = ['Contacted', 'Interview Date', 'Interview Time']; // ADMIN_FIELDS: what the alerts' Fix writes in a binome sheet
 const scalar = v => typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.length <= 2100);
 /** A change as the page sends it, with at (the click) and built? (its snapshot's build time):
- *  {kind: 'alert', alert, op, seen, until?} · {kind: 'setting', key, value, seen} · {kind: 'field', code, field, value, seen}.
+ *  {kind: 'alert', alert, op, seen, until?} · {kind: 'setting', key, value, seen} · {kind: 'field', code, field, value, seen} ·
+ *  {kind: 'team', email, value, seen} (both booleans) · {kind: 'bfield', binome, code, field, value, seen}.
  *  The page is not trusted for more than that: the script checks every value again. */
 const valid = c => !!c && Number.isFinite(c.at) && (
   c.kind === 'alert' ? !!VALUE[c.op] && /^A-\d{1,7}$/.test(String(c.alert)) && SHOWN.indexOf(c.seen) >= 0 &&
     (c.op !== 'snooze' || (Number.isFinite(c.until) && c.until > c.at))
   : c.kind === 'setting' ? /^[A-Z][A-Z0-9_]{0,40}$/.test(String(c.key)) && scalar(c.value) && scalar(c.seen)
-  : c.kind === 'field' && /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(c.code)) && GOLD.indexOf(c.field) >= 0 && scalar(c.value) && scalar(c.seen));
-const cellOf = c => (c.kind === 'alert' ? 'alert:' + c.alert : c.kind === 'setting' ? 'setting:' + c.key : 'field:' + c.code + ':' + c.field);
+  : c.kind === 'field' ? /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(c.code)) && GOLD.indexOf(c.field) >= 0 && scalar(c.value) && scalar(c.seen)
+  : c.kind === 'team' ? /^[^\s@:]{1,80}@[^\s@:]{1,80}$/.test(String(c.email)) && typeof c.value === 'boolean' && typeof c.seen === 'boolean'
+  : c.kind === 'bfield' && /^B\.\d{2,3}$/.test(String(c.binome)) && /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(c.code)) && ADMIN_GOLD.indexOf(c.field) >= 0 &&
+    scalar(c.value) && scalar(c.seen));
+const cellOf = c => (c.kind === 'alert' ? 'alert:' + c.alert : c.kind === 'setting' ? 'setting:' + c.key : c.kind === 'team' ? 'team:' + String(c.email).toLowerCase()
+  : (c.kind === 'bfield' ? 'bfield:' : 'field:') + c.code + ':' + c.field);
 const valueOf = c => (c.kind === 'alert' ? VALUE[c.op] : c.value);
 const same = (a, b) => String(a) === String(b); // the page's values: Rating 7.5 or "7.5", Done true or "true"
 
@@ -111,7 +119,8 @@ async function accept(s, changes, now) {
     if (c.kind === 'alert' && seen === 'RESOLVED') return; // their own Resolve closed it: any action on a closed alert is already met (issue 50)
     const base = { id: crypto.randomUUID(), cell: cell, kind: c.kind, value: value, seen: seen, at: c.at, state: 'pending', by: s.ate };
     writes[cell] = Object.assign(base, c.kind === 'alert' ? { alert: String(c.alert), op: c.op, until: c.op === 'snooze' ? c.until : undefined }
-      : c.kind === 'setting' ? { key: c.key } : { code: c.code, field: c.field });
+      : c.kind === 'setting' ? { key: c.key } : c.kind === 'team' ? { email: String(c.email).toLowerCase() }
+      : c.kind === 'bfield' ? { binome: c.binome, code: c.code, field: c.field } : { code: c.code, field: c.field });
   });
   // expired cells go here, inside the read-then-write the accept already has (a pulse never deletes)
   const gone = expired.filter(c => !writes[c]), ids = Object.keys(writes).map(c => writes[c].id);
@@ -176,7 +185,7 @@ async function forSync(mailed, now) {
     out.open.push(email);
     const due = drops.filter(e => !e.shown && !e.mailed && now - (e.droppedAt || e.at) >= AWAY_MS);
     if (due.length) out.mail.push({ email, drops: due.map(e => ({ cell: e.cell, kind: e.kind, alert: e.alert, op: e.op, until: e.until, key: e.key,
-      code: e.code, field: e.field, value: e.value, seen: e.seen, sheet: e.sheet, reason: e.reason, at: e.at })) });
+      code: e.code, field: e.field, email: e.email, binome: e.binome, value: e.value, seen: e.seen, sheet: e.sheet, reason: e.reason, at: e.at })) });
     if (drops.some(e => (e.shown && now - Math.max(e.shown, e.seenAt || 0) >= AWAY_MS) || (e.mailed && now - e.mailed >= ANSWER_MS))) out.alert.push(email);
   });
   await Promise.all(writes);

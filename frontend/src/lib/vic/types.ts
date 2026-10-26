@@ -87,7 +87,7 @@ export interface AppView {
 
 export type QuickInfo =
   | { kind: "reg"; iv: RegView; old?: RegView; app?: AppView }
-  | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean; atMs?: number }
+  | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean; atMs?: number; dateText?: string; timeText?: string }
   | { kind: "log"; check: string; form: FormView; first?: FormView }
   | { kind: "integ"; check: string; subject: string; repair: RepairKind }
   | { kind: "member"; email: string }
@@ -585,7 +585,24 @@ export interface FieldEntry extends EntryBase {
   value: CellValue
   seen: CellValue
 }
-export type PendingEntry = AlertEntry | SettingEntry | FieldEntry
+/** An admin's Experienced tick of one Team member */
+export interface TeamEntry extends EntryBase {
+  kind: "team"
+  email: string
+  value: boolean
+  seen: boolean
+}
+export type AdminGoldKey = "Contacted" | "Interview Date" | "Interview Time"
+/** An admin's Fix of Contacted or the interview date / time, in that binome's sheet */
+export interface BFieldEntry extends EntryBase {
+  kind: "bfield"
+  binome: string
+  code: string
+  field: AdminGoldKey
+  value: CellValue
+  seen: CellValue
+}
+export type PendingEntry = AlertEntry | SettingEntry | FieldEntry | TeamEntry | BFieldEntry
 /** cell → entry */
 export type PendingRec = Record<string, PendingEntry>
 /** A change as the page sends it to the accept step. built = its snapshot's build time (admins). */
@@ -593,3 +610,5 @@ export type PendingChange =
   | { kind: "alert"; alert: string; op: AlertEntry["op"]; seen: AlertEntry["seen"]; at: number; until?: number; built?: number }
   | { kind: "setting"; key: string; value: CellValue; seen: CellValue; at: number; built?: number }
   | { kind: "field"; code: string; field: GoldKey; value: CellValue; seen: CellValue; at: number }
+  | { kind: "team"; email: string; value: boolean; seen: boolean; at: number }
+  | { kind: "bfield"; binome: string; code: string; field: AdminGoldKey; value: CellValue; seen: CellValue; at: number }
