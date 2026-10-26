@@ -23,22 +23,25 @@ function pullBinomeFiles_(ctx, force) {
   files.filter(b => unchanged(b) && ctx.now.getTime() - (readAt[b.fileId] || 0) > REREAD_MINUTES * 60000)
     .sort((a, b) => (readAt[a.fileId] || 0) - (readAt[b.fileId] || 0)).slice(0, REREAD_MAX).forEach(b => { reread[b.fileId] = true; });
   ctx.opened = {}; // binome code -> why its sheet was opened this run (logged by runCycle_)
-  files.forEach(b => {
-    const lu = updated[b.fileId];
-    if (unchanged(b) && !upgrade[b.fileId] && !reread[b.fileId]) return;
+  const toRead = files.filter(b => !unchanged(b) || upgrade[b.fileId] || reread[b.fileId]);
+  let pre = {};
+  try { pre = prefetchBinomeFiles_(ctx, toRead); } catch (e) { console.warn('Prefetch failed, opening the sheets one by one: ' + e); }
+  toRead.forEach(b => {
+    const lu = updated[b.fileId], p = pre[b.fileId];
     // rebuilding a first-layout sheet takes seconds: at most UPGRADE_PER_RUN per run, the rest wait for the next ones
-    if (!seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
+    if (!p && !seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
     ctx.opened[b.code] = force ? 'forced' : edited(b) ? 'edited' : upgrade[b.fileId] ? 'upgrade' : reread[b.fileId] ? 'reread' : 'changed';
-    const readFrom = Date.now();
-    let sh;
-    try { sh = binomeSheet_(ctx, b); } catch (e) {
-      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: b.code, msg: 'Cannot open the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code });
-      return;
+    const readFrom = p ? p.at : Date.now(); // a prefetched sheet was read as of the fetch: a save after it stays dirty
+    let sh = null, vals = [], disp = [];
+    if (p) { vals = p.vals; disp = p.disp; } else {
+      try { sh = binomeSheet_(ctx, b); } catch (e) {
+        ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', binome: b.code, msg: 'Cannot open the file of ' + b.code + ': ' + e, key: 'FILE|' + b.code });
+        return;
+      }
+      const n = bfLastRow_(sh);
+      if (n >= 2) { const rng = sh.getRange(2, BF_COL, n - 1, BF_H.length); vals = rng.getValues(); disp = rng.getDisplayValues(); }
     }
-    const n = bfLastRow_(sh);
-    if (n >= 2) {
-      const rng = sh.getRange(2, BF_COL, n - 1, BF_H.length);
-      const vals = rng.getValues(), disp = rng.getDisplayValues();
+    if (vals.length) {
       const read = {};
       vals.forEach((v, k) => {
         const code = String(v[F.Code]).trim();
@@ -62,14 +65,58 @@ function pullBinomeFiles_(ctx, force) {
     (ctx.readAt = ctx.readAt || {})[b.code] = readFrom; // publishBins_: this sheet is read as of now, whatever the answers read does
     // a dashboard save marks its binome dirty: its interview forms are read too (Sync now reads every sheet's)
     let answers = true;
-    if (edited(b) || force) try { syncAnswers_(ctx, b, sh.getParent()); } catch (e) { answers = false; console.warn('Interview Answers of ' + b.code + ': ' + e); }
+    if (edited(b) || force) try { syncAnswers_(ctx, b, sh && sh.getParent(), p && p.ia); } catch (e) { answers = false; console.warn('Interview Answers of ' + b.code + ': ' + e); }
     // read: the mark goes, unless a member wrote again after the read started (then the next run reads it again)
     if (edited(b) && answers) { const t = Number(cache.get('dirty:' + b.code) || 0); if (t && t <= readFrom) cache.remove('dirty:' + b.code); }
     seen[b.fileId] = lu || ctx.now.getTime();
-    if (bfLayout_(sh) === 'v2') seen['v2|' + b.fileId] = 1;
+    if (p || bfLayout_(sh) === 'v2') seen['v2|' + b.fileId] = 1;
     readAt[b.fileId] = ctx.now.getTime();
   });
   props.setProperties({ FILE_SEEN: JSON.stringify(seen), FILE_READ: JSON.stringify(readAt) });
+}
+
+/** The binome sheets of list read in one parallel round of Sheets API calls (opened one by one, 32 sheets took ~36 s):
+ *  fileId -> {at (when the fetch started), vals, disp (rows 2+ of the main tab from column BF_COL, as getValues / getDisplayValues), ia (Interview Answers
+ *  rows 2+, Submitted At / Edited At as Dates)}. A sheet left out (API error, not the current layout, a rebuild to finish)
+ *  is opened the usual way. ctx.pre: what it did, for the cycle line. */
+function prefetchBinomeFiles_(ctx, list) {
+  const out = {}, t0 = Date.now(), codes = {};
+  if (!list.length) return out;
+  const fields = 'properties.timeZone,sheets(properties.title,data.rowData.values(effectiveValue,formattedValue))', token = ScriptApp.getOAuthToken();
+  const res = UrlFetchApp.fetchAll(list.map(b => ({ url: 'https://sheets.googleapis.com/v4/spreadsheets/' + b.fileId + '?includeGridData=true&fields=' +
+    encodeURIComponent(fields), headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true })));
+  // cells c..c+w-1 of each row: v as getValues (a date is its serial number), d as getDisplayValues
+  const rows = (s, c, w) => ((s.data && s.data[0] && s.data[0].rowData) || []).map(r => {
+    const v = [], d = [];
+    for (let j = c; j < c + w; j++) {
+      const x = (r.values || [])[j] || {}, e = x.effectiveValue || {};
+      v.push('numberValue' in e ? e.numberValue : 'boolValue' in e ? e.boolValue : 'stringValue' in e ? e.stringValue : x.formattedValue || '');
+      d.push(x.formattedValue || '');
+    }
+    return { v: v, d: d };
+  });
+  list.forEach((b, i) => {
+    const code = res[i].getResponseCode();
+    codes[code] = (codes[code] || 0) + 1;
+    if (code !== 200) return;
+    const j = JSON.parse(res[i].getContentText()), tabs = j.sheets || [], title = s => s.properties.title;
+    if (!tabs.length || tabs.some(s => title(s).slice(-BF_BACKUP.length) === BF_BACKUP)) return;
+    const main = rows(tabs[0], BF_COL - 1, BF_H.length);
+    if (!main.length || main[0].d.map(x => x.trim()).join('|') !== BF_HEAD.join('|')) return; // not 'v2': binomeSheet_ deals with it
+    const tab = tabs.filter(s => title(s) === IA_TAB)[0], tz = j.properties.timeZone;
+    out[b.fileId] = { at: t0, vals: main.slice(1).map(r => r.v), disp: main.slice(1).map(r => r.d),
+      ia: tab ? rows(tab, 0, IA_H.length).slice(1).map(r => r.v.map((x, c) => (c === 2 || c === 4) && typeof x === 'number' ? serialDate_(x, tz) : x)) : [] };
+  });
+  ctx.pre = { asked: list.length, read: Object.keys(out).length, http: codes, ms: Date.now() - t0 };
+  return out;
+}
+
+/** A sheet's date-time serial (days since 30/12/1899, wall time in the sheet's time zone tz) as a Date. */
+function serialDate_(x, tz) {
+  const wall = Math.round((x - 25569) * 864e5);
+  const off = d => { const m = Utilities.formatDate(d, tz, 'XXX').match(/([+-])(\d\d):(\d\d)/); return m ? (m[1] === '-' ? -1 : 1) * (m[2] * 60 + +m[3]) * 6e4 : 0; };
+  const d = new Date(wall - off(new Date(wall)));
+  return new Date(wall - off(d)); // again from the guess: right across a DST change
 }
 
 function statusOf_(ctx, r) {
@@ -264,7 +311,7 @@ function runCycle_(opts) {
     return ctx;
   }, opts.wait || 30000); outcome = ctx ? 'ok' : 'busy'; } finally {
     console.log(JSON.stringify(Object.assign({ at: 'cycle', kind: opts.kind || 'other', outcome: outcome }, T,
-      { total: Date.now() - t0, lockWait: _lockWait, opened: (loaded && loaded.opened) || {}, snapT: _snapT, mailsSent: _mailsSent })));
+      { total: Date.now() - t0, lockWait: _lockWait, opened: (loaded && loaded.opened) || {}, pre: (loaded && loaded.pre) || null, snapT: _snapT, mailsSent: _mailsSent })));
   }
   return ctx;
 }
