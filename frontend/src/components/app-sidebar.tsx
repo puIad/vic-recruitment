@@ -26,6 +26,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { adminNav, memberNavGroups } from "@/config/nav"
 import { useTour } from "@/components/tour/use-tour"
 import { useVic } from "@/lib/vic/store"
+import { cn } from "@/lib/utils"
 
 /** The Google files the old sidebar linked to (Master, both forms, the binome folder): one collapsed row, four links inside. */
 function GoogleFiles() {
@@ -97,9 +98,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const member = useVic((s) => s.gate.mode === "member")
   const inBinome = useVic((s) => !!s.member)
   const { running } = useTour()
+  // on a desktop the pinned toggle (site-header) sits in this corner: the logo starts below it
+  const pinned = props.side !== "right" && props.collapsible !== "none"
   return (
     <Sidebar modal={!running} {...props}>
-      <SidebarHeader className="px-4 pt-5 pb-3">
+      <SidebarHeader className={cn("px-4 pt-5 pb-3", pinned && "md:pt-12")}>
         <SidebarMenu>
           <SidebarMenuItem>
             <Link to="/" aria-label={member ? "VIC Recruitment 2026: My binome" : "VIC Recruitment 2026: Overview"} className="block rounded-lg outline-offset-4">
