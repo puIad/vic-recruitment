@@ -609,8 +609,8 @@ function locateAlert_(id, target) {
   if (target === 'form' && ref.kind === 'reg') {
     const sh = responseSheet_('REG'), data = sh.getDataRange().getValues(), H = regHeaders_(data[0]), get = (row, i) => (i >= 0 ? row[i] : '');
     for (let k = 1; k < data.length; k++) {
-      const ts = get(data[k], H.ts);
-      if (ts && responseKey_(ts, String(get(data[k], H.collected)).trim().toLowerCase() || String(get(data[k], H.typed)).trim(), k + 1) === ref.rk) return at(sh, k + 1, 1);
+      const ts = get(data[k], H.ts), email = String(get(data[k], H.collected)).trim().toLowerCase() || String(get(data[k], H.typed)).trim();
+      if (ts && (responseKey_(ts, email, k + 1) === ref.rk || serialKey_(ts, email) === ref.rk)) return at(sh, k + 1, 1); // serial: imported before keyTime_
     }
     throw new Error('their answer is not in Registration Responses any more.');
   }

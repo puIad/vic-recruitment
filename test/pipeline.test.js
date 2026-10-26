@@ -105,12 +105,23 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
   const mine = ivRows().filter(r => r[IV.Email] === 'serial.it@g.enp.edu.dz');
   assert.strictEqual(mine.length, 1, 'once, after the cell turns into a date: ' + J(mine.map(r => r[IV['Response Key']])));
   assert.strictEqual(String(mine[0][IV['Response Key']]), ms + '|serial.it@g.enp.edu.dz', 'keyed by the moment, in ms');
-  // a row imported before the fix holds the serial as its key: still the same registration once the cell is a date
-  const legacy = String(serial) + '|serial.it@g.enp.edu.dz';
-  run(`(function(){var c=master.getSheetByName('Interviewees').cells; for(var i=1;i<c.length;i++) if(c[i][${IV.Email}]==='serial.it@g.enp.edu.dz') c[i][${IV['Response Key']}]=${J(legacy)};})()`);
+  // a registration imported before the fix (keyTime_ as it was) holds the serial as its key, in the row and the baseline
+  const legacy = String(serial + 1) + '|legacy.it@g.enp.edu.dz', keys = () => J(ivRows().filter(r => r[IV.Email] === 'legacy.it@g.enp.edu.dz').map(r => String(r[IV['Response Key']])));
+  run(`var __keyTime = keyTime_; keyTime_ = function (ts) { return ts instanceof Date ? ts.getTime() : String(ts); }`);
+  run(`(function(){var reg=master.getSheetByName('Registration Responses'); reg.cells.push(regRow(${serial + 1}, 'legacy.it@g.enp.edu.dz','Legacy','It','legacy.it@g.enp.edu.dz','01/03/2005','0555777003','IT','HR'));})()`);
   call('webRun', 'sync');
-  const again = ivRows().filter(r => r[IV.Email] === 'serial.it@g.enp.edu.dz');
-  assert.strictEqual(J(again.map(r => String(r[IV['Response Key']]))), J([legacy]),'the serial-keyed row is recognised, no second import');
+  run('keyTime_ = __keyTime');
+  assert.strictEqual(keys(), J([legacy]), 'imported under its serial, as before the fix');
+  // still the same registration while its cell reads as the number, and once it is a date
+  call('webRun', 'sync');
+  assert.strictEqual(keys(), J([legacy]), 'the serial-keyed row is recognised while its cell is a number');
+  run(`(function(){var c=master.getSheetByName('Registration Responses').cells; c[c.length-1][0]=new Date(${ms + 864e5});})()`);
+  call('webRun', 'sync');
+  assert.strictEqual(keys(), J([legacy]), 'the serial-keyed row is recognised once its cell is a date');
+  // deleted by hand, it stays aside (MANUAL_EDIT) instead of coming back with a new code
+  run(`(function(){var c=master.getSheetByName('Interviewees').cells; for(var i=c.length-1;i>0;i--) if(c[i][${IV.Email}]==='legacy.it@g.enp.edu.dz') c.splice(i,1);})()`);
+  call('webRun', 'sync');
+  assert.strictEqual(keys(), J([]), 'a serial-keyed row deleted by hand is not imported again');
 }
 
 console.log('pipeline OK');

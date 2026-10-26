@@ -68,11 +68,13 @@ function responseKey_(ts, email, r) {
   return keyTime_(ts) + '|' + String(email || '').trim().toLowerCase() + (email ? '' : '|r' + r);
 }
 
-/** The key a registration got before keyTime_, while its cell still read as the serial: the same float the /apply form
- *  writes (VIC-ENP sheetSerial), so rows imported that way are still known. '' without an email (those keys hold the row). */
+/** The key a registration got before keyTime_, while its cell read as the serial: that number, or for a cell that is a
+ *  Date by now the same float the /apply form wrote (VIC-ENP sheetSerial), so rows imported that way are still known.
+ *  '' without an email (those keys hold the row). */
 function serialKey_(ts, email) {
-  if (!(ts instanceof Date) || !email) return '';
-  return String((ts.getTime() + tzOffsetMs_(ts)) / 864e5 + 25569) + '|' + String(email).trim().toLowerCase();
+  if (!email || !(ts instanceof Date || typeof ts === 'number')) return '';
+  const serial = typeof ts === 'number' ? ts : (ts.getTime() + tzOffsetMs_(ts)) / 864e5 + 25569;
+  return String(serial) + '|' + String(email).trim().toLowerCase();
 }
 
 function loads_(ctx) {
@@ -135,7 +137,8 @@ function processRegistrations_(ctx) {
     const typed = String(get(row, H.typed)).trim();
     let key = responseKey_(ts, collected || typed, r + 1);
     const old = ctx.ivKeys[key] ? '' : serialKey_(ts, collected || typed);
-    if (old && ctx.ivKeys[old]) key = old; // imported under its serial (before 2026-10-26's fix): the same registration
+    // imported under its serial (before 2026-10-26's fix): the same registration, whether its row is there, deleted by hand or being restored
+    if (old && (ctx.ivKeys[old] || (ctx.restore ? ctx.restore[old] : ctx.base && old in ctx.base.iv))) key = old;
     if (ctx.ivKeys[key]) {
       // rows imported before these columns existed (or with one cleared) get the blank ones from the registration
       const x = byKey[key];
