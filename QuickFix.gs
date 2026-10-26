@@ -274,7 +274,15 @@ function quickEdit_(ctx, x, values) {
     where = assignRow_(ctx, x) ? '; assigned to ' + x[I.Binome] + ' as ' + x[I.Code]
       : '; still waiting for a binome (' + (bool_(S_().ASSIGNMENTS_OPEN) ? 'no ACTIVE binome takes ' + v['1st Choice'] : 'assignments are closed') + ')';
     indexCtx_(ctx);
-  } else where = refreshFileRow_(ctx, x);
+  } else {
+    // the Master keeps the change either way (the caller saves it): a sheet that refuses it is said, never a failure of the edit
+    try { where = refreshFileRow_(ctx, x); } catch (e) {
+      const b = String(x[I.Binome]);
+      where = ', but not written into the sheet of ' + b + ' (an alert says so)';
+      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: String(x[I.Code]), binome: b, key: '',
+        msg: ivLabel_(ctx, x) + ': ' + what + ' saved in the Master but not written into the sheet of ' + b + ' (' + e.message + '). Type it there by hand.' });
+    }
+  }
   return ivLabel_(ctx, x) + ': ' + what + where + '.';
 }
 
@@ -360,7 +368,12 @@ function pickCandidate_(ctx, ref, codeText) {
   if (x[I['Interview Submitted At']]) return 'form linked to ' + code + ', who already had a form (Interview Log row ' + x[I['Interview Log Row']] + '): that first one still counts.';
   x[I['Interview Submitted At']] = row[L['Submitted At']]; x[I['Interview Log Row']] = i + 2; x[I.Status] = ST.INTERVIEWED;
   const b = ctx.binByCode[x[I.Binome]];
-  if (b) markInterviewInFile_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)');
+  // the link is saved either way: a sheet that refuses the mark raises the alert whose Repair writes it again (as logInterview_)
+  if (b) try { markInterviewInFile_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)'); } catch (e) {
+    ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: code, binome: b.code, key: 'FILE|' + b.code + '|' + code,
+      msg: 'Cannot mark ' + code + ' in the file of ' + b.code + ': ' + e.message });
+    return 'form linked to ' + code + ', now interviewed; the mark in the sheet of ' + b.code + ' failed (an alert lets you retry it).';
+  }
   return 'form linked to ' + code + ', now interviewed.';
 }
 

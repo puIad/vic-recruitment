@@ -11,9 +11,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useConfirm } from "@/lib/vic/confirm"
+import { useVic } from "@/lib/vic/store"
 import { SHEET_LABEL, STAGES, STATUS_COLOR, STATUS_LABEL, cellText, fullName, sheetTime } from "@/lib/vic/format"
 import { GOLD_KEYS, type Candidate, type GoldKey, type MemberState, type SheetKey } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
+import { dropDrafts } from "./gold-drafts"
 import { GoldField, GoldForm } from "./gold-fields"
 import { InterviewAction } from "./interview-action"
 
@@ -251,6 +253,7 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
 
   // closing with unsaved fields asks first: they would be lost
   const confirm = useConfirm()
+  const binome = useVic((s) => s.member?.binome ?? "")
   const unsaved = React.useRef(0)
   const onDirty = React.useCallback((n: number) => void (unsaved.current = n), [])
   async function close() {
@@ -265,6 +268,7 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
       }))
     )
       return
+    if (n && c) dropDrafts(binome, cellText(c.Code)) // discarded: the drafts kept in this browser go too
     unsaved.current = 0
     onClose()
   }

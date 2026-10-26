@@ -91,6 +91,11 @@ let polling = false
 /** refresh() calls in flight and the newest one's number: only the newest result is applied, and checkPulse waits for none */
 let inflight = 0
 let refreshSeq = 0
+/** refreshes up to this number started before a direct write of this page: their slice misses it, so they are dropped */
+let staleUpTo = 0
+/** failed live refreshes in a row and when the next may run: a lasting failure backs off instead of a full read every tick */
+let failStreak = 0
+let retryAt = 0
 let polls = 0
 /** the next pulse reads the record (the tab came back into view) */
 let wantRec = true
@@ -168,7 +173,10 @@ export const useVic = create<VicStore>((set, get) => ({
       // the record is read when this visit starts or returns, or while changes are pending; a later refresh keeps the one it has
       const rec = hasPending(get().rec) ? 2 : wantRec ? 1 : 0
       wantRec = false
-      const pr = await callFull<Pulse>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS).catch(() => null)
+      const pr = await callFull<Pulse>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS).catch(() => {
+        if (rec) wantRec = true // the record was not read: the next pulse asks again
+        return null
+      })
       const pp = pulseOf(pr ? pr.value : null)
       if (pr?.rec) get().setRec(pr.rec)
       const p = pp.v
@@ -181,6 +189,9 @@ export const useVic = create<VicStore>((set, get) => ({
         set({ access: a ?? get().access })
       }
       if (mine !== refreshSeq) return // a newer refresh started meanwhile; its result is the fresher one
+      if (mine <= staleUpTo) return // started before a save of this page: the next tick reads it with the save (the pulse did not advance)
+      failStreak = 0
+      retryAt = 0
       set((cur) => ({
         gate: { mode: member ? "member" : "ok" },
         state: member ? null : (s as WebState),
@@ -196,10 +207,13 @@ export const useVic = create<VicStore>((set, get) => ({
     } catch (e) {
       // a live refresh hitting Google's rate limit is a quiet pause (rateLimited), not an error toast every tick
       const limited = quiet && e instanceof ApiError && e.code === "RATE_LIMIT"
+      // a live refresh that keeps failing waits 5 s, 10 s, 20 s… (at most 2 min) before the next full read
+      if (quiet && !limited) { failStreak++; retryAt = Date.now() + Math.min(120e3, 5000 * 2 ** (failStreak - 1)) }
       const { gate, member } = get()
       // a member with nothing on screen yet sees why on the page ("Your binome sheet isn't shared with you yet.")
       if (gate.mode === "member" && !member) set({ memberError: limited ? get().memberError : (e as Error).message })
-      else if ((gate.mode === "ok" || gate.mode === "member") && !limited) toast.error("Could not load the dashboard", { description: (e as Error).message })
+      // one toast, replaced by the next failure instead of stacked
+      else if ((gate.mode === "ok" || gate.mode === "member") && !limited) toast.error("Could not load the dashboard", { id: "load-failed", description: (e as Error).message })
       set({ loading: false })
     } finally {
       inflight--
@@ -221,19 +235,23 @@ export const useVic = create<VicStore>((set, get) => ({
     if (idle > IDLE_STOP_MS || (idle > IDLE_SLOW_MS && Date.now() - lastPoll < 4 * (gate.mode === "member" ? MEMBER_PULSE_MS : PULSE_MS))) return
     lastPoll = Date.now()
     polling = true // at a 5 s tick a slow Apps Script call would otherwise stack up
+    let asked = 0
     try {
       // webPulse rechecks access itself, so a revoked account drops to the gate at the next tick (69024a1) in one call
       // the record rides on the pulse while the author has changes pending (admins every 2nd 5 s poll, members every 30 s one), and on tab return
       const held = hasPending(get().rec)
       const rec = wantRec ? (held ? 2 : 1) : held && (gate.mode === "member" || ++polls % 2 === 0) ? 2 : 0
       wantRec = false
+      asked = rec
       const r = await callFull<Pulse>("webPulse", [true], rec ? { rec } : undefined, POLL_TIMEOUT_MS)
+      asked = 0
       const p = pulseOf(r.value)
       if (r.rec) get().setRec(r.rec)
       if (p.on !== null && p.on !== get().pendingOn) set({ pendingOn: p.on })
-      // the pulse only advances inside a successful refresh, so a failed one is retried on the next tick
-      if ((p.v !== pulse || p.bv !== bv) && !get().busy) await get().refresh(true)
+      // the pulse only advances inside a successful refresh, so a failed one is retried, after its backoff
+      if ((p.v !== pulse || p.bv !== bv) && !get().busy && Date.now() >= retryAt) await get().refresh(true)
     } catch (e) {
+      if (asked) wantRec = true // the pulse failed before reading the record: the next one asks again
       // "Not allowed": ask webAccess (it never throws) only for the email and reason the gate shows
       if (e instanceof ApiError && /^(?:Error: )?Not allowed$/.test(e.message)) {
         const a = await call<Access>("webAccess", [], POLL_TIMEOUT_MS).catch(() => undefined)
@@ -292,6 +310,7 @@ export const useVic = create<VicStore>((set, get) => ({
   async memberSet(code, fields) {
     try {
       const out = await call<RunOut<MemberSetOut>>("webRun", ["memberSet", { code, fields }])
+      if (out.result.fields.some((r) => "value" in r)) staleUpTo = refreshSeq // a refresh already on its way would put the old values back
       return out.result.fields.map((r): MemberSetResult => {
         if ("value" in r) {
           get().patchMember(code, r.field, r.value)
@@ -315,6 +334,7 @@ export const useVic = create<VicStore>((set, get) => ({
   },
 
   patchInterview(code, interview) {
+    staleUpTo = refreshSeq // the save just wrote: a refresh already on its way misses it
     set((cur) =>
       cur.member ? { member: { ...cur.member, candidates: cur.member.candidates.map((c) => (String(c.Code) === code ? { ...c, interview } : c)) } } : cur
     )

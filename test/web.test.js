@@ -1156,6 +1156,12 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   assert.deepStrictEqual([st.binomes.length, st.unpaired.some(m => /free[34]/.test(m.email))], [n + 2, false]);
   assert(st.alerts.some(a => a.type === 'FILE_ERROR' && /history not written/.test(a.msg)), 'MEDIUM alert for the missing history');
   assert(!st.alerts.some(a => a.type === 'MANUAL_EDIT'), 'baseline still saved');
+  // the highest binome's row deleted by hand: its code is not handed out again (its interviewees and the baseline still name it)
+  run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,2,6).setValues([['Free Five','free5@g.enp.edu.dz','IT','IT',false,''],['Free Six','free6@g.enp.edu.dz','HR','HR',false,'']]);})()");
+  const top = run("(function(){var c=ss_().getSheetByName('Binomes').cells,i=c.length-1,r=c[i];c.splice(i,1);__cut=[i,r];return r[0];})()");
+  out = call('webRun', 'newBinome', { emailA: 'free5@g.enp.edu.dz', emailB: 'free6@g.enp.edu.dz', dryRun: true });
+  run("ss_().getSheetByName('Binomes').cells.splice(__cut[0], 0, __cut[1])");
+  assert.strictEqual(out.result.binome, 'B.' + String(Number(top.split('.')[1]) + 1).padStart(2, '0'), 'not ' + top + ' again');
 }
 // ---- pairing before Lock: experience, pairs by hand, draw the rest, redraw (launch-features.md, section 1). Own project ----
 {
