@@ -28,7 +28,7 @@ export default function MaintenancePage() {
   const st = useVic((s) => s.state)
 
   const tools: Tool[] = [
-    { action: "integrity", icon: FileSpreadsheet, button: Check, title: "Check integrity", label: "Check", run: integrity, text: "Syncs, then opens every binome sheet: missing or extra rows, moved tabs, lost protection, who can edit. Also runs on Sync now and with the digest. It stops in time for the web limit and resumes where it stopped." },
+    { action: "integrity", icon: FileSpreadsheet, button: Check, title: "Check integrity", label: "Check", run: integrity, text: "Syncs, then opens every binome sheet: missing or extra rows, moved tabs, lost protection, who can edit. Also runs with the daily digest. It stops in time for the web limit and resumes where it stopped." },
     { action: "digest", icon: Mail, button: Send, title: "Send me the digest now", label: "Send", run: digest, text: "Syncs, then emails the admins the daily summary." },
     { action: "reshare", icon: Share2, button: Share2, title: "Re-share binome sheets", label: "Re-share", run: reshare, text: "Adds current members as editors after you swap someone. Refuses while test mode is on." },
     { action: "rejections", icon: MailX, button: Send, title: "Send rejections", label: "Send…", run: rejections, text: "Once recruitment closes: one polite email to each applicant declined at screening (never to VIC members), with the text shown first so you can edit it. Each one is marked as sent, so pressing it again reaches only those not emailed yet. Never automatic." },
