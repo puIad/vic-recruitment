@@ -341,7 +341,7 @@ function pairedTodo_(ctx) {
 /** The PAIRED mail for member m of binome `code` (names: both members), sent by Lock, the catch-up and Pair two…. */
 function pairedMail_(code, m, names, url) {
   return mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: code, members: names },
-    { cta: { label: 'Open the binome sheet', url: url }, footer: mailTeamFooter_(url) }));
+    { cta: mailDashboardCta_(), footer: mailTeamFooter_(url) }));
 }
 /** Send PAIRED to everyone pairedTodo_ lists. TEST_MODE skips non-admins and leaves them untold, so going live sends theirs.
  *  Returns {sent, failed[] (emails)}. */

@@ -272,7 +272,7 @@ function sendNewIntervieweeMails_(ctx) {
       hours: S_().HOURS_NOT_CONTACTED }, {
       blocks: [mailList_(list.map(r => [r[I.Code], r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' +
         String(r[I.Phone]).replace(/^'/, '') + ' · available: ' + r[I.Availability]]))],
-      cta: { label: 'Open your binome sheet', url: b.fileUrl }, footer: mailTeamFooter_(b.fileUrl) });
+      cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) });
     b.members.forEach(m => { if (m.email) mailSend_(m.email, mail); });
   });
   ctx.mailNew = {};

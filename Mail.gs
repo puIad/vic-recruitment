@@ -94,6 +94,8 @@ function mailButton_(label, url) {
     'line-height:1.2;color:#ffffff;text-decoration:none;border-radius:999px">' + esc_(label) + '</a></td></tr></table>';
 }
 
+/** The binome mails' button: My binome (the members' catch-all sends them to /, where it is). A function, since DASHBOARD_URL lives in WebApp.gs. */
+function mailDashboardCta_() { return { label: 'Open the dashboard', url: DASHBOARD_URL + '/my-binome' }; }
 /** Footer of the team's mails: the dashboard, and the binome sheet when there is one. */
 function mailTeamFooter_(sheetUrl) {
   const a = (url, label) => '<a href="' + esc_(url) + '" style="color:' + MAIL.button + ';text-decoration:underline">' + label + '</a>';
@@ -154,12 +156,11 @@ function mailSample_(id, texts) {
     codes: 'IT.12, IT.15' };
   if (id === 'CODE') v.code = '482913';
   const people = mailList_([['IT.12', 'Lina A. · 0550 00 00 00 · available: evenings'], ['IT.15', 'Omar S. · 0661 00 00 00 · available: weekends']]);
-  const cta = label => ({ label: label, url: DASHBOARD_URL });
   const o = { texts: texts, dept: 'IT', footer: MAILS.some(m => m.id === id && m.to === 'candidate') ? undefined : mailTeamFooter_(DASHBOARD_URL) };
-  if (id === 'NEW_IV') Object.assign(o, { blocks: [people], cta: cta('Open your binome sheet') });
-  if (id === 'ALERT') Object.assign(o, { blocks: [mailAlerts_([['HIGH', 'NOT_CONTACTED', 'IT.12', 'IT.12 has not been contacted yet']])], cta: cta('Open your binome sheet') });
-  if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: cta('Open the binome sheet') });
-  if (id === 'PAIRED' || id === 'COVERED') o.cta = cta('Open the binome sheet');
-  if (id === 'COVER') Object.assign(o, { blocks: [people], cta: cta('View the binome sheet') });
+  if (id === 'NEW_IV') Object.assign(o, { blocks: [people], cta: mailDashboardCta_() });
+  if (id === 'ALERT') Object.assign(o, { blocks: [mailAlerts_([['HIGH', 'NOT_CONTACTED', 'IT.12', 'IT.12 has not been contacted yet']])], cta: mailDashboardCta_() });
+  if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: mailDashboardCta_() });
+  if (id === 'PAIRED' || id === 'COVERED') o.cta = mailDashboardCta_();
+  if (id === 'COVER') Object.assign(o, { blocks: [people], cta: mailDashboardCta_() });
   return mailFrom_(id, v, o);
 }
