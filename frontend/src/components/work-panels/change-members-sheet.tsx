@@ -107,7 +107,7 @@ function hintFor(mode: ChangeMode, st: WebState) {
 function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
   const { changeMember, swapMembers, newBinome, addCover, resolve } = useActions()
   const busy = useVic((s) => s.busy)
-  const action = useVic((s) => s.busyAction)
+  const jobs = useVic((s) => s.jobs)
   const close = useUi((s) => s.closeMemberSheet)
 
   const locked = React.useMemo(() => state.binomes.filter((b) => b.status !== "DRAFT"), [state.binomes])
@@ -153,7 +153,7 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
   const coverBinome = coverBins.length === 1 ? byCode(coverBins[0]) : undefined
 
   const hint = hintFor(mode, state)
-  const running = busy && ["changeMember", "swapMembers", "newBinome", "addCover"].includes(action || "")
+  const running = jobs.some((j) => ["changeMember", "swapMembers", "newBinome", "addCover"].includes(j.action))
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()

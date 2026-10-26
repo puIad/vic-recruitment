@@ -11,6 +11,7 @@ import { useActions } from "@/lib/vic/actions"
 import { Spinner } from "@/lib/vic/confirm"
 import { initials } from "@/lib/vic/format"
 import { MIX, draftCounts, experienceOf, freeMembers, mixOf, pairTag, pairWarning } from "@/lib/vic/pairing"
+import { useTeamView } from "@/lib/vic/pending"
 import { useVic } from "@/lib/vic/store"
 import type { Binome, TeamMember, WebState } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
@@ -308,7 +309,8 @@ export function PairingPanel({ state }: { state: WebState }) {
     if (hash === "#pairing") ref.current?.scrollIntoView({ behavior: "smooth", block: "start" })
   }, [hash])
 
-  const isExp = React.useMemo(() => experienceOf(state.teamList, overrides), [state.teamList, overrides])
+  const mine = useTeamView() // the author's pending Experienced ticks
+  const isExp = React.useMemo(() => experienceOf(state.teamList, { ...mine, ...overrides }), [state.teamList, mine, overrides])
   const pendingSet = React.useMemo(() => new Set((pending || []).map((m) => lc(m.email))), [pending])
   const free = React.useMemo(() => freeMembers(state).filter((m) => !pendingSet.has(lc(m.email))), [state, pendingSet])
   const drafts = state.binomes.filter((b) => b.status === "DRAFT").sort((a, b) => a.code.localeCompare(b.code))

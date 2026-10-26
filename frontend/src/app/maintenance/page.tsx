@@ -23,7 +23,7 @@ interface Tool {
 export default function MaintenancePage() {
   const { integrity, digest, reshare, setup, resetBinomes, rejections } = useActions()
   const busy = useVic((s) => s.busy)
-  const running = useVic((s) => s.busyAction)
+  const jobs = useVic((s) => s.jobs), runs = (a: string) => jobs.some((j) => j.action === a)
   const owner = useVic((s) => !!s.access?.owner)
   const st = useVic((s) => s.state)
 
@@ -57,8 +57,8 @@ export default function MaintenancePage() {
                     <p className="font-bold">{t.title}</p>
                     <p className="mt-0.5 max-w-prose text-sm leading-relaxed text-muted-foreground">{t.text}</p>
                   </div>
-                  <Button variant="outline" disabled={busy} onClick={t.run} className="min-w-28">
-                    {busy && running === t.action ? <Spinner /> : <t.button />} {t.label}
+                  <Button variant="outline" disabled={busy || runs(t.action)} onClick={t.run} className="min-w-28">
+                    {runs(t.action) ? <Spinner /> : <t.button />} {t.label}
                   </Button>
                 </li>
               ))}
@@ -86,7 +86,7 @@ export default function MaintenancePage() {
               onClick={() => st && resetBinomes(st.binomes.length, st.interviewees.length)}
               className="min-w-28"
             >
-              {busy && running === "resetBinomes" ? <Spinner /> : <RotateCcw />} Reset…
+              {runs("resetBinomes") ? <Spinner /> : <RotateCcw />} Reset…
             </Button>
           </div>
         </CardContent>

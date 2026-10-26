@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 export function LaunchCard() {
   const s = useVic((x) => x.state)
   const busy = useVic((x) => x.busy)
-  const action = useVic((x) => x.busyAction)
+  const jobs = useVic((x) => x.jobs)
   const { importTeam, lock } = useActions()
   const [link, setLink] = React.useState("")
   if (!s) return <Skeleton className="h-72 rounded-xl" />
@@ -29,7 +29,7 @@ export function LaunchCard() {
   const done = [s.team.total > 0, drafts > 0 || active > 0, active > 0]
   const current = done.indexOf(false)
   const unpaired = (s.unpaired || []).length
-  const running = (a: string) => busy && action === a
+  const running = (a: string) => jobs.some((j) => j.action === a)
   const c = draftCounts(s)
 
   const steps = [

@@ -37,7 +37,7 @@ const houseOf = (tag: string) => (DEPTS.find((d) => d.key !== "HR" && depsOf(tag
 export function TagDialog({ binome, onClose }: { binome: Binome | null; onClose: () => void }) {
   const run = useVic((s) => s.run)
   const refresh = useVic((s) => s.refresh)
-  const busy = useVic((s) => s.busy)
+  const busy = useVic((s) => s.busy || s.jobs.some((j) => j.action === "binomeTag"))
   const openMove = useUi((s) => s.openMoveDialog)
   const [pick, setPick] = React.useState<Set<string>>(new Set())
   const [check, setCheck] = React.useState<BinomeTagCheck | null>(null)

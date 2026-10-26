@@ -18,7 +18,7 @@ function MembersSheet({ f }: { f: SettingsForm }) {
   const sc = useVic((s) => s.state?.screening)
   const team = useVic((s) => s.state?.team.total ?? 0)
   const busy = useVic((s) => s.busy)
-  const action = useVic((s) => s.busyAction)
+  const jobs = useVic((s) => s.jobs), runs = (a: string) => jobs.some((j) => j.action === a)
   const { membersRefresh } = useActions()
   /** the saved link when Change link… was pressed: a newly saved link ends the editing by itself */
   const [editFrom, setEditFrom] = React.useState<string | null>(null)
@@ -108,7 +108,7 @@ function MembersSheet({ f }: { f: SettingsForm }) {
             </dl>
           )}
           <Button variant="outline" disabled={busy || !sc.linked} onClick={membersRefresh} className="min-w-36">
-            {busy && action === "membersRefresh" ? <Spinner /> : <RefreshCw />} Refresh now
+            {runs("membersRefresh") ? <Spinner /> : <RefreshCw />} Refresh now
           </Button>
         </div>
         <p className="border-t pt-3 text-xs leading-relaxed text-muted-foreground">

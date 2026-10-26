@@ -19,7 +19,7 @@ import { MemberNames } from "@/components/member-name"
 function Form({ init, state }: { init: { code?: string; binome?: string; alertId?: string }; state: WebState }) {
   const { reassign, resolve } = useActions()
   const busy = useVic((s) => s.busy)
-  const action = useVic((s) => s.busyAction)
+  const jobs = useVic((s) => s.jobs), runs = (a: string) => jobs.some((j) => j.action === a)
   const close = useUi((s) => s.closeMoveDialog)
   const [code, setCode] = React.useState(init.code || "")
   const [binome, setBinome] = React.useState(init.binome || "")
@@ -79,7 +79,7 @@ function Form({ init, state }: { init: { code?: string; binome?: string; alertId
           Cancel
         </Button>
         <Button type="submit" disabled={busy || !code.trim() || !binome}>
-          {busy && action === "reassign" ? <Spinner /> : <MoveRight />} Move…
+          {runs("reassign") ? <Spinner /> : <MoveRight />} Move…
         </Button>
       </DialogFooter>
     </form>

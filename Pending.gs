@@ -32,6 +32,11 @@ function pendingSwitch_(a, on) {
  *  - {id, kind: 'field', code, field, value, seen, at} (a member, or an admin in a binome, who can edit their binome sheet): one gold cell of one
  *    candidate, compared as memberSet_ does (goldText_); then the dirty:<binome> mark and patchSlice_, so the partner sees it
  *    at their next poll.
+ *  - {id, kind: 'team', email, value, seen, at} (admins): the Team tab's Experienced tick of one member (teamSet_'s cell),
+ *    true or false; the drafts holding them get their note again.
+ *  - {id, kind: 'bfield', binome, code, field, value, seen, at} (admins): Contacted, Interview Date or Interview Time of one
+ *    candidate in that binome's sheet (the alerts' Fix, setCell_), compared and written as a member's field; the Master takes
+ *    it at the next sync, which reads that sheet (dirty).
  * Each change is judged against the sheet as it is when it applies (an earlier change of the same call included):
  * applied (written), met (the sheet already does it: no notice) or dropped (with the sheet's value, or a reason: a value the
  * sheet refuses, a candidate gone from the binome; no retry for those).
@@ -46,17 +51,20 @@ function webApply(call) {
   const a = access_(), admin = a.role === 'admin', fields = changes.some(c => c && c.kind === 'field');
   const mv = a.role === 'member' || (admin && fields) ? asMember_(a) : null, member = !!mv && !mv.cover && !!mv.edit; // an admin's Drive call only for field changes
   if (!admin && !member) return { v: APPLY_FORMAT, lost: a.reason || (a.role === 'member' ? 'Not an editing member of the binome' : 'Not an admin') };
-  const w = { admin: admin, member: member, a: member ? mv : a }; // what this call has read, filled as its changes need it
+  const w = { admin: admin, member: member, a: member ? mv : a, wrote: [] }; // what this call has read, filled as its changes need it
   if (member && fields) {
-    w.book = SpreadsheetApp.openById(mv.m.f); // access_ just saw edit access: a failure here is Drive, and a throw is a retry
-    w.tz = w.book.getSpreadsheetTimeZone(); // opened before the lock, as memberSet_
+    const book = SpreadsheetApp.openById(mv.m.f); // access_ just saw edit access: a failure here is Drive, and a throw is a retry
+    w.mine = sheetTarget_(mv.m.b, book); // opened before the lock, as memberSet_
   }
+  const bf = admin ? changes.filter(c => c && c.kind === 'bfield').map(c => String(c.binome || '').trim()) : [];
+  if (bf.length) w.bins = binomeTargets_(bf);
   const lock = LockService.getDocumentLock(); // shared by everyone (issue 59); the sync holds only the script lock
   if (!lock.tryLock(5000)) return { v: APPLY_FORMAT, retry: 'BUSY' };
   try {
     const results = changes.map(c => applyOne_(w, c || {}));
     if (results.some(r => r.end === 'applied')) { SpreadsheetApp.flush(); _settings = null; }
-    if (w.fields) patchFields_(w);
+    w.wrote.forEach(f => Object.keys(f.wrote).forEach(code => goldPatch_(f.b, f.sh, f.rows[code].row, code, f.wrote[code])));
+    if (w.team && w.team.wrote.length) teamNotes_(w.team);
     const t = Date.now();
     results.forEach(r => { r.at = t; });
     return { v: APPLY_FORMAT, results: results };
@@ -74,7 +82,14 @@ function applyOne_(w, c) {
     }
     return applyAlert_(w.alerts, c);
   }
-  if (c.kind === 'field') return w.member ? applyField_(w, c, id) : drop("Only the binome's members fill in its sheet from here.");
+  if (c.kind === 'field') return w.member ? applyField_(w, w.mine, c, id, 'This candidate is no longer in your binome.') : drop("Only the binome's members fill in its sheet from here.");
+  if (c.kind === 'team' || c.kind === 'bfield') {
+    if (!w.admin) return drop('Only an admin can make this change.');
+    if (c.kind === 'team') return applyTeam_(w.team || (w.team = { t: loadTable_(TAB.TEAM, TEAM_H), wrote: [] }), c, id);
+    const code = String(c.binome || '').trim(), f = w.bins[code];
+    if (ADMIN_FIELDS.indexOf(String(c.field)) < 0) return drop('Not a change this entry knows.');
+    return f.gone ? drop(f.gone) : applyField_(w, f, c, id, 'This candidate is no longer in ' + code + '.');
+  }
   return drop('Not a change this entry knows.');
 }
 
@@ -104,14 +119,13 @@ function applySetting_(st, c, id) {
   return { id: id, end: 'applied' };
 }
 
-/** One gold cell of one candidate in the member's own binome sheet. The candidate's row is read once (values and display
- *  values), before this call writes to it. */
-function applyField_(w, c, id) {
+/** One gold cell of one candidate in a binome sheet (f: sheetTarget_). The candidate's row is read once (values and display
+ *  values), before this call writes to it. gone = the drop's reason when their row is not in that sheet. */
+function applyField_(w, f, c, id, gone) {
   const field = String(c.field || ''), code = String(c.code || '').trim(), drop = reason => ({ id: id, end: 'dropped', reason: reason });
   if (BF_EDITABLE.indexOf(field) < 0) return drop('Not a change this entry knows.');
   let v;
-  try { v = memberValue_(field, c.value, w.tz); } catch (e) { return drop(e.message); }
-  const f = w.fields || (w.fields = { sh: w.book.getSheets()[0], rows: {}, wrote: {} });
+  try { v = memberValue_(field, c.value, f.tz); } catch (e) { return drop(e.message); }
   if (f.layout === undefined) f.layout = bfLayout_(f.sh);
   if (f.layout !== 'v2') return drop("The binome sheet's header was changed by hand: ask an admin to repair it.");
   let x = f.rows[code];
@@ -122,19 +136,58 @@ function applyField_(w, c, id) {
       BF_EDITABLE.forEach(k => { x.text[k] = goldText_(k, goldOf_(k, was[F[k]], shown[F[k]])); });
     }
   }
-  if (x.row < 0) return drop('This candidate is no longer in your binome.');
+  if (x.row < 0) return drop(gone);
   const cur = x.text[field];
   if (cur === goldText_(field, c.value)) return { id: id, end: 'met' }; // a retry, or the partner typed the same
   if (cur !== goldText_(field, c.seen)) return { id: id, end: 'dropped', sheet: cur }; // the partner changed it
   goldWrite_(f.sh, x.row, field, v);
   x.text[field] = goldText_(field, c.value);
+  if (!Object.keys(f.wrote).length) w.wrote.push(f); // after the flush: the next sync reads the sheet, its cached slice takes the values
   (f.wrote[code] = f.wrote[code] || []).push(field);
   return { id: id, end: 'applied' };
 }
-/** After the flush: the next sync reads this binome's sheet, and its cached slice takes the written values. */
-function patchFields_(w) {
-  const f = w.fields;
-  Object.keys(f.wrote).forEach(code => goldPatch_(w.a.m.b, f.sh, f.rows[code].row, code, f.wrote[code]));
+/** A binome sheet as applyField_ works on it. */
+function sheetTarget_(b, book) { return { b: b, sh: book.getSheets()[0], tz: book.getSpreadsheetTimeZone(), rows: {}, wrote: {} }; }
+
+/** The cells an admin's bfield may set: what the alerts' Fix writes (setCell_). */
+const ADMIN_FIELDS = ['Contacted', 'Interview Date', 'Interview Time'];
+/** code -> sheetTarget_ of each binome named, or {gone: reason}; opened before the lock. Drive failing on an open throws (a retry). */
+function binomeTargets_(codes) {
+  const t = loadTable_(TAB.BINOMES, BIN_H), B = t.I, out = {};
+  codes.forEach(code => {
+    if (out[code]) return;
+    const r = t.data.filter(x => String(x[B.Binome]).trim() === code)[0], fid = r ? String(r[B['File ID']]).trim() : '';
+    if (!fid) { out[code] = { gone: r ? code + ' has no sheet.' : code + ' is not in the Binomes tab any more.' }; return; }
+    try { out[code] = sheetTarget_(code, SpreadsheetApp.openById(fid)); } catch (e) {
+      if (!/permission|access/i.test(e && e.message)) throw e;
+      out[code] = { gone: 'You cannot open the sheet of ' + code + '.' };
+    }
+  });
+  return out;
+}
+
+/** The Experienced tick of one Team member: written only while it still shows what the author saw. */
+function applyTeam_(tw, c, id) {
+  const t = tw.t, T = t.I, e = lc_(c.email), drop = reason => ({ id: id, end: 'dropped', reason: reason });
+  if (typeof c.value !== 'boolean') return drop('Experienced must be true or false.');
+  if (t.head[T.Experienced] !== 'Experienced') return drop(NO_EXP_COL);
+  const i = t.data.findIndex(r => lc_(r[T.Email]) === e);
+  if (i < 0) return drop(e + ' is not in the Team tab any more.');
+  const cur = bool_(t.data[i][T.Experienced]);
+  if (cur === c.value) return { id: id, end: 'met' };
+  if (cur !== (c.seen === true)) return { id: id, end: 'dropped', sheet: String(cur) }; // another admin changed it (as text, like the other kinds)
+  t.sh.getRange(i + 2, T.Experienced + 1).setValue(c.value);
+  t.data[i][T.Experienced] = c.value;
+  tw.wrote.push(e);
+  return { id: id, end: 'applied' };
+}
+/** The drafts holding a member whose tick changed get their note again ("Both members are new"), as teamSet_ does.
+ *  shortcut: outside the script lock, so a Pair or Redraw rewriting the drafts in the same seconds may keep its own note. */
+function teamNotes_(tw) {
+  const ctx = { team: tw.t, bin: loadTable_(TAB.BINOMES, BIN_H) }, B = ctx.bin.I, who = teamByEmail_(ctx);
+  ctx.bin.data.forEach((r, j) => {
+    if (isDraft_(r, B) && tw.wrote.some(e => lc_(r[B['Email 1']]) === e || lc_(r[B['Email 2']]) === e)) noteCell_(ctx.bin.sh.getRange(j + 2, 1), [draftNote_(rowPair_(who, r, B))]);
+  });
 }
 
 /** One alert change: the cell still holds what the author saw = write their value; else issue 50's table (written for
@@ -216,7 +269,7 @@ function dropsMail_(ctx, drops) {
   const blocks = drops.map(d => {
     const a = d.kind === 'alert' ? rows[d.alert] : null;
     const what = d.kind === 'alert' ? 'Alert ' + d.alert + (a ? ' · ' + a[KI.Type] + (a[KI.Interviewee] ? ' · ' + a[KI.Interviewee] : '') : '')
-      : d.kind === 'setting' ? 'Setting ' + d.key : d.code + ' · ' + d.field;
+      : d.kind === 'setting' ? 'Setting ' + d.key : d.kind === 'team' ? 'Team · ' + d.email + ' · Experienced' : d.code + ' · ' + d.field;
     const mine = d.kind === 'alert' ? DROP_OP[d.op] || d.op : text(d.value);
     const sheet = d.kind === 'alert' ? DROP_STATUS[d.sheet] || d.sheet : text(d.sheet);
     return mailH_(what) + mailList_([['You asked', mine], d.reason ? ['Why', DROP_REASON[d.reason] || d.reason] : ['The sheet now', sheet]]);

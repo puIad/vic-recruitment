@@ -29,10 +29,14 @@ interface VicStore {
   /** true while the first load has not finished: pages show skeletons */
   loading: boolean
   refreshing: boolean
+  /** true while an action that changes everything (EXCLUSIVE: Import, Lock, Redraw, Reset, Setup) runs or waits its turn:
+   *  every other action is grayed out then. Any other action leaves the page usable: its click waits in `jobs`. */
   busy: boolean
   busyAction: string | null
-  /** the running action as the page names it ("Sync", "Lock binomes"): the hint on grayed-out buttons says it */
+  /** the running action as the page names it ("Lock binomes", "Setup"): the hint on grayed-out buttons says it */
   busyLabel: string | null
+  /** the dashboard actions this tab has sent or lined up, in order: one write at a time, read-only calls beside them */
+  jobs: Job[]
   /** number of confirm dialogs open: live refresh pauses while one is */
   modals: number
   pulse: number | null
@@ -77,6 +81,25 @@ interface VicStore {
   awayDrops: string[]
 }
 
+export interface Job {
+  id: number
+  action: string
+  label: string
+  /** sent to the script; false = waiting for the writes before it */
+  running: boolean
+}
+/** Actions after which the other buttons' data is stale or gone: the page stays grayed out while they run, as before. */
+const EXCLUSIVE = new Set(["importTeam", "lock", "draft", "resetBinomes", "setup"])
+/** Calls that change nothing in the Master (previews, links, checks): they run at once, beside the line. */
+const readOnly = (action: string, a: Record<string, unknown>) =>
+  !!a.dryRun || action === "lockCheck" || action === "mailPreview" || (action === "quick" && (a.op === "locate" || a.op === "draft")) ||
+  (action === "rejections" && !a.send) || (action === "binomeAccess" && !a.level)
+/** Writes go to the script one after another (it would take them in turn anyway: each holds its lock), so a click never
+ *  waits for the one before it to finish. The same click again while it still waits is the same run. */
+let line: Promise<unknown> = Promise.resolve()
+const waiting = new Map<string, Promise<unknown>>()
+let jobId = 0
+
 export type MemberSetResult = { ok: true; value: string | number | boolean } | { conflict: string } | { error: string; busy?: boolean }
 
 /** Poll intervals: ~65 members and a few admins on a busy day must fit Vercel Hobby's 1M invocations a month (docs/vercel.md › Limits) */
@@ -100,6 +123,8 @@ let polls = 0
 /** the next pulse reads the record (the tab came back into view) */
 let wantRec = true
 const hasPending = (rec: PendingRec) => Object.values(rec).some((e) => e.state === "pending")
+/** kinds whose drop has no row of its own on the page: the drops dialog asks about them */
+const ROWLESS = new Set(["team", "bfield"])
 const openDrops = (rec: PendingRec) => Object.values(rec).filter((e) => e.state === "dropped" && !e.addressed).map((e) => e.cell)
 /** the first record this visit reads opens the dialog for the drops waiting in it */
 let firstRec = true
@@ -128,6 +153,7 @@ export const useVic = create<VicStore>((set, get) => ({
   busy: false,
   busyAction: null,
   busyLabel: null,
+  jobs: [],
   modals: 0,
   pulse: null,
   bv: null,
@@ -223,13 +249,13 @@ export const useVic = create<VicStore>((set, get) => ({
 
   // Live refresh: poll the version of the dashboard's snapshot (it moves only when the data changed) and reload when it moved.
   async checkPulse() {
-    const { busy, refreshing, gate, state, member, memberError, modals, pulse, bv } = get()
+    const { jobs, refreshing, gate, state, member, memberError, modals, pulse, bv } = get()
     // the seen mark only touches Redis, so it skips the guards below that spare Google: a 5-min Lock or an open dialog is still on screen
     const drops = openDrops(get().rec)
     if (drops.length && !document.hidden && Date.now() - seenMark >= SEEN_MS) { seenMark = Date.now(); void get().markDrops({ seen: drops }) }
     // a member whose sheet couldn't load keeps polling, so the page fills itself once the sync has published their binome
     const shown = gate.mode === "ok" ? !!state : gate.mode === "member" && !!(member || memberError)
-    if (busy || refreshing || inflight || polling || document.hidden || !shown || modals > 0) return
+    if (jobs.length || refreshing || inflight || polling || document.hidden || !shown || modals > 0) return
     if (rateLimited()) return // Google is limiting this account: pause quietly instead of adding to it
     const idle = Date.now() - lastInput
     if (idle > IDLE_STOP_MS || (idle > IDLE_SLOW_MS && Date.now() - lastPoll < 4 * (gate.mode === "member" ? MEMBER_PULSE_MS : PULSE_MS))) return
@@ -249,7 +275,7 @@ export const useVic = create<VicStore>((set, get) => ({
       if (r.rec) get().setRec(r.rec)
       if (p.on !== null && p.on !== get().pendingOn) set({ pendingOn: p.on })
       // the pulse only advances inside a successful refresh, so a failed one is retried, after its backoff
-      if ((p.v !== pulse || p.bv !== bv) && !get().busy && Date.now() >= retryAt) await get().refresh(true)
+      if ((p.v !== pulse || p.bv !== bv) && !get().jobs.length && Date.now() >= retryAt) await get().refresh(true)
     } catch (e) {
       if (asked) wantRec = true // the pulse failed before reading the record: the next one asks again
       // "Not allowed": ask webAccess (it never throws) only for the email and reason the gate shows
@@ -264,34 +290,49 @@ export const useVic = create<VicStore>((set, get) => ({
   },
 
   async run<R>(action: string, args: Record<string, unknown> = {}, label?: string) {
-    const name = label || action
-    set({ busy: true, busyAction: action, busyLabel: name })
+    const name = label || action, key = action + JSON.stringify(args)
+    const twin = waiting.get(key)
+    if (twin) return twin as Promise<RunOut<R> | null>
+    const id = ++jobId, solo = readOnly(action, args)
+    set((cur) => ({ jobs: [...cur.jobs, { id, action, label: name, running: solo }], ...(EXCLUSIVE.has(action) ? { busy: true, busyAction: action, busyLabel: name } : {}) }))
     const finish = startNotice(name)
     const log = (text: string, error = false) =>
       set((cur) => ({ activity: [{ id: ++activityId, time: hhmm(), text, error }, ...cur.activity].slice(0, 40) }))
-    try {
-      const send = () => call<RunOut<R>>("webRun", [action, args])
-      // A refused action changed nothing (the script lock is taken before any change), so a quick action may quietly try once more.
-      const out = await send().catch(async (e) => {
-        if (action !== "quick" || !(e instanceof ApiError) || e.code !== "BUSY") throw e
-        await new Promise((r) => setTimeout(r, 3000))
-        return send()
-      })
-      const head = finish("success", (out.messages || []).join("\n"))
-      log(`${name} · ${head || "done"}`)
-      return out
-    } catch (e) {
-      const m = e instanceof ApiError || e instanceof Error ? e.message : String(e)
-      const busy = e instanceof ApiError && e.code === "BUSY"
-      finish("error", m, {
-        head: busy ? `${name} was not done` : `${name} failed`,
-        action: busy ? { label: "Try again", onClick: () => void get().run(action, args, label) } : undefined,
-      })
-      log(`${name} failed: ${m}`, true)
-      return null
-    } finally {
-      set({ busy: false, busyAction: null, busyLabel: null })
+    const go = async (): Promise<RunOut<R> | null> => {
+      waiting.delete(key)
+      set((cur) => ({ jobs: cur.jobs.map((j) => (j.id === id ? { ...j, running: true } : j)) }))
+      try {
+        const send = () => call<RunOut<R>>("webRun", [action, args])
+        // A refused action changed nothing (the script lock is taken before any change), so a quick action may quietly try once more.
+        const out = await send().catch(async (e) => {
+          if (action !== "quick" || !(e instanceof ApiError) || e.code !== "BUSY") throw e
+          await new Promise((r) => setTimeout(r, 3000))
+          return send()
+        })
+        const head = finish("success", (out.messages || []).join("\n"))
+        log(`${name} · ${head || "done"}`)
+        return out
+      } catch (e) {
+        const m = e instanceof ApiError || e instanceof Error ? e.message : String(e)
+        const busy = e instanceof ApiError && e.code === "BUSY"
+        finish("error", m, {
+          head: busy ? `${name} was not done` : `${name} failed`,
+          action: busy ? { label: "Try again", onClick: () => void get().run(action, args, label) } : undefined,
+        })
+        log(`${name} failed: ${m}`, true)
+        return null
+      } finally {
+        set((cur) => {
+          const jobs = cur.jobs.filter((j) => j.id !== id), ex = jobs.find((j) => EXCLUSIVE.has(j.action))
+          return { jobs, busy: !!ex, busyAction: ex?.action ?? null, busyLabel: ex?.label ?? null }
+        })
+      }
     }
+    if (solo) return go()
+    const p = line.then(go)
+    line = p
+    waiting.set(key, p)
+    return p
   },
 
   // Alerts leave the screen the moment the script confirms; the refresh that follows just re-syncs.
@@ -377,15 +418,16 @@ export const useVic = create<VicStore>((set, get) => ({
       if (e.state !== "pending") ended[e.id] = get().ended[e.id] ?? now
       if (e.state === "dropped" && !e.addressed && !e.shown) {
         shown.push(e.cell)
-        if (!(was?.id === e.id && was.state === "dropped")) drops[e.at] = (drops[e.at] || 0) + 1
+        if (!(was?.id === e.id && was.state === "dropped") && !ROWLESS.has(e.kind)) drops[e.at] = (drops[e.at] || 0) + 1
       }
     })
     // a visit that finds drops from while away asks about them all at once (the dialog), instead of a toast per click
-    const away = firstRec ? openDrops(next) : []
+    // and one with no row to answer on (an Experienced tick, an alert's Fix) is asked there too
+    const first = firstRec, away = first ? openDrops(next) : shown.filter((c) => ROWLESS.has(next[c].kind))
     firstRec = false
-    set({ rec: next, flash, ended, ...(away.length ? { awayDrops: away } : {}) })
+    set((cur) => ({ rec: next, flash, ended, ...(away.length ? { awayDrops: [...new Set([...cur.awayDrops, ...away])] } : {}) }))
     if (away.length) seenMark = now // marked shown just below
-    else Object.values(drops).forEach((n) =>
+    if (!first) Object.values(drops).forEach((n) =>
       toast.warning(n > 1 ? `${n} of your changes were not applied` : "Your change was not applied", {
         description: "The row shows why, and what the sheet holds now.",
         duration: 10000,
@@ -412,9 +454,11 @@ if (typeof window !== "undefined") {
     if (was) { wantRec = true; void useVic.getState().checkPulse() }
   }
   ;["pointerdown", "pointermove", "keydown", "scroll", "touchstart"].forEach((t) => window.addEventListener(t, touched, { passive: true, capture: true }))
-  // the browser's own "leave site?" only while a save is still being accepted (about 1 s); once safe it applies with the tab closed
+  // the browser's own "leave site?" only while a save is still being accepted (about 1 s; once safe it applies with the tab
+  // closed), or while actions still wait their turn in this tab (one already sent finishes at Google anyway)
   window.addEventListener("beforeunload", (e) => {
-    if (useVic.getState().accepting > 0) e.preventDefault()
+    const st = useVic.getState()
+    if (st.accepting > 0 || st.jobs.some((j) => !j.running)) e.preventDefault()
   })
 }
 hooks.onAuthLost = (kind, message) => {

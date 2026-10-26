@@ -264,4 +264,40 @@ const H = 3.6e6;
   assert.strictEqual(cell(codes[0], 'Rating'), '9', 'nothing written');
 }
 
+// ---- team: the Experienced tick (admins); bfield: an admin's Contacted / interview date in any binome sheet ----
+{
+  const J = JSON.stringify, T = run('idx_(TEAM_H)'), st = call('webState');
+  const m = st.teamList[0], e = m.email, was = !!m.experienced;
+  const exp = () => run(`master.getSheetByName('Team').getDataRange().getValues()`).find(r => String(r[T.Email]).toLowerCase() === e)[T.Experienced];
+  const tm = (value, seen, email = e) => ({ kind: 'team', email, value, seen });
+  assert.deepStrictEqual(ends(apply(tm(!was, was))), ['applied']);
+  assert.strictEqual(exp(), !was, 'written into the Team tab');
+  assert.deepStrictEqual(ends(apply(tm(!was, was), tm(was, was), tm(true, false, 'nobody@g.enp.edu.dz'), tm('yes', false))),
+    ['met', 'dropped:' + !was, 'dropped', 'dropped'], 'a retry, another admin changed it, gone from the tab, not a boolean');
+  assert.strictEqual(exp(), !was);
+
+  const b = st.binomes.find(x => x.fileUrl && st.interviewees.some(i => i.binome === x.code));
+  const code = st.interviewees.find(i => i.binome === b.code).code, fid = b.fileUrl.split('/d/')[1];
+  const other = st.binomes.find(x => x.code !== b.code && x.fileUrl).code;
+  const cell = k => run(`(function(){var sh=__files[${J(fid)}].obj.sheets[0]; return sh.getRange(findFileRow_(sh, ${J(code)}), bfCol_(${J(k)})).getDisplayValue();})()`);
+  const bf = (field, value, seen, binome = b.code) => ({ kind: 'bfield', binome, code, field, value, seen });
+  const c0 = cell('Contacted');
+  run(`CacheService.getScriptCache().remove('dirty:${b.code}')`);
+  let out = apply(bf('Contacted', 'No answer', c0), bf('Interview Date', '20/11/2026', cell('Interview Date')), bf('Interview Time', '14:30', cell('Interview Time')));
+  assert.deepStrictEqual(ends(out), ['applied', 'applied', 'applied']);
+  assert.deepStrictEqual([cell('Contacted'), cell('Interview Date'), cell('Interview Time')], ['No answer', '20/11/2026', '14:30'], 'written into that binome sheet');
+  assert(run(`CacheService.getScriptCache().get('dirty:${b.code}')`) > 0, 'the next sync reads this sheet into the Master');
+  out = apply(bf('Contacted', 'No answer', c0), bf('Contacted', 'Yes', c0), bf('Contacted', 'Yes', 'No answer', other), bf('Contacted', 'Yes', 'No answer', 'B.99'),
+    bf('Rating', 5, ''), bf('Interview Time', '25:00', '14:30'));
+  assert.deepStrictEqual(out.results.map(r => r.end + (r.sheet ? ':' + r.sheet : '')), ['met', 'dropped:No answer', 'dropped', 'dropped', 'dropped', 'dropped']);
+  assert(/no longer in B\./.test(out.results[2].reason) && /not in the Binomes tab/.test(out.results[3].reason) && /HH:mm/.test(out.results[5].reason),
+    out.results.map(r => r.reason).join(' | '));
+  // a member's team or bfield change: dropped with a reason
+  const mem = b.people[0].email;
+  run('var __adminS2 = Session; Session = { getEffectiveUser: () => ({ getEmail: () => ' + J(mem) + ' }), getActiveUser: () => ({ getEmail: () => ' + J(mem) + ' }) }');
+  const byMember = apply(tm(was, !was), bf('Contacted', 'Yes', 'No answer'));
+  run('Session = __adminS2');
+  assert(byMember.lost || byMember.results.every(r => r.end === 'dropped' && /Only an admin/.test(r.reason)), J(byMember));
+}
+
 console.log('apply tests passed');

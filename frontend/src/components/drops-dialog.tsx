@@ -23,6 +23,8 @@ function describe(e: PendingEntry, state: WebState | null) {
     return { icon: Bell, what: `Alert ${e.alert}${a ? ` · ${a.type}${a.code ? ` · ${a.code}` : ""}` : ""}`, mine: YOURS[e.op], sheet: STATUS[e.sheet ?? ""] ?? e.sheet }
   }
   if (e.kind === "setting") return { icon: Settings2, what: `Setting ${e.key}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
+  if (e.kind === "team") return { icon: UserRound, what: `${e.email} · Experienced`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet === "true") }
+  if (e.kind === "bfield") return { icon: UserRound, what: `${e.code} (${e.binome}) · ${e.field}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
   return { icon: UserRound, what: `${e.code} · ${e.field}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
 }
 

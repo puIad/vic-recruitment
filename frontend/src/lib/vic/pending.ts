@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useVic } from "./store"
-import type { Alert, AlertEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
+import type { AdminGoldKey, Alert, AlertEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
 
 /**
  * The author's view of the alerts: the snapshot with their pending changes over it (docs/plans.md › Slice 2, issue 61).
@@ -113,6 +113,26 @@ export function alertChanges(view: AlertView, ids: string[], op: AlertEntry["op"
   return out
 }
 
+/**
+ * The alerts' Fix of Contacted or the interview date and time (quick setCell) as pending changes: the cells in that binome's
+ * sheet, and the alert's Resolve, in one accept step. The Master takes the cells at the next sync. true = accepted; false = do
+ * today's direct write. date is yyyy-mm-dd as the form gives it; the sheet holds dd/mm/yyyy.
+ */
+export async function acceptFix(a: Alert, args: { contacted?: string; date?: string; time?: string }): Promise<boolean> {
+  const st = useVic.getState(), q = a.q
+  if (!st.pendingOn || st.gate.mode !== "ok" || q?.kind !== "iv" || !/^B\.\d{2,3}$/.test(a.binome)) return false
+  const at = Date.now(), dmy = (d?: string) => (d ? d.split("-").reverse().join("/") : "")
+  const cells: [AdminGoldKey, string, string][] = args.contacted !== undefined
+    ? [["Contacted", args.contacted, q.contacted || ""]]
+    : [["Interview Date", dmy(args.date), dmy(q.date)], ["Interview Time", args.time ?? "", q.time || ""]]
+  const resolve = alertChanges(alertView(st.state, st.rec, st.flash), [a.id], "resolve", st.state?.built)
+  if (!resolve) return false
+  const changes: PendingChange[] = cells
+    .filter(([, value, seen]) => value !== seen)
+    .map(([field, value, seen]) => ({ kind: "bfield", binome: a.binome, code: q.code, field, value, seen, at }))
+  return (await st.accept([...changes, ...resolve])) === "ok"
+}
+
 const SNOOZE_MS: Record<string, number> = { "4h": 4 * 3600e3, "24h": 24 * 3600e3, "3d": 72 * 3600e3 }
 /**
  * Resolve, Snooze, Mute or Unmute as pending changes. true = accepted (the rows show it); false = do today's direct write
@@ -143,6 +163,8 @@ export function again(e: PendingEntry, built: number | undefined, at: number): P
     return { kind: "alert", alert: e.alert, op: e.op, seen, at, until: e.until, built }
   }
   if (e.kind === "setting") return { kind: "setting", key: e.key, value: e.value, seen: e.sheet ?? e.seen, at, built }
+  if (e.kind === "team") return { kind: "team", email: e.email, value: e.value, seen: e.sheet === undefined ? e.seen : e.sheet === "true", at }
+  if (e.kind === "bfield") return { kind: "bfield", binome: e.binome, code: e.code, field: e.field, value: e.value, seen: e.sheet ?? e.seen, at }
   return { kind: "field", code: e.code, field: e.field, value: e.value, seen: e.sheet ?? e.seen, at }
 }
 
@@ -155,6 +177,25 @@ export const REASON: Record<string, string> = {
   "lost access": "You can no longer edit the Master, so it could not be written as you.",
   "sign-in ended before it was saved": "Your sign-in ended before it reached the sheet.",
   "retries ran out": "Google kept refusing it until your sign-in ran out.",
+}
+
+/**
+ * email → the Experienced tick the author's screen shows over the snapshot's Team list: theirs while it is pending, and once
+ * it ended until a snapshot built at or after the write holds it (the mark expires after 10 min). A drop shows the sheet's
+ * value, and the drops dialog asks about it.
+ */
+export function teamView(state: WebState | null, rec: PendingRec): Record<string, boolean> {
+  const out: Record<string, boolean> = {}, built = state?.built ?? 0
+  Object.values(rec).forEach((e) => {
+    if (e.kind !== "team") return
+    if (e.state === "pending" || ((e.state === "applied" || e.state === "met") && !(e.wrote !== undefined && built >= e.wrote))) out[e.email] = e.value
+  })
+  return out
+}
+export function useTeamView() {
+  const state = useVic((s) => s.state)
+  const rec = useVic((s) => s.rec)
+  return React.useMemo(() => teamView(state, rec), [state, rec])
 }
 
 /* ---------- settings and My binome fields (docs/plans.md › Slice 3) ---------- */

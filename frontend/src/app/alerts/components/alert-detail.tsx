@@ -16,7 +16,7 @@ const FIX_ICON: Record<FixMode, typeof Wrench> = { apply: Wrench, revert: Rotate
 export function AlertDetail({ alert }: { alert: Alert | null }) {
   const { fixOne, resolve } = useActions()
   const busy = useVic((s) => s.busy)
-  const action = useVic((s) => s.busyAction)
+  const jobs = useVic((s) => s.jobs), runs = (a: string) => jobs.some((j) => j.action === a)
   const binome = useVic((s) => (alert ? s.state?.binomes.find((b) => b.code === alert.binome) : undefined))
 
   if (!alert) {
@@ -79,7 +79,7 @@ export function AlertDetail({ alert }: { alert: Alert | null }) {
             <ul className="mt-3 space-y-2">
               {alert.fix.map((f) => {
                 const Icon = FIX_ICON[f]
-                const running = busy && action === "edit" + f.charAt(0).toUpperCase() + f.slice(1)
+                const running = runs("edit" + f.charAt(0).toUpperCase() + f.slice(1))
                 return (
                   <li key={f} className="flex items-center gap-3">
                     <Button size="sm" variant={f === "apply" ? "default" : "outline"} disabled={busy} onClick={() => fixOne(alert, f)} className="shrink-0">
@@ -100,7 +100,7 @@ export function AlertDetail({ alert }: { alert: Alert | null }) {
         <div className="flex items-center gap-2">
           {!isEdit && <SnoozeMenu alerts={[alert]} />}
           <Button variant="secondary" size="sm" disabled={busy} onClick={() => resolve([alert.id])}>
-            {busy && action === "resolve" ? <Spinner /> : <Check />} Mark resolved
+            {runs("resolve") ? <Spinner /> : <Check />} Mark resolved
           </Button>
         </div>
       </div>

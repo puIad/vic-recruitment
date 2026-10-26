@@ -500,6 +500,20 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     r = await accept(mem, fd(code, 'Email', 'a@b.dz', ''));
     assert.strictEqual(r.json.code, 'DIRECT', 'not a column members fill in');
 
+    // an admin's Experienced tick and a Fix of Contacted / the interview time in any binome sheet
+    {
+      const m = st.teamList[0], tm = { kind: 'team', email: m.email.toUpperCase(), value: !m.experienced, seen: !!m.experienced };
+      const bf = (field, value, seen) => ({ kind: 'bfield', binome: bin.code, code, field, value, seen });
+      r = await accept(own, tm, bf('Interview Time', '15:45', ''));
+      const tc = 'team:' + m.email.toLowerCase(), bc = 'bfield:' + code + ':Interview Time';
+      assert.deepStrictEqual([r.json.value[tc].state, r.json.value[bc].state, r.json.value[tc].email], ['pending', 'pending', m.email.toLowerCase()]);
+      await deliver();
+      const rec2 = (await pulse(own, 2)).json.rec;
+      assert.deepStrictEqual([rec2[tc].state, rec2[bc].state], ['applied', 'applied'], 'applied as the admin');
+      for (const bad of [{ kind: 'team', email: m.email, value: 'yes', seen: false }, bf('Rating', 5, ''), { kind: 'bfield', binome: 'nope', code, field: 'Contacted', value: 'Yes', seen: '' }])
+        assert.strictEqual((await accept(own, bad)).json.code, 'DIRECT', JSON.stringify(bad));
+    }
+
     // slice 4: the sync's call (api/drops.js), the apply-by sweep, the seen mark on the pulse
     {
       const dropsApi = require('../web/api/drops');
