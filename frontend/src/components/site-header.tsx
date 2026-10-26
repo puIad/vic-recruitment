@@ -6,7 +6,7 @@ import { BellRing, CircleCheck, FlaskConical, RefreshCw, SwatchBook } from "luci
 
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { CommandSearch, SearchTrigger } from "@/components/command-search"
@@ -19,6 +19,7 @@ import { useVic } from "@/lib/vic/store"
 import { useAlertView } from "@/lib/vic/pending"
 import { useUi } from "@/lib/vic/ui"
 import { cn } from "@/lib/utils"
+import { togglePinned, useSidebarConfig } from "@/hooks/use-sidebar-config"
 
 /** A gradient arc (charter blue to aquamarine): turns once whenever the Master actually changed, and keeps turning while a refresh runs. */
 function MiniRing({ spinning, tick }: { spinning: boolean; tick: number }) {
@@ -177,6 +178,23 @@ function SyncButton() {
   )
 }
 
+/** The sidebar toggle's slot. Where the toggle is pinned (app-sidebar), a desktop shows it here only while the sidebar is fully hidden. */
+function HeaderSidebarTrigger() {
+  const { config } = useSidebarConfig()
+  const { open } = useSidebar()
+  const pin = togglePinned(config)
+  // open or on the icon rail, the pinned toggle sits on the sidebar: the slot and divider here would only leave a gap
+  const slot = cn("flex items-center", pin && (open || config.collapsible === "icon") && "md:hidden")
+  return (
+    <>
+      <span className={cn(slot, "-ml-1 size-7 shrink-0")}>
+        <SidebarTrigger className={cn(pin && "md:hidden")} />
+      </span>
+      <Separator orientation="vertical" className={cn(slot, "mx-2 data-[orientation=vertical]:h-4")} />
+    </>
+  )
+}
+
 /** A member's header: no search, alerts bell or Sync (admin tools); live status, palette and theme stay. */
 function MemberHeader() {
   const binome = useVic((s) => s.member?.binome)
@@ -184,8 +202,7 @@ function MemberHeader() {
   return (
     <header className="sticky top-0 z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 backdrop-blur-sm">
       <div className="flex w-full items-center gap-1 px-4 py-3 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+        <HeaderSidebarTrigger />
         {binome && (
           <p className="truncate text-sm font-medium text-muted-foreground">
             Binome <b className="font-bold text-foreground">{binome}</b> · {edit ? "you can edit" : "read-only"}
@@ -227,8 +244,7 @@ function AdminHeader() {
     <>
       <header className="sticky top-0 z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b bg-background/90 backdrop-blur-sm transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
         <div className="flex w-full items-center gap-1 px-4 py-3 lg:gap-2 lg:px-6">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mx-2 data-[orientation=vertical]:h-4" />
+          <HeaderSidebarTrigger />
           <div className="min-w-0 max-w-sm flex-1">
             <SearchTrigger onClick={() => setSearchOpen(true)} />
           </div>

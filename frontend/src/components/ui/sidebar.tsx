@@ -165,6 +165,8 @@ function Sidebar({
   modal?: boolean
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  // phone drawer: a sideways swipe toward its edge drags it along and closes it past a third of its width
+  const swipe = React.useRef<{ x: number; y: number; dx: number; axis?: "x" | "y" } | null>(null)
 
   if (collapsible === "none") {
     return (
@@ -197,6 +199,44 @@ function Sidebar({
             } as React.CSSProperties
           }
           side={side}
+          onTouchStart={(e) => {
+            const t = e.touches[0]
+            swipe.current = { x: t.clientX, y: t.clientY, dx: 0 }
+          }}
+          onTouchMove={(e) => {
+            const s = swipe.current
+            if (!s) return
+            const t = e.touches[0]
+            const dx = t.clientX - s.x
+            const dy = t.clientY - s.y
+            if (!s.axis) {
+              if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+              s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y" // a vertical start stays a scroll of the nav
+            }
+            if (s.axis !== "x") return
+            s.dx = side === "left" ? Math.min(0, dx) : Math.max(0, dx)
+            e.currentTarget.style.transition = "none"
+            e.currentTarget.style.transform = `translateX(${s.dx}px)`
+          }}
+          onTouchEnd={(e) => {
+            const s = swipe.current
+            swipe.current = null
+            if (s?.axis !== "x") return
+            const el = e.currentTarget
+            el.style.transition = ""
+            // closing slides out from where the finger left it; a short drag springs back
+            if (Math.abs(s.dx) > el.offsetWidth / 3) setOpenMobile(false)
+            else el.style.transform = ""
+          }}
+          onAnimationStart={(e) => {
+            // reopened while a swipe-close was still sliding out: Radix keeps the node, so drop the swipe's offset
+            if (e.target === e.currentTarget && e.currentTarget.dataset.state === "open") e.currentTarget.style.transform = ""
+          }}
+          onTouchCancel={(e) => {
+            swipe.current = null
+            e.currentTarget.style.transition = ""
+            e.currentTarget.style.transform = ""
+          }}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>
