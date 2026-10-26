@@ -50,8 +50,29 @@ function responseSheet_(which) {
   return ss_().getSheetByName(name);
 }
 
+/** A response's timestamp as epoch ms. The /apply form writes it RAW, as a sheet serial (wall clock in TIMEZONE): the cell
+ *  reads as that number until it gets a date format and as a Date after, and both must give one key, or the
+ *  registration is imported twice (live 2026-10-26). */
+function keyTime_(ts) {
+  if (ts instanceof Date) return ts.getTime();
+  if (typeof ts !== 'number') return String(ts);
+  const wall = Math.round((ts - 25569) * 864e5);
+  return wall - tzOffsetMs_(new Date(wall));
+}
+function tzOffsetMs_(d) {
+  const m = Utilities.formatDate(d, S_().TIMEZONE, 'XXX').match(/([+-])(\d\d):(\d\d)/); // 'Z' for UTC
+  return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) * 6e4 : 0;
+}
+
 function responseKey_(ts, email, r) {
-  return (ts instanceof Date ? ts.getTime() : String(ts)) + '|' + String(email || '').trim().toLowerCase() + (email ? '' : '|r' + r);
+  return keyTime_(ts) + '|' + String(email || '').trim().toLowerCase() + (email ? '' : '|r' + r);
+}
+
+/** The key a registration got before keyTime_, while its cell still read as the serial: the same float the /apply form
+ *  writes (VIC-ENP sheetSerial), so rows imported that way are still known. '' without an email (those keys hold the row). */
+function serialKey_(ts, email) {
+  if (!(ts instanceof Date) || !email) return '';
+  return String((ts.getTime() + tzOffsetMs_(ts)) / 864e5 + 25569) + '|' + String(email).trim().toLowerCase();
 }
 
 function loads_(ctx) {
@@ -112,7 +133,9 @@ function processRegistrations_(ctx) {
     if (!ts) continue;
     const collected = String(get(row, H.collected)).trim().toLowerCase();
     const typed = String(get(row, H.typed)).trim();
-    const key = responseKey_(ts, collected || typed, r + 1);
+    let key = responseKey_(ts, collected || typed, r + 1);
+    const old = ctx.ivKeys[key] ? '' : serialKey_(ts, collected || typed);
+    if (old && ctx.ivKeys[old]) key = old; // imported under its serial (before 2026-10-26's fix): the same registration
     if (ctx.ivKeys[key]) {
       // rows imported before these columns existed (or with one cleared) get the blank ones from the registration
       const x = byKey[key];

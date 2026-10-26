@@ -92,4 +92,25 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
   assert(st0().alerts.some(a => a.type === 'ODD_VALUE' && /AM\/PM/.test(a.msg) && a.code === code), 'still fires for a real odd time');
 }
 
+// 7: the /apply form writes its Timestamp RAW, as a sheet serial; the cell reads as a number until it gets a date format
+// and as a Date after. Both reads are one registration, not two (live 2026-10-26: each test letter came in twice)
+{
+  const ms = Date.UTC(2026, 9, 26, 17, 33, 25, 730), serial = (ms + 3600e3) / 864e5 + 25569; // as VIC-ENP's sheetSerial, Algiers
+  const before = ivRows().length;
+  run(`(function(){var reg=master.getSheetByName('Registration Responses'); reg.cells.push(regRow(${serial}, 'serial.it@g.enp.edu.dz','Serial','It','serial.it@g.enp.edu.dz','01/03/2005','0555777002','IT','HR'));})()`);
+  call('webRun', 'sync');
+  assert.strictEqual(ivRows().length, before + 1, 'the serial timestamp is imported');
+  run(`(function(){var c=master.getSheetByName('Registration Responses').cells; c[c.length-1][0]=new Date(${ms});})()`);
+  call('webRun', 'sync');
+  const mine = ivRows().filter(r => r[IV.Email] === 'serial.it@g.enp.edu.dz');
+  assert.strictEqual(mine.length, 1, 'once, after the cell turns into a date: ' + J(mine.map(r => r[IV['Response Key']])));
+  assert.strictEqual(String(mine[0][IV['Response Key']]), ms + '|serial.it@g.enp.edu.dz', 'keyed by the moment, in ms');
+  // a row imported before the fix holds the serial as its key: still the same registration once the cell is a date
+  const legacy = String(serial) + '|serial.it@g.enp.edu.dz';
+  run(`(function(){var c=master.getSheetByName('Interviewees').cells; for(var i=1;i<c.length;i++) if(c[i][${IV.Email}]==='serial.it@g.enp.edu.dz') c[i][${IV['Response Key']}]=${J(legacy)};})()`);
+  call('webRun', 'sync');
+  const again = ivRows().filter(r => r[IV.Email] === 'serial.it@g.enp.edu.dz');
+  assert.strictEqual(J(again.map(r => String(r[IV['Response Key']]))), J([legacy]),'the serial-keyed row is recognised, no second import');
+}
+
 console.log('pipeline OK');
