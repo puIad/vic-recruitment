@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { createPortal } from "react-dom"
 import { Link } from "react-router-dom"
 import { BellRing, CircleCheck, FlaskConical, RefreshCw, SwatchBook } from "lucide-react"
 
@@ -20,7 +19,7 @@ import { useVic } from "@/lib/vic/store"
 import { useAlertView } from "@/lib/vic/pending"
 import { useUi } from "@/lib/vic/ui"
 import { cn } from "@/lib/utils"
-import { useSidebarConfig } from "@/hooks/use-sidebar-config"
+import { togglePinned, useSidebarConfig } from "@/hooks/use-sidebar-config"
 
 /** A gradient arc (charter blue to aquamarine): turns once whenever the Master actually changed, and keeps turning while a refresh runs. */
 function MiniRing({ spinning, tick }: { spinning: boolean; tick: number }) {
@@ -179,35 +178,19 @@ function SyncButton() {
   )
 }
 
-/**
- * The sidebar toggle. On a desktop with the sidebar on the left it is pinned to the window's top-left corner,
- * which the sidebar header leaves free, so opening or closing the sidebar never moves it; its slot here keeps the header's spacing.
- * The pinned one lives in body: the header's backdrop blur would make "fixed" mean fixed to the header.
- */
+/** The sidebar toggle's slot. Where the toggle is pinned (app-sidebar), a desktop shows it here only while the sidebar is fully hidden. */
 function HeaderSidebarTrigger() {
   const { config } = useSidebarConfig()
   const { open } = useSidebar()
-  const pin = config.side === "left" && config.collapsible !== "none"
-  const framed = config.variant !== "sidebar" // inset and floating sit 8px in from the window edge
-  // with the sidebar open the pinned toggle sits on it: the slot and divider here would only leave a gap
-  const slot = cn("flex items-center", pin && open && "md:hidden")
+  const pin = togglePinned(config)
+  // open or on the icon rail, the pinned toggle sits on the sidebar: the slot and divider here would only leave a gap
+  const slot = cn("flex items-center", pin && (open || config.collapsible === "icon") && "md:hidden")
   return (
     <>
       <span className={cn(slot, "-ml-1 size-7 shrink-0")}>
         <SidebarTrigger className={cn(pin && "md:hidden")} />
       </span>
       <Separator orientation="vertical" className={cn(slot, "mx-2 data-[orientation=vertical]:h-4")} />
-      {pin &&
-        createPortal(
-          <SidebarTrigger
-            className={cn(
-              "fixed z-30 hidden md:inline-flex",
-              framed ? "top-[1.125rem] left-5 lg:left-7" : "top-3.5 left-3 lg:left-5",
-              open && "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground dark:hover:bg-sidebar-accent"
-            )}
-          />,
-          document.body
-        )}
     </>
   )
 }

@@ -228,6 +228,10 @@ function Sidebar({
             if (Math.abs(s.dx) > el.offsetWidth / 3) setOpenMobile(false)
             else el.style.transform = ""
           }}
+          onAnimationStart={(e) => {
+            // reopened while a swipe-close was still sliding out: Radix keeps the node, so drop the swipe's offset
+            if (e.target === e.currentTarget && e.currentTarget.dataset.state === "open") e.currentTarget.style.transform = ""
+          }}
           onTouchCancel={(e) => {
             swipe.current = null
             e.currentTarget.style.transition = ""

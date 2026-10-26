@@ -6,6 +6,9 @@ export interface SidebarConfig {
   side: "left" | "right"
 }
 
+/** On a desktop with the sidebar on the left, the sidebar toggle is pinned to the window's top-left corner (app-sidebar, site-header). */
+export const togglePinned = (c: Pick<SidebarConfig, "side" | "collapsible">) => c.side === "left" && c.collapsible !== "none"
+
 export interface SidebarContextValue {
   config: SidebarConfig
   updateConfig: (config: Partial<SidebarConfig>) => void
