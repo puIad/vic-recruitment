@@ -210,15 +210,28 @@ function formatBinomeSheet_(sh, b, members) {
   return F;
 }
 
-/** Protect everything except the binome's own columns. The script's editors keep access: whoever runs this, the trigger
- *  account (it writes these sheets every sync, and doesn't own the old ones) and the Master's owner. */
+/** Who a binome sheet's protection lists: whoever runs this, the trigger account (it writes these sheets every sync, and
+ *  doesn't own the old ones), the Master's owner and its editors (the admins: the dashboard runs as them, so their Sync now
+ *  and their actions write these sheets too). Lower case. */
+function protectionEditors_() {
+  const keep = [Session.getEffectiveUser().getEmail(), PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER')];
+  try { keep.push(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
+  try { ss_().getEditors().forEach(u => keep.push(u.getEmail())); } catch (e) { console.warn('Master editors: ' + e); }
+  return keep.filter(Boolean).map(lc_).filter((e, i, a) => a.indexOf(e) === i);
+}
+/** The accounts of want that no protection of sh lists (all of want when its editors can't be read). */
+function protectionMissing_(sh, want) {
+  const have = {};
+  sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => { try { p.getEditors().forEach(u => { have[lc_(u.getEmail())] = true; }); } catch (e) { /* not one of its editors */ } });
+  return want.filter(e => !have[e]);
+}
+
+/** Protect everything except the binome's own columns; protectionEditors_ keep access. */
 function protectBinomeSheet_(sh) {
   sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
   const p = sh.protect().setDescription('Filled by the recruitment script');
   p.setUnprotectedRanges(BF_EDITABLE.map(k => sh.getRange(2, bfCol_(k), BF_ROWS - 1, 1)));
-  const keep = [Session.getEffectiveUser().getEmail(), PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER')];
-  try { keep.push(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
-  const keepLc = keep.filter(Boolean).map(lc_);
+  const keepLc = protectionEditors_();
   // prune first: a new protection starts open to every editor of the file, so if an add below throws, the sheet is left closed, not open
   p.removeEditors(p.getEditors().filter(u => keepLc.indexOf(lc_(u.getEmail())) < 0));
   if (p.canDomainEdit()) p.setDomainEdit(false);
@@ -226,13 +239,14 @@ function protectBinomeSheet_(sh) {
 }
 
 /** Menu, run as the sheets' owner (only a protection's owner can rewrite it): protect again every binome sheet whose protection
- *  does not list the trigger account, so the sync can write the columns it fills. Safe to repeat: sheets already fine are skipped. */
+ *  misses the trigger account or an admin, so the sync and the dashboard can write the columns they fill. Run it again after
+ *  adding an admin. Safe to repeat: sheets already fine are skipped. */
 function reprotectBinomeSheets() {
   const me = lc_(Session.getEffectiveUser().getEmail()), trig = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
   let owner = ''; try { owner = lc_(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
   if (me !== owner) return say_('Only the owner of the Master (' + (owner || 'unknown') + ') can re-protect the binome sheets.');
   if (!trig) return say_('TRIGGER_OWNER is not set: run Setup from the account that runs the triggers first, so it is kept as an editor.');
-  const listed = sh => sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).some(p => { try { return p.getEditors().some(u => lc_(u.getEmail()) === trig); } catch (e) { return false; } });
+  const want = protectionEditors_(), listed = sh => !protectionMissing_(sh, want).length;
   // under the script lock: a sync running between the old editors going and the trigger account coming back would fail on a permission error
   const msg = withLock_(() => {
     const ctx = loadCtx_(), t0 = Date.now(), errs = []; let done = 0, fine = 0;
@@ -240,7 +254,7 @@ function reprotectBinomeSheets() {
       if (Date.now() - t0 > 240000) { errs.push(b.code + ': out of time, run it again'); return; }
       try { const sh = binomeSheet_(ctx, b); if (listed(sh)) fine++; else { protectBinomeSheet_(sh); done++; } } catch (e) { errs.push(b.code + ': ' + e.message); }
     });
-    return 'Protection rewritten on ' + done + ' binome sheet(s); ' + fine + ' already listed ' + trig + '.' + (errs.length ? '\n\nNot done:\n' + errs.join('\n') : '');
+    return 'Protection rewritten on ' + done + ' binome sheet(s); ' + fine + ' already listed ' + trig + ' and every admin.' + (errs.length ? '\n\nNot done:\n' + errs.join('\n') : '');
   });
   if (msg === null) return busy_();
   say_(msg);

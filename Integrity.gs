@@ -457,9 +457,13 @@ function checkBinomeFile_(ctx, b, owed, env) {
   }
   const prot = sh.getProtections(SpreadsheetApp.ProtectionType.SHEET), trig = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
   if (!prot.length) add('MEDIUM', 'protect', 'its sheet is no longer protected: the binome can overwrite the columns the script fills. Protect the tab again, except the gold columns (' + BF_EDITABLE.map(k => BF_LABEL[k] || k).join(', ') + ').');
-  // a protection made before the triggers moved lists only its old editor: the sync account is locked out of the columns it fills
-  else if (trig && !prot.some(p => { try { return p.getEditors().some(u => lc_(u.getEmail()) === trig); } catch (e) { return false; /* an account that isn't one of its editors may not be able to read it: that is the lockout */ } }))
-    add('MEDIUM', 'protect', 'the protection of its sheet does not list ' + trig + ', the account that runs the sync (or its editors cannot be read), so the sync cannot write the columns it fills. Only the sheet\'s owner can protect the tab again: Repair, signed in as the owner.');
+  // a protection made before the triggers moved, or before an admin was added, misses them: they are locked out of the columns the sync fills
+  else {
+    const want = [trig].concat(env.admins || (env.admins = protectionEditors_())).filter((e, i, a) => e && a.indexOf(e) === i), miss = protectionMissing_(sh, want);
+    if (miss.length) add('MEDIUM', 'protect', 'the protection of its sheet does not list ' + miss.join(', ') + ' (or its editors cannot be read), so ' +
+      (miss.indexOf(trig) >= 0 ? 'the sync cannot' : 'a Sync now or an action run by ' + (miss.length === 1 ? 'that admin' : 'those admins') + ' cannot') +
+      ' write the columns it fills. Only the sheet\'s owner can protect the tab again: Repair, or Re-protect binome sheets, signed in as the owner.');
+  }
   const I = ctx.iv.I, last = bfLastRow_(sh);
   const vals = last >= 2 ? sh.getRange(2, BF_COL, last - 1, BF_H.length).getValues() : [];
   const at = {};
