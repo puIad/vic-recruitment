@@ -388,7 +388,7 @@ function oddValues_(ctx) {
   ctx.alerts.resolveWhere(a => a[KI.Type] === 'ODD_VALUE' && /^ODD\|/.test(a[KI.Key]) && !seen[a[KI.Key]]);
 }
 
-/* ---------- full check of every binome sheet (Sync now, daily digest, Check integrity) ---------- */
+/* ---------- full check of every binome sheet (daily digest, Check integrity) ---------- */
 // Opens each sheet, so it never runs on the frequent trigger. It stops at the deadline and the next run carries on where
 // it stopped (script property INTEG_NEXT = the next binome code). Its alerts close themselves when a later check of that binome is clean.
 

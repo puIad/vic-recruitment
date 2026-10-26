@@ -110,7 +110,7 @@ Any missed trigger self-heals: unprocessed form rows are picked up by the next r
     while "Not yet"/"Withdrew", a form for someone who withdrew, an unknown Final Dep.
   - `INTEGRITY`: opens every binome sheet (codes missing / extra / twice, protected columns differing, protection
     removed, header changed or a tab in front, title code, editors vs members + covers when sharing is on). Runs on
-    Sync now, the digest and Maintenance › Check integrity; time-boxed and resumes at `INTEG_NEXT`. Move interviewee to
+    the digest and Maintenance › Check integrity (not Sync now since 2026-10-26: it doubled the run); time-boxed and resumes at `INTEG_NEXT`. Move interviewee to
     its own binome puts a missing row back.
 
 ## Alert types

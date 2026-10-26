@@ -102,7 +102,7 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
   Master. An account removed from the Master gets "No access" (Drive is asked, since the bound script would still open it).
 - **Versions:** `API_VERSION` in WebApp.gs and `frontend/src/lib/vic/types.ts` must match (`test/vercel.test.js`
   checks); bump both when `webAccess` / `webState` / `webRun` change shape. Adding a field or an action doesn't need a bump.
-- **Long actions** pass a budget so they end before the 300 s limit: Lock 200 s, Sync now 150 s, Check integrity 200 s
+- **Long actions** pass a budget so they end before the 300 s limit: Lock 200 s, Check integrity 200 s
   (counted from the call, lock wait included). Each resumes on the next press.
 - **Sign-in, per browser:** cookie `vic_s` (30 days) HttpOnly/Secure/SameSite=Lax; `iat` = the latest Google sign-in on
   that browser, `now - iat > 48h` = ended there. Ending (48 h or sign-out) never revokes: the cookie keeps
