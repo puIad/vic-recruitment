@@ -10,9 +10,9 @@ const IV = run('idx_(IV_H)'), BFI = run('BFI');
 const ivRows = () => run('master.getSheetByName("Interviewees").getDataRange().getValues().slice(1)').filter(r => r[IV.Code] || r[IV['Response Key']]);
 const sheetRows = bin => run(`__files[${J(fileId(bin))}].obj.sheets[0].getDataRange().getValues()`).filter(r => r[BFI.Code]);
 const alerts = type => st0().alerts.filter(a => a.type === type);
-// a sheet that refuses writes (protected / trashed): its ranges throw on setValues
+// a sheet that refuses writes (protected): as in Apps Script, the write is held and throws at the next flush
 const refuse = (bin, on) => run(`(function(){var sh=__files[${J(fileId(bin))}].obj.sheets[0]; if(!sh.__gr) sh.__gr=sh.getRange;
-  sh.getRange=${on ? `function(){var r=sh.__gr.apply(sh,arguments); r.setValues=function(){throw new Error('The sheet is protected');}; return r;}` : 'sh.__gr'};})()`);
+  sh.getRange=${on ? `function(){var r=sh.__gr.apply(sh,arguments); r.setValues=function(){__flushErr=new Error('You are trying to edit a protected cell'); return r;}; return r;}` : 'sh.__gr'};})()`);
 
 // 1: a refusing sheet raises a HIGH FILE_ERROR, leaves the candidate UNASSIGNED, and the cycle still saves
 const bins = st0().binomes.filter(b => b.status === 'ACTIVE').map(b => b.code);
@@ -35,6 +35,8 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
   call('webRun', 'sync');
   const now = ivRows().find(x => x[IV.Code] === r[IV.Code]);
   assert.strictEqual(now[IV.Status], 'INTERVIEWED', 'logged although the sheet refuses the mark');
+  // the pull re-reads the sheet, so the Master hides it; what Apps Script would do is throw at the end of the call: no refused write may be left unflushed
+  assert.strictEqual(run('__flushErr'), null, 'every refused write was flushed inside its catch (fillFromForm_, markInterviewInFile_)');
   const mk = alerts('FILE_ERROR').find(a => a.binome === bin && /Cannot mark/.test(a.msg));
   assert(mk && mk.severity === 'HIGH' && mk.code === r[IV.Code], 'its own FILE_ERROR for the mark, even with another open for the binome');
   refuse(bin, false);

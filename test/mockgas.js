@@ -4,6 +4,7 @@ var __outbox = [];
 var __untemplated = []; // subjects of mails not built by mailHtml_ (test/gs.js fails the suite)
 var __uiQueue = [];   // scripted answers for prompts/alerts
 var __uiLog = [];
+var __flushErr = null; // a refused write held until the next SpreadsheetApp.flush()
 var __idc = 0;
 var __props = {};
 var __triggers = [];
@@ -136,7 +137,7 @@ var SpreadsheetApp = {
   // the bound Master is handed back to anyone (as in Apps Script); other files need access when the ACL is on
   openById(id) { if (!__files[id] || (__acl && id !== __props.MASTER_ID && !__roleOf(id))) throw new Error('No file ' + id); return __files[id].obj; },
   create(t) { return new MockSS(t); },
-  flush() { },
+  flush() { if (__flushErr) { const e = __flushErr; __flushErr = null; throw e; } }, // a refused write throws here, as in Apps Script
   newDataValidation() { return chain(); }, newConditionalFormatRule() { return chain(); },
   ProtectionType: { SHEET: 'SHEET', RANGE: 'RANGE' }, BandingTheme: {}, BorderStyle: {}, InterpolationType: {},
   getUi() {

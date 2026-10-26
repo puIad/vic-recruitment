@@ -64,6 +64,9 @@ function appendToBinomeFile_(ctx, b, r, carry) {
   if (!sh) return;
   if (findFileRow_(sh, String(r[ctx.iv.I.Code]).trim()) > 0) return; // already there: a run that died after placing them must not add a blank twin
   sh.getRange(bfLastRow_(sh) + 1, BF_COL, 1, BF_H.length).setValues(plainRows_([ivToFileRow_(ctx, r, carry)], BF_H));
+  // Apps Script holds a write to a protected range and throws only when it is flushed: without this, at the end of the call,
+  // after the caller had recorded the placement (assigned in the Master, missing from the sheet)
+  SpreadsheetApp.flush();
 }
 
 function findFileRow_(sh, code) {
@@ -111,6 +114,7 @@ function markInterviewInFile_(ctx, b, code, text) {
   if (row < 0) return;
   sh.getRange(row, bfCol_('Interview Form')).setValue(text);
   sh.getRange(row, bfCol_('Interview Done')).setValue(true);
+  SpreadsheetApp.flush(); // a refused write throws here, inside the caller's catch (see appendToBinomeFile_)
 }
 
 function binomeFileTitle_(b, members) {

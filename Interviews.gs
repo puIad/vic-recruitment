@@ -148,6 +148,7 @@ function fillFromForm_(ctx, b, code, vals, prev) {
     if (cur === t(v)) { out[k] = v; return; }
     if (cur && cur !== t(prev[k])) return; // typed by a person
     cell.setValue(v);
+    SpreadsheetApp.flush(); // a refused write throws here, before the Master copies it (see appendToBinomeFile_)
     if (r) r[I[k]] = v;
     out[k] = v;
   });
