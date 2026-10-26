@@ -90,6 +90,8 @@ assert.strictEqual(open().filter(x => x.type === 'NEEDS_REVIEW' && x.code === ju
 let st = call('webState');
 assert.strictEqual(st.counts.byStatus.HELD, 2);
 assert.strictEqual(st.interviewees.find(i => i.code === junk[IV.Code]).risk, 100);
+out = call('webRun', 'reassign', { code: junk[IV.Code], binome: st.binomes[0].code });
+assert(/is on hold: approve it first/.test(out.messages[0]) && ivRow('junk.one@g.enp.edu.dz')[IV.Status] === 'HELD', 'Reassign never skips the review');
 
 // ---- approve: to a binome now, never held again, the confirmation goes out now ----
 assert.throws(() => quick('approve', find('NEEDS_REVIEW', ivRow('idk.one@g.enp.edu.dz')[IV.Code]).id.replace(/\d+$/, '9999')), /no longer open/);
