@@ -323,6 +323,18 @@ let oddCode;
   const fe = find('FILE_ERROR', x => /0555123499" saved in the Master but not written/.test(x.msg));
   assert(fe && fe.q.repair === '' && !find('BAD_PHONE', x => x.id === a.id), 'an alert to type it by hand, no Repair; the phone alert closed');
   call('webRun', 'resolve', { ids: [fe.id] });
+  // the same through "take the new registration's answers"
+  run(`(function () { var reg = master.getSheetByName('Registration Responses'), t = Date.now() + 2e4;
+    reg.cells.push(regRow(new Date(t), 'again.dup@g.enp.edu.dz', 'Again', 'Dup', 'again.dup@g.enp.edu.dz', '01/03/2005', '0555777111', 'IT', 'HR'));
+    reg.cells.push(regRow(new Date(t + 1e3), 'again.dup@g.enp.edu.dz', 'Again', 'Dup', 'again.dup@g.enp.edu.dz', '01/03/2005', '0555777222', 'IT', 'HR')); })()`);
+  call('webRun', 'sync');
+  const d = find('DUPLICATE_REGISTRATION', x => /Again Dup/.test(x.msg));
+  run('binomeSheet_ = function () { throw new Error("The sheet is protected"); }');
+  try { out = quick('dupNew', d.id); } finally { run('binomeSheet_ = __bs'); }
+  assert(/Phone taken from the new registration, but not written into the sheet of B\.\d\d/.test(out.messages[0]), out.messages[0]);
+  const fe2 = find('FILE_ERROR', x => /Phone from the new registration saved in the Master but not written/.test(x.msg));
+  assert(fe2 && fe2.q.repair === '', 'an alert to type it by hand');
+  call('webRun', 'resolve', { ids: [fe2.id] });
 
   // a form linked by hand whose sheet refuses the mark: the link stands and the alert's Repair writes the mark again
   const st = call('webState'), it = st.interviewees.find(i => i.status === 'ASSIGNED'), b = st.binomes.find(x => x.code === it.binome);

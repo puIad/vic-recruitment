@@ -235,15 +235,24 @@ function snooze_(ctx, r, ref, dur) {
 
 /* ---------- registration values ---------- */
 
-/** Rewrite a candidate's row in their binome sheet from the Master, keeping what the binome typed. ' and in …' or a note. */
-function refreshFileRow_(ctx, x) {
-  const I = ctx.iv.I, b = ctx.binByCode[x[I.Binome]], sh = b && binomeSheet_(ctx, b);
-  if (!sh) return '';
-  const row = findFileRow_(sh, String(x[I.Code]).trim());
-  if (row < 0) return ' (they have no row in the sheet of ' + b.code + ')';
-  const rng = sh.getRange(row, BF_COL, 1, BF_H.length);
-  rng.setValues(plainRows_([ivToFileRow_(ctx, x, fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H)))], BF_H));
-  return ', also in the sheet of ' + b.code;
+/** Rewrite a candidate's row in their binome sheet from the Master, keeping what the binome typed. ' and in …' or a note.
+ *  The Master keeps the change either way (the caller saves it): a sheet that refuses it raises an alert naming what (the change
+ *  in words), never a failure of the action. */
+function refreshFileRow_(ctx, x, what) {
+  const I = ctx.iv.I, b = ctx.binByCode[x[I.Binome]];
+  try {
+    const sh = b && binomeSheet_(ctx, b);
+    if (!sh) return '';
+    const row = findFileRow_(sh, String(x[I.Code]).trim());
+    if (row < 0) return ' (they have no row in the sheet of ' + b.code + ')';
+    const rng = sh.getRange(row, BF_COL, 1, BF_H.length);
+    rng.setValues(plainRows_([ivToFileRow_(ctx, x, fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H)))], BF_H));
+    return ', also in the sheet of ' + b.code;
+  } catch (e) {
+    ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: String(x[I.Code]), binome: b.code, key: '',
+      msg: ivLabel_(ctx, x) + ': ' + what + ' saved in the Master but not written into the sheet of ' + b.code + ' (' + e.message + '). Type it there by hand.' });
+    return ', but not written into the sheet of ' + b.code + ' (an alert says so)';
+  }
 }
 
 /** values: {field: text} for QUICK_EDITABLE fields, checked like the registration check does. */
@@ -274,15 +283,7 @@ function quickEdit_(ctx, x, values) {
     where = assignRow_(ctx, x) ? '; assigned to ' + x[I.Binome] + ' as ' + x[I.Code]
       : '; still waiting for a binome (' + (bool_(S_().ASSIGNMENTS_OPEN) ? 'no ACTIVE binome takes ' + v['1st Choice'] : 'assignments are closed') + ')';
     indexCtx_(ctx);
-  } else {
-    // the Master keeps the change either way (the caller saves it): a sheet that refuses it is said, never a failure of the edit
-    try { where = refreshFileRow_(ctx, x); } catch (e) {
-      const b = String(x[I.Binome]);
-      where = ', but not written into the sheet of ' + b + ' (an alert says so)';
-      ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: String(x[I.Code]), binome: b, key: '',
-        msg: ivLabel_(ctx, x) + ': ' + what + ' saved in the Master but not written into the sheet of ' + b + ' (' + e.message + '). Type it there by hand.' });
-    }
-  }
+  } else where = refreshFileRow_(ctx, x, what);
   return ivLabel_(ctx, x) + ': ' + what + where + '.';
 }
 
@@ -335,7 +336,7 @@ function dupNew_(ctx, x) {
   if (!changed.length) return ivLabel_(ctx, o) + ': the new answers are the same as the earlier ones, nothing to copy.';
   changed.forEach(f => { o[I[f]] = x[I[f]]; });
   const moved = changed.indexOf('1st Choice') >= 0 && o[I.Binome] ? '. Their 1st choice is now ' + o[I['1st Choice']] + ': move them if ' + o[I.Binome] + ' does not take it' : '';
-  return ivLabel_(ctx, o) + ': ' + changed.join(', ') + ' taken from the new registration' + refreshFileRow_(ctx, o) + moved + '.';
+  return ivLabel_(ctx, o) + ': ' + changed.join(', ') + ' taken from the new registration' + refreshFileRow_(ctx, o, changed.join(', ') + ' from the new registration') + moved + '.';
 }
 
 function dupSeparate_(ctx, x) {
