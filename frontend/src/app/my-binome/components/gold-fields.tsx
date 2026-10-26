@@ -13,6 +13,7 @@ import { again, REASON, useMemberView, type Mark } from "@/lib/vic/pending"
 import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type CellValue, type FieldEntry, type GoldKey } from "@/lib/vic/types"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
 import { cn } from "@/lib/utils"
+import { draftKey } from "./gold-drafts"
 
 type Cell = string | number | boolean
 type Phase = { s: "idle" } | { s: "error"; msg: string } | { s: "conflict"; theirs: string }
@@ -70,7 +71,6 @@ const fieldsOf = (c: Candidate) =>
 
 /* Unsaved drafts live in this browser, per binome, candidate and field, so an expired session or a reload doesn't lose them (like the
    interview form, lib/vic/interview.ts). The base rides along: a restored draft is still checked against the sheet on Save. */
-const draftKey = (binome: string, code: string, k: GoldKey) => `vic:gold:${binome}:${code}:${k}`
 function restoreDrafts(binome: string, c: Candidate, fields: Fields): Fields {
   const next = { ...fields }
   for (const k of GOLD_KEYS) {
@@ -358,7 +358,8 @@ function FieldDrop({ k, mark }: { k: GoldKey; mark?: Mark<FieldEntry> }) {
     const change = again(e, undefined, Date.now())
     if (change && (await accept([change])) === "ok") return
     // the pending path can't take it now: today's direct write, which says nothing itself, so the notice stays until it lands
-    const [r] = await memberSet(e.code, [{ field: k, value: e.value, seen: fromText(k, e.sheet ?? "") }])
+    // a drop with a reason (retries ran out) has no sheet value: judged against what the author saw, as again() does
+    const [r] = await memberSet(e.code, [{ field: k, value: e.value, seen: e.sheet !== undefined ? fromText(k, e.sheet) : e.seen }])
     if ("ok" in r) void keep()
     else toast.error("Not saved", { description: "conflict" in r ? "Your partner changed it again." : r.error })
   }

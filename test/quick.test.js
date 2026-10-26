@@ -310,6 +310,55 @@ let oddCode;
   assert(ids.every(id => open().some(a => a.id === id)), 'a nudge does not close the alerts');
 }
 
+// ---- a binome sheet that refuses the write: the Master change is kept and said, never shown as a failure ----
+{
+  run(`(function () { master.getSheetByName('Registration Responses').cells.push(regRow(new Date(Date.now() + 9e3), 'late.phone@g.enp.edu.dz', 'Late', 'Phone', 'late.phone@g.enp.edu.dz', '01/03/2005', '999', 'IT', 'HR')); })()`);
+  call('webRun', 'sync');
+  const a = find('BAD_PHONE', x => x.q && x.q.iv && x.q.iv.first === 'Late');
+  run('var __bs = binomeSheet_; binomeSheet_ = function () { throw new Error("The sheet is protected"); }');
+  let out;
+  try { out = quick('edit', a.id, { values: { Phone: '0555 12 34 99' } }); } finally { run('binomeSheet_ = __bs'); }
+  assert(/"999" → "0555123499", but not written into the sheet of B\.\d\d/.test(out.messages[0]), out.messages[0]);
+  assert.strictEqual(ivRow(x => x[IV['First Name']] === 'Late')[IV.Phone], '0555123499', 'the Master keeps it');
+  const fe = find('FILE_ERROR', x => /0555123499" saved in the Master but not written/.test(x.msg));
+  assert(fe && fe.q.repair === '' && !find('BAD_PHONE', x => x.id === a.id), 'an alert to type it by hand, no Repair; the phone alert closed');
+  call('webRun', 'resolve', { ids: [fe.id] });
+  // the same through "take the new registration's answers"
+  run(`(function () { var reg = master.getSheetByName('Registration Responses'), t = Date.now() + 2e4;
+    reg.cells.push(regRow(new Date(t), 'again.dup@g.enp.edu.dz', 'Again', 'Dup', 'again.dup@g.enp.edu.dz', '01/03/2005', '0555777111', 'IT', 'HR'));
+    reg.cells.push(regRow(new Date(t + 1e3), 'again.dup@g.enp.edu.dz', 'Again', 'Dup', 'again.dup@g.enp.edu.dz', '01/03/2005', '0555777222', 'IT', 'HR')); })()`);
+  call('webRun', 'sync');
+  const d = find('DUPLICATE_REGISTRATION', x => /Again Dup/.test(x.msg));
+  run('binomeSheet_ = function () { throw new Error("The sheet is protected"); }');
+  try { out = quick('dupNew', d.id); } finally { run('binomeSheet_ = __bs'); }
+  assert(/Phone taken from the new registration, but not written into the sheet of B\.\d\d/.test(out.messages[0]), out.messages[0]);
+  const fe2 = find('FILE_ERROR', x => /Phone from the new registration saved in the Master but not written/.test(x.msg));
+  assert(fe2 && fe2.q.repair === '', 'an alert to type it by hand');
+  call('webRun', 'resolve', { ids: [fe2.id] });
+
+  // a form linked by hand whose sheet refuses the mark: the link stands and the alert's Repair writes the mark again
+  const st = call('webState'), it = st.interviewees.find(i => i.status === 'ASSIGNED'), b = st.binomes.find(x => x.code === it.binome);
+  run(`(function () { master.getSheetByName('Interview Responses').cells.push([new Date(Date.now() + 9e3), '${b.people[0].email}', '${b.code}', 'XX.98', 'intro', 'IT', 'IT', '']); })()`);
+  call('webRun', 'sync');
+  const u = find('UNKNOWN_INTERVIEWEE', x => /"XX\.98"/.test(x.msg));
+  run('var __mk = markInterviewInFile_; markInterviewInFile_ = function () { throw new Error("The sheet is protected"); }');
+  try { out = quick('pickCandidate', u.id, { code: it.code }); } finally { run('markInterviewInFile_ = __mk'); }
+  assert(/now interviewed; the mark in the sheet of B\.\d\d failed/.test(out.messages[0]), out.messages[0]);
+  assert.strictEqual(call('webState').interviewees.find(i => i.code === it.code).status, 'INTERVIEWED');
+  const mk = find('FILE_ERROR', x => x.code === it.code && /^Cannot mark/.test(x.msg));
+  assert(mk && mk.q.repair === 'retry', JSON.stringify(mk));
+  quick('repair', mk.id);
+  assert.strictEqual(sheetRow(b.code, it.code)[BFI['Interview Done']], true, 'Repair wrote the mark');
+  // "keep the latest form" on a second form, same sheet refusing: the choice stands, the alert retries the mark
+  run(`(function () { master.getSheetByName('Interview Responses').cells.push([new Date(Date.now() + 2e4), '${b.people[0].email}', '${b.code}', '${it.code}', 'intro', 'IT', 'IT', '']); })()`);
+  call('webRun', 'sync');
+  const dup = find('DUPLICATE_INTERVIEW', x => x.code === it.code);
+  run('markInterviewInFile_ = function () { throw new Error("The sheet is protected"); }');
+  try { out = quick('keepForm', dup.id, { which: 'latest' }); } finally { run('markInterviewInFile_ = __mk'); }
+  assert(/latest form \(row \d+\) counts.*the mark in the sheet of B\.\d\d failed/.test(out.messages[0]), out.messages[0]);
+  assert(find('FILE_ERROR', x => x.code === it.code && /^Cannot mark/.test(x.msg)), 'an alert to retry the mark');
+}
+
 // ---- alert IDs: numbered from the highest one there is (rows deleted by hand never free an ID), and past A-9999 ----
 {
   const raise = ids => run(`(function () { var sh = master.getSheetByName('Alerts');

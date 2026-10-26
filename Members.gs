@@ -232,7 +232,9 @@ function newBinomeCore_(a) {
       else if (m.draft) errors.push((m.name || e) + ' is in DRAFT row ' + m.draft + ': run Lock, or clear that row first.');
       return m;
     });
-    let max = 0; ctx.binomes.forEach(b => { const n = codeNum(b.code); if (n > max) max = n; });
+    // a code is never handed out again: a row deleted by hand still has its baseline entry and its interviewees (as usedCodes_)
+    const used = ctx.binomes.map(b => b.code).concat(Object.keys((ctx.base && ctx.base.bin) || {}), ctx.iv.data.map(r => String(r[ctx.iv.I.Binome]).trim()));
+    let max = 0; used.forEach(c => { const n = codeNum(c); if (n > max) max = n; });
     const b = { code: 'B.' + pad2(max + 1), tag: errors.length ? '' : pairTag(members[0].pairAs, members[1].pairAs) };
     if (!errors.length && !tagDepts(b.tag).length) errors.push('No department to receive from (Pair As ' + members.map(m => m.pairAs).join(' / ') + ').');
     const view = { errors: errors, warnings: [], binome: b.code, tag: b.tag, members: errors.length ? [] : members.map(m => ({ name: m.name, email: m.email })) };

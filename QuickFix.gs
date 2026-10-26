@@ -236,15 +236,24 @@ function snooze_(ctx, r, ref, dur) {
 
 /* ---------- registration values ---------- */
 
-/** Rewrite a candidate's row in their binome sheet from the Master, keeping what the binome typed. ' and in …' or a note. */
-function refreshFileRow_(ctx, x) {
-  const I = ctx.iv.I, b = ctx.binByCode[x[I.Binome]], sh = b && binomeSheet_(ctx, b);
-  if (!sh) return '';
-  const row = findFileRow_(sh, String(x[I.Code]).trim());
-  if (row < 0) return ' (they have no row in the sheet of ' + b.code + ')';
-  const rng = sh.getRange(row, BF_COL, 1, BF_H.length);
-  rng.setValues(plainRows_([ivToFileRow_(ctx, x, fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H)))], BF_H));
-  return ', also in the sheet of ' + b.code;
+/** Rewrite a candidate's row in their binome sheet from the Master, keeping what the binome typed. ' and in …' or a note.
+ *  The Master keeps the change either way (the caller saves it): a sheet that refuses it raises an alert naming what (the change
+ *  in words), never a failure of the action. */
+function refreshFileRow_(ctx, x, what) {
+  const I = ctx.iv.I, b = ctx.binByCode[x[I.Binome]];
+  try {
+    const sh = b && binomeSheet_(ctx, b);
+    if (!sh) return '';
+    const row = findFileRow_(sh, String(x[I.Code]).trim());
+    if (row < 0) return ' (they have no row in the sheet of ' + b.code + ')';
+    const rng = sh.getRange(row, BF_COL, 1, BF_H.length);
+    rng.setValues(plainRows_([ivToFileRow_(ctx, x, fileCarry_(rng.getValues()[0], rng.getDisplayValues()[0], idx_(BF_H)))], BF_H));
+    return ', also in the sheet of ' + b.code;
+  } catch (e) {
+    ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: String(x[I.Code]), binome: b.code, key: '',
+      msg: ivLabel_(ctx, x) + ': ' + what + ' saved in the Master but not written into the sheet of ' + b.code + ' (' + e.message + '). Type it there by hand.' });
+    return ', but not written into the sheet of ' + b.code + ' (an alert says so)';
+  }
 }
 
 /** values: {field: text} for QUICK_EDITABLE fields, checked like the registration check does. */
@@ -275,7 +284,7 @@ function quickEdit_(ctx, x, values) {
     where = assignRow_(ctx, x) ? '; assigned to ' + x[I.Binome] + ' as ' + x[I.Code]
       : '; still waiting for a binome (' + (bool_(S_().ASSIGNMENTS_OPEN) ? 'no ACTIVE binome takes ' + v['1st Choice'] : 'assignments are closed') + ')';
     indexCtx_(ctx);
-  } else where = refreshFileRow_(ctx, x);
+  } else where = refreshFileRow_(ctx, x, what);
   return ivLabel_(ctx, x) + ': ' + what + where + '.';
 }
 
@@ -328,7 +337,7 @@ function dupNew_(ctx, x) {
   if (!changed.length) return ivLabel_(ctx, o) + ': the new answers are the same as the earlier ones, nothing to copy.';
   changed.forEach(f => { o[I[f]] = x[I[f]]; });
   const moved = changed.indexOf('1st Choice') >= 0 && o[I.Binome] ? '. Their 1st choice is now ' + o[I['1st Choice']] + ': move them if ' + o[I.Binome] + ' does not take it' : '';
-  return ivLabel_(ctx, o) + ': ' + changed.join(', ') + ' taken from the new registration' + refreshFileRow_(ctx, o) + moved + '.';
+  return ivLabel_(ctx, o) + ': ' + changed.join(', ') + ' taken from the new registration' + refreshFileRow_(ctx, o, changed.join(', ') + ' from the new registration') + moved + '.';
 }
 
 function dupSeparate_(ctx, x) {
@@ -361,8 +370,17 @@ function pickCandidate_(ctx, ref, codeText) {
   if (x[I['Interview Submitted At']]) return 'form linked to ' + code + ', who already had a form (Interview Log row ' + x[I['Interview Log Row']] + '): that first one still counts.';
   x[I['Interview Submitted At']] = row[L['Submitted At']]; x[I['Interview Log Row']] = i + 2; x[I.Status] = ST.INTERVIEWED;
   const b = ctx.binByCode[x[I.Binome]];
-  if (b) markInterviewInFile_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)');
-  return 'form linked to ' + code + ', now interviewed.';
+  return 'form linked to ' + code + ', now interviewed' + (b ? markOrAlert_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)') : '') + '.';
+}
+
+/** The interview mark in b's sheet after the Master already changed: a sheet that refuses it raises the alert whose Repair writes
+ *  it again (as logInterview_), never a failure of the action. '' or the note to add to the reply. */
+function markOrAlert_(ctx, b, code, text) {
+  try { markInterviewInFile_(ctx, b, code, text); return ''; } catch (e) {
+    ctx.alerts.add({ severity: 'HIGH', type: 'FILE_ERROR', code: code, binome: b.code, key: 'FILE|' + b.code + '|' + code,
+      msg: 'Cannot mark ' + code + ' in the file of ' + b.code + ': ' + e.message });
+    return '; the mark in the sheet of ' + b.code + ' failed (an alert lets you retry it)';
+  }
 }
 
 /** DUPLICATE_INTERVIEW: which of the two forms counts. The other Interview Log row is marked IGNORED. */
@@ -380,8 +398,8 @@ function keepForm_(ctx, ref, which) {
   noteLog_(ctx, fi, 'IGNORED', 'replaced by the later form in row ' + (i + 2));
   x[I['Interview Submitted At']] = second[L['Submitted At']]; x[I['Interview Log Row']] = i + 2;
   const b = ctx.binByCode[x[I.Binome]];
-  if (b) markInterviewInFile_(ctx, b, code, '✅ ' + fmt_(second[L['Submitted At']], 'dd/MM HH:mm') + ' (latest form)');
-  return 'the latest form (row ' + (i + 2) + ') counts; row ' + (fi + 2) + ' is marked IGNORED.';
+  return 'the latest form (row ' + (i + 2) + ') counts; row ' + (fi + 2) + ' is marked IGNORED' +
+    (b ? markOrAlert_(ctx, b, code, '✅ ' + fmt_(second[L['Submitted At']], 'dd/MM HH:mm') + ' (latest form)') : '') + '.';
 }
 
 /* ---------- binome sheets and files ---------- */
