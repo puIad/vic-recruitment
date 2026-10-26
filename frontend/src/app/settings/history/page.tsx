@@ -123,7 +123,7 @@ export default function HistorySettings() {
     const needle = q.trim().toLowerCase()
     return (history ?? [])
       .map((h) => ({ h, d: describe(h) }))
-      .filter(({ h, d }) => (!kind || d.kind === kind) && (binome === ALL || h.binome === binome || ((h.type === "MOVED" || h.type === "EDIT" || h.type === "DELETED") && h.out.includes(binome))) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
+      .filter(({ h, d }) => (!kind || d.kind === kind) && (binome === ALL || h.binome === binome || ((h.type === "MOVED" || h.type === "EDIT") && h.out.includes(binome))) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
   }, [history, q, kind, binome])
 
   if (!history)
