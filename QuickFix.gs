@@ -162,10 +162,11 @@ function quickCore_(op, a) {
       });
     }
     if (a.dryRun) return { lines: lines, done: done };
+    stampConfirmations_(ctx); // an approved application's confirmation
     saveTable_(ctx.iv);
     commitBase_(ctx);
     ctx.alerts.flush();
-    sendNewIntervieweeMails_(ctx);
+    sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx);
     buildTracker_(ctx);
     return { lines: lines, done: done };
   }, 60000);

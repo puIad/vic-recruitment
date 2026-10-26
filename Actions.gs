@@ -36,6 +36,7 @@ function reassignCore_(code, binomeText) {
 function moveInterviewee_(ctx, code, binomeText) {
   const I = ctx.iv.I, r = ctx.ivByCode[code], pb = parseBinomeCode(binomeText), target = pb && ctx.binByCode[pb.code];
   if (!r) throw new Error('Unknown code ' + code);
+  if (r[I.Status] === ST.HELD) throw new Error(code + ' is on hold: approve it first.'); // a move would skip the review and its confirmation
   if (!target || target.status === 'DRAFT') throw new Error('Binome "' + binomeText + '" not found or not locked yet.');
   if (r[I.Binome] === target.code) {
     // already there: only puts back a row missing from its sheet (the integrity check reports those)

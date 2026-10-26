@@ -217,11 +217,12 @@ function assignUnassigned_(ctx, stopAt) {
 
 /* ---------- the registrant's confirmation (owner, 2026-10-17) ---------- */
 
-const CONFIRM_STATUSES = [ST.UNASSIGNED, ST.HELD].concat(PENDING_STATUSES);
+// not HELD (owner, 2026-10-26): a held applicant hears nothing until an admin approves them (reviewRow_ queues it then)
+const CONFIRM_STATUSES = [ST.UNASSIGNED].concat(PENDING_STATUSES);
 
-/** Before the save: keeps in ctx.confirm the registrations read this run that get a confirmation (a code, waiting, assigned
- *  or held, a usable email and first name) and stamps them "CONFIRMED <date>" in Flags as the record. Only rows
- *  read this run are queued (a saved row is never read again), so nobody is mailed twice.
+/** Before the save: keeps in ctx.confirm the registrations read this run that get a confirmation (a code, waiting or
+ *  assigned, a usable email and first name) and stamps them "CONFIRMED <date>" in Flags as the record. Only rows
+ *  read this run, or approved / restored this run and never confirmed, are queued, so nobody is mailed twice.
  *  shortcut: stamped before the send, so a send that fails (quota) is not retried; mail_ logs it. */
 function stampConfirmations_(ctx) {
   const I = ctx.iv.I;

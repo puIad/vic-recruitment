@@ -129,6 +129,7 @@ function reviewRow_(ctx, x, decision, member) {
     x[I.Status] = ST.UNASSIGNED;
     const placed = assignRow_(ctx, x);
     indexCtx_(ctx);
+    if (!/CONFIRMED/.test(String(x[I.Flags]))) ctx.confirm.push(x); // held or declined at registration: never confirmed yet
     return placed ? ', assigned to ' + x[I.Binome] + (x[I.Code] ? ' as ' + x[I.Code] : '') : ', waiting for a binome';
   };
   if (decision === 'approve') {
@@ -168,10 +169,11 @@ function restoreCore_(codes) {
       catch (e) { return e.message; }
     });
     if (done) {
+      stampConfirmations_(ctx);
       saveTable_(ctx.iv);
       commitBase_(ctx);
       ctx.alerts.flush();
-      sendNewIntervieweeMails_(ctx);
+      sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx);
       buildTracker_(ctx);
     }
     return { lines: lines, done: done };

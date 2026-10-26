@@ -70,6 +70,9 @@ const junk = ivRow('junk.one@g.enp.edu.dz');
 assert.deepStrictEqual([junk[IV.Status], junk[IV.Binome], junk[IV.Risk]], ['HELD', '', 100]);
 assert(junk[IV.Code] && !inSheets(junk[IV.Code]), 'held: a code, in no binome sheet');
 assert.strictEqual(junk[IV.Screening], 'Held: Why VIC: only ".."; Why IT: only "."; Under 10 words in all');
+const confirmed = email => /CONFIRMED \d\d\/\d\d\/\d{4}/.test(ivRow(email)[IV.Flags]);
+assert(!confirmed('junk.one@g.enp.edu.dz') && !confirmed('idk.one@g.enp.edu.dz'), 'held: no confirmation yet');
+assert(confirmed('good.one@g.enp.edu.dz'), 'assigned: confirmed');
 assert.deepStrictEqual([ivRow('good.one@g.enp.edu.dz')[IV.Status], ivRow('good.one@g.enp.edu.dz')[IV.Risk]], ['ASSIGNED', 0]);
 assert.deepStrictEqual([ivRow('short.one@g.enp.edu.dz')[IV.Status], ivRow('short.one@g.enp.edu.dz')[IV.Risk]], ['ASSIGNED', 10], 'short alone never holds');
 assert.strictEqual(ivRow('idk.one@g.enp.edu.dz')[IV.Status], 'HELD', '"I don\'t know" holds');
@@ -87,10 +90,16 @@ assert.strictEqual(open().filter(x => x.type === 'NEEDS_REVIEW' && x.code === ju
 let st = call('webState');
 assert.strictEqual(st.counts.byStatus.HELD, 2);
 assert.strictEqual(st.interviewees.find(i => i.code === junk[IV.Code]).risk, 100);
+out = call('webRun', 'reassign', { code: junk[IV.Code], binome: st.binomes[0].code });
+assert(/is on hold: approve it first/.test(out.messages[0]) && ivRow('junk.one@g.enp.edu.dz')[IV.Status] === 'HELD', 'Reassign never skips the review');
 
-// ---- approve: to a binome now, never held again ----
+// ---- approve: to a binome now, never held again, the confirmation goes out now ----
 assert.throws(() => quick('approve', find('NEEDS_REVIEW', ivRow('idk.one@g.enp.edu.dz')[IV.Code]).id.replace(/\d+$/, '9999')), /no longer open/);
+run(`var __confirmTo = [], __ms = mailSend_; mailSend_ = function (to, m) { if (m.subject === mailDef_('CONFIRM').fields[0][1]) __confirmTo.push(to); return __ms(to, m); }`);
+const confirmTo = () => R('__confirmTo.splice(0)'); // the confirmations sent since the last call (TEST_MODE only logs them)
 out = quick('approve', a.id);
+assert(confirmed('junk.one@g.enp.edu.dz'), 'approved: confirmed');
+assert.deepStrictEqual(confirmTo(), ['junk.one@g.enp.edu.dz'], 'one confirmation, to them');
 assert(/approved, assigned to B\.\d\d as IT\.\d\d/.test(out.messages[0]), out.messages[0]);
 r = ivRow('junk.one@g.enp.edu.dz');
 assert.strictEqual(r[IV.Status], 'ASSIGNED');
@@ -109,6 +118,8 @@ assert.strictEqual(ivRow('idk.one@g.enp.edu.dz')[IV.Status], 'DECLINED', 'stays 
 out = call('webRun', 'restore', { codes: [idk[IV.Code]] });
 assert(/restored, assigned to B\.\d\d/.test(out.messages[0]), out.messages[0]);
 assert(/Restored by /.test(ivRow('idk.one@g.enp.edu.dz')[IV.Screening]) && inSheets(idk[IV.Code]));
+assert(confirmed('idk.one@g.enp.edu.dz'), 'held, declined, then restored: confirmed now');
+assert.deepStrictEqual(confirmTo(), ['idk.one@g.enp.edu.dz'], 'declining sent none, restoring one');
 assert.throws(() => call('webRun', 'restore', { codes: [idk[IV.Code]] }), /is not declined/);
 
 // ---- someone put on the members list after they were assigned: an alert, they stay until declined ----

@@ -128,7 +128,7 @@ export const SETTING_UI: Record<string, SettingUi> = {
   INSTANT_EMAIL_MIN_SEVERITY: { label: "Email the admins at once for", icon: Bell, help: "Alerts below this level wait for the daily digest.", control: { type: "choice" } },
   NOTIFY_BINOME_ON_ALERT: { label: "Email binomes about their alerts", icon: Send, help: "Also tell the binome when an alert concerns them: a big mistake or a delay." },
   NOTIFY_BINOME_ON_NEW_INTERVIEWEE: { label: "Email binomes about new candidates", icon: UserPlus, help: "Tell the binome each time a candidate is given to them." },
-  CONFIRM_REGISTRANTS: { label: "Confirmation email to registrants", icon: MailCheck, help: "Send every new registrant an email with their code. Not sent for a duplicate registration or a declined VIC member." },
+  CONFIRM_REGISTRANTS: { label: "Confirmation email to registrants", icon: MailCheck, help: "Send every new registrant an email with their code. Not sent for a duplicate registration or a declined VIC member; an application on hold gets it only when approved." },
   SHARE_FILES_WITH_BINOME: { label: "Share binome sheets", icon: Share2, help: "Give both members of a binome edit access to their own sheet." },
   ASSIGNMENTS_OPEN: {
     label: "Give new registrants to binomes",

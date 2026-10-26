@@ -36,7 +36,7 @@ assert(!/binome/i.test(conf), 'no binome: a held or declined applicant never get
 assert(!/<a /.test(conf), 'no internal link to a candidate');
 assert(!/interview/i.test(conf), 'never promises an interview');
 
-// ---- which registrations get one: a code, waiting / assigned / held, a usable email and first name ----
+// ---- which registrations get one: a code, waiting / assigned (not held), a usable email and first name ----
 const picked = () => R(`(function () {
   var I = idx_(IV_H), mk = function (st, code, first, email) { var r = new Array(IV_H.length).fill(''); r[I.Status] = st; r[I.Code] = code; r[I['First Name']] = first; r[I.Email] = email; return r; };
   var ctx = { iv: { I: I }, now: new Date(), confirm: [mk('UNASSIGNED', 'IT.90', 'A', 'a@x.dz'), mk('ASSIGNED', 'IT.91', 'B', 'b@x.dz'), mk('HELD', 'IT.92', 'C', 'c@x.dz'),
@@ -45,7 +45,7 @@ const picked = () => R(`(function () {
   stampConfirmations_(ctx);
   return ctx.confirm.map(function (r) { return r[I.Code] + ' ' + r[I.Flags]; }); })()`);
 const p = picked();
-assert.deepStrictEqual(p.map(x => x.split(' ')[0]), ['IT.90', 'IT.91', 'IT.92', 'IT.98'], 'not duplicates, declined (VIC members), no code, no name, no email; any script');
+assert.deepStrictEqual(p.map(x => x.split(' ')[0]), ['IT.90', 'IT.91', 'IT.98'], 'not held, duplicates, declined (VIC members), no code, no name, no email; any script');
 assert(p.every(x => /CONFIRMED \d\d\/\d\d\/\d{4}$/.test(x)), 'stamped in Flags: ' + J(p));
 
 call('webRun', 'importTeam', { link: '' }); call('webRun', 'draft'); call('webRun', 'lock');
