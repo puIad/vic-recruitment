@@ -52,7 +52,7 @@ function quickLookups_(ctx) {
 
 function regView_(ctx, x) {
   const I = ctx.iv.I, s = h => String(x[I[h]] == null ? '' : x[I[h]]).replace(/^'/, '');
-  const birth = x[I['Birth Date']];
+  const birth = parseLooseDate(x[I['Birth Date']]);
   return { code: s('Code'), binome: s('Binome'), status: s('Status'), first: s('First Name'), family: s('Family Name'), email: s('Email'),
     typed: s('Typed Email'), phone: s('Phone'), birth: birth instanceof Date ? fmt_(birth, 'dd/MM/yyyy') : s('Birth Date'),
     c1: s('1st Choice'), c2: s('2nd Choice'), field: s('Field'), year: s('Year'), availability: s('Availability'),
