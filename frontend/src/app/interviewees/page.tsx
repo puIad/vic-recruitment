@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
-import { EyeOff, Eye, MoveRight, RotateCcw, Search, ShieldQuestionMark, X } from "lucide-react"
+import { EyeOff, Eye, MoveRight, RotateCcw, Search, ShieldQuestionMark, Trash2, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { DataTable } from "@/components/data-table/data-table"
@@ -94,38 +94,46 @@ function RiskBadge({ risk }: { risk: number }) {
   )
 }
 
-/** Move for a candidate in the pipeline; Review for one on hold (the decision lives on its alert); Restore for a declined one. */
+/** Move for a candidate in the pipeline; Review for one on hold (the decision lives on its alert); Restore for a declined one.
+ *  Delete for every one. */
 function RowAction({ iv }: { iv: Interviewee }) {
+  const busy = useVic((s) => s.busy)
+  const { deleteApplication } = useActions()
+  return (
+    <div className="flex justify-end gap-1">
+      <MainAction iv={iv} />
+      <Button variant="ghost" size="sm" disabled={busy} onClick={() => deleteApplication(iv.code, iv.name, iv.binome)} aria-label={`Delete ${iv.code}`} title="Delete this application" className="text-muted-foreground hover:text-destructive">
+        <Trash2 />
+      </Button>
+    </div>
+  )
+}
+
+function MainAction({ iv }: { iv: Interviewee }) {
   const openMove = useUi((s) => s.openMoveDialog)
   const busy = useVic((s) => s.busy)
   const review = useVic((s) => (iv.status === "HELD" ? s.state?.alerts.find((a) => a.type === "NEEDS_REVIEW" && a.code === iv.code) : undefined))
   const { restore } = useActions()
   if (iv.status === "DECLINED") {
     return (
-      <div className="flex justify-end">
-        <Button variant="ghost" size="sm" disabled={busy} onClick={() => restore(iv.code, iv.name)} aria-label={`Restore ${iv.code}`}>
-          <RotateCcw /> <span className="hidden sm:inline">Restore</span>
-        </Button>
-      </div>
+      <Button variant="ghost" size="sm" disabled={busy} onClick={() => restore(iv.code, iv.name)} aria-label={`Restore ${iv.code}`}>
+        <RotateCcw /> <span className="hidden sm:inline">Restore</span>
+      </Button>
     )
   }
   if (iv.status === "HELD") {
     return (
-      <div className="flex justify-end">
-        <Button asChild variant="ghost" size="sm" aria-label={`Review ${iv.code}`}>
-          <Link to={review ? `/alerts?id=${encodeURIComponent(review.id)}` : "/alerts"}>
-            <ShieldQuestionMark /> <span className="hidden sm:inline">Review</span>
-          </Link>
-        </Button>
-      </div>
+      <Button asChild variant="ghost" size="sm" aria-label={`Review ${iv.code}`}>
+        <Link to={review ? `/alerts?id=${encodeURIComponent(review.id)}` : "/alerts"}>
+          <ShieldQuestionMark /> <span className="hidden sm:inline">Review</span>
+        </Link>
+      </Button>
     )
   }
   return (
-    <div className="flex justify-end">
-      <Button variant="ghost" size="sm" onClick={() => openMove({ code: iv.code })} aria-label={`Move ${iv.code} to another binome`}>
-        <MoveRight /> <span className="hidden sm:inline">Move</span>
-      </Button>
-    </div>
+    <Button variant="ghost" size="sm" onClick={() => openMove({ code: iv.code })} aria-label={`Move ${iv.code} to another binome`}>
+      <MoveRight /> <span className="hidden sm:inline">Move</span>
+    </Button>
   )
 }
 
@@ -165,7 +173,7 @@ export default function IntervieweesPage() {
   return (
     <BaseLayout
       title="Interviewees"
-      description={loading ? "Loading…" : `${list.length - declined} candidates with a code${declined ? `, plus ${declined} declined` : ""}. Search by code, name or binome; move one to another binome from its row.`}
+      description={loading ? "Loading…" : `${list.length - declined} candidates with a code${declined ? `, plus ${declined} declined` : ""}. Search by code, name or binome; move one to another binome or delete it from its row.`}
       watermark="Candidates"
     >
       <DataTable

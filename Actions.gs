@@ -83,6 +83,71 @@ function moveInterviewee_(ctx, code, binomeText) {
   return code + ' moved to ' + target.code + kept;
 }
 
+/** webRun('deleteApplication', {code}): an application erased for good (owner, 2026-10-26). Nobody is emailed. */
+function deleteApplicationCore_(code) {
+  code = String(code || '').trim();
+  if (!code) throw new Error('No interviewee given.');
+  const res = withLock_(() => {
+    const ctx = loadCtx_();
+    detectEdits_(ctx);
+    const msg = deleteApplication_(ctx, code);
+    saveTable_(ctx.iv);
+    commitBase_(ctx);
+    ctx.alerts.flush();
+    buildTracker_(ctx);
+    return msg;
+  }, 60000);
+  if (!res) { busy_(); return null; }
+  say_(res);
+  return res;
+}
+
+/** Its Interviewees row, its rows in the binome sheet (and Interview Answers) and its answer in Registration Responses go;
+ *  its code is held so it is never handed out again. Throws only before anything is written. */
+function deleteApplication_(ctx, code) {
+  const I = ctx.iv.I, r = ctx.ivByCode[code];
+  if (!r) throw new Error('Unknown code ' + code);
+  const key = String(r[I['Response Key']]).trim(), name = (r[I['First Name']] + ' ' + r[I['Family Name']]).trim();
+  const b = ctx.binByCode[r[I.Binome]], kept = [];
+  holdCode_(code);
+  // the Master's row: found again by key (by code for a row typed by hand), as rows may have moved since the load
+  const n = ctx.iv.sh.getLastRow() - 1, cells = n > 0 ? ctx.iv.sh.getRange(2, 1, n, IV_H.length).getValues() : [];
+  const at = cells.findIndex(x => (key ? String(x[I['Response Key']]).trim() === key : String(x[I.Code]).trim() === code));
+  if (at >= 0) ctx.iv.sh.deleteRow(at + 2);
+  const i = ctx.iv.data.indexOf(r);
+  ctx.iv.data.splice(i, 1); ctx.iv.orig.splice(i, 1);
+  indexCtx_(ctx);
+  if (b) {
+    try {
+      removeFromBinomeFile_(ctx, b, code);
+      const sh = binomeSheet_(ctx, b), tab = sh ? sh.getParent().getSheetByName(IA_TAB) : null;
+      if (tab) withMemberLock_(b, () => { const a = answersRow_(tab, code); if (a) tab.deleteRow(a.row); });
+    } catch (e) { kept.push('their row is still in the sheet of ' + b.code + ' (' + e.message + '): delete it there'); }
+  }
+  const reg = key ? responseSheet_('REG') : null;
+  if (reg && reg.getLastRow() > 1) {
+    const data = reg.getDataRange().getValues(), H = regHeaders_(data[0]), get = (row, j) => (j >= 0 ? row[j] : '');
+    const email = row => String(get(row, H.collected)).trim().toLowerCase() || String(get(row, H.typed)).trim();
+    let at = -1;
+    for (let k = data.length - 1; k >= 1 && at < 0; k--) {
+      const ts = get(data[k], H.ts);
+      if (ts && (responseKey_(ts, email(data[k]), k + 1) === key || serialKey_(ts, email(data[k])) === key)) at = k;
+    }
+    // a later answer without an email is keyed by its row number: deleting this row would shift it and import it again,
+    // so this one stays (the baseline remembers it, so it is never imported again either)
+    if (at < 0) kept.push('their answer was not found in Registration Responses');
+    else if (data.slice(at + 1).some(row => get(row, H.ts) && !email(row))) kept.push('their answer stays in Registration Responses (a later answer has no email): delete it there by hand only once no answer without an email is below it');
+    else { reg.deleteRow(at + 1); if (ctx.base) delete ctx.base.iv[key]; } // nothing left to re-import: the baseline need not remember it
+  }
+  const A = ctx.alerts.table.I;
+  ctx.alerts.resolveWhere(x => String(x[A.Interviewee]) === code || (!!key && String(x[A.Key]).indexOf(key) >= 0), 'RESOLVED');
+  const by = Session.getActiveUser().getEmail();
+  ctx.alerts.add({ severity: 'INFO', type: 'DELETED', status: 'AUTO-FIXED', code: code, binome: b ? b.code : '', key: '',
+    msg: code + ' (' + name + ') deleted by ' + by + (kept.length ? ', but ' + kept.join('; ') : '') + '. The code is not handed out again.' });
+  logIvChange_(ctx, code, 'Deleted', b ? b.code : '', '');
+  return code + ' (' + name + ') deleted' + (kept.length ? ', but ' + kept.join('; ') : ' everywhere') + '.';
+}
+
 /** One row in the Interviewee Changes tab (created on first write) for Change history. A failed write never undoes the change. */
 function logIvChange_(ctx, code, what, from, to) {
   try {
