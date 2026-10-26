@@ -2,7 +2,7 @@
 
 // Drive can take minutes to bump a sheet's "last updated" time, so a sheet it calls unchanged is still re-read once it
 // has not been read for REREAD_MINUTES; at most REREAD_MAX of those per run, the longest unread first.
-const REREAD_MINUTES = 15, REREAD_MAX = 3, UPGRADE_PER_RUN = 6, FORCE_FRESH_S = 120; // ponytail: fixed knobs; move to Settings if a sheet still lags or runs get slow
+const REREAD_MINUTES = 15, REREAD_MAX = 3, UPGRADE_PER_RUN = 6, FORCE_FRESH_S = 60; // ponytail: fixed knobs; move to Settings if a sheet still lags or runs get slow
 
 function pullBinomeFiles_(ctx, force) {
   const props = PropertiesService.getScriptProperties();
@@ -17,7 +17,8 @@ function pullBinomeFiles_(ctx, force) {
   // dirty:<code> = a member wrote that sheet from the dashboard (memberSet_): read it whatever Drive's "last updated" says
   const cache = CacheService.getScriptCache(), dirty = cache.getAll(files.map(b => 'dirty:' + b.code)), edited = b => !!dirty['dirty:' + b.code];
   // force (Sync now) reads every sheet, except one already read in the last FORCE_FRESH_S that Drive and the dirty marks call
-  // unchanged: each read is a Sheets API call, and presses close together ran out of its 60 reads/min per user
+  // unchanged: each read is a Sheets API call, and presses close together ran out of its 60 reads/min per user (a read older
+  // than a minute no longer counts against it, so the window where an edit Drive has not reported yet waits is kept to that)
   const fresh = b => ctx.now.getTime() - (readAt[b.fileId] || 0) < FORCE_FRESH_S * 1000;
   const unchanged = b => (!force || fresh(b)) && !edited(b) && updated[b.fileId] && seen[b.fileId] && updated[b.fileId] <= seen[b.fileId];
   const upgrade = {}, reread = {};
