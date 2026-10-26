@@ -136,6 +136,8 @@ function normPhone(p) {
 
 function parseLooseDate(v) {
   if (v instanceof Date && !isNaN(v)) return v;
+  // A date cell formatted as a number reads back as Sheets' day count (37464 = 27/07/2002, day 0 = 30/12/1899)
+  if (/^\d{5}$/.test(String(v).trim())) return new Date(1899, 11, 30 + parseInt(String(v).trim(), 10));
   const m = String(v || '').trim().match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
   if (!m) return null;
   let y = parseInt(m[3], 10); if (y < 100) y += 2000;

@@ -327,6 +327,8 @@ t('birth year guessed from the year of study', () => {
   assert.deepStrictEqual(B('14/05/2025', '1ST', 'PREPA'), { date: '2025-05-14', suspect: true, guess: '2007-05-14' }, 'the current year typed: guessed');
   assert.deepStrictEqual(B('14/05/2006', '1ST', 'PREPA'), { date: '2006-05-14', suspect: false, guess: '' }, 'a plausible date stays');
   assert.deepStrictEqual(B(D('1980-02-03T00:00:00'), '2ND', 'MECA'), { date: '1980-02-03', suspect: true, guess: '2004-02-03' }, 'a Date from the sheet');
+  assert.deepStrictEqual(B(37464, '1ST', 'PREPA'), { date: '2002-07-27', suspect: false, guess: '' }, 'a date cell read back as a day count');
+  assert.deepStrictEqual(B('37464', '1ST', 'PREPA'), { date: '2002-07-27', suspect: false, guess: '' }, 'the day count as text');
   assert.deepStrictEqual(B('sometime', '1ST', 'PREPA'), { date: 'sometime', suspect: true, guess: '' }, 'unreadable: no day to keep');
   assert.deepStrictEqual(B('14/05/2025', '', 'PREPA'), { date: '2025-05-14', suspect: true, guess: '' }, 'no year of study: no guess');
   assert.deepStrictEqual(B('', '1ST', 'PREPA'), { date: '', suspect: false, guess: '' });
