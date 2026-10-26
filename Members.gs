@@ -140,8 +140,13 @@ function applyMemberPlans_(ctx, plans, reason) {
     if (b.fileId && share && !same) {
       let f = null;
       try { f = DriveApp.getFileById(b.fileId); } catch (e) { fileIssues.push('sharing not updated (' + driveErr_(e) + ')'); }
-      // the owner (who ran Lock) can't be removed: that just fails quietly
-      if (f && p.out && p.out.email) { try { f.removeEditor(p.out.email); } catch (e) { console.warn('removeEditor ' + p.out.email + ': ' + e); } }
+      if (f && p.out && p.out.email) {
+        try { f.removeEditor(p.out.email); } catch (e) {
+          // the owner (who ran Lock) can't be removed: only that failure stays quiet, anyone else keeping the sheet is reported
+          let owner = ''; try { owner = lc_(f.getOwner().getEmail()); } catch (x) { /* unknown owner: reported */ }
+          if (lc_(p.out.email) !== owner) fileIssues.push('could not remove ' + p.out.email + ' from the sheet (' + driveErr_(e) + ')');
+        }
+      }
       if (f && p.inn) { try { f.addEditor(p.inn.email); } catch (e) { fileIssues.push('could not share with ' + p.inn.email + ' (' + driveErr_(e) + ')'); } }
     }
     changesSheet_().appendRow([ctx.now, by, 'PERMANENT', b.code, p.out ? p.out.name : '', p.out ? p.out.email : '',
