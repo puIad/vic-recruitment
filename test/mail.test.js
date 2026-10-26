@@ -59,7 +59,7 @@ const todo = R('pairedTodo_(loadCtx_()).length');
 assert(todo > 0 && todo <= locked, 'members not told by the test-mode lock: ' + todo + ' of ' + locked);
 assert.deepStrictEqual(R('mailPaired_(loadCtx_())'), { sent: todo, failed: [] });
 assert.strictEqual(paired().length, todo, 'one PAIRED per untold member');
-assert(paired().every(m => /Open the binome sheet/.test(m.htmlBody)), 'with the sheet link');
+assert(paired().every(m => /Open the dashboard/.test(m.htmlBody)), 'with the dashboard button');
 run('__outbox.length = 0');
 assert.deepStrictEqual([R('mailPaired_(loadCtx_())').sent, R('pairedTodo_(loadCtx_()).length'), paired().length], [0, 0, 0], 'never twice');
 
@@ -92,7 +92,7 @@ assert(mine.htmlBody.includes('<td bgcolor="#FF6A5E" style="background:#FF6A5E;h
 const ines = outbox().find(m => m.to === 'ines.kaci@g.enp.edu.dz').htmlBody;
 assert(ines.includes('Ines&lt;i&gt;&quot;') && !ines.includes('Ines<i>'), 'the name is escaped');
 const binMail = outbox().find(m => /New interviewee/.test(m.subject));
-assert(binMail && binMail.htmlBody.includes(lina[IV.Code]) && binMail.htmlBody.includes('Open your binome sheet'), 'the binome mail, through the template');
+assert(binMail && binMail.htmlBody.includes(lina[IV.Code]) && binMail.htmlBody.includes('Open the dashboard'), 'the binome mail, through the template');
 assert.strictEqual(binMail.name, 'VIC Recruitment Bot', 'a team mail');
 run('__outbox.length = 0');
 sync(); sync();
@@ -209,8 +209,8 @@ console.log('MAIL OK');
   const crypto = require('crypto');
   // hashes of each sample as it rendered before the theme (main at 86ae089): the theme never touches the rejection or a team
   // mail. A deliberate change to one of them: re-hash its mailSample_ (subject, from, html; sha256, 16 hex) and update it here
-  const BEFORE = { REJECT: 'df5381a2244ef163', NEW_IV: '84c9defbf652d4a2', ALERT: 'fdca2ff1e9d5c3f3', JOINED: '65d455d5f3f0e787',
-    LEFT: '6e36ae12140a8500', PAIRED: 'b2d7c5863ab08333', COVER: 'bbcdbbdf01e30cff', COVERED: 'a5cee67a598d8c50' };
+  const BEFORE = { REJECT: 'df5381a2244ef163', NEW_IV: 'f760a2187e6c339e', ALERT: 'e27a17dd722c230d', JOINED: '4ae84df691077465',
+    LEFT: '6e36ae12140a8500', PAIRED: '8db1e9259a93fdb5', COVER: '365cdd60cf2b140c', COVERED: 'd4330a16cfa80e87' };
   settings(Object.fromEntries(R('MAILS.reduce(function (a, m) { return a.concat(m.fields.map(function (f) { return "MAIL_" + m.id + "_" + f[0].toUpperCase(); })); }, [])').map(k => [k, ''])));
   Object.keys(BEFORE).forEach(id => {
     const m = R(`mailSample_('${id}')`);

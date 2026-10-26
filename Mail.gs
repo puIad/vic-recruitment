@@ -156,10 +156,10 @@ function mailSample_(id, texts) {
   const people = mailList_([['IT.12', 'Lina A. · 0550 00 00 00 · available: evenings'], ['IT.15', 'Omar S. · 0661 00 00 00 · available: weekends']]);
   const cta = label => ({ label: label, url: DASHBOARD_URL });
   const o = { texts: texts, dept: 'IT', footer: MAILS.some(m => m.id === id && m.to === 'candidate') ? undefined : mailTeamFooter_(DASHBOARD_URL) };
-  if (id === 'NEW_IV') Object.assign(o, { blocks: [people], cta: cta('Open your binome sheet') });
-  if (id === 'ALERT') Object.assign(o, { blocks: [mailAlerts_([['HIGH', 'NOT_CONTACTED', 'IT.12', 'IT.12 has not been contacted yet']])], cta: cta('Open your binome sheet') });
-  if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: cta('Open the binome sheet') });
-  if (id === 'PAIRED' || id === 'COVERED') o.cta = cta('Open the binome sheet');
-  if (id === 'COVER') Object.assign(o, { blocks: [people], cta: cta('View the binome sheet') });
+  if (id === 'NEW_IV') Object.assign(o, { blocks: [people], cta: cta('Open the dashboard') });
+  if (id === 'ALERT') Object.assign(o, { blocks: [mailAlerts_([['HIGH', 'NOT_CONTACTED', 'IT.12', 'IT.12 has not been contacted yet']])], cta: cta('Open the dashboard') });
+  if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: cta('Open the dashboard') });
+  if (id === 'PAIRED' || id === 'COVERED') o.cta = cta('Open the dashboard');
+  if (id === 'COVER') Object.assign(o, { blocks: [people], cta: cta('Open the dashboard') });
   return mailFrom_(id, v, o);
 }
