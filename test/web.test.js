@@ -238,6 +238,30 @@ assert(/Unknown code/.test(out.messages[0]));
   assert(/^2005-03-0\d$/.test(r.birth.date) && !r.birth.suspect && r.birth.guess === '', JSON.stringify(r.birth));
 }
 
+{ // Delete an application: gone from the Master, its binome sheet and Registration Responses; its code is never reused
+  const num = c => Number(c.split('.')[1]);
+  const its = call('webState').interviewees.filter(x => x.code.startsWith('IT.') && x.binome).sort((a, b) => num(b.code) - num(a.code));
+  const del = its[0], regRows = () => run("ss_().getSheetByName('Registration Responses').getLastRow()");
+  const inSheet = code => run(`(function () { var ctx = loadCtx_(); return findFileRow_(binomeSheet_(ctx, ctx.binByCode[${JSON.stringify(del.binome)}]), ${JSON.stringify(code)}); })()`);
+  assert(inSheet(del.code) > 0, 'in its binome sheet before');
+  const before = regRows();
+  run('__outbox.length = 0');
+  out = call('webRun', 'deleteApplication', { code: del.code });
+  assert(new RegExp(del.code.replace('.', '\\.') + ' .* deleted everywhere').test(out.messages[0]), out.messages[0]);
+  st = call('webState');
+  assert(!st.interviewees.some(x => x.code === del.code), 'gone from Interviewees');
+  assert.deepStrictEqual([inSheet(del.code), regRows(), run('__outbox.length')], [-1, before - 1, 0], 'out of the sheet and the responses, nobody mailed');
+  assert.deepStrictEqual([st.ivHistory[0].code, st.ivHistory[0].what, st.ivHistory[0].from], [del.code, 'Deleted', del.binome]);
+  assert.throws(() => call('webRun', 'deleteApplication', { code: del.code }), /Unknown code/, 'twice: unknown');
+  // the next IT registration does not get the deleted code, after a sync too (the baseline forgets the deleted row)
+  call('webRun', 'sync');
+  run(`master.getSheetByName('Registration Responses').cells.push(regRow(new Date(), 'new.it@g.enp.edu.dz', 'Nadia', 'Kerroum', 'new.it@g.enp.edu.dz', '01/03/2005', '0555999999', 'IT', 'HR'))`);
+  call('webRun', 'sync');
+  const fresh = call('webState').interviewees.find(x => x.name === 'Nadia Kerroum');
+  assert(fresh && num(fresh.code) > num(del.code), 'a new code, not ' + del.code + ': ' + (fresh && fresh.code));
+  assert(!call('webState').interviewees.some(x => x.code === del.code), 'not re-imported');
+}
+
 const ids = st.alerts.slice(0, 2).map(a => a.id);
 out = call('webRun', 'resolve', { ids });
 assert.deepStrictEqual(out.messages, ['2 alert(s) marked as resolved']);

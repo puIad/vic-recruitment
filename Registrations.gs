@@ -87,10 +87,18 @@ function loads_(ctx) {
   return load;
 }
 
-/** Codes in use: the tab's, and those of rows deleted by hand that the baseline keeps for Revert (never handed out again). */
+/** Codes in use: the tab's, those of rows deleted by hand that the baseline keeps for Revert, and those of deleted
+ *  applications (never handed out again). */
 function usedCodes_(ctx) {
   const held = ctx.base ? Object.keys(ctx.base.iv).map(k => ctx.base.iv[k] && ctx.base.iv[k].Code).filter(Boolean) : [];
-  return Object.keys(ctx.ivByCode).concat(held);
+  return Object.keys(ctx.ivByCode).concat(held, heldCodes_());
+}
+function heldCodes_() {
+  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('HELD_CODES') || '[]'); } catch (e) { return []; }
+}
+function holdCode_(code) {
+  const all = heldCodes_();
+  if (all.indexOf(code) < 0) PropertiesService.getScriptProperties().setProperty('HELD_CODES', JSON.stringify(all.concat(code)));
 }
 
 /** Give a binome (and a code if missing) to an Interviewees row. Returns true if assigned. */

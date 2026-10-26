@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowRightLeft, Building2, MoveRight, PenLine, Repeat, Search, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
+import { ArrowRightLeft, Building2, MoveRight, PenLine, Repeat, Search, Trash2, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +12,7 @@ import { useVic } from "@/lib/vic/store"
 import type { HistoryRow, IvHistoryRow } from "@/lib/vic/types"
 import { MemberName } from "@/components/member-name"
 
-type Kind = "replace" | "swap" | "cover" | "tag" | "moved" | "edit"
+type Kind = "replace" | "swap" | "cover" | "tag" | "moved" | "deleted" | "edit"
 
 const ALL = "all" // the Binome dropdown's "All binomes": Select items can't hold an empty value
 
@@ -22,12 +22,15 @@ const KINDS: Record<Kind, { label: string }> = {
   cover: { label: "Cover" },
   tag: { label: "Department" },
   moved: { label: "Moved" },
+  deleted: { label: "Deleted" },
   edit: { label: "Edit accepted" },
 }
 
-/** An Interviewee Changes row in Member Changes' shape: MOVED (out → inn = the binomes) or EDIT (out → inn = "Field: value").
- *  Both file under the binome they end in (an edit: the one it names, if any); the binome filter also finds the one they left. */
+/** An Interviewee Changes row in Member Changes' shape: MOVED (out → inn = the binomes), DELETED (out = the binome it left) or
+ *  EDIT (out → inn = "Field: value"). They file under the binome they end in (an edit: the one it names, if any; a deletion:
+ *  the one it left); the binome filter also finds the one they left. */
 function fromIv(r: IvHistoryRow): HistoryRow {
+  if (r.what === "Deleted") return { at: r.at, by: r.by, type: "DELETED", binome: r.from, out: r.from, inn: "", codes: [r.code], reason: "", status: "" }
   const moved = r.what === "Moved"
   const named = (s: string) => (/\bB\.\d+/.exec(s) ?? [])[0]
   const binome = moved ? r.to : /^B\.\d+$/.test(r.code) ? r.code : named(r.to) ?? named(r.from) ?? ""
@@ -54,6 +57,10 @@ function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon;
   if (h.type === "MOVED") {
     const code = h.codes[0]
     return { kind: "moved", title: "Moved", icon: MoveRight, what: <>{code}: {h.out || "nobody"} → <b>{h.inn}</b></>, text: `${code} ${h.out} → ${h.inn}` }
+  }
+  if (h.type === "DELETED") {
+    const code = h.codes[0]
+    return { kind: "deleted", title: "Deleted", icon: Trash2, what: <>{code}{h.out && <span className="text-muted-foreground"> · was in {h.out}</span>}</>, text: `${code} deleted ${h.out}` }
   }
   if (h.type === "EDIT") {
     const code = h.codes[0]
@@ -116,7 +123,7 @@ export default function HistorySettings() {
     const needle = q.trim().toLowerCase()
     return (history ?? [])
       .map((h) => ({ h, d: describe(h) }))
-      .filter(({ h, d }) => (!kind || d.kind === kind) && (binome === ALL || h.binome === binome || ((h.type === "MOVED" || h.type === "EDIT") && h.out.includes(binome))) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
+      .filter(({ h, d }) => (!kind || d.kind === kind) && (binome === ALL || h.binome === binome || ((h.type === "MOVED" || h.type === "EDIT" || h.type === "DELETED") && h.out.includes(binome))) && (!needle || [h.binome, h.by, h.out, h.inn, h.reason, h.codes.join(" "), d.text].join(" ").toLowerCase().includes(needle)))
   }, [history, q, kind, binome])
 
   if (!history)
@@ -133,7 +140,7 @@ export default function HistorySettings() {
           <div>
             <CardTitle className="text-lg font-bold">Timeline</CardTitle>
             <CardDescription>
-              Every member change, swap, cover and department change made after lock, and every interviewee move and accepted hand edit, newest first. Read from the Member Changes and Interviewee Changes tabs.
+              Every member change, swap, cover and department change made after lock, and every interviewee move, deletion and accepted hand edit, newest first. Read from the Member Changes and Interviewee Changes tabs.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -163,7 +170,7 @@ export default function HistorySettings() {
             <div className="max-w-full overflow-x-auto">
             <ToggleGroup type="single" variant="outline" size="sm" value={kind} onValueChange={(v) => setKind(v as Kind | "")} aria-label="Filter by change">
               {(Object.keys(KINDS) as Kind[]).map((k) => (
-                <ToggleGroupItem key={k} value={k} className="px-3 whitespace-nowrap">
+                <ToggleGroupItem key={k} value={k} className="flex-auto px-3 whitespace-nowrap">
                   {KINDS[k].label}
                 </ToggleGroupItem>
               ))}

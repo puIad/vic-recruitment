@@ -516,6 +516,27 @@ export function useActions() {
         return !!out
       },
 
+      /** An application erased for good: the Master, the binome sheet and Registration Responses. Nobody is emailed. */
+      async deleteApplication(code: string, name: string, binome: string) {
+        const ok = await confirm({
+          title: `Delete ${name || code}?`,
+          body: (
+            <>
+              <p>
+                <b>{code}</b> leaves the Interviewees tab{binome ? <>, the sheet of <Mono>{binome}</Mono></> : null} and Registration Responses. Nobody is emailed.
+              </p>
+              <p className="mt-3 text-muted-foreground">This can't be undone. The code {code} is never given to anyone else.</p>
+            </>
+          ),
+          okLabel: "Delete",
+          danger: true,
+        })
+        if (!ok) return false
+        const out = await go("deleteApplication", { code }, `Delete ${code}`)
+        after()
+        return !!out
+      },
+
       /** Settings › Screening: read the VIC members sheet now instead of waiting for the 30-minute refresh. */
       async membersRefresh() {
         const out = await go("membersRefresh", {}, "Read the members sheet")

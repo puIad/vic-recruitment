@@ -67,6 +67,7 @@ const ALERT_LABELS: Record<string, string> = {
   COVER_ADDED: "Cover started",
   TAG_CHANGED: "Department changed",
   REASSIGNED: "Interviewee moved",
+  DELETED: "Application deleted",
   MANUAL_EDIT: "Edited by hand",
   ODD_VALUE: "Odd value in a sheet",
   INTEGRITY: "Sheet check",

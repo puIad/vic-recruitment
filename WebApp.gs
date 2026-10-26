@@ -847,6 +847,7 @@ function webRun(action, args) {
       case 'quick': result = quickCore_(String(args.op || ''), args); break;
       case 'binomeAccess': result = binomeAccessCore_(String(args.binome || ''), args.level, a.email); break;
       case 'restore': result = restoreCore_(args.codes); break;
+      case 'deleteApplication': result = deleteApplicationCore_(args.code); break;
       case 'membersRefresh': result = membersRefreshCore_(); break;
       case 'rejections': result = rejectionsCore_(args); break;
       case 'mailPreview': result = mailPreviewCore_(a, args); break;
