@@ -281,7 +281,7 @@ function teamSet_(args) {
   const e = lc_(args.email), on = args.experienced === true;
   if (typeof args.experienced !== 'boolean') throw new Error('Experienced must be true or false.');
   const res = withLock_(() => {
-    const ctx = loadCtx_(), T = ctx.team.I, B = ctx.bin.I, i = ctx.team.data.findIndex(r => lc_(r[T.Email]) === e);
+    const ctx = loadCtx_(), T = ctx.team.I, i = ctx.team.data.findIndex(r => lc_(r[T.Email]) === e);
     if (!hasExpCol_(ctx)) throw new Error(NO_EXP_COL);
     if (i < 0) throw new Error((e || 'That member') + ' is not in the Team tab.');
     ctx.team.data[i][T.Experienced] = on;
