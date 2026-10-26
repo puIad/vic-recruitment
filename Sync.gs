@@ -31,7 +31,7 @@ function pullBinomeFiles_(ctx, force) {
     // rebuilding a first-layout sheet takes seconds: at most UPGRADE_PER_RUN per run, the rest wait for the next ones
     if (!p && !seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
     ctx.opened[b.code] = force ? 'forced' : edited(b) ? 'edited' : upgrade[b.fileId] ? 'upgrade' : reread[b.fileId] ? 'reread' : 'changed';
-    const readFrom = Date.now();
+    const readFrom = p ? p.at : Date.now(); // a prefetched sheet was read as of the fetch: a save after it stays dirty
     let sh = null, vals = [], disp = [];
     if (p) { vals = p.vals; disp = p.disp; } else {
       try { sh = binomeSheet_(ctx, b); } catch (e) {
@@ -76,7 +76,7 @@ function pullBinomeFiles_(ctx, force) {
 }
 
 /** The binome sheets of list read in one parallel round of Sheets API calls (opened one by one, 32 sheets took ~36 s):
- *  fileId -> {vals, disp (rows 2+ of the main tab from column BF_COL, as getValues / getDisplayValues), ia (Interview Answers
+ *  fileId -> {at (when the fetch started), vals, disp (rows 2+ of the main tab from column BF_COL, as getValues / getDisplayValues), ia (Interview Answers
  *  rows 2+, Submitted At / Edited At as Dates)}. A sheet left out (API error, not the current layout, a rebuild to finish)
  *  is opened the usual way. ctx.pre: what it did, for the cycle line. */
 function prefetchBinomeFiles_(ctx, list) {
@@ -104,7 +104,7 @@ function prefetchBinomeFiles_(ctx, list) {
     const main = rows(tabs[0], BF_COL - 1, BF_H.length);
     if (!main.length || main[0].d.map(x => x.trim()).join('|') !== BF_HEAD.join('|')) return; // not 'v2': binomeSheet_ deals with it
     const tab = tabs.filter(s => title(s) === IA_TAB)[0], tz = j.properties.timeZone;
-    out[b.fileId] = { vals: main.slice(1).map(r => r.v), disp: main.slice(1).map(r => r.d),
+    out[b.fileId] = { at: t0, vals: main.slice(1).map(r => r.v), disp: main.slice(1).map(r => r.d),
       ia: tab ? rows(tab, 0, IA_H.length).slice(1).map(r => r.v.map((x, c) => (c === 2 || c === 4) && typeof x === 'number' ? serialDate_(x, tz) : x)) : [] };
   });
   ctx.pre = { asked: list.length, read: Object.keys(out).length, http: codes, ms: Date.now() - t0 };
