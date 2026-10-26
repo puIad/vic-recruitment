@@ -35,6 +35,8 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
   call('webRun', 'sync');
   const now = ivRows().find(x => x[IV.Code] === r[IV.Code]);
   assert.strictEqual(now[IV.Status], 'INTERVIEWED', 'logged although the sheet refuses the mark');
+  // the pull re-reads the sheet, so the Master hides it; what Apps Script would do is throw at the end of the call: no refused write may be left unflushed
+  assert.strictEqual(run('__flushErr'), null, 'every refused write was flushed inside its catch (fillFromForm_, markInterviewInFile_)');
   const mk = alerts('FILE_ERROR').find(a => a.binome === bin && /Cannot mark/.test(a.msg));
   assert(mk && mk.severity === 'HIGH' && mk.code === r[IV.Code], 'its own FILE_ERROR for the mark, even with another open for the binome');
   refuse(bin, false);
