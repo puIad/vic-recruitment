@@ -64,7 +64,8 @@ function webApply(call) {
     const results = changes.map(c => applyOne_(w, c || {}));
     if (results.some(r => r.end === 'applied')) { SpreadsheetApp.flush(); _settings = null; }
     w.wrote.forEach(f => Object.keys(f.wrote).forEach(code => goldPatch_(f.b, f.sh, f.rows[code].row, code, f.wrote[code])));
-    if (w.team && w.team.wrote.length) teamNotes_(w.team);
+    // shortcut: outside the script lock, so a Pair or Redraw rewriting the drafts in the same seconds may keep its own note
+    if (w.team && w.team.wrote.length) draftNotes_({ team: w.team.t, bin: loadTable_(TAB.BINOMES, BIN_H) }, w.team.wrote);
     const t = Date.now();
     results.forEach(r => { r.at = t; });
     return { v: APPLY_FORMAT, results: results };
@@ -170,7 +171,7 @@ function binomeTargets_(codes) {
 function applyTeam_(tw, c, id) {
   const t = tw.t, T = t.I, e = lc_(c.email), drop = reason => ({ id: id, end: 'dropped', reason: reason });
   if (typeof c.value !== 'boolean') return drop('Experienced must be true or false.');
-  if (t.head[T.Experienced] !== 'Experienced') return drop(NO_EXP_COL);
+  if (!hasExpCol_({ team: t })) return drop(NO_EXP_COL);
   const i = t.data.findIndex(r => lc_(r[T.Email]) === e);
   if (i < 0) return drop(e + ' is not in the Team tab any more.');
   const cur = bool_(t.data[i][T.Experienced]);
@@ -180,14 +181,6 @@ function applyTeam_(tw, c, id) {
   t.data[i][T.Experienced] = c.value;
   tw.wrote.push(e);
   return { id: id, end: 'applied' };
-}
-/** The drafts holding a member whose tick changed get their note again ("Both members are new"), as teamSet_ does.
- *  shortcut: outside the script lock, so a Pair or Redraw rewriting the drafts in the same seconds may keep its own note. */
-function teamNotes_(tw) {
-  const ctx = { team: tw.t, bin: loadTable_(TAB.BINOMES, BIN_H) }, B = ctx.bin.I, who = teamByEmail_(ctx);
-  ctx.bin.data.forEach((r, j) => {
-    if (isDraft_(r, B) && tw.wrote.some(e => lc_(r[B['Email 1']]) === e || lc_(r[B['Email 2']]) === e)) noteCell_(ctx.bin.sh.getRange(j + 2, 1), [draftNote_(rowPair_(who, r, B))]);
-  });
 }
 
 /** One alert change: the cell still holds what the author saw = write their value; else issue 50's table (written for

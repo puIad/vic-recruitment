@@ -108,7 +108,9 @@ function quickInfo_(ctx, r, look) {
     const at = x[I['Interview At']], reg = x[I['Registered At']], dated = at instanceof Date;
     return { kind: 'iv', check: ref.check, code: ref.code, contacted: String(x[I.Contacted]), date: dated ? fmt_(at, 'yyyy-MM-dd') : '',
       time: dated ? fmt_(at, 'HH:mm') : '', regYear: fmt_(reg instanceof Date ? reg : ctx.now, 'yyyy'), ahead: dated && at > ctx.now,
-      atMs: dated ? at.getTime() : 0 }; // atMs: a pending "Until the interview" snooze fixes its end from it at the click
+      atMs: dated ? at.getTime() : 0, // atMs: a pending "Until the interview" snooze fixes its end from it at the click
+      // the binome sheet's own text (the sync copies it): a pending Fix is judged against it, not the parsed Interview At
+      dateText: String(x[I['Interview Date']]).trim(), timeText: String(x[I['Interview Time']]).trim() };
   }
   if (ref.kind === 'log') {
     const i = look.log[ref.lk];

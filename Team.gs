@@ -286,14 +286,21 @@ function teamSet_(args) {
     if (i < 0) throw new Error((e || 'That member') + ' is not in the Team tab.');
     ctx.team.data[i][T.Experienced] = on;
     ctx.team.sh.getRange(i + 2, T.Experienced + 1).setValue(on);
-    const who = teamByEmail_(ctx);
-    ctx.bin.data.forEach((r, j) => {
-      if (isDraft_(r, B) && (lc_(r[B['Email 1']]) === e || lc_(r[B['Email 2']]) === e)) noteCell_(ctx.bin.sh.getRange(j + 2, 1), [draftNote_(rowPair_(who, r, B))]);
-    });
+    const who = draftNotes_(ctx, [e]);
     return { email: e, experienced: on, name: who[e].name };
   });
   if (!res) busy_();
   return res;
+}
+
+/** The drafts holding one of these members get their note again ("Both members are new"), after their Experienced tick
+ *  changed (teamSet_, the apply entry). ctx needs team and bin. Returns teamByEmail_. */
+function draftNotes_(ctx, emails) {
+  const B = ctx.bin.I, who = teamByEmail_(ctx);
+  ctx.bin.data.forEach((r, j) => {
+    if (isDraft_(r, B) && emails.some(e => lc_(r[B['Email 1']]) === e || lc_(r[B['Email 2']]) === e)) noteCell_(ctx.bin.sh.getRange(j + 2, 1), [draftNote_(rowPair_(who, r, B))]);
+  });
+  return who;
 }
 
 function lockBinomes() {

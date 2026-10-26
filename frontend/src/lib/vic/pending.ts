@@ -120,11 +120,12 @@ export function alertChanges(view: AlertView, ids: string[], op: AlertEntry["op"
  */
 export async function acceptFix(a: Alert, args: { contacted?: string; date?: string; time?: string }): Promise<boolean> {
   const st = useVic.getState(), q = a.q
-  if (!st.pendingOn || st.gate.mode !== "ok" || q?.kind !== "iv" || !/^B\.\d{2,3}$/.test(a.binome)) return false
+  // seen = the sheet's own text ("2h30", an empty time), which the apply entry compares with; a script without it: direct
+  if (!st.pendingOn || st.gate.mode !== "ok" || q?.kind !== "iv" || q.dateText === undefined || !/^B\.\d{2,3}$/.test(a.binome)) return false
   const at = Date.now(), dmy = (d?: string) => (d ? d.split("-").reverse().join("/") : "")
   const cells: [AdminGoldKey, string, string][] = args.contacted !== undefined
     ? [["Contacted", args.contacted, q.contacted || ""]]
-    : [["Interview Date", dmy(args.date), dmy(q.date)], ["Interview Time", args.time ?? "", q.time || ""]]
+    : [["Interview Date", dmy(args.date), q.dateText ?? ""], ["Interview Time", args.time ?? "", q.timeText ?? ""]]
   const resolve = alertChanges(alertView(st.state, st.rec, st.flash), [a.id], "resolve", st.state?.built)
   if (!resolve) return false
   const changes: PendingChange[] = cells

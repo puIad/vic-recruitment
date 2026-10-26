@@ -87,7 +87,7 @@ export interface AppView {
 
 export type QuickInfo =
   | { kind: "reg"; iv: RegView; old?: RegView; app?: AppView }
-  | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean; atMs?: number }
+  | { kind: "iv"; check: string; code: string; contacted: string; date: string; time: string; regYear: string; ahead: boolean; atMs?: number; dateText?: string; timeText?: string }
   | { kind: "log"; check: string; form: FormView; first?: FormView }
   | { kind: "integ"; check: string; subject: string; repair: RepairKind }
   | { kind: "member"; email: string }
