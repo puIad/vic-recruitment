@@ -274,6 +274,6 @@ function onFormSubmitHandler(e) { runCycle_({ kind: 'form', pull: false, timing:
 
 /** Trigger: every N minutes. Also available from the menu. */
 function syncAll() { runCycle_({ kind: 'trigger', pull: true, timing: true, tracker: true }); }
-function syncAllForce() { const c = runCycle_({ kind: 'sync-now', pull: true, force: true, timing: true, tracker: true, integrity: 180000 }); toast_(c ? 'Everything is up to date. ' + c.integrityMsg : 'Busy, try again in a minute.'); }
+function syncAllForce() { const c = runCycle_({ kind: 'sync-now', pull: true, force: true, timing: true, tracker: true }); toast_(c ? 'Everything is up to date.' : 'Busy, try again in a minute.'); }
 /** Menu: a sync plus the full check of every binome sheet. Budgets leave ~2 min of the 6-min limit for the writes after the check. */
 function integrityCheck() { const c = runCycle_({ kind: 'integrity', pull: true, timing: true, tracker: true, integrity: 200000 }); say_(c ? c.integrityMsg : 'Busy, try again in a minute.'); }

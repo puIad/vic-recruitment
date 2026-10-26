@@ -812,10 +812,11 @@ function webRun(action, args) {
   try {
     let result = null;
     switch (action) {
-      // budgetMs: the full sheet check stops in time to end before the Vercel function limit (300s); the next run carries on
-      case 'sync': { const c = runCycle_({ kind: 'dashboard', pull: true, force: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 150000 });
+      // no full sheet check here: it doubled the run (~40 s for 32 sheets) and held the lock; Check integrity and the digest run it
+      case 'sync': { const c = runCycle_({ kind: 'dashboard', pull: true, force: true, timing: true, tracker: true });
         if (!c) busy_();
-        _webOut.push('Everything is up to date.\n' + c.integrityMsg); break; }
+        _webOut.push('Everything is up to date.'); break; }
+      // budgetMs: the full sheet check stops in time to end before the Vercel function limit (300s); the next run carries on
       case 'integrity': { const c = runCycle_({ kind: 'dashboard', pull: true, timing: true, tracker: true, integrity: Number(args.budgetMs) || 200000 });
         if (!c) busy_();
         _webOut.push(c.integrityMsg); break; }

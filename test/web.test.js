@@ -125,7 +125,8 @@ st = call('webState');
 
 addRegistrations(12, 3);
 out = call('webRun', 'sync');
-assert.deepStrictEqual(out.messages, ['Everything is up to date.\nSheet check: 7 of 7 binome sheets checked, 0 problems found.']);
+assert.deepStrictEqual(out.messages, ['Everything is up to date.'], 'Sync now runs no sheet check');
+assert.deepStrictEqual(call('webRun', 'integrity', {}).messages, ['Sheet check: 7 of 7 binome sheets checked, 0 problems found.']);
 assert.deepStrictEqual(call('webState').alerts.filter(a => /MANUAL_EDIT|INTEGRITY/.test(a.type)), [], 'the script never flags its own writes');
 backdateAssignments(3);
 call('webRun', 'sync');
