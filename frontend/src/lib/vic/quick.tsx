@@ -180,15 +180,15 @@ export function useQuick() {
         return ok ? q("dupSeparate", [a.id], {}, "Different person") : null
       },
 
-      /** Screening: send held applications to a binome. The binomes are emailed, as for any new registration. */
+      /** Screening: send held applications to a binome. The binomes and the applicants are emailed, as for any new registration. */
       async approve(alerts: Alert[]) {
         const n = alerts.length
         const ok = await confirm({
           title: n > 1 ? `Approve ${n} applications?` : `Approve ${name(alerts[0])}?`,
           body: (
             <p>
-              They are placed in a binome right away, as for any new registration. The binome is emailed if new-interviewee emails are on.
-              Screening never holds {n > 1 ? "them" : "this application"} again.
+              They are placed in a binome right away, as for any new registration. The binome is emailed if new-interviewee emails are on, and
+              the applicant gets their confirmation if confirmation emails are on. Screening never holds {n > 1 ? "them" : "this application"} again.
             </p>
           ),
           okLabel: n > 1 ? `Approve ${n}` : "Approve",

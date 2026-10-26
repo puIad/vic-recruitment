@@ -158,7 +158,7 @@ trigger-runtime quota). An admin presses **Sync now** every few minutes in the f
 confirmation, the binome's first mail and the dashboard; it never delays the ticket mail. A very large burst could near
 Google's 6-minute limit (`processRegistrations_` has no row cap); the load test covers it and the script is not changed.
 Some registrants are never mailed (VIC members declined silently, duplicates, rows with no usable name or email); a held
-registration is mailed (`HELD` is in `CONFIRM_STATUSES`).
+registration is mailed only when an admin approves or restores it (`HELD` left `CONFIRM_STATUSES` on 2026-10-26).
 
 ## The mails
 
@@ -362,7 +362,7 @@ mails reach real mailboxes, so no candidate address is used). Owner holds the ph
   `EMAIL_MISMATCH` or `BAD_EMAIL`, and exactly one row for A despite the double tap.
 
 **Check 3: mails reach admins only, once each**
-- The themed confirmation for A and for B (held), with the stripe in the 1st choice's house colour; none for the
+- The themed confirmation for A, and for B (held) only once approved, with the stripe in the 1st choice's house colour; none for the
   duplicates; the Google Form registrant's confirmation has the same themed look; the code mails once per request.
 
 **Check 4: failure cases**

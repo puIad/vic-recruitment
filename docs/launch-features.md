@@ -419,8 +419,9 @@ its own inline Arial HTML:
 
 - Sent in the cycle that reads the registration, after Interviewees is saved (like the new-interviewee mail), to the
   submitting email.
-- Who gets it: every registration that got a code and is waiting, assigned or held for review. Not a duplicate, not a
-  silently declined VIC member, not a registration without a usable email or name.
+- Who gets it: every registration that got a code and is waiting or assigned. Not a duplicate, not a silently declined
+  VIC member, not a registration without a usable email or name. A registration held for review gets it only when an
+  admin approves (or restores) it, in that action (owner, 2026-10-26, after a held test registration was mailed).
 - What it says: thanks, their code, that a binome will contact them, the dates if set. It must not promise an
   interview (screening can still decline them), the same rule as the form's own confirmation message.
 - Setting `CONFIRM_REGISTRANTS` (Settings › Sharing and email), on by default. In TEST_MODE it goes to admins only,

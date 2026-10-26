@@ -22,7 +22,7 @@ const SECTIONS: { to: MailDef["to"]; title: string; description: string }[] = [
   { to: "binome", title: "To binome members", description: "Sent from “VIC Recruitment Bot” to the members of a binome." },
 ]
 
-/** The confirmation must not promise an interview (screening can still hold or decline the applicant). */
+/** The confirmation must not promise an interview (an applicant can still be declined after it, or never be reached). */
 const PROMISE = /interview|entretien/i
 
 function MailCard({ m, f }: { m: MailDef; f: SettingsForm }) {
@@ -122,7 +122,7 @@ function MailCard({ m, f }: { m: MailDef; f: SettingsForm }) {
         {confirmPromise && (
           <p className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
             <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
-            This mail mentions an interview. A held or declined applicant also gets it, so do not promise one.
+            This mail mentions an interview. Not everyone who gets it is interviewed, so do not promise one.
           </p>
         )}
         <div>
