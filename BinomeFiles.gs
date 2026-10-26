@@ -219,11 +219,12 @@ function protectionEditors_() {
   try { ss_().getEditors().forEach(u => keep.push(u.getEmail())); } catch (e) { console.warn('Master editors: ' + e); }
   return keep.filter(Boolean).map(lc_).filter((e, i, a) => a.indexOf(e) === i);
 }
-/** The accounts of want that no protection of sh lists (all of want when its editors can't be read). */
-function protectionMissing_(sh, want) {
-  const have = {};
-  sh.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => { try { p.getEditors().forEach(u => { have[lc_(u.getEmail())] = true; }); } catch (e) { /* not one of its editors */ } });
-  return want.filter(e => !have[e]);
+/** The accounts of want that none of the sheet protections prots lists. When none can be read, the runner is not one of
+ *  their editors, and that is all we know: just the runner. */
+function protectionMissing_(prots, want) {
+  const have = {}; let unread = false;
+  prots.forEach(p => { try { p.getEditors().forEach(u => { have[lc_(u.getEmail())] = true; }); } catch (e) { unread = true; } });
+  return unread && !Object.keys(have).length ? [lc_(Session.getEffectiveUser().getEmail())] : want.filter(e => !have[e]);
 }
 
 /** Protect everything except the binome's own columns; protectionEditors_ keep access. */
@@ -246,7 +247,7 @@ function reprotectBinomeSheets() {
   let owner = ''; try { owner = lc_(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
   if (me !== owner) return say_('Only the owner of the Master (' + (owner || 'unknown') + ') can re-protect the binome sheets.');
   if (!trig) return say_('TRIGGER_OWNER is not set: run Setup from the account that runs the triggers first, so it is kept as an editor.');
-  const want = protectionEditors_(), listed = sh => !protectionMissing_(sh, want).length;
+  const want = protectionEditors_(), listed = sh => !protectionMissing_(sh.getProtections(SpreadsheetApp.ProtectionType.SHEET), want).length;
   // under the script lock: a sync running between the old editors going and the trigger account coming back would fail on a permission error
   const msg = withLock_(() => {
     const ctx = loadCtx_(), t0 = Date.now(), errs = []; let done = 0, fine = 0;

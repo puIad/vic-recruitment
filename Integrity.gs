@@ -459,7 +459,7 @@ function checkBinomeFile_(ctx, b, owed, env) {
   if (!prot.length) add('MEDIUM', 'protect', 'its sheet is no longer protected: the binome can overwrite the columns the script fills. Protect the tab again, except the gold columns (' + BF_EDITABLE.map(k => BF_LABEL[k] || k).join(', ') + ').');
   // a protection made before the triggers moved, or before an admin was added, misses them: they are locked out of the columns the sync fills
   else {
-    const want = [trig].concat(env.admins || (env.admins = protectionEditors_())).filter((e, i, a) => e && a.indexOf(e) === i), miss = protectionMissing_(sh, want);
+    const want = [trig].concat(env.admins || (env.admins = protectionEditors_())).filter((e, i, a) => e && a.indexOf(e) === i), miss = protectionMissing_(prot, want);
     if (miss.length) add('MEDIUM', 'protect', 'the protection of its sheet does not list ' + miss.join(', ') + ' (or its editors cannot be read), so ' +
       (miss.indexOf(trig) >= 0 ? 'the sync cannot' : 'a Sync now or an action run by ' + (miss.length === 1 ? 'that admin' : 'those admins') + ' cannot') +
       ' write the columns it fills. Only the sheet\'s owner can protect the tab again: Repair, or Re-protect binome sheets, signed in as the owner.');

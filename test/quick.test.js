@@ -274,7 +274,7 @@ let oddCode;
   run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors = function () { throw new Error('You do not have permission'); }`);
   call('webRun', 'integrity');
   const unreadable = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
-  assert(unreadable.length === 1 && /cannot be read/.test(unreadable[0].msg), JSON.stringify(unreadable.map(a => a.msg)));
+  assert(unreadable.length === 1 && /cannot be read/.test(unreadable[0].msg) && /does not list admin@g\.enp\.edu\.dz \(/.test(unreadable[0].msg) /* just the runner, not every admin */, JSON.stringify(unreadable.map(a => a.msg)));
   quick('repair', unreadable[0].id);
   call('webRun', 'integrity');
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired again');
