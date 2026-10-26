@@ -260,11 +260,21 @@ let oddCode;
   run(`__files["${f1}"].obj.sheets[0].protections[0].__id = 'kept'`);
   run('reprotectBinomeSheets()');
   assert.strictEqual(run(`__files["${f1}"].obj.sheets[0].protections[0].__id`), 'kept', 'a sheet already fine is not touched');
+  // an admin added to the Master after the sheet was protected: flagged (their Sync now would hit the protection), and the menu lists them
+  run(`ss_().addEditor('second.admin@g.enp.edu.dz')`);
+  call('webRun', 'integrity');
+  const noAdmin = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
+  assert(noAdmin.length === 1 && /does not list second\.admin@g\.enp\.edu\.dz/.test(noAdmin[0].msg) && /Sync now/.test(noAdmin[0].msg), JSON.stringify(noAdmin.map(a => a.msg)));
+  run('reprotectBinomeSheets()');
+  assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes('second.admin@g.enp.edu.dz')`), 'menu: the new admin listed');
+  call('webRun', 'integrity');
+  assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'every admin listed');
+  run(`__files["${f1}"].obj.sheets[0].protections[0].__id = 'kept'`);
   // a protection whose editors the account cannot read is flagged too, not taken for fine
   run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors = function () { throw new Error('You do not have permission'); }`);
   call('webRun', 'integrity');
   const unreadable = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
-  assert(unreadable.length === 1 && /cannot be read/.test(unreadable[0].msg), JSON.stringify(unreadable.map(a => a.msg)));
+  assert(unreadable.length === 1 && /cannot be read/.test(unreadable[0].msg) && /does not list admin@g\.enp\.edu\.dz \(/.test(unreadable[0].msg) /* just the runner, not every admin */, JSON.stringify(unreadable.map(a => a.msg)));
   quick('repair', unreadable[0].id);
   call('webRun', 'integrity');
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired again');
