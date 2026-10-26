@@ -278,6 +278,16 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
   run('DriveApp.getFileById = __gf');
   run('__files["' + id + '"].editors = __files["' + id + '"].editors.filter(e => e !== "newp@g.enp.edu.dz")'); // what the admin would do in Drive
   call('webRun', 'reshare');
+  // Drive refuses to remove the leaver: reported, and Repair is not offered (it would only add the newcomer and close the alert)
+  run('var __gf2 = DriveApp.getFileById; DriveApp.getFileById = fid => Object.assign(__gf2(fid), { removeEditor() { throw new Error("Drive refused") } })');
+  out = call('webRun', 'changeMember', { binome: b.code, outEmail: 'other@g.enp.edu.dz', inName: 'Keep Person', inEmail: 'keep@g.enp.edu.dz' });
+  run('DriveApp.getFileById = __gf2');
+  assert(/could not remove other@g\.enp\.edu\.dz/.test(out.messages[0]), out.messages[0]);
+  const kept = call('webState').alerts.find(a => a.type === 'FILE_ERROR' && /could not remove other@/.test(a.msg));
+  assert(kept && kept.q && kept.q.repair === '', 'no Repair for a failed removal: ' + JSON.stringify(kept));
+  assert(run('__files["' + id + '"].editors.includes("other@g.enp.edu.dz")'), 'Drive kept them: the alert says so');
+  run('__files["' + id + '"].editors = __files["' + id + '"].editors.filter(e => e !== "other@g.enp.edu.dz")'); // the admin removes them by hand
+  call('webRun', 'resolve', { ids: [kept.id] });
 }
 { // sharing on: a cover person gets view-only access for the cover, taken back when it ends
   const iv = call('webState').interviewees.find(i => ['ASSIGNED', 'CONTACTED', 'SCHEDULED'].includes(i.status) && i.binome);
@@ -601,6 +611,12 @@ assert(/new share/.test(out.messages[0]), out.messages[0]);
 
   // a move whose target sheet refuses the row: nothing moves, the row stays in the old sheet
   const mv = call('webState').interviewees.find(v => v.status === 'ASSIGNED' && v.binome !== to.code);
+  // a declined or duplicate row is refused before anything is written (its binome would interview someone the Master keeps out)
+  ['DECLINED', 'DUPLICATE'].forEach(s => {
+    const why = run(`(function(){var ctx=loadCtx_();ctx.ivByCode[${J(mv.code)}][ctx.iv.I.Status]=${J(s)};try{return moveInterviewee_(ctx,${J(mv.code)},${J(to.code)});}catch(e){return e.message;}})()`);
+    assert.strictEqual(why, mv.code + ' is ' + s.toLowerCase() + ': restore it first.');
+    assert(!fileCodes(to.code).includes(mv.code), 'not written into ' + to.code);
+  });
   run(`var __ap = appendToBinomeFile_; appendToBinomeFile_ = function (c, b, r, carry) { if (b.code === ${J(to.code)}) throw new Error('quota'); return __ap(c, b, r, carry); }`);
   out = call('webRun', 'reassign', { code: mv.code, binome: to.code });
   run('appendToBinomeFile_ = __ap');

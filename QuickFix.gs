@@ -89,7 +89,8 @@ function integRepair_(ref, msg) {
   }
 }
 /** A FILE_ERROR the script can try again ('' = something only a person can do). */
-const fileRepair_ = msg => (/not written|not sent/.test(msg) ? '' : 'retry');
+// a removal, a carried-over access or a cover's share is not something the generic retry redoes: by hand, then Mark resolved
+const fileRepair_ = msg => (/not written|not sent|could not remove|sharing not updated|access not carried over|^Cover in /.test(msg) ? '' : 'retry');
 
 function quickInfo_(ctx, r, look) {
   const A = ctx.alerts.table.I, I = ctx.iv.I, ref = alertRef_(r, A), type = String(r[A.Type]);
