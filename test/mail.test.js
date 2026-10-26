@@ -92,7 +92,7 @@ assert(mine.htmlBody.includes('<td bgcolor="#FF6A5E" style="background:#FF6A5E;h
 const ines = outbox().find(m => m.to === 'ines.kaci@g.enp.edu.dz').htmlBody;
 assert(ines.includes('Ines&lt;i&gt;&quot;') && !ines.includes('Ines<i>'), 'the name is escaped');
 const binMail = outbox().find(m => /New interviewee/.test(m.subject));
-assert(binMail && binMail.htmlBody.includes(lina[IV.Code]) && binMail.htmlBody.includes('Open the dashboard'), 'the binome mail, through the template');
+assert(binMail && binMail.htmlBody.includes(lina[IV.Code]) && binMail.htmlBody.includes('Open the dashboard') && binMail.htmlBody.includes('vercel.app/my-binome'), 'the binome mail, through the template');
 assert.strictEqual(binMail.name, 'VIC Recruitment Bot', 'a team mail');
 run('__outbox.length = 0');
 sync(); sync();
@@ -209,8 +209,8 @@ console.log('MAIL OK');
   const crypto = require('crypto');
   // hashes of each sample as it rendered before the theme (main at 86ae089): the theme never touches the rejection or a team
   // mail. A deliberate change to one of them: re-hash its mailSample_ (subject, from, html; sha256, 16 hex) and update it here
-  const BEFORE = { REJECT: 'df5381a2244ef163', NEW_IV: 'f760a2187e6c339e', ALERT: 'e27a17dd722c230d', JOINED: '4ae84df691077465',
-    LEFT: '6e36ae12140a8500', PAIRED: '8db1e9259a93fdb5', COVER: '365cdd60cf2b140c', COVERED: 'd4330a16cfa80e87' };
+  const BEFORE = { REJECT: 'df5381a2244ef163', NEW_IV: 'a31054e011231f05', ALERT: 'b3d096dad95f609c', JOINED: 'eb6a9a2a25ad8fe8',
+    LEFT: '6e36ae12140a8500', PAIRED: '31dffea7cc7729bb', COVER: '8fe9f9dbca94dfe0', COVERED: 'bc57dd0a5e217a29' };
   settings(Object.fromEntries(R('MAILS.reduce(function (a, m) { return a.concat(m.fields.map(function (f) { return "MAIL_" + m.id + "_" + f[0].toUpperCase(); })); }, [])').map(k => [k, ''])));
   Object.keys(BEFORE).forEach(id => {
     const m = R(`mailSample_('${id}')`);

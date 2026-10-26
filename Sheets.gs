@@ -292,7 +292,7 @@ function alertBuffer_(ctx) {
         const high = list.some(a => a.severity === 'HIGH') ? ' (HIGH)' : '', table = [mailAlerts_(list.map(a => [a.severity, a.type, a.code || '', a.msg]))];
         if (!isAdmin) { // the binome's mail is editable; the admins' stays as written here
           const m = mailFrom_('ALERT', { n: list.length, s: list.length > 1 ? 's' : '' },
-            { blocks: table, cta: { label: 'Open the dashboard', url: DASHBOARD_URL }, footer: mailTeamFooter_(sheet) });
+            { blocks: table, cta: mailDashboardCta_(), footer: mailTeamFooter_(sheet) });
           return mail_(email, m.subject + high, m.html);
         }
         const html = mailHtml_({ title: list.length + ' new alert' + (list.length > 1 ? 's' : ''), intro: 'New recruitment alert(s):', blocks: table,
