@@ -212,16 +212,17 @@ const saveToken_ = (editedAt, editedBy, at, by) => (stamp_(editedAt) || stamp_(a
 /** The dashboard's interview forms of binome b (book: its open sheet): a Dashboard row of its tab that is new, or differs from its
  *  Master copy, is copied to Dashboard Interviews and logged like a form response (key DASH|binome|code; an edit redoes its log
  *  row and raises its checks again). Compared by content, so a row changed by hand in the tab is an edit "by hand". Every form
- *  fills Rating and Final Affectation (fillFromForm_). Read for dirty binomes and on the integrity pass, once per run. */
-function syncAnswers_(ctx, b, book) {
+ *  fills Rating and Final Affectation (fillFromForm_). Read for dirty binomes and on the integrity pass, once per run.
+ *  rows: the tab's rows 2+ already read (prefetchBinomeFiles_); the book is then opened only to stamp an edit by hand. */
+function syncAnswers_(ctx, b, book, rows) {
   ctx.answersRead = ctx.answersRead || {};
   if (ctx.answersRead[b.code]) return;
   ctx.answersRead[b.code] = true;
-  const tab = book.getSheetByName(IA_TAB), n = tab ? tab.getLastRow() : 0;
-  if (n < 2) return;
+  let tab = rows ? null : book.getSheetByName(IA_TAB);
+  if (!rows) { const n = tab ? tab.getLastRow() : 0; rows = n < 2 ? [] : tab.getRange(2, 1, n - 1, IA_H.length).getValues(); }
   const I = ctx.iv.I, t = x => String(x == null ? '' : x).trim();
   const BIN = DQ - 2, CODE = DQ - 1, c1 = qIndex_(INTERVIEW_BRANCH), fin = qIndex_(INTERVIEW_FINAL);
-  tab.getRange(2, 1, n - 1, IA_H.length).getValues().forEach((v, k) => {
+  rows.forEach((v, k) => {
     const code = t(v[0]), r = ctx.ivByCode[code];
     if (t(v[1]) !== 'Dashboard' || !r || r[I.Binome] !== b.code) return; // a Google Form copy, or a row for someone else
     const d = dashTable_(ctx), D = d.I, vals = v.slice(6, 6 + INTERVIEW_QUESTIONS.length);
@@ -235,6 +236,7 @@ function syncAnswers_(ctx, b, book) {
     let editedAt = v[4], editedBy = v[5];
     if (copy && at === was) { // changed in the tab, not saved from the dashboard: stamped, so a page holding the old stamp gets CONFLICT
       editedAt = new Date(stamp_(ctx.now) * 1000); editedBy = 'by hand';
+      if (!tab) tab = (ctx.books[b.fileId] = ctx.books[b.fileId] || SpreadsheetApp.openById(b.fileId)).getSheetByName(IA_TAB);
       tab.getRange(k + 2, 5, 1, 2).setValues([[editedAt, editedBy]]);
     }
     const out = copy || DASH_H.map(() => ''), key = copy ? t(copy[D['Response Key']]) : 'DASH|' + b.code + '|' + code;

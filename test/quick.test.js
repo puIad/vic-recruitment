@@ -269,10 +269,10 @@ let oddCode;
   call('webRun', 'integrity');
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired again');
 
-  // a sheet that could not be opened: retried
-  run(`var __ob = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id === "${f2}") throw new Error("Service unavailable"); return __ob.call(SpreadsheetApp, id); }`);
+  // a sheet that could not be opened (the Sheets API refusing too, so the sync opens it the usual way): retried
+  run(`__sheetsApi = false; var __ob = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id === "${f2}") throw new Error("Service unavailable"); return __ob.call(SpreadsheetApp, id); }`);
   call('webRun', 'sync');
-  run('SpreadsheetApp.openById = __ob');
+  run('SpreadsheetApp.openById = __ob; __sheetsApi = true');
   const fe = find('FILE_ERROR', x => x.binome === B2);
   assert.strictEqual(fe.q.repair, 'retry');
   out = quick('repair', fe.id);
