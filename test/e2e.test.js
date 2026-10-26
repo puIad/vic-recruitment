@@ -111,7 +111,7 @@ run('var __gl = LockService.getScriptLock; LockService.getScriptLock = () => ({ 
 const busy = cycleLine(() => run('syncAll()'));
 run('LockService.getScriptLock = __gl;');
 assert(busy.length === 1 && busy[0].outcome === 'busy' && busy[0].total >= 0 && busy[0].load === 0, 'busy run logs its line');
-run('var __pb = pullBinomeFiles_; pullBinomeFiles_ = (c) => { __pb(c, true); throw new Error("boom"); };'); // opens every sheet, then fails
+run('delete __props.FILE_READ; var __pb = pullBinomeFiles_; pullBinomeFiles_ = (c) => { __pb(c, true); throw new Error("boom"); };'); // opens every sheet (none read lately), then fails
 const thrown = cycleLine(() => run('syncAll()'));
 run('pullBinomeFiles_ = __pb;');
 assert(thrown.length === 1 && thrown[0].outcome === 'error' && thrown[0].load >= 0, 'throwing run logs its line');

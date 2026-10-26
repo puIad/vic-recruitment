@@ -111,7 +111,7 @@ let oddCode;
   const dd = p2(wk.getDate()) + '/' + p2(wk.getMonth() + 1);
   run(`(function () { var sh = __files["${fileId(r[IV.Binome])}"].obj.sheets[0];
     for (var k = 1; k < sh.cells.length; k++) if (sh.cells[k][BFI.Code] === '${oddCode}') {
-      sh.cells[k][BFI.Contacted] = 'Yes'; sh.cells[k][BFI['Interview Date']] = '${dd}/${y - 1}'; sh.cells[k][BFI['Interview Time']] = '14:00'; } })()`);
+      sh.cells[k][BFI.Contacted] = 'Yes'; sh.cells[k][BFI['Interview Date']] = '${dd}/${y - 1}'; sh.cells[k][BFI['Interview Time']] = '14:00'; } __touch("${fileId(r[IV.Binome])}"); })()`); // a typed edit moves Drive's "last updated"
   call('webRun', 'sync');
   const a = find('ODD_VALUE', x => x.code === oddCode);
   const iso = yy => yy + '-' + p2(wk.getMonth() + 1) + '-' + p2(wk.getDate());
@@ -270,7 +270,7 @@ let oddCode;
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'repaired again');
 
   // a sheet that could not be opened (the Sheets API refusing too, so the sync opens it the usual way): retried
-  run(`__sheetsApi = false; var __ob = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id === "${f2}") throw new Error("Service unavailable"); return __ob.call(SpreadsheetApp, id); }`);
+  run(`__sheetsApi = false; __touch("${f2}"); var __ob = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id === "${f2}") throw new Error("Service unavailable"); return __ob.call(SpreadsheetApp, id); }`);
   call('webRun', 'sync');
   run('SpreadsheetApp.openById = __ob; __sheetsApi = true');
   const fe = find('FILE_ERROR', x => x.binome === B2);
