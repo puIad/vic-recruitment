@@ -7,6 +7,12 @@ function normText(s) {
     .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+/** normText for a name: apostrophes join instead of splitting, so M'hamed, M’hamed and Mhamed are one name. */
+function normName(s) { return normText(String(s == null ? '' : s).replace(/['’‘ʼ`´]/g, '')); }
+
+/** A name has a letter in any script (Latin with any accent, Arabic, ...): only digits or punctuation is junk. */
+function hasLetter(s) { return /\p{L}/u.test(String(s == null ? '' : s)); }
+
 function pad2(n) { const s = String(parseInt(n, 10)); return s.length < 2 ? '0' + s : s; }
 
 function normDept(s) {

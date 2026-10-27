@@ -261,6 +261,15 @@ t('registration checks', () => {
   assert.deepStrictEqual(Array.from(mism.alerts.map(a => a.type)), ['EMAIL_MISMATCH']);
   const dup = X.checkRegistration({ ts, collected: 'x@g.enp.edu.dz', typedEmail: 'x@g.enp.edu.dz', first: 'K', family: 'A', phone: '0661000000', c1: 'HR', c2: 'IT' }, [{ code: 'HR.02', email: 'x@g.enp.edu.dz' }], 'g.enp.edu.dz');
   assert.strictEqual(dup.duplicateOf, 'HR.02');
+  // Algerian names as typed in Latin, and an ENP address with an apostrophe: nothing to flag
+  const kinds = r => Array.from(r.alerts, a => a.type);
+  [["M'hamed", 'Aït Ouali'], ['M’hamed', 'Ben Ahmed-Lamine'], ['Abd El Kader', "Ou'Lhadj"], ['Ğazi', 'Ł. Bakır'], ['محمد', 'بن علي']].forEach(([first, family]) => {
+    const r = X.checkRegistration({ ts, collected: "m'hamed.ouali@g.enp.edu.dz", typedEmail: "m'hamed.ouali@g.enp.edu.dz", first, family, birth: '12/06/2006', phone: '0555020447', c1: 'IT', c1raw: 'IT', c2: 'HR' }, [], 'g.enp.edu.dz');
+    assert.deepStrictEqual(kinds(r), [], first + ' ' + family);
+  });
+  assert(kinds(X.checkRegistration({ ts, collected: 'a@g.enp.edu.dz', first: '123', family: "'-.", phone: '0555020447', c1: 'IT', c2: 'HR' }, [], 'g.enp.edu.dz')).includes('MISSING_NAME'), 'digits and punctuation are still junk');
+  const again = X.checkRegistration({ ts, collected: 'other@g.enp.edu.dz', first: 'Mhamed', family: 'Ouali', phone: '0555020447', c1: 'IT', c2: 'HR' }, [{ code: 'IT.04', email: "m'hamed.ouali@g.enp.edu.dz", name: "M'hamed Ouali", phone: '0555020447' }], 'g.enp.edu.dz');
+  assert.strictEqual(again.duplicateOf, 'IT.04', "M'hamed and Mhamed are one name");
 });
 t('interview date parsing', () => {
   const d = X.buildInterviewAt('09/11/2026', '14:30', '+01:00');
@@ -318,6 +327,8 @@ t('names typed the wrong way round', () => {
   assert.strictEqual(X.namesSwapped('Benali', 'Ali', 'x.y.z@g.enp.edu.dz'), false, 'not two parts');
   assert.strictEqual(X.namesSwapped('Benali', '', 'ali.benali@g.enp.edu.dz'), false, 'an empty field');
   assert.strictEqual(X.namesSwapped('Bénali', 'Ali', 'ali.benali@g.enp.edu.dz'), true, 'accents');
+  assert.strictEqual(X.namesSwapped('Ouali', 'M’hamed', "m'hamed.ouali@g.enp.edu.dz"), true, 'an apostrophe, straight or curly');
+  assert.strictEqual(X.namesSwapped("M'hamed", 'Ouali', "m'hamed.ouali@g.enp.edu.dz"), false, 'an apostrophe, right way round');
 });
 t('birth year guessed from the year of study', () => {
   const reg = D('2025-10-26T10:00:00');

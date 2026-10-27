@@ -34,7 +34,7 @@ function logIndex_(ctx, lk) { const L = ctx.log.I; return ctx.log.data.findIndex
 
 /** The earlier registration a DUPLICATE row repeats (same rule as checkRegistration). */
 function dupOriginal_(ctx, x) {
-  const I = ctx.iv.I, name = r => normText(r[I['First Name']] + ' ' + r[I['Family Name']]);
+  const I = ctx.iv.I, name = r => normName(r[I['First Name']] + ' ' + r[I['Family Name']]);
   const e = lc_(x[I.Email]), t = lc_(x[I['Typed Email']]), n = name(x), ph = normPhone(x[I.Phone]);
   return ctx.iv.data.filter(o => o !== x && !isOut_(o[I.Status]) && (
     (e && (e === lc_(o[I.Email]) || e === lc_(o[I['Typed Email']]))) || (t && t === lc_(o[I.Email])) ||
@@ -269,7 +269,7 @@ function quickEdit_(ctx, x, values) {
   const v = {};
   keys.forEach(f => {
     const s = String(values[f] == null ? '' : values[f]).trim();
-    if (f === 'First Name' || f === 'Family Name') { if (!/[a-z]/i.test(normText(s))) throw new Error(f + ' needs letters.'); v[f] = s; }
+    if (f === 'First Name' || f === 'Family Name') { if (!hasLetter(s)) throw new Error(f + ' needs letters.'); v[f] = s; }
     else if (f === 'Email') { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new Error('"' + s + '" is not an email address.'); v[f] = s.toLowerCase(); }
     else if (f === 'Phone') {
       const p = normPhone(s);

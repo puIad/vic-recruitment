@@ -36,8 +36,8 @@ function doPost(e) {
   if (body.ping === true) return answer_(pong_());
   const domain = String(props.getProperty('EMAIL_DOMAIN') || '').trim().replace(/^@/, '').toLowerCase();
   const to = typeof body.to === 'string' ? body.to.trim().toLowerCase() : '';
-  // one plain address: MailApp would read a comma as a second recipient
-  if (!domain || !/^[a-z0-9._%+-]+@[a-z0-9.-]+$/.test(to) || to.slice(-domain.length - 1) !== '@' + domain) return answer_({ ok: false, reason: 'to' });
+  // one plain address: MailApp would read a comma as a second recipient (an apostrophe is fine: m'hamed.x@)
+  if (!domain || !/^[a-z0-9._%+'-]+@[a-z0-9.-]+$/.test(to) || to.slice(-domain.length - 1) !== '@' + domain) return answer_({ ok: false, reason: 'to' });
   if (typeof body.code !== 'string' || !/^\d{6}$/.test(body.code)) return answer_({ ok: false, reason: 'code' });
   const m = ticketMail_(wording_(props.getProperty('MASTER_ID')), body.code);
   try {

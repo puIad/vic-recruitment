@@ -10,6 +10,8 @@ run(`(function () { var reg = master.getSheetByName('Registration Responses'), t
   reg.cells.push(regRow(new Date(t + 3e3), 'amine.belkacem0@g.enp.edu.dz', 'Amine', 'Belkacem', 'amine.belkacem0@g.enp.edu.dz', '01/03/2005', '0555999002', 'IT', 'FLER'));
   reg.cells.push(regRow(new Date(t + 4e3), 'twin@g.enp.edu.dz', 'Twin', 'One', 'twin@g.enp.edu.dz', '01/03/2005', '0555999003', 'HR', 'IT'));
   reg.cells.push(regRow(new Date(t + 5e3), 'twin@g.enp.edu.dz', 'Twin', 'Two', 'twin@g.enp.edu.dz', '02/03/2005', '0555999004', 'HR', 'IT'));
+  reg.cells.push(regRow(new Date(t + 6e3), "m'hamed.ouali@g.enp.edu.dz", "M'hamed", 'Ouali', "m'hamed.ouali@g.enp.edu.dz", '01/03/2005', '0555999005', 'IT', 'HR'));
+  reg.cells.push(regRow(new Date(t + 7e3), 'mhamed.ouali@g.enp.edu.dz', 'Mhamed', 'Ouali', 'mhamed.ouali@g.enp.edu.dz', '01/03/2005', '0555999005', 'IT', 'COMM'));
 })()`);
 call('webRun', 'sync');
 
@@ -70,6 +72,11 @@ const noEdits = () => assert.deepStrictEqual(open().filter(a => a.type === 'MANU
   out = quick('dupSeparate', t.id);
   assert(/Twin Two is now a candidate of their own \(HR\.\d\d\), assigned to B\.\d\d/.test(out.messages[0]), out.messages[0]);
   assert(call('webState').interviewees.some(i => i.name === 'Twin Two' && /^HR\.\d\d$/.test(i.code)));
+  // caught by name + phone only, M'hamed and Mhamed being one name: the earlier one is found, the new answers taken
+  const m = find('DUPLICATE_REGISTRATION', x => /Mhamed/.test(x.msg));
+  assert(m.q.old.code !== '', 'the earlier registration is shown');
+  out = quick('dupNew', m.id);
+  assert(/2nd Choice taken from the new registration/.test(out.messages[0]), out.messages[0]);
   call('webRun', 'sync');
   noEdits();
 }
