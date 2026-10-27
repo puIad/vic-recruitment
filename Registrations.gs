@@ -59,8 +59,8 @@ function keyTime_(ts) {
   const wall = Math.round((ts - 25569) * 864e5);
   return wall - tzOffsetMs_(new Date(wall));
 }
-function tzOffsetMs_(d) {
-  const m = Utilities.formatDate(d, S_().TIMEZONE, 'XXX').match(/([+-])(\d\d):(\d\d)/); // 'Z' for UTC
+function tzOffsetMs_(d, tz) {
+  const m = Utilities.formatDate(d, tz || S_().TIMEZONE, 'XXX').match(/([+-])(\d\d):(\d\d)/); // 'Z' for UTC
   return m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) * 6e4 : 0;
 }
 

@@ -42,18 +42,16 @@ function tzOffset_() { return Utilities.formatDate(new Date(), S_().TIMEZONE, 'X
 let _tzOff = {};
 function tzFixedOffset_(tz) {
   if (tz in _tzOff) return _tzOff[tz];
-  const y = new Date().getUTCFullYear(), off = d => Utilities.formatDate(d, tz, 'XXX').match(/([+-])(\d\d):(\d\d)/); // 'Z' for UTC
-  const a = off(new Date(Date.UTC(y, 0, 1))), b = off(new Date(Date.UTC(y, 6, 1)));
-  const ms = m => m ? (m[1] === '-' ? -1 : 1) * (m[2] * 60 + +m[3]) * 6e4 : 0;
-  return (_tzOff[tz] = ms(a) === ms(b) ? ms(a) : null);
+  // shortcut: Jan/Jul check misses zones that change offset mid-year without DST (Casablanca's Ramadan); fine for Algiers
+  const y = new Date().getUTCFullYear(), a = tzOffsetMs_(new Date(Date.UTC(y, 0, 1)), tz), b = tzOffsetMs_(new Date(Date.UTC(y, 6, 1)), tz);
+  return (_tzOff[tz] = a === b ? a : null);
 }
 const FMT_JS = /^(?:yyyy|MM|dd|HH|mm|[\/ :-])+$/; // the patterns fmt_ formats itself; anything else (EEE...) goes to formatDate
 function fmt_(d, pattern, tz) { // tz: a caller that can't open the Master (a member) names its own; default = the Master's TIMEZONE
   if (!(d instanceof Date) || isNaN(d)) return String(d || '');
   const t0 = Date.now(), p = pattern || 'dd/MM/yyyy HH:mm', zone = tz || S_().TIMEZONE;
-  const off = FMT_JS.test(p) ? tzFixedOffset_(zone) : null, x = off === null ? null : new Date(d.getTime() + off), two = n => ('0' + n).slice(-2);
-  const out = x ? p.replace(/yyyy|MM|dd|HH|mm/g, k => k === 'yyyy' ? String(x.getUTCFullYear()) : k === 'MM' ? two(x.getUTCMonth() + 1) :
-    k === 'dd' ? two(x.getUTCDate()) : k === 'HH' ? two(x.getUTCHours()) : two(x.getUTCMinutes())) : Utilities.formatDate(d, zone, p);
+  const off = FMT_JS.test(p) ? tzFixedOffset_(zone) : null, iso = off === null ? '' : new Date(d.getTime() + off).toISOString(); // yyyy-MM-ddTHH:mm
+  const out = iso ? p.replace(/yyyy|MM|dd|HH|mm/g, k => iso.substr({ yyyy: 0, MM: 5, dd: 8, HH: 11, mm: 14 }[k], k.length)) : Utilities.formatDate(d, zone, p);
   _snapT.fmtN = (_snapT.fmtN || 0) + 1; _snapT.fmtMs = (_snapT.fmtMs || 0) + Date.now() - t0;
   return out;
 }
