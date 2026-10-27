@@ -34,7 +34,7 @@ function logIndex_(ctx, lk) { const L = ctx.log.I; return ctx.log.data.findIndex
 
 /** The earlier registration a DUPLICATE row repeats (same rule as checkRegistration). */
 function dupOriginal_(ctx, x) {
-  const I = ctx.iv.I, name = r => normText(r[I['First Name']] + ' ' + r[I['Family Name']]);
+  const I = ctx.iv.I, name = r => normName(r[I['First Name']] + ' ' + r[I['Family Name']]);
   const e = lc_(x[I.Email]), t = lc_(x[I['Typed Email']]), n = name(x), ph = normPhone(x[I.Phone]);
   return ctx.iv.data.filter(o => o !== x && !isOut_(o[I.Status]) && (
     (e && (e === lc_(o[I.Email]) || e === lc_(o[I['Typed Email']]))) || (t && t === lc_(o[I.Email])) ||
