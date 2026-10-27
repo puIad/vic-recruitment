@@ -435,4 +435,11 @@ assert.strictEqual(run('JSON.stringify(__formulas)'), '[]', 'written as live for
   assert.strictEqual(JSON.stringify(flagged2), '[]', 'false manual-edit / integrity alerts: ' + JSON.stringify(flagged2));
   assert.strictEqual(run('JSON.stringify(__formulas)'), '[]', 'paragraphs written as text');
 }
+// an apostrophe in the address and the names (M'hamed, 'Abd as typed): kept, and no flag on them
+run(`reg.cells.push(regRow(new Date(Date.now() + 2000), "m'hamed.ouali@g.enp.edu.dz", "M'hamed", "'Abd Ouali", "m'hamed.ouali@g.enp.edu.dz", '01/01/2005', '0555000333', 'IT', 'HR'));`);
+run('syncAll()');
+const mh = run('master.getSheetByName("Interviewees").getDataRange().getValues()').find(r => r[IVX.Email] === "m'hamed.ouali@g.enp.edu.dz");
+assert(mh, "an address with an apostrophe goes through");
+assert.deepStrictEqual([mh[IVX['First Name']], mh[IVX['Family Name']]], ["M'hamed", "'Abd Ouali"], 'a leading apostrophe is not eaten as the text marker');
+assert(!/MISSING_NAME|BAD_EMAIL|EXTERNAL_EMAIL/.test(String(mh[IVX.Flags])), 'no flag: ' + mh[IVX.Flags]);
 console.log('\nE2E OK');

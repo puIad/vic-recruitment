@@ -70,8 +70,9 @@ function loadPropChunks_(name) {
   return s;
 }
 // text a candidate typed that the sheet would run as a formula keeps a leading apostrophe (shown and read back without it).
+// A value that itself starts with an apostrophe gets one too, or Sheets would eat it as the marker (an 'Abd typed as is).
 // shortcut: '@' is left out (not a formula in Sheets; Discord handles start with it)
-function plain_(v) { return typeof v === 'string' && /^[=+\-]/.test(v) ? "'" + v : v; }
+function plain_(v) { return typeof v === 'string' && /^[=+\-']/.test(v) ? "'" + v : v; }
 /** plain_ on every cell of rows laid out as H, except H's plain-text ('@') columns: they never run a formula, and an apostrophe
  *  written there stays in the cell. shortcut: by header name, as Setup / formatBinomeSheet_ format them; a column re-formatted
  *  by hand is not seen. */

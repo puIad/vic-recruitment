@@ -269,7 +269,7 @@ function quickEdit_(ctx, x, values) {
   const v = {};
   keys.forEach(f => {
     const s = String(values[f] == null ? '' : values[f]).trim();
-    if (f === 'First Name' || f === 'Family Name') { if (!/[a-z]/i.test(normText(s))) throw new Error(f + ' needs letters.'); v[f] = s; }
+    if (f === 'First Name' || f === 'Family Name') { if (!hasLetter(s)) throw new Error(f + ' needs letters.'); v[f] = s; }
     else if (f === 'Email') { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new Error('"' + s + '" is not an email address.'); v[f] = s.toLowerCase(); }
     else if (f === 'Phone') {
       const p = normPhone(s);

@@ -179,16 +179,16 @@ function checkRegistration(rec, existing, domain) {
   const phone = normPhone(rec.phone);
   let duplicateOf = '';
 
-  const fullName = normText(who);
+  const fullName = normName(who);
   existing.forEach(e => {
     if (duplicateOf) return;
     const sameEmail = (collected && (collected === e.email || collected === e.typedEmail)) || (typed && typed === e.email);
-    const sameNamePhone = fullName && fullName === normText(e.name) && phone && phone === e.phone;
+    const sameNamePhone = fullName && fullName === normName(e.name) && phone && phone === e.phone;
     if (sameEmail || sameNamePhone) duplicateOf = e.code || e.email || 'an earlier registration';
   });
   if (duplicateOf) add('HIGH', 'DUPLICATE_REGISTRATION', who + ' registered again (same person as ' + duplicateOf + '). The new submission was NOT assigned; check if their answers changed.');
 
-  if (!/[a-z]/i.test(normText(rec.first)) || !/[a-z]/i.test(normText(rec.family))) add('HIGH', 'MISSING_NAME', 'Registration from ' + (collected || typed || '?') + ' has an empty or junk first/family name ("' + (rec.first || '') + ' ' + (rec.family || '') + '").');
+  if (!hasLetter(rec.first) || !hasLetter(rec.family)) add('HIGH', 'MISSING_NAME', 'Registration from ' + (collected || typed || '?') + ' has an empty or junk first/family name ("' + (rec.first || '') + ' ' + (rec.family || '') + '").');
   if (!rec.c1) add('HIGH', 'INVALID_CHOICE', who + ': 1st department choice "' + (rec.c1raw || '') + '" is not IT/COMM/FLER/HR, so they cannot be routed.');
   if (typed && !emailRe.test(typed)) add('MEDIUM', 'BAD_EMAIL', who + ' typed an invalid email "' + rec.typedEmail + '".');
   else if (typed && collected && typed !== collected) add('MEDIUM', 'EMAIL_MISMATCH', who + ' typed "' + rec.typedEmail + '" but submitted from ' + collected + '. Use the submitting email.');
@@ -237,7 +237,7 @@ function screenApplication(a) {
 function namesSwapped(first, family, email) {
   const parts = String(email || '').trim().toLowerCase().split('@')[0].split('.');
   if (parts.length !== 2) return false;
-  const toks = s => normText(String(s).replace(/_/g, ' ')).split(' ').filter(w => w.length > 1);
+  const toks = s => normName(String(s).replace(/_/g, ' ')).split(' ').filter(w => w.length > 1);
   const F = toks(first), L = toks(family), ef = toks(parts[0]), el = toks(parts[1]);
   const meets = (x, y) => x.some(w => y.indexOf(w) >= 0);
   return !!(F.length && L.length && meets(F, el) && meets(L, ef) && !meets(F, ef) && !meets(L, el));

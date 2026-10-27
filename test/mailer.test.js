@@ -54,6 +54,8 @@ assert.deepStrictEqual([m.to, m.name, m.subject], ['test.person@g.enp.edu.dz', '
 assert(/>Your ticket is ready</.test(m.htmlBody) && />204816</.test(m.htmlBody) && /It works for 10 minutes\./.test(m.htmlBody), 'blank or spaces: the default');
 assert(!m.replyTo && !m.from, 'replies go to the sending account (vic.rh)');
 assert.deepStrictEqual(post({ ...ok, to: 'Test.Person@G.ENP.EDU.DZ' }), { ok: true }, 'the domain is matched in any case');
+assert.deepStrictEqual(post({ ...ok, to: "M'hamed.Ouali@g.enp.edu.dz" }), { ok: true }, 'an apostrophe in the address (an ENP one has it)');
+assert.strictEqual(sent[sent.length - 1].to, "m'hamed.ouali@g.enp.edu.dz");
 
 // ---- the wording comes from the Master, read at most once a minute ----
 settingsRows[2][1] = 'Here is ticket {code}, <b>';
