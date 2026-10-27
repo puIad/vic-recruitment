@@ -37,9 +37,23 @@ function adminEmails_() {
   return String(S_().ADMIN_EMAIL || '').split(/[,;\s]+/).map(e => e.trim()).filter(e => /@/.test(e));
 }
 function tzOffset_() { return Utilities.formatDate(new Date(), S_().TIMEZONE, 'XXX'); }
+/** A zone's fixed offset in ms, or null when it changes over the year (daylight saving). Looked up once per zone and run:
+ *  each formatDate is a call to Google, and a slow Google made ~500 of them take 80 s (cycle at 19:37, 2026-10-27). */
+let _tzOff = {};
+function tzFixedOffset_(tz) {
+  if (tz in _tzOff) return _tzOff[tz];
+  const y = new Date().getUTCFullYear(), off = d => Utilities.formatDate(d, tz, 'XXX').match(/([+-])(\d\d):(\d\d)/); // 'Z' for UTC
+  const a = off(new Date(Date.UTC(y, 0, 1))), b = off(new Date(Date.UTC(y, 6, 1)));
+  const ms = m => m ? (m[1] === '-' ? -1 : 1) * (m[2] * 60 + +m[3]) * 6e4 : 0;
+  return (_tzOff[tz] = ms(a) === ms(b) ? ms(a) : null);
+}
+const FMT_JS = /^(?:yyyy|MM|dd|HH|mm|[\/ :-])+$/; // the patterns fmt_ formats itself; anything else (EEE...) goes to formatDate
 function fmt_(d, pattern, tz) { // tz: a caller that can't open the Master (a member) names its own; default = the Master's TIMEZONE
   if (!(d instanceof Date) || isNaN(d)) return String(d || '');
-  const t0 = Date.now(), out = Utilities.formatDate(d, tz || S_().TIMEZONE, pattern || 'dd/MM/yyyy HH:mm');
+  const t0 = Date.now(), p = pattern || 'dd/MM/yyyy HH:mm', zone = tz || S_().TIMEZONE;
+  const off = FMT_JS.test(p) ? tzFixedOffset_(zone) : null, x = off === null ? null : new Date(d.getTime() + off), two = n => ('0' + n).slice(-2);
+  const out = x ? p.replace(/yyyy|MM|dd|HH|mm/g, k => k === 'yyyy' ? String(x.getUTCFullYear()) : k === 'MM' ? two(x.getUTCMonth() + 1) :
+    k === 'dd' ? two(x.getUTCDate()) : k === 'HH' ? two(x.getUTCHours()) : two(x.getUTCMinutes())) : Utilities.formatDate(d, zone, p);
   _snapT.fmtN = (_snapT.fmtN || 0) + 1; _snapT.fmtMs = (_snapT.fmtMs || 0) + Date.now() - t0;
   return out;
 }

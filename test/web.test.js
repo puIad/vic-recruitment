@@ -1460,4 +1460,24 @@ run('__realAbout = Drive.About; Drive.About = { get() { throw new Error("quota")
 assert.strictEqual(run('webAccess().photo'), '', 'a Drive failure falls back to initials');
 run('Drive.About = __realAbout');
 
+// fmt_ formats in plain JS: one offset lookup per zone and run, not a formatDate call per date (a slow Google made it 80 s)
+{
+  run('var __ufd = Utilities.formatDate, __n = 0; Utilities.formatDate = function (d, tz, p) { __n++; return __ufd(d, tz, p); }; _tzOff = {}');
+  const pats = ['dd/MM/yyyy HH:mm', 'dd/MM HH:mm', 'dd/MM/yyyy', 'dd/MM', 'HH:mm', 'yyyy', 'yyyy-MM-dd'];
+  const dates = [Date.UTC(2026, 9, 26, 17, 0), Date.UTC(2026, 11, 31, 23, 30), Date.UTC(2027, 1, 28, 22, 59), Date.UTC(2026, 0, 1, 0, 5)];
+  const each = f => JSON.parse(run(`JSON.stringify(${JSON.stringify(dates)}.map(t => ${JSON.stringify(pats)}.map(p => ${f})))`));
+  const js = each('fmt_(new Date(t), p)');
+  assert(run('__n') <= 2, 'at most two offset lookups, got ' + run('__n'));
+  assert.deepStrictEqual(js, each(`__ufd(new Date(t), 'Africa/Algiers', p)`), 'same text as formatDate');
+  assert.strictEqual(run('fmt_(new Date(Date.UTC(2026, 11, 31, 23, 30)), "dd/MM/yyyy HH:mm", "Africa/Algiers")'), '01/01/2027 00:30', 'the zone shifts the day and year');
+  assert.strictEqual(run('fmt_(new Date(Date.UTC(2026, 9, 26, 17, 0)))'), '26/10/2026 18:00', 'default pattern');
+  assert.strictEqual(run('fmt_("x")'), 'x', 'not a date: as text');
+  // a pattern it doesn't parse (day names are locale text), and a daylight-saving zone, still go to formatDate
+  run('__n = 0'); run('fmt_(new Date(), "EEE dd/MM")'); assert.strictEqual(run('__n'), 1, 'unknown pattern falls back');
+  run(`_tzOff = {}; Utilities.formatDate = function (d, tz, p) { __n++; return p === 'XXX' ? (d.getUTCMonth() < 6 ? '+01:00' : '+02:00') : 'fd'; }`);
+  run('__n = 0'); assert.strictEqual(run('fmt_(new Date(), "dd/MM", "Europe/Paris") + fmt_(new Date(), "dd/MM", "Europe/Paris")'), 'fdfd', 'DST zone falls back');
+  assert.strictEqual(run('__n'), 4, 'two lookups once, then one call per date');
+  run('Utilities.formatDate = __ufd; _tzOff = {}');
+}
+
 console.log('WEB OK');
