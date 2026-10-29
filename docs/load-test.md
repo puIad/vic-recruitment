@@ -867,8 +867,8 @@ Check live, with real ENP accounts, on the day of the run:
 
 With the switch on, live, after the run (each one a few clicks):
 - **Account switch with changes pending** ([slice 5](plans.md#slice-5-token-edges)): person X saves on browser A, and
-  before it applies a second account signs in on A. X is not revoked until their last change ends, then is
-  (`{"at":"apply","revoked":true}` in the logs); X's other browser keeps working until then.
+  before it applies a second account signs in on A. X is never revoked: the log shows `{"at":"callback","replaced":…}`,
+  X's change still applies and X's other browser keeps working.
 - **A redeploy with changes pending**: save, then Vercel › Deployments › Redeploy the production deployment at once. The
   change still ends applied: messages stay with the deployment that published them, and its consumer applies them.
 - **A forced drop**, to see the drop on the page: hand-edit an alert's Status to SNOOZED in the Master **before** clicking

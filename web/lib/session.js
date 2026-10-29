@@ -79,7 +79,7 @@ async function tokenRequest(params) {
   const j = await r.json().catch(() => ({}));
   return { ok: r.ok, status: r.status, body: j };
 }
-/** Best effort: a failed revoke must never block sign-out. Returns whether Google accepted it. */
+/** Best effort, for a refused non-ENP sign-in only: never an ENP account's grant (it would end the script's too). */
 async function revoke(token) {
   if (!token) return false;
   try { return (await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ token }) })).ok; }

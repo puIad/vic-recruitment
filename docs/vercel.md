@@ -108,12 +108,11 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
   that browser, `now - iat > 48h` = ended there. Ending (48 h or sign-out) never revokes: the cookie keeps
   `{email, rt, iat}` and the person's other browsers keep running. The next sign-in on that browser reuses the stored
   refresh token when Google sends none (same verified email, one test refresh first; refused = the consent screen) and
-  restarts the 48 h. A different account signing in revokes the outgoing grant only inside its 48 h (signed out or not),
-  which ends that person's sign-ins everywhere; past it, the cookie is overwritten with no revoke.
-  With that person's changes still pending (from any device), the revoke waits ([slice 5](plans.md#slice-5-token-edges)):
-  the callback sets `pcr:<email>` ("revoke when done", 2 h) and the consumer revokes with the last change's access token
-  once none is left pending. Nothing pending, or Redis unreadable, revokes at once. Every sign-in deletes the incoming
-  person's `pcr:` key, so an old revoke never cuts a fresh sign-in. Sign out and Switch account wait for a save still
+  restarts the 48 h. A different account signing in overwrites the cookie (logged `{"at":"callback","replaced":…}`).
+  The dashboard never revokes an ENP account's grant, not even when a sign-in comes back with a box unticked (logged
+  `{"at":"callback","missing":[…]}`): a revoke ends the person's grant on the whole Cloud project, the script's
+  included, so revoking `vic.rh` stopped the timed sync with "Authorization is required" (2026-10-29). The slice 5
+  "revoke when done" (`pcr:` keys) is gone with it. Sign out and Switch account wait for a save still
   being accepted; with changes still pending both land on the sign-in screen, which says how many keep saving.
 - **Kill switch:** refresh tokens stay live at Google until 6 months unused, so it takes both: rotate `SESSION_KEY`
   (every cookie unreadable) **and** the OAuth client secret (every refresh token useless).
@@ -125,7 +124,7 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
 - **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions; [slice 3](plans.md#slice-3-save-settings-and-my-binome-fields):
   Save settings for admins and My binome fields for members; since 2026-10-26 also an admin's Experienced tick on the
   Pairing panel and the alerts' Fix of Contacted or the interview date and time). Off until
-  the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message (a sign-in still deletes its `pcr:` key).
+  the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message.
   - The accept step in `api/run.js` refreshes the token when under 30 min is left, writes the author's Redis record first
     (hash `pc:<email>`, one field per cell: `alert:<id>`, `setting:<key>`, `field:<code>:<column>`, `team:<email>`,
     `bfield:<code>:<column>`), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
@@ -147,7 +146,7 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
       dropping everything as "lost access". A busy document lock (`retry`) deletes the `pcl:` gap key and comes back in
       5 to 30 s; backoff has ±25% jitter.
     - The sync's call (`forSync`) also deletes expired cells, so its Redis commands stop growing with everyone who ever
-      saved. `revoke` now returns whether Google accepted it, and the consumer logs that as `revoked`.
+      saved.
   - Store: Upstash Redis Free from the Vercel Marketplace, us-east-1 next to iad1 (recreated there on 2026-10-18 after a
     first install in Frankfurt), connected to this project only. Env vars `KV_REST_API_URL` / `KV_REST_API_TOKEN` (the
     code also takes `UPSTASH_REDIS_REST_*`). The record only ever adds fields: every deployment shares it.

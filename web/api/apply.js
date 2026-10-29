@@ -31,14 +31,6 @@ async function end(tok, entries, how) {
   if (!Object.keys(w).length) return;
   await P.save(email, w);
   console.log(JSON.stringify({ at: 'apply', email, ended: Object.keys(w).map(c => w[c].state) }));
-  if (!Object.keys(rec).some(c => (w[c] || rec[c]).state === 'pending')) await revokeIfMarked(tok);
-}
-
-/** Another account took over a browser of theirs while changes were pending (callback.js): once none is left, revoke
- *  with this message's access token. An entry the #58 sweep ends holds no token: that mark expires (accepted, issue 56). */
-async function revokeIfMarked(tok) {
-  const [mark] = await P.redis([['GETDEL', P.REVOKE + tok.email]]).catch(() => [null]);
-  if (mark) console.log(JSON.stringify({ at: 'apply', email: tok.email, revoked: await S.revoke(tok.at) }));
 }
 
 async function handle(msg, meta) {
@@ -47,8 +39,7 @@ async function handle(msg, meta) {
   const email = tok.email, rec = await P.read(email, now);
   const pending = Object.keys(rec).map(c => rec[c]).filter(e => e.state === 'pending').sort((a, b) => a.at - b.at);
   const mine = pending.filter(e => msg.ids.indexOf(e.id) >= 0);
-  // ended by an earlier call, replaced or cancelled: a cancel ends the last one with no call, so the mark is checked here
-  if (!mine.length) return pending.length ? undefined : revokeIfMarked(tok);
+  if (!mine.length) return; // ended by an earlier call, replaced or cancelled
   if (tok.ate - now < MIN_LIFE_MS) return end(tok, mine, () => ({ state: 'dropped', reason: 'retries ran out', again: true }));
   const [got, ttl] = await P.redis([['SET', 'pcl:' + email, '1', 'NX', 'PX', GAP_MS], ['PTTL', 'pcl:' + email]]);
   if (got !== 'OK') throw new Later(Math.max(ttl, 0) / 1000 + 1);

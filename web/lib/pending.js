@@ -16,7 +16,6 @@ const FORMAT = 1;          // the page's change format: another one is refused w
 const SCRIPT_FORMAT = 1;   // webApply's call format (Pending.gs APPLY_FORMAT)
 const TOPIC = 'vic-apply';
 const LIVE = 'pcx'; // set of emails whose record may hold a pending or unaddressed dropped entry: the sync's sweep reads only these
-const REVOKE = 'pcr:';  // + email: "revoke when done" (slice 5); outlives every token a pending change holds
 const RETENTION_S = 7200;  // about 2 h (issue 58)
 const MAX_CELLS = 300; // live cells per author: a real one holds a handful (shortcut: raise it if a page ever needs more)
 const ENDED_MS = 10 * 60e3, ADDRESSED_MS = 7 * 24 * 3600e3, RECORD_S = 30 * 24 * 3600;
@@ -194,17 +193,4 @@ async function forSync(mailed, now) {
   return out;
 }
 
-/**
- * Another account takes over a browser inside the outgoing sign-in's 48 h (callback.js, issue 56). With the outgoing
- * person's changes still pending (from any device), mark them "revoke when done" for the consumer instead of revoking;
- * nothing pending, or Redis unreadable, revoke now: ending a sign-in never depends on Redis. s = the outgoing cookie.
- */
-async function revokeWhenDone(s, now) {
-  try {
-    const rec = await read(s.email, now);
-    if (Object.keys(rec).some(c => rec[c].state === 'pending')) { await redis([['SET', REVOKE + s.email, '1', 'PX', RETENTION_S * 1000]]); return; }
-  } catch (e) { /* revoke below */ }
-  await S.revoke(s.rt);
-}
-
-module.exports = { FORMAT, LIVE, REVOKE, revokeWhenDone, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync };
+module.exports = { FORMAT, LIVE, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync };
