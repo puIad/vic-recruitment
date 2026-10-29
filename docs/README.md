@@ -12,6 +12,7 @@ work on the project). Open these only when the task needs them:
 | [launch-features.md](launch-features.md) | building pairing with experience, application screening or the department change (the owner's requests of 2026-10-15) |
 | [interview-form.md](interview-form.md) | changing My binome for admins or the dashboard interview form (the owner's requests of 2026-10-18, both live) |
 | [onboarding-tour.md](onboarding-tour.md) | building the first-visit spotlight tour for members and admins, and its replay from Help (spec of 2026-10-20) |
+| [admin-features.md](admin-features.md) | building a dashboard feature that replaces opening the Master or a binome sheet (map #166, decided ticket by ticket from 2026-10-29) |
 | [plans.md](plans.md) | building Schedule or Analytics (the owner's plan of 2026-10-04); Binome desk dropped; the binome-view idea |
 | [vercel.md](vercel.md) | touching `web/` (sign-in, the `/api/run` proxy, sessions), the Vercel project settings or the Google Cloud project |
 | [testing.md](testing.md) | testing: automated suites, local previews, the manual test plan on the live Master |
