@@ -124,7 +124,7 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
 - **Pending changes** ([plans.md](plans.md#slice-2-alert-actions-end-to-end), slice 2: the four alert actions; [slice 3](plans.md#slice-3-save-settings-and-my-binome-fields):
   Save settings for admins and My binome fields for members; since 2026-10-26 also an admin's Experienced tick on the
   Pairing panel and the alerts' Fix of Contacted or the interview date and time). Off until
-  the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message (a sign-in still deletes its `pcr:` key).
+  the owner turns them on in Settings › General (script property `PENDING_CHANGES`); off = no Redis call and no message.
   - The accept step in `api/run.js` refreshes the token when under 30 min is left, writes the author's Redis record first
     (hash `pc:<email>`, one field per cell: `alert:<id>`, `setting:<key>`, `field:<code>:<column>`, `team:<email>`,
     `bfield:<code>:<column>`), then publishes one message to Vercel Queues (topic `vic-apply`, 2 h retention)
