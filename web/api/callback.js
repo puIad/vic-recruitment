@@ -1,5 +1,5 @@
 // GET /api/callback?code&state → exchange the code, check the account is a verified @g.enp.edu.dz one, start the session.
-const S = require('../lib/session'), P = require('../lib/pending');
+const S = require('../lib/session');
 
 module.exports = async (req, res) => {
   const q = new URLSearchParams(String(req.url || '').split('?')[1] || '');
@@ -23,8 +23,11 @@ module.exports = async (req, res) => {
     await S.revoke(t.body.refresh_token || t.body.access_token);
     return S.sendPage(res, 403, 'ENP accounts only', 'Sign in with your @' + S.DOMAIN + ' Google account.');
   }
-  if (S.missingScopes(t.body.scope || '').length) {
-    await S.revoke(t.body.refresh_token || t.body.access_token);
+  // No revoke for an ENP account: it would end the person's whole grant on the Cloud project, the script's included,
+  // so vic.rh's timed sync stops with "Authorization is required". The token is simply not kept.
+  const missing = S.missingScopes(t.body.scope || '');
+  if (missing.length) {
+    console.warn(JSON.stringify({ at: 'callback', email, missing }));
     return S.sendPage(res, 403, 'Permissions missing', 'The dashboard needs every permission on the Google screen (Sheets, Drive, Forms, mail, triggers). Sign in again and keep them all ticked.');
   }
   const now = Date.now();
@@ -39,12 +42,9 @@ module.exports = async (req, res) => {
     if (!o.consent) return S.redirect(res, '/api/login?consent=1');
     return S.sendPage(res, 502, 'Sign-in failed', 'Google did not return a long-lived token. Try again in a private window.');
   }
-  // Revoking ends the whole grant for that account (all its browsers), so only when another account takes over this
-  // browser inside the outgoing sign-in's 48h; past it, that sign-in already ended and its other browsers keep theirs.
-  // With their changes still pending, the revoke waits for the last one (the consumer, api/apply.js).
-  if (old && old.rt && old.email !== email && !S.expired(old, now)) await P.revokeWhenDone(old, now);
-  // signing in again anywhere clears a "revoke when done" on this person, so an old revoke never cuts a fresh sign-in
-  await P.redis([['DEL', P.REVOKE + email]]).catch(() => { /* no mark can be set without Redis either */ });
+  // Another account taking over this browser overwrites the outgoing cookie, the only copy of its refresh token here.
+  // No revoke (see above): the outgoing person's other browsers and the script's grant stay.
+  if (old && old.email && old.email !== email) console.log(JSON.stringify({ at: 'callback', email, replaced: old.email }));
   S.addCookie(res, S.sessionCookie({ email, rt: reuse ? old.rt : t.body.refresh_token, at: t.body.access_token,
     ate: now + (t.body.expires_in || 3600) * 1000, iat: now }));
   console.log(JSON.stringify({ at: 'login', email }));

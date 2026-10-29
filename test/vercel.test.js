@@ -86,7 +86,9 @@ const rpc = (cookie, fn, ...args) => invoke('run', { method: 'POST', cookie, bod
   tokenReply = Object.assign({}, tokenReply, { id_token: idt({ email: 'a@g.enp.edu.dz', aud: 'someone-else' }) });
   r = await cb('s', 's'); assert.strictEqual(r.status, 403, 'token for another client refused');
   tokenReply = Object.assign({}, tokenReply, { id_token: idt({ email: 'a@g.enp.edu.dz' }), scope: 'openid email https://www.googleapis.com/auth/spreadsheets' });
+  g.log.revoked.length = 0;
   r = await cb('s', 's'); assert.strictEqual(r.status, 403, 'unticked permissions refused'); assert(/Permissions missing/.test(r.body));
+  assert.deepStrictEqual([g.log.revoked, r.jar[S.COOKIE]], [[], undefined], 'unticked permissions: no revoke (it would end the script grant too), nothing kept');
   tokenReply = Object.assign({}, tokenReply, { scope: allScopes, refresh_token: undefined });
   r = await cb('s', 's'); assert.deepStrictEqual([r.status, r.headers.location], [302, '/api/login?consent=1'], 'no refresh token → retry once with consent');
   g.opts.refreshScope = 'openid email https://www.googleapis.com/auth/spreadsheets';
@@ -117,8 +119,7 @@ const rpc = (cookie, fn, ...args) => invoke('run', { method: 'POST', cookie, bod
   const fresh = S.open(r.jar[S.COOKIE]);
   assert.deepStrictEqual([fresh.rt, fresh.iat >= t1, g.log.revoked], ['rt:new', true, []], 'same account re-consents: the old token is not revoked (that would end the new grant too), 48h restart now');
   r = await cbWith({ email: 'b@g.enp.edu.dz', rt: 'rt:other', iat: iat0, out: true });
-  assert.deepStrictEqual([g.log.revoked, S.open(r.jar[S.COOKIE]).email], [['rt:other'], 'a@g.enp.edu.dz'], 'another account takes over inside 48h (even signed out): its grant is revoked');
-  g.log.revoked.length = 0;
+  assert.deepStrictEqual([g.log.revoked, S.open(r.jar[S.COOKIE]).email], [[], 'a@g.enp.edu.dz'], 'another account takes over inside 48h: overwritten, no revoke');
   r = await cbWith({ email: 'b@g.enp.edu.dz', rt: 'rt:other', iat: Date.now() - 49 * 3600e3 });
   assert.deepStrictEqual([g.log.revoked, S.open(r.jar[S.COOKIE]).rt], [[], 'rt:new'], 'another account takes over past 48h: overwritten, no revoke');
   global.fetch = realFetch;
@@ -236,7 +237,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     const recOf = async (cookie, cell) => (await pulse(cookie, 2)).json.rec[cell];
 
     // switch off: the pulse reads no Redis, whatever the page asks with rec 1
-    F.log.redis = 0; // the callbacks above clear a "revoke when done" on every sign-in
+    F.log.redis = 0;
     r = await pulse(own, 1);
     assert.deepStrictEqual([r.json.value.pending, 'rec' in r.json, F.log.redis], [false, false, 0], 'switch off: no Redis call');
     assert.strictEqual(typeof (await rpc(own, 'webPulse')).json.value, 'number', 'the bare pulse is unchanged');
@@ -456,7 +457,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       await deliver();
     }
 
-    // audit (5): the timed sync's sweep removes expired cells; revoke is logged by what Google answered
+    // audit (5): the timed sync's sweep removes expired cells
     {
       F.db['pc:old@g.enp.edu.dz'] = { 'alert:A-1': JSON.stringify({ cell: 'alert:A-1', state: 'applied', exp: Date.now() - 1 }) };
       F.db[P.LIVE] = new Set(['old@g.enp.edu.dz']);
@@ -467,12 +468,6 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       assert(F.db[P.LIVE].has('new@g.enp.edu.dz'), 'a pending entry puts its author in the live set');
       delete F.db['pc:new@g.enp.edu.dz']; F.db[P.LIVE].delete('new@g.enp.edu.dz');
       delete F.db['pc:old@g.enp.edu.dz'];
-      const logs = [], w0 = console.log; console.log = x => logs.push(String(x));
-      const f2 = global.fetch; global.fetch = async (u, i) => (String(u).endsWith('/revoke') ? { ok: false, status: 400, json: async () => ({}) } : f2(u, i));
-      F.db['pcr:rev@g.enp.edu.dz'] = '1';
-      await deliver({ v: 1, t: S.seal({ email: 'rev@g.enp.edu.dz', at: 'at:rev', ate: Date.now() + 3600e3 }), ids: [] });
-      global.fetch = f2; console.log = w0;
-      assert(logs.some(x => /"revoked":false/.test(x)) && !logs.some(x => /"revoked":true/.test(x)), 'Google refused the revoke: logged false');
     }
 
     // My binome fields (slice 3): a member's change, applied as them in their own sheet; the partner's next poll has it
@@ -557,51 +552,23 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       delete process.env.DROPS_SECRET;
     }
 
-    // slice 5: another account signs in on a browser of the admin's (inside its 48 h) while their change is pending
+    // another account signs in on a browser of the admin's (inside its 48 h) while their change is pending: no revoke
+    // (it would end the admin's grant on the whole project, the script's included); the change still applies as them
     {
       const fetch0 = global.fetch;
       global.fetch = async (url, init) => (String(url) === 'https://oauth2.googleapis.com/token' && /authorization_code/.test(init.body)
         ? { ok: true, status: 200, json: async () => tokenReply } : fetch0(url, init));
-      const as = (email, rt) => { tokenReply = { access_token: 'at:' + email, refresh_token: rt, expires_in: 3600, scope: allScopes, id_token: idt({ email }) }; };
-      const admin = { email: 'admin@g.enp.edu.dz', rt: 'rt:admin@g.enp.edu.dz', iat: Date.now() }, mark = 'pcr:admin@g.enp.edu.dz';
-      as('b@g.enp.edu.dz', 'rt:b');
+      tokenReply = { access_token: 'at:b', refresh_token: 'rt:b', expires_in: 3600, scope: allScopes, id_token: idt({ email: 'b@g.enp.edu.dz' }) };
       setStatus('A-9002', 'OPEN');
       await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
       g.log.revoked.length = 0;
-      r = await cbWith(admin);
-      assert.deepStrictEqual([r.headers.location, S.open(r.jar[S.COOKIE]).email, g.log.revoked, F.db[mark]], ['/', 'b@g.enp.edu.dz', [], '1'], 'changes pending: no revoke yet, marked revoke when done');
+      const logs = [], w0 = console.log; console.log = x => logs.push(String(x));
+      r = await cbWith({ email: 'admin@g.enp.edu.dz', rt: 'rt:admin@g.enp.edu.dz', iat: Date.now() });
+      console.log = w0;
+      assert.deepStrictEqual([r.headers.location, S.open(r.jar[S.COOKIE]).email, g.log.revoked], ['/', 'b@g.enp.edu.dz', []], 'takeover: no revoke');
+      assert(logs.some(x => /"replaced":"admin@g\.enp\.edu\.dz"/.test(x)), 'takeover logged with the outgoing email');
       await deliver();
-      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'the last one ended: revoked with its access token, mark gone');
-      // the last one typed back from another device: its put-back is met and the revoke follows
-      await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
-      const cancelled = last();
-      g.log.revoked.length = 0;
-      await cbWith(admin);
-      await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
-      assert.notStrictEqual(F.sent[F.sent.length - 1].payload, cancelled, 'typed back: a put-back is published');
-      await deliver(cancelled);
-      assert.deepStrictEqual([g.log.revoked, mark in F.db], [[], true], 'the replaced one finds a pending put-back: no revoke yet');
-      await deliver();
-      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['MUTED', ['at:admin@g.enp.edu.dz'], false], 'put-back met: revoked on its delivery');
-      // the admin signing in again anywhere clears the mark: their next change ends with no revoke
-      await accept(own, { alert: 'A-9002', op: 'unmute', seen: 'MUTED' });
-      await cbWith(admin);
-      as('admin@g.enp.edu.dz', 'rt:admin2');
-      await cbWith({ email: 'x@g.enp.edu.dz', rt: 'rt:x', iat: Date.now() - 49 * 3600e3 });
-      g.log.revoked.length = 0;
-      await deliver();
-      assert.deepStrictEqual([status('A-9002'), g.log.revoked, mark in F.db], ['OPEN', [], false], 'signed in again: the mark is cleared, no revoke');
-      // nothing pending: revoked at once; Redis unreadable: revoked at once too
-      as('b@g.enp.edu.dz', 'rt:b');
-      await cbWith(admin);
-      assert.deepStrictEqual([g.log.revoked, mark in F.db], [['rt:admin@g.enp.edu.dz'], false], 'nothing pending: revoked at once');
-      await accept(own, { alert: 'A-9002', op: 'mute', seen: 'OPEN' });
-      g.log.revoked.length = 0;
-      F.log.fail.redis = true;
-      r = await cbWith(admin);
-      F.log.fail.redis = false;
-      assert.deepStrictEqual([r.headers.location, g.log.revoked, mark in F.db], ['/', ['rt:admin@g.enp.edu.dz'], false], 'Redis unreadable: revoked at once, the sign-in still goes through');
-      await deliver();
+      assert.deepStrictEqual([status('A-9002'), g.log.revoked], ['MUTED', []], 'the pending change applies, still no revoke');
       global.fetch = fetch0;
     }
 
