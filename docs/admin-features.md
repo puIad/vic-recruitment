@@ -103,3 +103,61 @@ change interviews already done. How the phase closes is
 history.
 
 **Mail.** None.
+
+## Pause and resume a binome
+
+Decided in [#169](https://github.com/puIad/vic-recruitment/issues/169) (owner, 2026-10-29). Replaces the hand edit of
+Status in the Binomes tab. PAUSED keeps its meaning: the binome keeps its interviewees and gets no new ones
+(`activeBinomes_` in `Sheets.gs` leaves it out; the interview check, the member map and the sync keep it).
+
+**Who.** Every Master editor. Members never see the control.
+
+**Where.** One toggle on the Binomes page, in each binome's row menu and in its details panel, next to Change members and
+Change department. One binome at a time, no bulk. While paused, the control offers **Resume now** (optional note) and
+**Change resume date** (set, move or clear it). The row shows "Paused until 3 Nov 08:00" or "Paused".
+
+**Pause dialog.**
+- **Reason**, required (optional for Resume).
+- **Resume date**, optional: date and time, Algiers, defaulting to 08:00.
+- **Last binome for a department.** If no ACTIVE binome would take one of its departments after the pause, the dialog
+  says so ("No ACTIVE binome takes HR after this: new HR registrants will wait, NO_BINOME") and asks for a second click.
+  The pause still goes through.
+- **Move step**, optional: the binome's interviewees that are ASSIGNED and not contacted (Contacted empty or "Not yet"),
+  all ticked, each one can be unticked. They go "to other HR binomes"; the target is picked at apply time. Hidden when no
+  other ACTIVE binome takes that tag.
+
+**Paused Until column.** A new last column in the Binomes tab, added by Setup in the same release that teaches the header
+check to expect it. It is in the baseline. A hand-typed date on a PAUSED binome is INFO and the sync honours it; a date
+on an ACTIVE binome is ignored and flagged INFO. Resume, by hand or from the date, clears it.
+
+**Resume from the date.** The first sync run after the date resumes the binome, as vic.rh, doing what a manual Resume
+does (log row, mail, INFO alert). So it can be up to one sync interval late.
+
+**The write.** A pending change, a new kind for one Binomes row; with the owner's switch off it is a direct write.
+- **One change.** The pause and its ticked codes are one pending change: one apply call writes the pause first, then
+  each move, so the queue's order across messages doesn't matter.
+- **The pause.** Applied only while Status still shows what the author saw (ACTIVE for Pause, PAUSED for Resume and
+  Change resume date). Already in the wanted status = already met. Anything else = dropped, with all its moves.
+- **The applier** writes the Status cell, Paused Until, the baseline and the log row, then mails the binome as the
+  author. A dropped change sends no mail.
+- **Each move** reuses Reassign (`moveInterviewee_` in `Actions.gs`): Contacted, the date and the notes go with it, the
+  receiving binome is mailed, the candidate is not. A move is applied only if the code is still in the paused binome,
+  still ASSIGNED and not contacted, and another ACTIVE binome takes its tag; the applier gives it to the least-loaded
+  one, as assignment does. Otherwise that move alone is dropped ("already contacted", "no other HR binome") and the
+  rest go on. The author sees the drops as usual.
+- **No time limit.** A timeout is a retry like any failed apply. On a retry, a pause already applied is already met (no
+  second mail), and a code already in another ACTIVE binome of the same tag is already met; the retry goes on with the
+  codes still in the paused binome.
+- **The gap.** A registrant assigned between the click and the apply stays with the binome. The row shows the usual
+  pending mark until the change is applied.
+
+**Alerts.** Timing alerts (not contacted, no date, overdue) keep running for a paused binome's interviewees. A live cover
+is left alone and ends the usual way. Admins get an INFO alert for each pause and resume, in the daily digest, with no
+instant mail.
+
+**Log.** Each Pause, Resume and Change resume date writes a STATUS row in Member Changes: who, when, the binome, old and
+new status, the resume date, the reason. It shows in Change history.
+
+**Mail.** Pause and resume (manual or from the date) mail both members: paused, keep going with the ones you have;
+resumed, new candidates will come. Change resume date mails nobody. My binome's Paused note shows the resume date when
+there is one.
