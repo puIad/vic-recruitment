@@ -1,14 +1,17 @@
-/* ---------- The VIC mailer: the registration form's ticket mail (docs/registration-form.md, The mails) ----------
+/* ---------- The VIC mailer: every VIC mail leaves from vic.rh through here (docs/registration-form.md, The mails) ----------
  * A standalone Apps Script owned by vic.rh, not the Master's bound script (that one's web app runs as the visitor).
  * Deployed with clasp from this folder (mailer/.clasp.json, mailer/appsscript.json: Web app, Execute as Me, access
  * Anyone; docs/registration-form.md, setup step 7). Script properties: MAILER_SECRET (the site's MAILER_SECRET),
- * EMAIL_DOMAIN (g.enp.edu.dz), MASTER_ID (the Master's id; vic.rh must be able to open it).
+ * MAIL_SEND_SECRET (the bound script's MAIL_SEND_SECRET), EMAIL_DOMAIN (g.enp.edu.dz), MASTER_ID (the Master's id;
+ * vic.rh must be able to open it).
  *
  * doPost takes JSON:
  *   {secret, to, code}  one ticket mail to `to` (an address in EMAIL_DOMAIN), `code` six digits, sent as "VIC Recruitment"
  *                       from this account (replies land in its mailbox). Answers {ok:true} or {ok:false, reason}.
  *   {secret, ping:true} answers {ok:true, quota} and sends nothing (the site's /api/health): quota is MailApp's recipients
  *                       left today for vic.rh, shared with the Master's mails; left out if Google won't say.
+ *   {secret, mail:{to, subject, html, name}}  one mail built by the bound script (mail_ in Sheets.gs), to any one address.
+ *                       Its own secret: a leak of the site's can only send tickets to ENP addresses, never free text.
  * The wording is the Master's Settings rows MAIL_CODE_* (Settings › Emails, Registration ticket), blank = the defaults
  * below, cached 60 s. TEST_MODE does not reach this script.
  *
@@ -32,6 +35,7 @@ function doPost(e) {
   try { body = JSON.parse(e.postData.contents); } catch (err) { return answer_({ ok: false, reason: 'bad request' }); }
   if (!body || typeof body !== 'object') return answer_({ ok: false, reason: 'bad request' });
   const props = PropertiesService.getScriptProperties();
+  if (body.mail) return answer_(sameSecret_(body.secret, props.getProperty('MAIL_SEND_SECRET')) ? sendMail_(body.mail) : { ok: false, reason: 'secret' });
   if (!sameSecret_(body.secret, props.getProperty('MAILER_SECRET'))) return answer_({ ok: false, reason: 'secret' });
   if (body.ping === true) return answer_(pong_());
   const domain = String(props.getProperty('EMAIL_DOMAIN') || '').trim().replace(/^@/, '').toLowerCase();
@@ -47,6 +51,20 @@ function doPost(e) {
     return answer_({ ok: false, reason: 'send' });
   }
   return answer_({ ok: true });
+}
+
+/** A mail the bound script built. One plain address: MailApp would read a comma as a second recipient. */
+function sendMail_(m) {
+  const to = typeof m.to === 'string' ? m.to.trim() : '';
+  if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(to)) return { ok: false, reason: 'to' };
+  if (typeof m.subject !== 'string' || !m.subject.trim() || typeof m.html !== 'string' || !m.html) return { ok: false, reason: 'mail' };
+  try {
+    MailApp.sendEmail({ to: to, subject: m.subject, htmlBody: m.html, name: String(m.name || MAILER.from) });
+  } catch (err) {
+    console.error('Mail failed: ' + err); // never the address or the text
+    return { ok: false, reason: 'send' };
+  }
+  return { ok: true };
 }
 
 /** The ping's answer: ok, and how many mails vic.rh can still send today when Google says. */

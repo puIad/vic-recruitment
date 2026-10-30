@@ -6,7 +6,7 @@ var __uiQueue = [];   // scripted answers for prompts/alerts
 var __uiLog = [];
 var __flushErr = null; // a refused write held until the next SpreadsheetApp.flush()
 var __idc = 0;
-var __props = {};
+var __props = { MAILER_URL: 'https://mailer.test/exec', MAIL_SEND_SECRET: 'send-secret' };
 var __triggers = [];
 var __clock = null;   // optional fixed "now" (ms)
 var __writes = {};    // tab name -> writes since a test reset it: values (setValues/setValue/clear/clearContent) and formatting
@@ -255,8 +255,13 @@ function __sheetsGet(url) {
   });
   return { code: 200, body: { properties: { timeZone: 'Africa/Algiers' }, sheets: sheets } };
 }
+// the mailer's {mail} answer (mailer/Code.gs, tested in test/mailer.test.js): hands the mail to the mock's MailApp
+var __mailer = o => { const b = JSON.parse(o.payload);
+  if (b.secret !== __props.MAIL_SEND_SECRET) return { code: 200, body: { ok: false, reason: 'secret' } };
+  try { MailApp.sendEmail({ to: b.mail.to, subject: b.mail.subject, htmlBody: b.mail.html, name: b.mail.name }); return { code: 200, body: { ok: true } }; }
+  catch (e) { return { code: 200, body: { ok: false, reason: 'send' } }; } };
 var UrlFetchApp = {
-  fetch(url, o) { const r = __fetch(url, o); return { getResponseCode: () => r.code, getContentText: () => typeof r.body === 'string' ? r.body : JSON.stringify(r.body) }; },
+  fetch(url, o) { const r = url === __props.MAILER_URL ? __mailer(o) : __fetch(url, o); return { getResponseCode: () => r.code, getContentText: () => typeof r.body === 'string' ? r.body : JSON.stringify(r.body) }; },
   fetchAll(reqs) { return reqs.map(q => { const r = /^https:\/\/sheets\.googleapis\.com\//.test(q.url) ? __sheetsGet(q.url) : __fetch(q.url, q);
     return { getResponseCode: () => r.code, getContentText: () => typeof r.body === 'string' ? r.body : JSON.stringify(r.body) }; }); },
 };

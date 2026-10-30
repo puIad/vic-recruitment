@@ -54,6 +54,8 @@ Folder **VIC › Recruitment** — `10MNZ2hiM4BR3k2Nj-B8Qzjt15nSZYmns`
 | `SNAP_VER` | Version of that snapshot, +1 whenever it changes: what `webPulse` returns, so screens reload only on a real change |
 | `FORM_URLS` | Published URLs of the two forms, by form ID (looked up once instead of two `FormApp.openById` per `webState`) |
 | `DROPS_SECRET` | Set by hand (owner): the same value as Vercel's `DROPS_SECRET`. Each timed sync calls `api/drops` with it (pending changes, slice 4); unset = no call |
+| `MAILER_URL` | Set by hand (owner): the mailer's web app URL, the same as the site's `MAILER_URL`. `mail_()` posts every mail to it, so all of them leave from `vic.rh`. Unset = no mail leaves |
+| `MAIL_SEND_SECRET` | Set by hand (owner): the same value as the mailer's script property `MAIL_SEND_SECRET`. Not the site's `MAILER_SECRET` |
 | `DROPS_MAILED` | Which drops the last sync emailed (`[{email, cells, at}]`), reported to `api/drops` by the next call, then replaced |
 
 ## Vercel

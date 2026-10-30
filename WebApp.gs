@@ -756,7 +756,8 @@ function mailPreviewCore_(a, args) {
   const out = mailSample_(id, texts);
   if (args.send) {
     out.sent = mail_(a.email, '[TEST] ' + out.subject, out.html, out.from);
-    _webOut.push(out.sent ? 'Test mail sent to ' + a.email : 'Not sent: test mode is on and ' + a.email + ' is not in ADMIN_EMAIL');
+    _webOut.push(out.sent ? 'Test mail sent to ' + a.email : mailHeld_(a.email) ? 'Not sent: test mode is on and ' + a.email + ' is not in ADMIN_EMAIL'
+      : 'Not sent: the mailer did not take it. Check the script logs, MAILER_URL and MAIL_SEND_SECRET');
   }
   return { subject: out.subject, html: out.html, sent: !!out.sent };
 }

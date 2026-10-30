@@ -4,10 +4,10 @@ const assert = require('assert'), crypto = require('crypto'), fs = require('fs')
 
 const sent = [], reads = { n: 0 }, store = {};
 let settingsRows = [['Key', 'Value'], ['MAIL_CODE_SUBJECT', ''], ['MAIL_CODE_HEADING', '  '], ['ADMIN_EMAIL', 'x@g.enp.edu.dz']];
-let clock = 0, masterFails = false, quotaFails = false;
+let clock = 0, masterFails = false, quotaFails = false, sendSecret = 'send-secret';
 const ctx = vm.createContext({
   console: { log() {}, error() {} }, JSON, Math, Date: { now: () => clock },
-  PropertiesService: { getScriptProperties: () => ({ getProperty: k => ({ MAILER_SECRET: 'long-secret', EMAIL_DOMAIN: 'g.enp.edu.dz', MASTER_ID: 'MASTER' })[k] || null }) },
+  PropertiesService: { getScriptProperties: () => ({ getProperty: k => ({ MAILER_SECRET: 'long-secret', MAIL_SEND_SECRET: sendSecret, EMAIL_DOMAIN: 'g.enp.edu.dz', MASTER_ID: 'MASTER' })[k] || null }) },
   SpreadsheetApp: { openById: id => {
     if (masterFails || id !== 'MASTER') throw new Error('no access');
     return { getSheetByName: n => n !== 'Settings' ? null : { getDataRange: () => ({ getValues: () => { reads.n++; return settingsRows.map(r => r.slice()); } }) } };
@@ -81,8 +81,25 @@ masterFails = false;
 post(ok);
 assert(/>Edited again</.test(sent.pop().htmlBody), 'a failed read is not cached: the next mail reads the Master again');
 
+// ---- a mail built by the bound script: its own secret, any one address, sent as given ----
+const mail = { to: ' someone@gmail.com ', subject: 'Welcome', html: '<b>Hi</b>', name: 'VIC Recruitment Bot' };
+sent.length = 0;
+[{ secret: 'long-secret', mail }, { secret: 'wrong', mail }, { mail }].forEach(b => assert.deepStrictEqual(post(b), { ok: false, reason: 'secret' }, 'the site\'s secret cannot send free text'));
+sendSecret = '';
+assert.deepStrictEqual(post({ secret: '', mail }), { ok: false, reason: 'secret' }, 'no secret set: nothing can send');
+sendSecret = 'send-secret';
+[[{ ...mail, to: 'a@x.dz,b@x.dz' }, 'to'], [{ ...mail, to: 'a@x.dz;b@x.dz' }, 'to'], [{ ...mail, to: 'Eve <a@x.dz>' }, 'to'], [{ ...mail, to: 'nobody' }, 'to'], [{ ...mail, to: 42 }, 'to'],
+  [{ ...mail, subject: ' ' }, 'mail'], [{ ...mail, subject: 1 }, 'mail'], [{ ...mail, html: '' }, 'mail']]
+  .forEach(([m, reason]) => assert.deepStrictEqual(post({ secret: 'send-secret', mail: m }), { ok: false, reason: reason }, JSON.stringify(m)));
+assert.strictEqual(sent.length, 0, 'a refused mail sends nothing');
+assert.deepStrictEqual(post({ secret: 'send-secret', mail }), { ok: true });
+assert.deepStrictEqual(JSON.parse(JSON.stringify(sent.pop())), { to: 'someone@gmail.com', subject: 'Welcome', htmlBody: '<b>Hi</b>', name: 'VIC Recruitment Bot' });
+assert.deepStrictEqual(post({ secret: 'send-secret', mail: { ...mail, to: "m'hamed@g.enp.edu.dz", name: undefined } }), { ok: true }, 'an apostrophe; no name: the default');
+assert.strictEqual(sent.pop().name, 'VIC Recruitment');
+
 // ---- a send that fails answers so ----
 ctx.MailApp.sendEmail = () => { throw new Error('quota'); };
 assert.deepStrictEqual(post(ok), { ok: false, reason: 'send' });
+assert.deepStrictEqual(post({ secret: 'send-secret', mail }), { ok: false, reason: 'send' });
 
 console.log('MAILER OK');
