@@ -172,6 +172,10 @@ Master's bound script: that one's web app runs as the visitor. `doPost` takes JS
   from `vic.rh` (replies land in its mailbox); answers `{ok:true}` or `{ok:false, reason}`.
 - `{secret, ping:true}`: answers `{ok:true, quota}` and sends nothing (the health check); `quota` is
   `MailApp.getRemainingDailyQuota()`, shown on the site's `/api/health` as `mailQuota` (from 2026-10-24).
+- `{secret, mail:{to, subject, html, name}}` (from 2026-10-30): one mail the Master's script built, to any one address.
+  `secret` is the `MAIL_SEND_SECRET` script property, not the site's. `mail_()` (Sheets.gs) sends every mail this way, so
+  confirmations, rejections, alerts and team mails all leave from `vic.rh`, whoever pressed the button. Before this they
+  left from the account running the code: `vic.rh` on the timed sync, the admin on a dashboard action.
 - It reads `MAIL_CODE_SUBJECT`, `MAIL_CODE_HEADING`, `MAIL_CODE_ABOVE` and `MAIL_CODE_CODELABEL` from the Master's
   Settings tab at send time (the script property `MASTER_ID`; `vic.rh` must be able to read the Master), blank means the
   default, cached 60 s. It holds its own copy of the themed layout. The site still sends only `{secret, to, code}`.

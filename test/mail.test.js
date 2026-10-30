@@ -172,6 +172,29 @@ assert(/Daily digest · /.test(digest) && /New registrations <b/.test(digest) &&
   run(`delete __props.DROPS_SECRET; __fetch = function () { throw new Error('no network in the mock'); }`);
 }
 
+// ---- the sender: every mail goes through the mailer (vic.rh), whoever runs the code; nothing here can send as them ----
+{
+  const fs = require('fs');
+  fs.readdirSync(__dirname + '/..').filter(f => f.endsWith('.gs')).forEach(f =>
+    assert(!/\b(MailApp|GmailApp)\./.test(fs.readFileSync(__dirname + '/../' + f, 'utf8')), f + ' must not send as the account running it: use mail_()'));
+  run('__outbox.length = 0');
+  const html = R(`mailHtml_({ title: 'x' })`);
+  assert.strictEqual(R(`mail_('a@g.enp.edu.dz', 'Hello', ${J(html)}, 'VIC Recruitment')`), true);
+  assert.deepStrictEqual(outbox().map(m => [m.to, m.subject, m.htmlBody, m.name]), [['a@g.enp.edu.dz', 'Hello', html, 'VIC Recruitment']]);
+  R(`mail_('a@g.enp.edu.dz', 'Team', ${J(html)})`);
+  assert.strictEqual(outbox()[1].name, 'VIC Recruitment Bot', 'the team mails keep their sender name');
+  run('__outbox.length = 0');
+  // a refused or broken mailer answers false and never throws; the caller keeps its retry
+  run(`var __mailer2 = __mailer; __mailer = function () { return { code: 200, body: { ok: false, reason: 'secret' } }; }`);
+  assert.strictEqual(R(`mail_('a@g.enp.edu.dz', 'x', 'x')`), false, 'refused');
+  run(`__mailer = function () { return { code: 500, body: '<html>Service unavailable</html>' }; }`);
+  assert.strictEqual(R(`mail_('a@g.enp.edu.dz', 'x', 'x')`), false, 'an error page');
+  run(`__mailer = function () { throw new Error('network'); }`);
+  assert.strictEqual(R(`mail_('a@g.enp.edu.dz', 'x', 'x')`), false, 'no answer');
+  run(`__mailer = __mailer2`);
+  assert.strictEqual(outbox().length, 0, 'none of them fell back to sending as the admin');
+}
+
 assert.strictEqual(run('__untemplated.length'), 0, J(run('__untemplated')));
 console.log('MAIL OK');
 
