@@ -49,6 +49,10 @@ How many interviewees a binome is counted as having when the next candidate is r
 fits the candidate's department gets them.
 _Avoid_: workload, capacity, quota
 
+**Not interviewing**:
+A team member who stays on the team but isn't expected to be in a binome, so nobody is asked to place them.
+_Avoid_: excluded, skipped
+
 ## Sheets
 
 **Master**:

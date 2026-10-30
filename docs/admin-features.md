@@ -161,3 +161,82 @@ new status, the resume date, the reason. It shows in Change history.
 **Mail.** Pause and resume (manual or from the date) mail both members: paused, keep going with the ones you have;
 resumed, new candidates will come. Change resume date mails nobody. My binome's Paused note shows the resume date when
 there is one.
+
+## Add, edit and remove Team members
+
+Decided in [#170](https://github.com/puIad/vic-recruitment/issues/170) (owner, 2026-10-30). Builds on `teamSet_` in
+`Team.gs` (Experienced only today), the quick fix `exclude` and Change members (`Members.gs`). The Binomes row stays the
+source of truth for who is in a binome: only Correct name or email reaches past the Team tab, and no Team action touches
+a binome's interviewees.
+
+**Who.** Every Master editor. Members never see these controls.
+
+**One job, one way.**
+
+| Job | Use |
+|---|---|
+| Someone new, one person | Add member |
+| Several new people after Lock | Import team (merge) |
+| A typo in a name or address, same person | Correct name or email |
+| Someone leaves or joins a binome | Change members |
+| The binome should receive other departments | Change department |
+| Someone stays in the team but doesn't interview | Not interviewing |
+| The row shouldn't be in the Team tab at all | Remove |
+
+**Add member.** A dialog on the Team page: name, email, department, Pair As (suggested from the department, as
+`sectionToPair_` does), Experienced (ticked if the email is in the 2025 team). A valid address is required, an email
+already in the Team tab is refused, and an address that doesn't look like the name gets the import's warning. It offers
+Place… afterwards. Until they are placed, the usual `UNPAIRED_MEMBER` alert stands. No mail until they join a binome. A
+direct write, logged in Member Changes.
+
+**Correct name or email.** One action for the same person, on the Team page and in a binome's row menu, so it also works
+for someone in a binome with no Team row (only the binome side is then updated).
+- **Email** is always a direct write. It updates the Team row, the Binomes row, the sheet's sharing, the member map and
+  any live cover. The old address loses the sheet and the new one gets it (or the level the binome was opened at, with
+  sharing off). A new address already in the Team tab or in another binome is refused.
+- **The old address** counts as a former member (a PERMANENT row in Member Changes), so a form sent from it is flagged.
+- **Name**, for someone in a binome, is a direct write carried through to the Binomes row, the sheet's title and its
+  banner, the path Change members already takes when the email stays the same. For someone in no binome it is a pending
+  change to the Team row.
+- **Mail.** An email fix sends one short notice to the new address only, not the LEFT and JOINED mails. A name fix sends
+  nothing.
+- **Alert.** A fix on someone in a binome raises the MEMBER_CHANGED info alert.
+
+**Department and Pair As.** A pending change to the Team row only; a locked binome's tag never moves as a side effect,
+since the tag decides routing. If the member's binome no longer fits, a warning at the click (from `tagWarnings_`'s rule,
+worked out from what the page holds) links to Change department, and the binome keeps receiving its candidates until
+then. Pair As offers HR, IT, COMM, FLER and ALL.
+
+**Experienced.** Stays as it is: a pending change (`kind: 'team'`).
+
+**Not interviewing.** One pending toggle that writes the Exclude column. Both columns stay in the sheet; a row with Pair As
+SKIP shows as not interviewing, and turning the toggle off on such a row asks for a real Pair As.
+- Allowed for someone in a locked binome. It changes nothing about the binome, and the page shows both states.
+- Not-interviewing people stay on the Team page under a state filter, with an undo (`teamList` stops leaving them out).
+  They stay out of the Place, Cover and Pair two pickers.
+- The unpaired alert closes at the next sync. The alert's quick fix `exclude` stays a direct write, so it resolves at once.
+
+**Remove.** Allowed for anyone, after a confirm. For someone in a locked binome, the confirm names the binome and says they
+keep their access and candidates; the binome is not touched. The removal is logged in Member Changes, and that row keeps
+the "no longer in the Team tab" alert quiet, as a Change members arrival does today (`teamEdits_`). They leave the pickers,
+and `tagWarnings_` no longer judges their binome. A direct write.
+
+**Import team.** Before Lock it stays as it is, with Replace. After Lock it becomes a merge: rows match by email, existing
+rows never change, and a preview lists the new names, their Pair As and flags, and anyone coming back after a removal,
+before anything is written. Rows with no valid email are skipped and listed. Nobody is mailed. Each new person raises the
+usual unpaired alert. Replace is refused by the script after Lock; Reset opens it again.
+
+**Notes.** The Team tab's Notes column (import warnings like "Invalid email") is read-only on the member's row. Correcting
+an email rechecks it, so a fixed address clears its own warning.
+
+**Drafts.** Only before Lock or after a Reset. Correct name or email updates the draft row too. Remove or Not interviewing
+drops them from the draft with a warning and frees their partner; that case is a direct write, since a pending change
+can't edit a draft row.
+
+**Log.** Add, Remove and the direct corrections each write a row in Member Changes: who, when, the old and new values. The
+pending cells (name with no binome, department, Pair As, Experienced, Not interviewing) are not logged, as Experienced
+isn't today.
+
+**Pending changes.** The new cells extend `kind: 'team'` from one column to several, each applied only while the cell still
+shows what the author saw. A row gone or an email corrected meanwhile drops the change. With the owner's switch off they
+are direct writes.
