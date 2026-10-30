@@ -12,6 +12,15 @@ form at `/apply` (section below) and the Overview as the admin's to-do. The owne
 below), and load-test task 10 is **signed off by the owner** without a fourth run. Left: the owner's live checks of
 Schedule, Analytics, Change history and the Overview. The sections below keep their dates.
 
+## Every mail leaves from vic.rh (2026-10-30)
+
+Confirmations came from vic.rh, the owner or another admin, because `MailApp` sends from the account running the code.
+`mail_()` now posts every mail to the mailer ([#184](https://github.com/puIad/vic-recruitment/pull/184)). Live: the
+Master's script @173 and @174, the mailer @5, with `MAILER_URL` and `MAIL_SEND_SECRET` set in the script properties. The
+owner confirmed a test mail from another admin's dashboard arrived from vic.rh. There is no fallback: if the mailer
+fails, the mail is logged and not sent, and a failed confirmation is not retried. All mail shares vic.rh's 1,500
+recipients a day (`mailQuota` on the site's `/api/health`). When both scripts change, deploy the mailer first.
+
 ## Launch steps done (owner, 2026-10-24)
 
 - The 273 test candidates and every test registration are cleaned out; the final binome reset is done.
