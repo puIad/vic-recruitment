@@ -445,6 +445,35 @@ function VariantA({ res }: { res: Results }) {
     if (tab === "Needs") return !r.result
     return basis === "first" ? r.c1 === tab : r.result === tab
   })
+  // B's keys, as the owner picked: arrows move the row (and the open panel), 1 to 5 set its result, Enter opens it.
+  // A row that leaves the tab once set hands the cursor to the row that takes its place.
+  const [cursor, setCursor] = React.useState<string | null>(null)
+  const lastAt = React.useRef(0)
+  const found = rows.findIndex((r) => r.code === (open ?? cursor))
+  const at = found >= 0 ? found : Math.min(lastAt.current, rows.length - 1)
+  const active = cursor === null && !open ? undefined : rows[at]
+  React.useEffect(() => { lastAt.current = at }, [at])
+  React.useEffect(() => {
+    if (active) document.querySelector(`[data-row="${active.code}"]`)?.scrollIntoView({ block: "nearest" })
+  }, [active])
+  React.useEffect(() => {
+    const move = (d: number) => {
+      const n = rows[Math.max(0, Math.min(rows.length - 1, (cursor === null && !open ? -1 : at) + d))]
+      if (!n) return
+      setCursor(n.code)
+      if (open) setOpen(n.code)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).closest("input, textarea, [contenteditable]")) return
+      if (e.key === "ArrowDown") { e.preventDefault(); move(1) }
+      if (e.key === "ArrowUp") { e.preventDefault(); move(-1) }
+      if (e.key === "Enter" && active && !open) { e.preventDefault(); setOpen(active.code) }
+      const v = VALUES[+e.key - 1]
+      if (v && active && !res.final) res.set(active.code, v)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [rows, at, active, cursor, open, res])
   const tabs = [
     { k: "All", label: "Everyone", n: res.rows.length },
     ...VALUES.map((v) => ({ k: v, label: v, n: basis === "first" ? res.rows.filter((r) => r.c1 === v).length : res.counts[v] })).filter((t) => basis === "result" || t.k !== "Not accepted"),
@@ -485,7 +514,7 @@ function VariantA({ res }: { res: Results }) {
           </thead>
           <tbody>
             {rows.map((r, k) => (
-              <tr key={r.code} onClick={() => setOpen(r.code)} className="cursor-pointer border-b last:border-0 hover:bg-accent/50">
+              <tr key={r.code} data-row={r.code} onClick={() => { setCursor(r.code); setOpen(r.code) }} className={cn("cursor-pointer border-b last:border-0 hover:bg-accent/50", active?.code === r.code && "bg-accent ring-2 ring-inset ring-primary")}>
                 <td className="num px-3 py-2 text-right text-muted-foreground">{k + 1}</td>
                 <td className="px-2 py-2"><span className="font-semibold">{r.name}</span> <span className="text-xs text-muted-foreground">{r.code}</span></td>
                 <td className="px-2 py-2">{r.binome || <span className="text-muted-foreground">None</span>}</td>
@@ -504,7 +533,7 @@ function VariantA({ res }: { res: Results }) {
   )
 }
 
-/* ---------- B: the deliberation desk, one candidate at a time ---------- */
+/* ---------- B: the deliberation desk, one candidate at a time (not picked; its keys moved to A) ---------- */
 
 function VariantB({ res }: { res: Results }) {
   const [dept, setDept] = React.useState("All")
