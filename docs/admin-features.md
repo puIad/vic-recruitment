@@ -344,3 +344,38 @@ form's answers from Dashboard Interviews (a `DASH|` key) or Interview Responses.
 only when the section or an alert asks. The new read and the per-binome counts need a clasp deploy, and the UI a Vercel one.
 
 **Not here.** The alerts' "Go to" links to a sheet row are the map's Locate links item.
+
+## Buttons for the menu-only actions
+
+Decided in [#173](https://github.com/puIad/vic-recruitment/issues/173) (owner, 2026-10-30). Two items of the Master's VIC
+Recruitment menu had no dashboard button: the binome email catch-up and Re-protect. The other ten already have a dashboard
+path, so nothing else is menu-only. The whole menu stays as the fallback when the dashboard or Vercel is down.
+
+**Email binome members their binome.** A new Maintenance row, next to Re-share, running `mailPaired_`. Lock, Pair two and
+Change member already send and record this mail, so the row is a repair for a failed send or a binome locked before Lock
+sent it.
+- **Who.** Every Master editor. The mail goes out as the admin who clicks, and the script lock stops two admins mailing the
+  same members.
+- **Preview.** A read of `pairedTodo_` lists the untold members by binome with their emails, beside the rendered New binome
+  mail. It is all or nothing. With nobody untold it says so and sends nothing. In test mode it says non-admins are skipped
+  and stay untold.
+- **Result.** A failed send stays untold and is named in the result, so running it again retries only those.
+- **Writes.** Only `PAIRED_SENT`, a script property. Nothing in the Master changes, so no pending change and no publish.
+- **Lock.** The "Binome email not sent" message points to this row instead of the menu.
+
+**Re-protect binome sheets.** A new Maintenance row, running `reprotectBinomeSheets`.
+- **Who.** Hidden unless `access.owner`, like Run setup again. The script keeps its own Master-owner check, so if ownership
+  ever moves it still refuses the wrong account. Today the Master and the sampled binome sheets are owned by vic.rh; the
+  dashboard's `owner` flag means the trigger owner, expected to be the same account.
+- **Before it runs.** A plain confirm saying it is for after adding an admin. No dry run: it would open every sheet first,
+  and the action is safe to repeat.
+- **Report.** How many sheets were rewritten, already fine or failed. A run that hits its 4-minute budget lists the remaining
+  sheets as "out of time, run it again"; the budget stays under Vercel's 300 s limit.
+- **Alerts.** It resolves the protection alerts of every sheet it rewrote or found fine, instead of leaving them until the
+  next full check. A sheet it couldn't reach keeps its alert.
+
+**Link with [Add, edit and remove Team members](#add-edit-and-remove-team-members).** The notice an email fix sends must also
+record the new address in `PAIRED_SENT`, or this catch-up mails that person a second time.
+
+**Deploy.** The new actions need a clasp deploy and the rows a Vercel deploy. Test the vic.rh sign-in when Re-protect ships:
+[#179](https://github.com/puIad/vic-recruitment/issues/179) lists a Vercel sign-in as unproven for renewing its grant.
