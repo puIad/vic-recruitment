@@ -104,6 +104,16 @@ _Avoid_: rejected change, lost change, conflict
 A dropped change whose author has chosen between keeping the sheet's value and applying theirs anyway.
 _Avoid_: dismissed, acknowledged
 
+## Mail
+
+**Mail Log**:
+The Master tab with one row per attempt to send a mail through the script. Tickets are not in it.
+_Avoid_: outbox, mail history
+
+**Sent**:
+Google accepted the mail. It says nothing about delivery: Google never reports that, and bounces are not read.
+_Avoid_: delivered, received
+
 ## Signing in
 
 **Sign-in**:

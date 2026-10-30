@@ -379,3 +379,74 @@ record the new address in `PAIRED_SENT`, or this catch-up mails that person a se
 
 **Deploy.** The new actions need a clasp deploy and the rows a Vercel deploy. Test the vic.rh sign-in when Re-protect ships:
 [#179](https://github.com/puIad/vic-recruitment/issues/179) lists a Vercel sign-in as unproven for renewing its grant.
+
+## Email and notification status
+
+Decided in [#175](https://github.com/puIad/vic-recruitment/issues/175) (owner, 2026-10-30), on the facts of
+[#174](https://github.com/puIad/vic-recruitment/issues/174). Since [#184](https://github.com/puIad/vic-recruitment/pull/184)
+every mail leaves from vic.rh through the mailer, whoever triggers it, so a send has no "sent as" to record; this also
+replaces "as the admin" and "as the author" in the sections above. Google reports nothing about delivery, so the script
+records what it tried.
+
+**What is recorded.** Every mail through `mail_()`: confirmation, new interviewee, alert mails, drop, paired, joined, left,
+cover, covered, rejection, quick-fix, digest and test mails. Mails added later get it for free, such as the pause notices
+and the results mails ([#178](https://github.com/puIad/vic-recruitment/issues/178)). Tickets are not recorded: they go out
+before a candidate exists, and they stay as the site's hourly counts.
+
+**The Mail Log.** A new Master tab. `mail_()` collects rows in memory and writes them once at the end of the run, as
+`alerts.flush()` does, so a sync gains one write. A run that dies mid-way loses its unwritten rows; the execution log still
+has its failures. Member actions send no mail, so every run that sends can write the tab.
+
+| Column | Holds |
+|---|---|
+| When | the time of the send |
+| Kind | the mail's id (`CONFIRM`, `NEW_IV`, `ALERT`, ...) |
+| To | one address |
+| Concerns | candidate codes, binome, alert IDs |
+| Triggered by | the sync, the digest, or the admin's email |
+| Outcome | Sent, Held (test mode) or Failed; Resent or Dismissed once a failed row is handled |
+| Error | the failure's text |
+| Subject | the mail's subject |
+| Stored mail | the rendered body, on a Failed row only, cleared once it is resent or dismissed |
+
+Rows stay all season, at most 1,500 a day, and Reset clears them with the other logs. Sent means Google accepted the mail.
+Bounces are not read this season: candidate addresses are proven by the ticket and member addresses are checked. The UI
+says delivery isn't confirmed, and a bounce can be checked by hand in vic.rh's inbox.
+
+**Where admins see it.** Every Master editor, read when the page opens, not polled.
+- **A candidate's details:** a Mails section with every mail to or about this candidate.
+- **[One binome's page](#one-binomes-panel-and-page):** a Mails section for its members and covers, and Last mail in the
+  summary panel.
+- **An alert's reading pane:** who was mailed about it and each outcome. An alert older than the log falls back to Emailed
+  To, labelled "intended", since that column is written before the send.
+- **Digest, drop and test mails** have no dashboard view (owner's choice). They stay in the tab, and a failed one still
+  raises the alert below. This is the one place the feature still sends an admin to the Master.
+
+There is no log page.
+
+**Mail from before the log.** The log starts at deploy, and no rows are made up. Candidate details and the binome page also
+show the existing marks, labelled "older record": `CONFIRMED <date>` reads "queued", since it is stamped before the send;
+Rejection sent reads "sent", with its date; `PAIRED_SENT` reads "told", with no date.
+
+**A failed send.** Since #184 a failed mail has no fallback, and a failed confirmation is not retried, so this is how it gets
+seen.
+- **The alert.** One `MAIL_FAILED` per run that had failures, listing them, HIGH, in the dashboard and mailed to admins, never
+  to binomes. It resolves itself once every listed mail is resent, dismissed or retried. Held mail is not a failure. If the
+  alert's own mail fails, that is logged and raises nothing new, so an outage can't loop.
+- **Resend.** A quick action for every Master editor. A preview lists the mails, and any gone stale can be dismissed, such as
+  for a candidate deleted since. It sends the stored subject and body to the address on the row, since edited quick-fix mails
+  and bundled alert mails can't be rebuilt. A wrong address is fixed first, then the mail is resent. A resend adds its own row,
+  triggered by the admin, and marks the old row Resent.
+- **No double sends.** Resend writes the mark the original would have (Rejection sent, `PAIRED_SENT`), and its preview hides a
+  row whose mark is already set, so it never repeats Send rejections or the
+  [binome email catch-up](#buttons-for-the-menu-only-actions), and they never repeat it. Drop mails stay out of Resend: the next
+  cycle retries them, and the alert lists them as "retrying".
+
+**Emailed To.** Still written, as today. Quick fix stops adding someone whose send failed; today it adds them whatever the
+result.
+
+**Writes.** Mail Log rows and marks are written by the script, not typed by an admin, so no pending change and no
+`MANUAL_EDIT`. Resend is a direct write, as sending a quick-fix mail is today.
+
+**Deploy.** A clasp deploy for the log, the alert, Resend and the new read, and a Vercel deploy for the views. The mailer does
+not change.
