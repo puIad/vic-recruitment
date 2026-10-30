@@ -46,7 +46,7 @@ if (pairing) {
 } else if (!empty) {
   s.call('webRun', 'importTeam', { link: '' }); s.call('webRun', 'draft'); s.call('webRun', 'lock');
   s.run("(function(){var sh=ss_().getSheetByName('Team');sh.getRange(sh.getLastRow()+1,1,1,6).setValues([['Late Member','late@g.enp.edu.dz','IT','IT',false,'']]);})()"); // shows the Unpaired card
-  s.addRegistrations(40, 3);
+  s.addRegistrations(40, 3); s.addRegistrations(90, 2); // PROTOTYPE #177: a realistic number of rows
   // Analytics: field and year of study, how they heard of VIC, why VIC, clubs; three birth dates typed with this year (guessed)
   s.run(`(function () { var reg = master.getSheetByName('Registration Responses'), F = [['PREPA', '1ST'], ['PREPA', '2ND'], ['DATA', '1ST'], ['ELT', '2ND'], ['MECA', '3RD'], ['GC', '1ST']],
     D = ['Friends', 'Social Media', 'Friends, Stand', 'Open Day', 'Social Media, Other: a member, Lina', 'Stand'],

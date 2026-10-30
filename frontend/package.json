@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "mock": "node ../test/webdev.js 3000",
+    "proto": "node prototype-results.mjs",
     "typecheck": "tsc -b"
   },
   "dependencies": {

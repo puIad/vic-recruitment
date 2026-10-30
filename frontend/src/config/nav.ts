@@ -1,4 +1,5 @@
 import {
+  Award,
   Bell,
   CalendarDays,
   ChartNoAxesCombined,
@@ -52,6 +53,7 @@ export const navGroups: NavGroup[] = [
       { title: "Alerts", url: "/alerts", icon: Bell, badge: "alerts" },
       { title: "Binomes", url: "/binomes", icon: Users },
       { title: "Interviewees", url: "/interviewees", icon: ListChecks },
+      { title: "Results", url: "/results", icon: Award },
       { title: "Schedule", url: "/schedule", icon: CalendarDays },
       { title: "Analytics", url: "/analytics", icon: ChartNoAxesCombined },
     ],
