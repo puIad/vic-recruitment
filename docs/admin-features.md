@@ -507,3 +507,48 @@ live before results week, and check the sync trigger still runs after it.
 no binome sheet or baseline changes and no `MANUAL_EDIT`.
 
 **Deploy.** A clasp deploy for the column, the writes and the read, and a Vercel deploy for the views.
+
+## The results view
+
+Decided in [#177](https://github.com/puIad/vic-recruitment/issues/177) (owner, 2026-10-31), from the
+[prototype](https://github.com/puIad/vic-recruitment/tree/prototype/results-view): variant A with the keys from variant B. What
+a result means is in [How a phase-1 result is decided](#how-a-phase-1-result-is-decided).
+
+**Who and where.** Every Master editor, on a new Results page in Control room. In deliberation one admin drives it on a shared
+screen while the room reads, so it has to stay legible from a distance and shows one open candidate at a time.
+
+**The table.** One row for everyone who needs a result, so DUPLICATE, DECLINED and WITHDRAWN never appear. Best rating first, and
+candidates with no rating last. Columns: rank, candidate and code, binome, 1st / 2nd choice, Rating, what the binome proposed, the
+result, and the binome's notes cut to one line. A never-interviewed candidate shows their status where the rating goes.
+
+**Tabs and filter.** Tabs for Everyone, IT, COMM, FLER, HR, Not accepted and Needs a decision, each with its live count, so the tabs
+are also the live accepted counts. A toggle switches the department tabs from who a department gets (the result, the default) to
+who chose it first; Not accepted has no tab while it is on. A search takes code, name or binome.
+
+**Setting a result.** A chip on each row shows the result and opens a menu of the five values, marking the 1st and 2nd choice, with
+Follow the binome on an override. Marks beside the chip: a warning when the result is off-choice, a mark when the proposal changed
+after the override, a note icon, and Saving while the pending change is applied. An override's chip has a darker outline.
+
+**Details.** A row opens a side panel: binome, choices, proposal and activity, the result buttons, the admin note on an override,
+the binome's notes and form conclusion, the scores with their average, and the answers. The answers come from the read in
+[Raw responses, Interview Log and Tracker](#raw-responses-interview-log-and-tracker). The note stays admin-only, and everyone in the
+room is an admin.
+
+**Keys.** Up and down move the highlighted row, and the panel follows when it is open. Enter opens the panel and 1 to 5 set IT, COMM,
+FLER, HR or Not accepted on the highlighted row. Keys do nothing while typing in a field. When a result moves a row out of the
+current tab, the highlight goes to the row that takes its place.
+
+**Final bar.** A bar above the table says what still blocks final: the phase still open, how many need a decision, how many are
+saving. It holds the bulk action for never-interviewed candidates, with its preview. The vic.rh sign-in also gets Make results final
+(with the preview of counts) and Reopen; everyone else gets a line saying only vic.rh can. Once final, the chips and buttons are
+read-only.
+
+**The read.** Rating, Final Affectation, Binome Notes and both choices are Master columns the sync already keeps, so the table shows
+them as of the last sync, and a new admin read serves them. It stays out of `webState`, as `webAnalytics` does, and loads when
+the page opens. Form answers load when the panel opens.
+
+**Not here.** The result mails are [#178](https://github.com/puIad/vic-recruitment/issues/178). The prototype's phone layout is not a
+design: on a phone the table scrolls sideways.
+
+**Deploy.** A clasp deploy for the read, with the ones in [How a phase-1 result is decided](#how-a-phase-1-result-is-decided), and a
+Vercel deploy for the page.
