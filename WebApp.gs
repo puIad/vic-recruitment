@@ -795,12 +795,24 @@ function logAction_(action, outcome, t0, tp, ph) {
 function webRun(action, args) {
   const a = access_();
   // members and admins in a binome; no script lock, no publish
+  if (action === 'memberSet' && args && args.protoBinome && a.role === 'admin') { // PROTOTYPE #171
+    const map = savedMemberMap_(), who = Object.keys(map).find(e => map[e].b === args.protoBinome && !map[e].cover);
+    return { messages: [], result: memberSet_({ role: 'member', m: map[who], edit: true, cover: false }, args) };
+  }
   if (action === 'memberSet') return { messages: [], result: memberSet_(a, args || {}) };
   if (action === 'interviewGet') return { messages: [], result: interviewGet_(a, args || {}) };
   if (action === 'interviewSave') return { messages: [], result: interviewSave_(a, args || {}) };
   if (a.role !== 'admin') throw new Error('Not allowed');
   if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
   args = args || {};
+  if (action === 'protoBinomeView') { // PROTOTYPE #171: any binome's slice for an admin; live = over it, what the sheet says now
+    const map = savedMemberMap_(), who = Object.keys(map).find(e => map[e].b === args.binome && !map[e].cover);
+    if (!who) throw new Error(args.binome + ' has no sheet yet.');
+    const sl = memberState_({ m: map[who], edit: true });
+    if (args.live) { const now = {}; sliceFromSheet_(map[who]).candidates.forEach(c => { now[String(c.Code)] = c; });
+      sl.candidates = sl.candidates.map(c => Object.assign({}, c, now[String(c.Code)] || {}, { Status: c.Status })); }
+    return { messages: [], result: sl };
+  }
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
   const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview'].indexOf(action) < 0 && !args.dryRun &&

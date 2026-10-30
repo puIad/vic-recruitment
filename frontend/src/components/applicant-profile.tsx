@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Link } from "react-router-dom"
 import { AlertCircle, CakeSlice, Check, ExternalLink, RotateCw } from "lucide-react"
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
@@ -118,7 +119,7 @@ function Profile({ row: r, tz }: { row: AnalyticsRow; tz: string }) {
           {r.binome && (
             <>
               <span className="text-muted-foreground" aria-hidden="true">·</span>
-              <span className="font-semibold">{r.binome}</span>
+              <Link to={`/binomes/${encodeURIComponent(r.binome)}`} onClick={() => useProfile.getState().close()} className="font-semibold text-primary hover:underline">{r.binome}</Link>
               {binome && (
                 <span className="truncate text-muted-foreground">
                   <MemberNames names={binome.members} />

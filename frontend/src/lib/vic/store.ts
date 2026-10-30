@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { protoTarget } from "@/app/binomes/prototype/target"
 import { toast } from "sonner"
 import { API_VERSION, type Access, type Alert, type CandidateInterview, type GoldKey, type MemberSetOut, type MemberState, type PendingChange, type PendingRec, type RunOut, type WebState } from "./types"
 import { ApiError, call, callFull, hooks, rateLimited } from "./api"
@@ -350,7 +351,7 @@ export const useVic = create<VicStore>((set, get) => ({
 
   async memberSet(code, fields) {
     try {
-      const out = await call<RunOut<MemberSetOut>>("webRun", ["memberSet", { code, fields }])
+      const out = await call<RunOut<MemberSetOut>>("webRun", ["memberSet", { code, fields, ...(protoTarget.binome ? { protoBinome: protoTarget.binome } : {}) }])
       if (out.result.fields.some((r) => "value" in r)) staleUpTo = refreshSeq // a refresh already on its way would put the old values back
       return out.result.fields.map((r): MemberSetResult => {
         if ("value" in r) {
@@ -367,6 +368,7 @@ export const useVic = create<VicStore>((set, get) => ({
   },
 
   patchMember(code, field, value) {
+    protoTarget.patch?.(code, field, value)
     set((cur) =>
       cur.member
         ? { member: { ...cur.member, candidates: cur.member.candidates.map((c) => (String(c.Code) === code ? { ...c, [field]: value } : c)) } }

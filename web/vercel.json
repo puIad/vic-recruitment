@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": false },
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm --prefix ../frontend ci && npm --prefix ../frontend run build",
   "outputDirectory": "dist",

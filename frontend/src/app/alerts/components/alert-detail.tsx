@@ -59,7 +59,7 @@ export function AlertDetail({ alert }: { alert: Alert | null }) {
             <div className="flex items-center gap-1.5">
               <dt className="text-muted-foreground">Binome</dt>
               <dd>
-                <Link to={`/binomes?q=${encodeURIComponent(alert.binome)}`} className="inline-flex items-center gap-1 font-bold text-primary hover:underline">
+                <Link to={`/binomes/${encodeURIComponent(alert.binome)}`} className="inline-flex items-center gap-1 font-bold text-primary hover:underline">
                   <Users className="size-3.5" />
                   {alert.binome}
                 </Link>

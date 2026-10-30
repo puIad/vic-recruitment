@@ -148,6 +148,9 @@ if (busiest && busiest.people.length > 1) {
     s.call('webRun', 'sync');
   }
 }
+// PROTOTYPE #171: a live cover on the busiest binome, so its page shows one
+if (busiest) { const free = s.call('webState').interviewees.filter(x => x.binome === busiest.code && x.status !== 'INTERVIEWED').slice(-2).map(x => x.code);
+  if (free.length) { try { s.call('webRun', 'addCover', { codes: free.join(', '), inName: 'Outside Cover', inEmail: 'cover.mock@g.enp.edu.dz', outEmail: busiest.people[0].email, reason: 'exam on the day' }); } catch (e) { console.log('no mock cover: ' + e.message); } } }
 // an admin who is also in a binome (docs/interview-form.md part 1): My binome under People
 const adminMemberEmail = busiest && busiest.people.length > 1 ? busiest.people[0].email : '';
 if (adminMemberEmail) s.run('master.addEditor(' + JSON.stringify(adminMemberEmail) + ')');

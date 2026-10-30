@@ -46,7 +46,7 @@ export function BinomesBehind() {
               const denom = b.assigned - b.withdrew
               return (
                 <li key={b.code} className="mb-3.5 grid break-inside-avoid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto]">
-                  <Link to={`/binomes?q=${encodeURIComponent(b.code)}`} className="text-sm font-bold text-primary hover:underline">
+                  <Link to={`/binomes/${encodeURIComponent(b.code)}`} className="text-sm font-bold text-primary hover:underline">
                     {b.code}
                   </Link>
                   <p className="truncate text-sm" title={b.members.join(" & ")}><MemberNames names={b.members} /></p>

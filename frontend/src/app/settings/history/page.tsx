@@ -12,11 +12,11 @@ import { useVic } from "@/lib/vic/store"
 import type { HistoryRow, IvHistoryRow } from "@/lib/vic/types"
 import { MemberName } from "@/components/member-name"
 
-type Kind = "replace" | "swap" | "cover" | "tag" | "moved" | "deleted" | "edit"
+export type Kind = "replace" | "swap" | "cover" | "tag" | "moved" | "deleted" | "edit"
 
 const ALL = "all" // the Binome dropdown's "All binomes": Select items can't hold an empty value
 
-const KINDS: Record<Kind, { label: string }> = {
+export const KINDS: Record<Kind, { label: string }> = {
   replace: { label: "Replaced" },
   swap: { label: "Swapped" },
   cover: { label: "Cover" },
@@ -29,7 +29,7 @@ const KINDS: Record<Kind, { label: string }> = {
 /** An Interviewee Changes row in Member Changes' shape: MOVED (out → inn = the binomes), DELETED (out = the binome it left) or
  *  EDIT (out → inn = "Field: value"). They file under the binome they end in (an edit: the one it names, if any; a deletion:
  *  the one it left); the binome filter also finds the one they left. */
-function fromIv(r: IvHistoryRow): HistoryRow {
+export function fromIv(r: IvHistoryRow): HistoryRow {
   if (r.what === "Deleted") return { at: r.at, by: r.by, type: "DELETED", binome: r.from, out: r.from, inn: "", codes: [r.code], reason: "", status: "" }
   const moved = r.what === "Moved"
   const named = (s: string) => (/\bB\.\d+/.exec(s) ?? [])[0]
@@ -38,10 +38,10 @@ function fromIv(r: IvHistoryRow): HistoryRow {
 }
 
 /** dd/MM/yyyy HH:mm → a key that sorts by time */
-const timeKey = (at: string) => at.replace(/^(\d\d)\/(\d\d)\/(\d{4}) (\d\d:\d\d)$/, "$3$2$1$4")
+export const timeKey = (at: string) => at.replace(/^(\d\d)\/(\d\d)\/(\d{4}) (\d\d:\d\d)$/, "$3$2$1$4")
 
 /** What a Member Changes row means: a swap is two PERMANENT rows whose reason the script writes as "swap B.01 ↔ B.02". */
-function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon; what: React.ReactNode; text: string } {
+export function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon; what: React.ReactNode; text: string } {
   const out = h.out && <MemberName name={h.out} />
   const inn = h.inn && <MemberName name={h.inn} />
   if (h.type === "TEMPORARY") {
@@ -90,7 +90,7 @@ function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon;
 }
 
 /** The tab keeps the outcome as free text: DONE, FILE NOT UPDATED: …, ACTIVE, ENDED …, ENDING …. */
-function outcome(h: HistoryRow): { label: string; variant: "success" | "warning" | "outline"; detail?: string } {
+export function outcome(h: HistoryRow): { label: string; variant: "success" | "warning" | "outline"; detail?: string } {
   const s = h.status
   if (/^FILE NOT UPDATED/i.test(s)) return { label: "Sheet not updated", variant: "warning", detail: s.replace(/^FILE NOT UPDATED:\s*/i, "") }
   if (/^ENDING/i.test(s)) return { label: "Ending", variant: "warning", detail: s.replace(/^ENDING\s*·?\s*/i, "") }

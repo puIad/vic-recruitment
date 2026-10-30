@@ -105,7 +105,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
                 </Group>
                 <Group heading="Binomes">
                   {state.binomes.map((b) => (
-                    <Item key={b.code} value={`${b.code} ${b.members.join(" ")} ${b.tag} binome`} onSelect={() => go(`/binomes?q=${encodeURIComponent(b.code)}`)}>
+                    <Item key={b.code} value={`${b.code} ${b.members.join(" ")} ${b.tag} binome`} onSelect={() => go(`/binomes/${encodeURIComponent(b.code)}`)}>
                       <Users className="size-4 text-muted-foreground" />
                       <span className="font-bold">{b.code}</span>
                       <span className="truncate"><MemberNames names={b.members} empty="empty" /></span>

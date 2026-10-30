@@ -208,7 +208,7 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
           <>
             <Button onClick={saveAll} disabled={saving || !!ratingProblem(String(fields.Rating.draft))}>
               {saving ? <Spinner className="size-4" /> : <Check />}{" "}
-              {saving ? "Saving to your sheet…" : dirty > 1 ? `Save ${dirty} changes` : "Save change"}
+              {saving ? "Saving…" : dirty > 1 ? `Save ${dirty} changes` : "Save change"}
             </Button>
             <Button variant="ghost" onClick={() => GOLD_KEYS.forEach(form.revert)} disabled={saving}>
               Discard

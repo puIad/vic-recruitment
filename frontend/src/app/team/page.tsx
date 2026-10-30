@@ -82,7 +82,7 @@ const columns: ColumnDef<Row>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Binome" />,
     cell: ({ row }) =>
       row.original.binome ? (
-        <Link to={`/binomes?q=${encodeURIComponent(row.original.binome)}`} className="font-bold text-primary hover:underline">
+        <Link to={`/binomes/${encodeURIComponent(row.original.binome)}`} className="font-bold text-primary hover:underline">
           {row.original.binome}
         </Link>
       ) : (

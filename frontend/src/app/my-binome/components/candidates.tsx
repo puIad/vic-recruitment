@@ -1,5 +1,6 @@
 import * as React from "react"
 import type { ColumnDef } from "@tanstack/react-table"
+import { toast } from "sonner"
 import { ArrowUpRight, Check, PanelRightOpen, Search, X } from "lucide-react"
 
 import { DataTable } from "@/components/data-table/data-table"
@@ -45,6 +46,9 @@ function Contacted({ value }: { value: string }) {
 }
 
 /** A plain text column straight from the sheet, hidden until the View menu shows it. */
+/** PROTOTYPE #171: the admin's binome page uses this table. */
+export type AdminTable = { badge: (code: string) => React.ReactNode }
+
 const textCol = (key: SheetKey, wide = false): ColumnDef<Candidate> => ({
   id: key,
   accessorFn: (c) => cellText(c[key]),
@@ -55,7 +59,7 @@ const textCol = (key: SheetKey, wide = false): ColumnDef<Candidate> => ({
   },
 })
 
-function columns(open: (code: string) => void, fromSheet: boolean, member?: MemberState): ColumnDef<Candidate>[] {
+function columns(open: (code: string) => void, fromSheet: boolean, member?: MemberState, admin?: AdminTable): ColumnDef<Candidate>[] {
   return [
     {
       id: "Code",
@@ -73,7 +77,7 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
       accessorFn: fullName,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
       enableHiding: false,
-      cell: ({ getValue }) => <span className="block max-w-[16rem] truncate font-medium">{(getValue() as string) || "—"}</span>,
+      cell: ({ getValue, row }) => <span className="flex items-center"><span className="block max-w-[16rem] truncate font-medium">{(getValue() as string) || "—"}</span>{admin?.badge(cellText(row.original.Code))}</span>,
     },
     // the interview form, next to the name so it shows on a phone without scrolling the table
     ...(member && member.interviewForm !== undefined
@@ -83,6 +87,16 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
             accessorFn: (c: Candidate) => (c.interview ? (c.interview.source === "Dashboard" ? 2 : 1) : 0),
             header: ({ column }) => <DataTableColumnHeader column={column} title="Interview form" />,
             cell: ({ row }) => <div data-tour="binome-interview-action" className="w-fit"><InterviewAction c={row.original} m={member} /></div>,
+          } satisfies ColumnDef<Candidate>,
+        ]
+      : []),
+    ...(admin
+      ? [
+          {
+            id: "Interview form",
+            accessorFn: (c: Candidate) => (c.interview ? `${c.interview.at} · ${c.interview.source}` : ""),
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Interview form" />,
+            cell: ({ getValue }) => (getValue() ? <span className="whitespace-nowrap text-sm">{getValue() as string}</span> : <span className="text-muted-foreground">Not in</span>),
           } satisfies ColumnDef<Candidate>,
         ]
       : []),
@@ -147,6 +161,7 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
     textCol("Registered"),
     textCol("Availability", true),
     textCol("Notes", true),
+    ...(admin ? (["Birth Date", "Facebook", "Discord", "Discovered VIC", "Why VIC", "Other Clubs", "Why this department", "Department Questions", "Anything to add"] as SheetKey[]).map((k) => textCol(k, true)) : []),
     {
       id: "actions",
       enableHiding: false,
@@ -161,12 +176,12 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
   ]
 }
 
-const HIDDEN = { Email: false, Phone: false, "1st Choice": false, "2nd Choice": false, Field: false, Year: false, Registered: false, Availability: false, Notes: false }
+const HIDDEN = { "Birth Date": false, Facebook: false, Discord: false, "Discovered VIC": false, "Why VIC": false, "Other Clubs": false, "Why this department": false, "Department Questions": false, "Anything to add": false, Email: false, Phone: false, "1st Choice": false, "2nd Choice": false, Field: false, Year: false, Registered: false, Availability: false, Notes: false }
 
 /** member: the interview form column (absent on a script without it). */
-export function CandidatesTable({ candidates, fromSheet, onOpen, member }: { candidates: Candidate[]; fromSheet: boolean; onOpen: (code: string) => void; member?: MemberState }) {
+export function CandidatesTable({ candidates, fromSheet, onOpen, member, admin }: { candidates: Candidate[]; fromSheet: boolean; onOpen: (code: string) => void; member?: MemberState; admin?: AdminTable }) {
   const [q, setQ] = React.useState("")
-  const cols = React.useMemo(() => columns(onOpen, fromSheet, member), [onOpen, fromSheet, member])
+  const cols = React.useMemo(() => columns(onOpen, fromSheet, member, admin), [onOpen, fromSheet, member, admin])
   const data = React.useMemo(() => {
     const s = q.trim().toLowerCase()
     return candidates.filter((c) => !s || `${cellText(c.Code)} ${fullName(c)} ${cellText(c.Email)}`.toLowerCase().includes(s))
@@ -244,7 +259,7 @@ const isGold = (k: SheetKey): k is GoldKey => (GOLD_KEYS as readonly string[]).i
 
 /** editable: a member (not a cover) fills the binome's own columns here; they are written into the binome sheet. member: the
  *  interview form's button at the top. */
-export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClose, member }: { candidate: Candidate | null; candidates: Candidate[]; fileUrl: string; editable: boolean; onClose: () => void; member?: MemberState }) {
+export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClose, member, admin }: { candidate: Candidate | null; candidates: Candidate[]; fileUrl: string; editable: boolean; onClose: () => void; member?: MemberState; admin?: boolean }) {
   // keep the last candidate while the sheet slides out, but only while they are still in this binome's slice:
   // someone moved away (or a cover that ended) must not linger on screen or in memory
   const [shown, setShown] = React.useState(candidate)
@@ -286,7 +301,7 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   {c.Status ? <StatusDot status={c.Status} /> : <span>Status shows after the next sync</span>}
                   <span aria-hidden="true">·</span>
-                  <span>{editable ? "Fill in your columns, then Save them to your binome sheet" : "As in your binome sheet"}</span>
+                  <span>{admin ? "Fill in the binome's columns; this overwrites what they typed unless they changed it since" : editable ? "Fill in your columns, then Save them to your binome sheet" : "As in your binome sheet"}</span>
                 </div>
               </SheetDescription>
             </SheetHeader>
@@ -305,7 +320,7 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
                         edits && isGold(k) ? (
                           <div key={k} className="grid grid-cols-1 gap-1.5 px-3 py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3">
                             <dt className="pt-2 font-medium text-foreground/80">
-                              <label htmlFor={`gold-${cellText(c.Code)}-${k.replace(/\s+/g, "-")}`}>{SHEET_LABEL[k]}</label>
+                              <label htmlFor={`gold-${cellText(c.Code)}-${k.replace(/\s+/g, "-")}`}>{admin && k === "Notes" ? "Notes" : SHEET_LABEL[k]}</label>
                             </dt>
                             <dd className="min-w-0">
                               <GoldField k={k} />
@@ -325,8 +340,9 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
                 return (
                   <section key={g.title} aria-label={g.title}>
                     <h3 className="mb-2 flex items-baseline justify-between gap-2 text-sm font-bold">
-                      {g.title}
-                      {edits && <span className="text-xs font-medium text-muted-foreground">Written to your sheet when you press Save</span>}
+                      {admin && gi === 0 ? "Binome's columns" : g.title}
+                      {edits && <span className="text-xs font-medium text-muted-foreground">{admin ? "Written to the binome sheet when you press Save" : "Written to your sheet when you press Save"}</span>}
+                      {admin && gi === 1 && <Button size="sm" variant="ghost" className="h-7" onClick={() => toast("Prototype: Edit a candidate's data (#167)", { description: "Decided on the map, not built." })}>Edit registration</Button>}
                     </h3>
                     {edits ? (
                       // keyed by candidate: switching candidates starts the form afresh
@@ -344,7 +360,7 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
               <SheetFooter className="border-t p-6">
                 <Button asChild variant="outline">
                   <a href={fileUrl} target="_blank" rel="noopener noreferrer">
-                    Open my binome sheet <ArrowUpRight />
+                    {admin ? "Open the binome sheet" : "Open my binome sheet"} <ArrowUpRight />
                   </a>
                 </Button>
               </SheetFooter>

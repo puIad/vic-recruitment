@@ -25,11 +25,17 @@ import { ACCESS_BADGE } from "./components/access-badge"
 import { AccessDialog } from "./components/access-dialog"
 import { PairingPanel } from "./components/pairing-panel"
 import { TagDialog } from "./components/tag-dialog"
+import { BinomePanel, PrototypeBar } from "./prototype/binome-view"
 
 const NONE: Binome[] = []
 
 /** The row menus open the page's dialogs (access, department) on their binome. */
-const DialogCtx = React.createContext<{ access: (b: Binome) => void; tag: (b: Binome) => void }>({ access: () => {}, tag: () => {} })
+const DialogCtx = React.createContext<{ access: (b: Binome) => void; tag: (b: Binome) => void; panel: (code: string) => void }>({ access: () => {}, tag: () => {}, panel: () => {} })
+
+function CodeLink({ code }: { code: string }) {
+  const { panel } = React.useContext(DialogCtx)
+  return <button type="button" onClick={() => panel(code)} className="rounded font-bold text-primary underline-offset-4 hover:underline">{code}</button>
+}
 
 function RowActions({ b }: { b: Binome }) {
   const open = React.useContext(DialogCtx)
@@ -76,7 +82,7 @@ const columns: ColumnDef<Binome>[] = [
   {
     accessorKey: "code",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Binome" />,
-    cell: ({ row }) => <span className="font-bold text-primary">{row.original.code}</span>,
+    cell: ({ row }) => <CodeLink code={row.original.code} />,
   },
   {
     id: "members",
@@ -252,7 +258,8 @@ export default function BinomesPage() {
   const [tagOf, setTagOf] = React.useState<string | null>(null)
   const accessBinome = binomes.find((b) => b.code === accessOf) ?? null
   const tagBinome = binomes.find((b) => b.code === tagOf) ?? null
-  const dialogs = React.useMemo(() => ({ access: (b: Binome) => setAccessOf(b.code), tag: (b: Binome) => setTagOf(b.code) }), [])
+  const [panelOf, setPanelOf] = React.useState<string | null>(null)
+  const dialogs = React.useMemo(() => ({ access: (b: Binome) => setAccessOf(b.code), tag: (b: Binome) => setTagOf(b.code), panel: setPanelOf }), [])
 
   return (
     <DialogCtx.Provider value={dialogs}>
@@ -308,6 +315,8 @@ export default function BinomesPage() {
         )}
       />
       <CoversCard list={covers} />
+      <BinomePanel code={panelOf} onClose={() => setPanelOf(null)} dialogs={dialogs} />
+      {panelOf && <PrototypeBar code={panelOf} />}
       <AccessDialog binome={accessBinome} onClose={() => setAccessOf(null)} />
       <TagDialog binome={tagBinome} onClose={() => setTagOf(null)} />
     </BaseLayout>
