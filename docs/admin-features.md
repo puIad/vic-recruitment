@@ -281,8 +281,8 @@ because admins needn't open the sheet, not because they can't.
   [Binome's columns](#admins-fill-in-a-binomes-columns) and [the registration fields](#edit-a-candidates-data). The cells
   don't edit in the table.
 - A candidate under a live cover shows a "covered by <name>" badge.
-- The Interview form column shows whether a form is in, its date and its source. Reading the answers is left to
-  [#172](https://github.com/puIad/vic-recruitment/issues/172).
+- The Interview form column shows whether a form is in, its date and its source. Opening it shows the answers:
+  [Raw responses, Interview Log and Tracker](#raw-responses-interview-log-and-tracker).
 
 **Freshness.** The candidates come from the binome's copy of the last sync plus dashboard edits, labelled "as of <time>",
 and follow new snapshots as My binome does. Something typed directly in the binome sheet shows after the next sync.
@@ -302,3 +302,45 @@ alerts or changes. Pairing stays in the Pairing panel on the Binomes page.
 **The read.** New: a `webRun` action that gives an admin any locked binome's slice, and with a flag reads the sheet live over
 it, keeping the Master's statuses. The prototype's `protoBinomeView` in `WebApp.gs` shows the shape. It needs a clasp
 deploy.
+
+## Raw responses, Interview Log and Tracker
+
+Decided in [#172](https://github.com/puIad/vic-recruitment/issues/172) (owner, 2026-10-30). Which of the Master's raw tabs
+admins still need to read, and where each job goes. The tabs stay as storage.
+
+| Tab | Its job today | Where the job goes |
+|---|---|---|
+| Registration Responses | The raw form row behind an alert | No view: the candidate's details, the quick-fix panels and Interviewee Changes do it |
+| Interview Responses, Dashboard Interviews | The answers of an interview form | **Interview form** section of a candidate's details |
+| Interview Log | Each form's result, what was typed, who sent it | No page: the same section lists the candidate's forms |
+| Tracker | Progress per binome | Overview and the binome page, plus optional columns on the Binomes table |
+
+**Who.** Every Master editor. It only reads, so it writes nothing and needs no pending change.
+
+**Interview form section.** Read-only, in a candidate's details, so an admin outside the binome can read the answers, which
+`interviewGet` doesn't allow today.
+- It shows the scores, their average and the answers, with the form's source (Dashboard or Google Form) and, for an edited
+  form, who edited it and when.
+- Every form of the candidate is listed with its Interview Log result (OK, AUTOCORRECTED, FLAGGED, IGNORED), what was typed
+  and who sent it. The form that counts is open and the others are folded.
+- The binome page's Interview form column opens this section.
+- An admin who reaches the "in the Master's Interview Responses tab" message on an older Google Form gets a link to this
+  section instead. Members keep that text.
+
+**Form alerts.** The panels of DUPLICATE_INTERVIEW, UNKNOWN_INTERVIEWEE and the alerts about who interviewed also show the
+answers, from the same read, loaded when the alert opens. A duplicate shows its two forms side by side. A form matching no
+candidate has no details to open, so its alert is the only way to reach it; there is no page of all forms.
+
+**Tracker.** The Binomes table gains Contacted, Scheduled, Withdrew, Not contacted, No date and Overdue as sortable columns,
+hidden by default and available from View. The sync keeps writing the Tracker tab unchanged: it is the fallback when the
+dashboard is down.
+
+**Deleting a candidate.** When a later answer has no email, the raw row stays in Registration Responses and can't be imported
+again. The message stops telling the admin to delete it by hand, so nobody has to open the sheet. In that case the erased
+candidate's raw answers stay in the Master.
+
+**The read.** New: a `webRun` action, admins only, that reads one candidate's forms: their Interview Log rows, then each
+form's answers from Dashboard Interviews (a `DASH|` key) or Interview Responses. It stays out of `webAnalytics` and loads
+only when the section or an alert asks. The new read and the per-binome counts need a clasp deploy, and the UI a Vercel one.
+
+**Not here.** The alerts' "Go to" links to a sheet row are the map's Locate links item.
