@@ -187,6 +187,11 @@ assert(/Daily digest · /.test(digest) && /New registrations <b/.test(digest) &&
   // a refused or broken mailer answers false and never throws; the caller keeps its retry
   run(`var __mailer2 = __mailer; __mailer = function () { return { code: 200, body: { ok: false, reason: 'secret' } }; }`);
   assert.strictEqual(R(`mail_('a@g.enp.edu.dz', 'x', 'x')`), false, 'refused');
+  // the test mail says why it did not leave: a mailer problem is not blamed on test mode
+  assert(/the mailer did not take it/.test(call('webRun', 'mailPreview', { id: 'LEFT', send: true }).messages[0]), 'the mailer refused');
+  settings({ TEST_MODE: true });
+  assert(/test mode is on/.test(R(`_webOut = []; mailPreviewCore_({ email: 'not.admin@g.enp.edu.dz' }, { id: 'LEFT', send: true }); var __said = _webOut; _webOut = null; __said`)[0]), 'test mode held it');
+  settings({ TEST_MODE: false });
   run(`__mailer = function () { return { code: 500, body: '<html>Service unavailable</html>' }; }`);
   assert.strictEqual(R(`mail_('a@g.enp.edu.dz', 'x', 'x')`), false, 'an error page');
   run(`__mailer = function () { throw new Error('network'); }`);

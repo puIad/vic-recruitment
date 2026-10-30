@@ -318,11 +318,14 @@ function alertBuffer_(ctx) {
 }
 
 let _mailsSent = 0; // calls of mail_() since runCycle_ reset it (TEST_MODE skips count too)
+/** TEST_MODE keeps every mail to the admins. */
+function mailHeld_(to) { return bool_(S_().TEST_MODE) && adminEmails_().map(e => e.toLowerCase()).indexOf(String(to).trim().toLowerCase()) < 0; }
+
 /** True when the email left; false when TEST_MODE held it or the send failed (logged, never thrown). Sent by the mailer
  *  (mailer/Code.gs, runs as vic.rh): MailApp here would send from whoever runs this code, the admin or member on the dashboard. */
 function mail_(to, subject, html, from) {
   _mailsSent++;
-  if (bool_(S_().TEST_MODE) && adminEmails_().map(e => e.toLowerCase()).indexOf(String(to).trim().toLowerCase()) < 0) {
+  if (mailHeld_(to)) {
     console.log('TEST_MODE: email to ' + to + ' not sent: ' + subject);
     return false;
   }
