@@ -450,3 +450,60 @@ result.
 
 **Deploy.** A clasp deploy for the log, the alert, Resend and the new read, and a Vercel deploy for the views. The mailer does
 not change.
+
+## How a phase-1 result is decided
+
+Decided in [#176](https://github.com/puIad/vic-recruitment/issues/176) (owner, 2026-10-31). The results view that shows
+this is [#177](https://github.com/puIad/vic-recruitment/issues/177), and the mails that tell candidates are
+[#178](https://github.com/puIad/vic-recruitment/issues/178).
+
+**The rule.** A binome's Final Affectation is a proposal. It becomes the phase-1 result unless the deliberation overrides it,
+so nobody has to confirm the uncontested ones one by one.
+
+**Values.** IT, COMM, FLER, HR or Not accepted, as in `AFFECTATION_OPTIONS`. An accepted candidate goes on to the next phase in
+that department. Activity Department Affectation is not part of the result: it stays read-only in the form answers.
+
+**Departments.** Any of the four is allowed. The view warns when a result is neither the candidate's 1st nor 2nd choice, and
+Not accepted never warns.
+
+**No caps.** No cap, target or waiting list. The view shows live accepted counts per department, and admins judge from those.
+
+**Who needs a result.** Every candidate except DUPLICATE, DECLINED and WITHDRAWN, who get no result and no results mail. A
+candidate with no proposal and no override shows as Needs a decision, including those who are HELD, UNASSIGNED or never
+interviewed. A bulk action, with a preview, sets never-interviewed candidates to Not accepted.
+
+**Setting a result.** Every Master editor, as a pending change. An override can carry an optional note, and it is logged in
+Interviewee Changes with the note. The note is for admins only. An override stays if the proposal changes later, and the view
+shows that the proposal changed. Clearing an override goes back to following the proposal.
+
+**Storage.** A new Master column, Phase 1 Result, never in the binome sheets. Before final it holds overrides only, and the
+result shown is the override or else Final Affectation. Going final copies every candidate's result into it, so later edits to
+Final Affectation change nothing.
+
+**Going final.** Only the vic.rh sign-in, the same check as [Re-protect](#buttons-for-the-menu-only-actions), and a direct write
+after a preview of the counts. It is refused while:
+- the interview phase is still open ([#183](https://github.com/puIad/vic-recruitment/issues/183));
+- any candidate Needs a decision;
+- any result is a pending change or an unaddressed dropped change.
+
+**Reopening.** vic.rh only, until the first result mail goes out. A row whose result equals its proposal goes back to following
+the proposal, and a row that differs stays as an override. No extra state is kept.
+
+**After the first result mail.** Reopening is gone. vic.rh changes one candidate at a time with a required reason, as a
+correction logged in Interviewee Changes. No mail goes out by itself: the candidate is flagged for a new mail through #178. A
+candidate who first needs a result after final, from a late interview or a restored application, shows as Needs a decision and
+gets it through the same correction once mails have started; everyone else stays final. Before the first mail, they are decided
+the same way, with no reopen needed.
+
+**What binomes see.** The result of their own candidates in My binome, read-only, only once results are final. The read must not
+expose overrides before that.
+
+**Risk.** Final depends on vic.rh signing in to the dashboard. [#179](https://github.com/puIad/vic-recruitment/issues/179) left a
+Vercel sign-in by vic.rh unproven, and the trigger stoppage behind
+[#182](https://github.com/puIad/vic-recruitment/pull/182) was probably the dashboard revoking vic.rh's grant. Test this sign-in
+live before results week, and check the sync trigger still runs after it.
+
+**Writes.** Overrides go through pending changes and final through a direct write, as above. All of them touch the Master only, so
+no binome sheet or baseline changes and no `MANUAL_EDIT`.
+
+**Deploy.** A clasp deploy for the column, the writes and the read, and a Vercel deploy for the views.

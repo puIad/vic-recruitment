@@ -114,6 +114,40 @@ _Avoid_: outbox, mail history
 Google accepted the mail. It says nothing about delivery: Google never reports that, and bounces are not read.
 _Avoid_: delivered, received
 
+## Results
+
+**Proposal**:
+The department or Not accepted that a binome's Final Affectation says for a candidate. It becomes the candidate's
+phase-1 result unless the deliberation overrides it.
+_Avoid_: result (for the binome's value), recommendation
+
+**Deliberation**:
+The admins' review after the last interviews, where they confirm or override proposals and decide the candidates who
+have none.
+_Avoid_: results meeting, final review
+
+**Override**:
+A result an admin sets in the deliberation in place of the candidate's proposal.
+_Avoid_: correction (for a change made before results are final)
+
+**Needs a decision**:
+A candidate who must get a phase-1 result but has no proposal and no override.
+_Avoid_: undecided, pending (a pending change is something else)
+
+**Phase-1 result**:
+What the recruitment decided for a candidate: a department they go on to the next phase in, or Not accepted. Duplicates
+and declined or withdrawn candidates have none.
+_Avoid_: affectation, outcome, decision
+
+**Final**:
+The point where vic.rh confirms the phase-1 results, after which a proposal or an admin's edit no longer changes them.
+_Avoid_: published, locked, closed
+
+**Correction**:
+A change vic.rh makes to one candidate's phase-1 result once result mails have started going out, including a first
+result for a candidate who appears after that point.
+_Avoid_: override (for a change made after the first result mail)
+
 ## Signing in
 
 **Sign-in**:
