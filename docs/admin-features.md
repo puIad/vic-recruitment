@@ -240,3 +240,65 @@ isn't today.
 **Pending changes.** The new cells extend `kind: 'team'` from one column to several, each applied only while the cell still
 shows what the author saw. A row gone or an email corrected meanwhile drops the change. With the owner's switch off they
 are direct writes.
+
+## One binome's panel and page
+
+Decided in [#171](https://github.com/puIad/vic-recruitment/issues/171) (owner, 2026-10-30), on a prototype with mock
+data: branch [`prototype/binome-page`](https://github.com/puIad/vic-recruitment/tree/prototype/binome-page), never merged.
+What an admin sees and does on one binome instead of opening its sheet. It adds no write of its own: each action writes as
+its own section says.
+
+**Who.** Every Master editor. Members never see it; they have My binome.
+
+**Two views.** A summary panel, with a **Full page** button, and a full page at `/binomes/:code`. This panel is the
+"details panel" of [Pause and resume a binome](#pause-and-resume-a-binome).
+
+**Reaching them.** A code in the Binomes table opens the panel, since there an admin is comparing binomes; the row menu
+stays. Every other binome link opens the page: the command palette, an alert, a candidate's details, Binomes behind on the
+Overview, the Team page and Settings. Today those links filter the table (`/binomes?q=`).
+
+**The panel.** The header and its actions, members and covers, the progress numbers, and the open alerts with their quick
+fixes. No candidates table and no changes, so it needs no read beyond what the dashboard already holds.
+
+**The page.** One scrolling page in My binome's layout, top to bottom: the header; progress and coming-up interviews beside
+the open alerts; members and covers; candidates; changes. On a phone the cards stack in that order, the table scrolls
+sideways as on My binome, and the panel takes the full width.
+
+**Actions.** Pause / Resume and **Open sheet** are buttons. A `...` menu holds Change department, Sheet & dashboard access,
+Replace a member, Swap with another binome, Move an interviewee here and Add a cover, preset to this binome and using the
+same dialogs as the row menu. Correct name or email sits beside each member and End beside each cover. Open sheet stays
+because admins needn't open the sheet, not because they can't.
+
+**Alerts.** The binome's open alerts, worst first, with the inbox's row button (`RowQuickButton`).
+- One-click actions (Nudge, Repair, It's fine) run in the row.
+- Fix, Compare and Review open the same quick-fix form: in a side panel on the page, and in place of the content on the
+  panel, with a back button.
+- Multi-select stays in the inbox, and the page links to it filtered by this binome. Snoozed and muted alerts stay in the
+  inbox's Muted filter.
+
+**Candidates.** My binome's table with the same default columns, and every other sheet column available from View.
+- A click opens the candidate's details, where an admin edits: the
+  [Binome's columns](#admins-fill-in-a-binomes-columns) and [the registration fields](#edit-a-candidates-data). The cells
+  don't edit in the table.
+- A candidate under a live cover shows a "covered by <name>" badge.
+- The Interview form column shows whether a form is in, its date and its source. Reading the answers is left to
+  [#172](https://github.com/puIad/vic-recruitment/issues/172).
+
+**Freshness.** The candidates come from the binome's copy of the last sync plus dashboard edits, labelled "as of <time>",
+and follow new snapshots as My binome does. Something typed directly in the binome sheet shows after the next sync.
+**Read the sheet now** reads it live with the admin's own access; without access it says so and the last copy stays on
+screen. Statuses and alerts still come from the Master.
+
+**Changes.** Member Changes and Interviewee Changes merged for this binome, newest first, with a filter by kind and a link
+to Change history: who joined or left, covers, department, pauses, moves in and out, and admin edits on its candidates.
+What a binome types itself isn't logged, so it doesn't appear. The dashboard holds the last 300 rows of each log, so older
+rows drop off here.
+
+**A draft binome.** The members, the tag, a "Not locked yet" note and the actions that work on a draft. No candidates,
+alerts or changes. Pairing stays in the Pairing panel on the Binomes page.
+
+**An admin in this binome.** They get this admin page, with a small link to My binome for their member view.
+
+**The read.** New: a `webRun` action that gives an admin any locked binome's slice, and with a flag reads the sheet live over
+it, keeping the Master's statuses. The prototype's `protoBinomeView` in `WebApp.gs` shows the shape. It needs a clasp
+deploy.
