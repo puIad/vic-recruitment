@@ -45,7 +45,7 @@ function setBinomeStatus_(ctx, c) {
 /** Both members of each binome paused or resumed this run. */
 function sendBinomeStatusMails_(ctx) {
   (ctx.statusMails || []).forEach(x => x.b.members.forEach(m => {
-    if (m.email) mailSend_(m.email, mailFrom_(x.id, { first: (m.name || '').split(' ')[0], binome: x.b.code, until: x.until }, { cta: mailDashboardCta_(), footer: mailTeamFooter_(x.b.fileUrl) }));
+    if (m.email) mailSend_(m.email, mailFrom_(x.id, { first: (m.name || '').split(' ')[0], binome: x.b.code, until: x.until }, { cta: mailDashboardCta_(), footer: mailTeamFooter_(x.b.fileUrl) }), x.b.code);
   }));
   ctx.statusMails = [];
 }

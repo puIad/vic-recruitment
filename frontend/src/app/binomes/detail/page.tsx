@@ -16,7 +16,7 @@ import { useBinomeRows } from "@/lib/vic/pending"
 import { useVic } from "@/lib/vic/store"
 import { cn } from "@/lib/utils"
 import { useBinomeDialogs } from "../components/binome-dialogs"
-import { AlertsCard, BinomeActions, DraftNote, MembersCard, PausedNote, ProgressCard, StatusLine } from "../components/binome-parts"
+import { AlertsCard, BinomeActions, DraftNote, MailsCard, MembersCard, PausedNote, ProgressCard, StatusLine } from "../components/binome-parts"
 import { ChangesCard } from "../components/changes-card"
 
 const hhmm = (ms: number) => new Date(ms).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
@@ -117,6 +117,8 @@ export default function BinomePage() {
           </div>
 
           <MembersCard b={b} />
+
+          <MailsCard code={b.code} />
 
           <section aria-labelledby="cand-title" className="space-y-3">
             <div className="flex flex-wrap items-end justify-between gap-2">

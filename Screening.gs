@@ -229,7 +229,7 @@ function rejectionsCore_(a) {
       const me = Session.getActiveUser().getEmail();
       if (list.length) {
         const m = mail(String(list[0][I['First Name']]).trim() || 'there', 'Test mode: this copy went to you only. With test mode off it goes to ' + list.length + ' declined applicant(s).');
-        mail_(me, '[TEST] ' + m.subject, m.html, m.from);
+        mail_(me, '[TEST] ' + m.subject, m.html, m.from, { kind: 'TEST' });
       }
       return { sent: 0, left: list.length, test: true };
     }
@@ -237,7 +237,7 @@ function rejectionsCore_(a) {
     for (; i < list.length && Date.now() - t0 < budget; i++) {
       const r = list[i];
       // a failed send (quota, bad address) stays unstamped so the next press retries it
-      if (!mailSend_(String(r[I.Email]).trim(), mail(String(r[I['First Name']]).trim() || 'there'))) { failed++; continue; }
+      if (!mailSend_(String(r[I.Email]).trim(), mail(String(r[I['First Name']]).trim() || 'there'), String(r[I.Code]).trim())) { failed++; continue; }
       r[I.Screening] = String(r[I.Screening]).trim() + '; Rejection sent ' + fmt_(ctx.now, 'dd/MM');
       sent++;
     }

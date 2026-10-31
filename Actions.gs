@@ -229,6 +229,8 @@ function sendDailyDigest() {
         .concat(open.length > 60 ? [mailP_('…and ' + (open.length - 60) + ' more.')] : []) : [mailP_('Nothing open 🎉')]),
     cta: { label: 'Open the master sheet', url: ss_().getUrl() }, footer: mailTeamFooter_() });
   _mailsSent = 0; // the cycle line above was logged before these mails: count them in their own line
-  adminEmails_().forEach(e => mail_(e, '[VIC Recruitment] Daily digest: ' + open.length + ' open alert' + (open.length === 1 ? '' : 's'), html));
+  _mailBy = 'the digest';
+  adminEmails_().forEach(e => mail_(e, '[VIC Recruitment] Daily digest: ' + open.length + ' open alert' + (open.length === 1 ? '' : 's'), html, undefined, { kind: 'DIGEST' }));
+  mailLogSettle_(); // no lock held here: the log is written under one
   console.log(JSON.stringify({ at: 'digest', mailsSent: _mailsSent }));
 }

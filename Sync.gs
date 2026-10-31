@@ -286,7 +286,7 @@ function sendNewIntervieweeMails_(ctx) {
       blocks: [mailList_(list.map(r => [r[I.Code], r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' +
         String(r[I.Phone]).replace(/^'/, '') + ' · available: ' + r[I.Availability]]))],
       cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) });
-    b.members.forEach(m => { if (m.email) mailSend_(m.email, mail); });
+    b.members.forEach(m => { if (m.email) mailSend_(m.email, mail, [code].concat(list.map(r => r[I.Code]))); });
   });
   ctx.mailNew = {};
 }
@@ -301,6 +301,7 @@ function runCycle_(opts) {
     let last = Date.now();
     const lap = k => { const n = Date.now(); T[k] += n - last; last = n; }; // ms since the previous lap
     _mailsSent = 0;
+    if (opts.kind !== 'dashboard') _mailBy = opts.kind === 'digest' ? 'the digest' : 'the sync'; // a dashboard sync keeps the admin's email
     _snapT = {};
     _settings = null;
     const ctx = loaded = loadCtx_(); lap('load');
@@ -322,8 +323,10 @@ function runCycle_(opts) {
     commitBase_(ctx); lap('base'); // before the mails: if they fail, the tabs and the baseline still agree
     if (opts.timing) try { dropsSync_(ctx); } catch (e) { console.warn('Drops: ' + e); } lap('drops'); // dropped dashboard changes: emails and DROPPED| alerts (Pending.gs); never fails the sync
     if (opts.watch) watchdogAlert_(ctx);
+    if (opts.timing) try { mailFailedSettle_(ctx); } catch (e) { console.warn('MAIL_FAILED not settled: ' + e); }
     ctx.alerts.flush(); lap('alerts');
     sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx); lap('mails');
+    mailLogFlush_(ctx); // before the snapshot: a MAIL_FAILED alert shows in it
     if (opts.tracker) buildTracker_(ctx); lap('tracker');
     saveMemberMap_(ctx); // covers ended above, hand edits of the Binomes tab
     // the dashboard's snapshot; a failure must not fail the sync, and must not leave a snapshot that misses this run
@@ -386,7 +389,10 @@ function watchdogMail_(stopped, stamp) {
     footer: mailTeamFooter_() });
   const owner = lc_(ss_().getOwner().getEmail()), rh = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
   const subject = '[VIC Recruitment] ' + title;
-  return [owner, rh].filter((e, i, all) => e && all.indexOf(e) === i).map(e => mail_(e, subject, html) || (!mailHeld_(e) && watchdogOwnMail_(e, subject, html))).some(Boolean);
+  _mailBy = 'the watchdog';
+  const reached = [owner, rh].filter((e, i, all) => e && all.indexOf(e) === i).map(e => mail_(e, subject, html, undefined, { kind: 'WATCHDOG' }) || (!mailHeld_(e) && watchdogOwnMail_(e, subject, html))).some(Boolean);
+  mailLogSettle_();
+  return reached;
 }
 
 /** Trigger on the Master owner's account (installWatchdog), so a lost vic.rh grant doesn't stop it. A mail that reached nobody is retried at the next run. */

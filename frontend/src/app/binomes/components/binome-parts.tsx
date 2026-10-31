@@ -2,6 +2,7 @@ import * as React from "react"
 import { Link } from "react-router-dom"
 import { ArrowRightLeft, Building2, CalendarClock, CircleCheck, Clock, ExternalLink, KeyRound, MoreHorizontal, MoveRight, PauseCircle, PlayCircle, Repeat, UsersRound } from "lucide-react"
 
+import { MailsSection } from "@/components/mail-log"
 import { MemberName } from "@/components/member-name"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
 import { RowQuickButton } from "@/app/alerts/components/quick-actions"
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useActions } from "@/lib/vic/actions"
+import { mailKind, type MailLogOut } from "@/lib/vic/mail-log"
 import { alertLabel, BINOME_STATUS, initials, pct, SEVERITY, STAGES } from "@/lib/vic/format"
 import { pausedLabel } from "@/lib/vic/pause"
 import type { BinomeRow } from "@/lib/vic/pending"
@@ -308,6 +310,22 @@ export function AlertsCard({ code, alerts, onOpen, className }: { code: string; 
       </CardHeader>
       <CardContent className="max-h-[26rem] overflow-y-auto">
         <AlertRows alerts={alerts} onOpen={onOpen} />
+      </CardContent>
+    </Card>
+  )
+}
+
+/** The mails to this binome's members and covers, and the newest one in the header (docs/admin-features.md, Email and notification status). */
+export function MailsCard({ code, className }: { code: string; className?: string }) {
+  const [last, setLast] = React.useState<MailLogOut["last"]>(null)
+  return (
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle className="text-lg font-bold">Mails</CardTitle>
+        <CardDescription>{last ? `Last mail: ${mailKind(last.kind)}, ${last.outcome.toLowerCase()}, ${last.when}` : "What the script mailed to its members and covers."}</CardDescription>
+      </CardHeader>
+      <CardContent className="max-h-[26rem] overflow-y-auto">
+        <MailsSection key={code} scope={{ binome: code }} onLoad={(d) => setLast(d.last)} />
       </CardContent>
     </Card>
   )

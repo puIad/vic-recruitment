@@ -146,7 +146,7 @@ const TAB = {
   SETTINGS: 'Settings', TEAM: 'Team', BINOMES: 'Binomes', IV: 'Interviewees',
   LOG: 'Interview Log', TRACKER: 'Tracker', ALERTS: 'Alerts',
   REG_RESP: 'Registration Responses', INT_RESP: 'Interview Responses', CHANGES: 'Member Changes',
-  DASH: 'Dashboard Interviews', IV_CHANGES: 'Interviewee Changes',
+  DASH: 'Dashboard Interviews', IV_CHANGES: 'Interviewee Changes', MAIL_LOG: 'Mail Log',
 };
 
 const TEAM_H = ['Full Name', 'Email', 'Department', 'Pair As', 'Exclude', 'Notes', 'Experienced'];
@@ -168,6 +168,9 @@ const LOG_H = ['Submitted At', 'Submitter', 'Typed Binome', 'Typed Interviewee',
 const MC_H = ['At', 'By', 'Type', 'Binome', 'Out Name', 'Out Email', 'In Name', 'In Email', 'Interviewees', 'Reason', 'Status'];
 // One row per interviewee move and accepted hand edit (Change history; created on first write, never read by the sync)
 const IC_H = ['When', 'By', 'Code', 'What', 'From', 'To'];
+// One row per mail through mail_() (docs/admin-features.md, Email and notification status); created on first write. Stored mail:
+// the rendered body, on a Failed row only, so Resend can send it as it was
+const ML_H = ['When', 'Kind', 'To', 'Concerns', 'Triggered by', 'Outcome', 'Error', 'Subject', 'Stored mail'];
 const ALERT_H = ['ID', 'Created', 'Severity', 'Type', 'Interviewee', 'Binome', 'Message', 'Emailed To',
   'Status', 'Resolved At', 'Key'];
 // Columns of every binome file, in order. The code addresses them by these keys; the header row shows BF_LABEL instead.
