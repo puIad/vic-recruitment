@@ -38,6 +38,10 @@ interface UiStore {
   moveDialog: { open: boolean; code?: string; binome?: string; alertId?: string; nonce: number } | null
   openMoveDialog: (o?: { code?: string; binome?: string; alertId?: string }) => void
   closeMoveDialog: () => void
+  /** Edit a candidate's data: opened from a profile, an Interviewees row, Ctrl K or an alert */
+  editDialog: { open: boolean; code: string; nonce: number } | null
+  openEditDialog: (o: { code: string }) => void
+  closeEditDialog: () => void
 }
 
 /** Small UI flags shared between the header, the shell and the pages that open the two work panels. */
@@ -61,4 +65,7 @@ export const useUi = create<UiStore>((set, get) => ({
   moveDialog: null,
   openMoveDialog: (o = {}) => set({ moveDialog: { ...o, open: true, nonce: (get().moveDialog?.nonce ?? 0) + 1 } }),
   closeMoveDialog: () => set((s) => (s.moveDialog ? { moveDialog: { ...s.moveDialog, open: false } } : s)),
+  editDialog: null,
+  openEditDialog: (o) => set({ editDialog: { ...o, open: true, nonce: (get().editDialog?.nonce ?? 0) + 1 } }),
+  closeEditDialog: () => set((s) => (s.editDialog ? { editDialog: { ...s.editDialog, open: false } } : s)),
 }))

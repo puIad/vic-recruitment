@@ -1,5 +1,5 @@
 import * as React from "react"
-import { AlertCircle, CakeSlice, Check, ExternalLink, RotateCw } from "lucide-react"
+import { AlertCircle, CakeSlice, Check, ExternalLink, Pencil, RotateCw } from "lucide-react"
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
@@ -23,6 +23,7 @@ import {
 } from "@/lib/vic/analytics"
 import { alertLabel, STATUS_COLOR, STATUS_LABEL } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
+import { useUi } from "@/lib/vic/ui"
 import { cn } from "@/lib/utils"
 import type { AnalyticsRow } from "@/lib/vic/types"
 
@@ -92,6 +93,7 @@ export function ApplicantProfile() {
 
 function Profile({ row: r, tz }: { row: AnalyticsRow; tz: string }) {
   const binome = useVic((s) => s.state?.binomes.find((b) => b.code === r.binome))
+  const openEdit = useUi((s) => s.openEditDialog)
   const name = `${r.first} ${r.family}`.trim() || "No name given"
   const bu = birthUsed(r)
   const age = bu && r.registered ? ageOn(bu.date, r.registered, tz) : null
@@ -137,13 +139,20 @@ function Profile({ row: r, tz }: { row: AnalyticsRow; tz: string }) {
             {email && !isEnpEmail(email) && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold text-foreground">Personal email</span>}
           </SheetDescription>
         </div>
-        {binome?.fileUrl && (
-          <Button asChild size="sm" variant="outline" className="w-fit">
-            <a href={binome.fileUrl} target="_blank" rel="noreferrer">
-              <ExternalLink /> Open the binome sheet
-            </a>
-          </Button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {r.code && r.status !== "DECLINED" && r.status !== "DUPLICATE" && (
+            <Button size="sm" variant="outline" className="w-fit" onClick={() => openEdit({ code: r.code })}>
+              <Pencil /> Edit
+            </Button>
+          )}
+          {binome?.fileUrl && (
+            <Button asChild size="sm" variant="outline" className="w-fit">
+              <a href={binome.fileUrl} target="_blank" rel="noreferrer">
+                <ExternalLink /> Open the binome sheet
+              </a>
+            </Button>
+          )}
+        </div>
       </SheetHeader>
 
       <div className="flex-1 space-y-7 overflow-y-auto px-6 py-6">

@@ -94,7 +94,7 @@ export interface Job {
 const EXCLUSIVE = new Set(["importTeam", "lock", "draft", "resetBinomes", "setup"])
 /** Calls that change nothing in the Master (previews, links, checks): they run at once, beside the line. */
 const readOnly = (action: string, a: Record<string, unknown>) =>
-  !!a.dryRun || action === "lockCheck" || action === "mailPreview" || (action === "quick" && (a.op === "locate" || a.op === "draft")) ||
+  !!a.dryRun || action === "lockCheck" || action === "mailPreview" || action === "candidateGet" || (action === "quick" && (a.op === "locate" || a.op === "draft")) ||
   (action === "rejections" && !a.send) || (action === "binomeAccess" && !a.level)
 /** Writes go to the script one after another (it would take them in turn anyway: each holds its lock), so a click never
  *  waits for the one before it to finish. The same click again while it still waits is the same run. */

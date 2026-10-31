@@ -6,7 +6,15 @@
 
 // ops that close their alert when they succeed
 const QUICK_RESOLVES = { edit: 1, setCell: 1, exclude: 1, pickCandidate: 1, keepForm: 1, dupNew: 1, dupSeparate: 1, repair: 1, approve: 1, decline: 1 };
-const QUICK_EDITABLE = ['First Name', 'Family Name', 'Email', 'Phone', 'Birth Date', '1st Choice', '2nd Choice'];
+// the twelve registration fields an admin can edit (docs/admin-features.md > Edit a candidate's data)
+const QUICK_EDITABLE = ['First Name', 'Family Name', 'Email', 'Phone', 'Birth Date', '1st Choice', '2nd Choice', 'Field', 'Year', 'Availability',
+  'Facebook', 'Discord'];
+// the registration form's own options (VIC-ENP src/apply/questions.ts); a value kept as it is is never refused
+const FORM_FIELDS = ['PREPA', 'DATA', 'INDUS', 'AUTO', 'ELN', 'ELT', 'ELT-HV', 'GCHIM', 'GP-ENV', 'HYDRAU', 'GC', 'MTRX', 'MECA', 'GM-AUTO', 'MINIER', 'QHSE'];
+const FORM_YEARS = ['1ST', '2ND', '3RD'];
+const FORM_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+// what checkRegistration can raise on one row: an edit closes the ones it fixed and opens the new ones
+const REG_CHECKS = ['MISSING_NAME', 'INVALID_CHOICE', 'BAD_EMAIL', 'EMAIL_MISMATCH', 'EXTERNAL_EMAIL', 'SAME_CHOICES', 'BAD_PHONE', 'BAD_BIRTHDATE'];
 const SNOOZE_HOURS = { '4h': 4, '24h': 24, '3d': 72 };
 // what "Use the new answers" copies from a second registration onto the earlier one (+ REG_EXTRAS, declared in a later file)
 const DUP_COPY = ['First Name', 'Family Name', 'Email', 'Typed Email', 'Phone', 'Facebook', 'Discord', 'Field', 'Year', '1st Choice',
@@ -33,10 +41,10 @@ function ivByRk_(ctx, rk) { const I = ctx.iv.I; return ctx.iv.data.filter(r => S
 function logIndex_(ctx, lk) { const L = ctx.log.I; return ctx.log.data.findIndex(r => String(r[L['Response Key']]) === lk); }
 
 /** The earlier registration a DUPLICATE row repeats (same rule as checkRegistration). */
-function dupOriginal_(ctx, x) {
+function dupOriginal_(ctx, x, self) {
   const I = ctx.iv.I, name = r => normName(r[I['First Name']] + ' ' + r[I['Family Name']]);
   const e = lc_(x[I.Email]), t = lc_(x[I['Typed Email']]), n = name(x), ph = normPhone(x[I.Phone]);
-  return ctx.iv.data.filter(o => o !== x && !isOut_(o[I.Status]) && (
+  return ctx.iv.data.filter(o => o !== (self || x) && !isOut_(o[I.Status]) && (
     (e && (e === lc_(o[I.Email]) || e === lc_(o[I['Typed Email']]))) || (t && t === lc_(o[I.Email])) ||
     (n && n === name(o) && ph && ph === normPhone(o[I.Phone]))))[0] || null;
 }
@@ -158,7 +166,8 @@ function quickCore_(op, a) {
         if (!r || (op === 'unmute' ? !held : r[A.Status] !== 'OPEN')) return lines.push(id + ': ' + (op === 'unmute' ? 'not snoozed or muted' : 'no longer open') + ' (refresh the page).');
         try {
           const msg = quickOne_(ctx, op, r, a);
-          if (!a.dryRun && QUICK_RESOLVES[op]) ctx.alerts.resolveWhere(x => x === r, 'RESOLVED');
+          // an edit closes a registration-check alert only if recheckRow_ found the problem gone
+          if (!a.dryRun && QUICK_RESOLVES[op] && !(op === 'edit' && REG_CHECKS.indexOf(String(r[A.Type])) >= 0)) ctx.alerts.resolveWhere(x => x === r, 'RESOLVED');
           lines.push(id + ': ' + msg);
           done.push(id);
         } catch (e) { lines.push(id + ': ' + e.message); }
@@ -187,7 +196,7 @@ function quickOne_(ctx, op, r, a) {
     case 'snooze': return snooze_(ctx, r, ref, String(a.for || ''));
     case 'mute': ctx.alerts.setStatus(r, 'MUTED', ctx.now); return 'muted: it will not be raised again.';
     case 'unmute': ctx.alerts.setStatus(r, 'OPEN'); return 'back with the open alerts.';
-    case 'edit': return quickEdit_(ctx, regRow_(ctx, ref), a.values || {});
+    case 'edit': return editRow_(ctx, regRow_(ctx, ref), a.values || {}).text;
     case 'setCell': return setCell_(ctx, ivRow_(ctx, ref), a);
     case 'exclude': return exclude_(ctx, ref);
     case 'pickCandidate': return pickCandidate_(ctx, ref, a.code);
@@ -258,36 +267,148 @@ function refreshFileRow_(ctx, x, what) {
   }
 }
 
-/** values: {field: text} for QUICK_EDITABLE fields, checked like the registration check does. */
-function quickEdit_(ctx, x, values) {
-  const I = ctx.iv.I, rk = String(x[I['Response Key']]);
-  const keys = Object.keys(values).filter(f => QUICK_EDITABLE.indexOf(f) >= 0);
+const plainVal_ = v => (v instanceof Date ? fmt_(v, 'dd/MM/yyyy') : String(v == null ? '' : v).replace(/^'/, '').trim());
+
+/** One field's new value, checked like the registration form accepts it; null = the same as now (kept, never refused). */
+function editValue_(f, raw, cur) {
+  const s = String(raw == null ? '' : raw).trim();
+  const pick = list => { const o = list.filter(x => x.toLowerCase() === s.toLowerCase())[0]; if (!o) throw new Error(f + ' must be one of ' + list.join(', ') + '.'); return o; };
+  if (f === 'First Name' || f === 'Family Name') { if (s === plainVal_(cur)) return null; if (!hasLetter(s)) throw new Error(f + ' needs letters.'); return s; }
+  if (f === 'Email') {
+    if (s.toLowerCase() === plainVal_(cur).toLowerCase()) return null;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new Error('"' + s + '" is not an email address.');
+    return s.toLowerCase();
+  }
+  if (f === 'Phone') {
+    const p = normPhone(s);
+    if (p === normPhone(cur)) return null;
+    if (!/^0[5-7]\d{8}$/.test(p) && !/^0[2-4]\d{7}$/.test(p)) throw new Error('"' + s + '" is not an Algerian phone number.');
+    return p;
+  }
+  if (f === 'Birth Date') {
+    const d = parseLooseDate(s);
+    if (!d) throw new Error('"' + s + '" is not a date (dd/mm/yyyy).');
+    return plainVal_(d) === plainVal_(cur) ? null : d;
+  }
+  if (f === '1st Choice' || f === '2nd Choice') {
+    if (s === plainVal_(cur)) return null;
+    if (DEPTS.indexOf(s) < 0) throw new Error(f + ' must be IT, COMM, FLER or HR.');
+    return s;
+  }
+  if (f === 'Field') return s === plainVal_(cur) ? null : pick(FORM_FIELDS);
+  if (f === 'Year') return s === plainVal_(cur) ? null : pick(FORM_YEARS);
+  if (f === 'Availability') {
+    if (s === plainVal_(cur)) return null;
+    const days = s ? s.split(/\s*,\s*/).map(d => FORM_DAYS.filter(x => x.toLowerCase() === d.toLowerCase())[0]) : [];
+    if (days.some(d => !d)) throw new Error('Availability must be days of the week (' + FORM_DAYS.join(', ') + '), or blank.');
+    return days.join(', ');
+  }
+  return s === plainVal_(cur) ? null : s; // Facebook, Discord: free text, may be blank
+}
+
+/** The registration check again on one row: closes the alerts the edit fixed, opens the new problems (REG_CHECKS only;
+ *  a duplicate is the sync's call). Keeps the Flags column in step. Returns {closed: [type], opened: [msg]}. */
+function recheckRow_(ctx, x) {
+  const I = ctx.iv.I, A = ctx.alerts.table.I, rk = String(x[I['Response Key']]), out = { closed: [], opened: [] };
+  if (!rk) return out;
+  const c1raw = String(x[I['1st Choice']]).trim(), collected = String(x[I.Email]).trim().toLowerCase();
+  const chk = checkRegistration({ ts: x[I['Registered At']], collected: collected, typedEmail: String(x[I['Typed Email']]).trim(),
+    first: String(x[I['First Name']]).trim(), family: String(x[I['Family Name']]).trim(), birth: x[I['Birth Date']], phone: x[I.Phone],
+    c1: normDept(c1raw), c1raw: c1raw, c2: normDept(x[I['2nd Choice']]) }, [], S_().EMAIL_DOMAIN);
+  const now = {}, had = String(x[I.Flags]).split(',').map(f => f.trim());
+  chk.alerts.forEach(a => { if (REG_CHECKS.indexOf(a.type) >= 0) now[a.type] = a; });
+  REG_CHECKS.forEach(t => {
+    const key = 'REG|' + t + '|' + rk;
+    if (now[t]) {
+      // only what the row did not already have: a problem an admin closed with Mark resolved stays closed
+      if (had.indexOf(t) < 0 && ctx.alerts.add({ severity: now[t].severity, type: t, code: ivLabel_(ctx, x), binome: x[I.Binome], msg: now[t].msg, key: key, notifyBinome: false })) out.opened.push(now[t].msg);
+    } else if (ctx.alerts.table.data.some(r => String(r[A.Key]) === key && (r[A.Status] === 'OPEN' || r[A.Status] === 'SNOOZED'))) {
+      ctx.alerts.resolveWhere(r => String(r[A.Key]) === key, 'RESOLVED');
+      out.closed.push(t.toLowerCase().replace(/_/g, ' '));
+    }
+  });
+  const flags = String(x[I.Flags]).split(',').map(f => f.trim()).filter(f => f && REG_CHECKS.indexOf(f) < 0);
+  const at = flags.findIndex(f => /^CONFIRMED/.test(f));
+  x[I.Flags] = (at < 0 ? flags.concat(Object.keys(now)) : flags.slice(0, at).concat(Object.keys(now), flags.slice(at))).join(', ');
+  return out;
+}
+
+/** values: {field: text} for QUICK_EDITABLE fields, checked like the registration form accepts them. A direct write: the Master,
+ *  the binome sheet row and (by the caller's commit) the baseline stay in step; the registration check runs again; one
+ *  Interviewee Changes row per changed field. Returns {text, move}: move = {code, binome, dep} when their binome does not
+ *  take the new 1st choice (nothing moves without a second click). */
+function editRow_(ctx, x, values) {
+  const I = ctx.iv.I, rk = String(x[I['Response Key']]), label = ivLabel_(ctx, x);
+  if (isOut_(x[I.Status])) throw new Error(label + ' is ' + String(x[I.Status]).toLowerCase() + ': restore it first.');
+  const v = {};
+  Object.keys(values).filter(f => QUICK_EDITABLE.indexOf(f) >= 0).forEach(f => { const n = editValue_(f, values[f], x[I[f]]); if (n !== null) v[f] = n; });
+  const keys = Object.keys(v);
   if (!keys.length) throw new Error('nothing to change.');
   if (keys.some(f => EDIT_GROUPS.iv.Person.indexOf(f) >= 0) && ctx.alerts.openKeys[editKey_('iv', 'Person', rk)]) {
     throw new Error('their name / email also has an open manual edit: Apply or Accept it first.');
   }
-  const v = {};
-  keys.forEach(f => {
-    const s = String(values[f] == null ? '' : values[f]).trim();
-    if (f === 'First Name' || f === 'Family Name') { if (!hasLetter(s)) throw new Error(f + ' needs letters.'); v[f] = s; }
-    else if (f === 'Email') { if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new Error('"' + s + '" is not an email address.'); v[f] = s.toLowerCase(); }
-    else if (f === 'Phone') {
-      const p = normPhone(s);
-      if (!/^0[5-7]\d{8}$/.test(p) && !/^0[2-4]\d{7}$/.test(p)) throw new Error('"' + s + '" is not an Algerian phone number.');
-      v[f] = p;
-    } else if (f === 'Birth Date') { const d = parseLooseDate(s); if (!d) throw new Error('"' + s + '" is not a date (dd/mm/yyyy).'); v[f] = d; }
-    else { if (DEPTS.indexOf(s) < 0) throw new Error(f + ' must be IT, COMM, FLER or HR.'); v[f] = s; }
-  });
-  const what = keys.map(f => f + ' ' + shown_(x[I[f]]) + ' → ' + shown_(v[f])).join(', ');
+  if (keys.some(f => ['First Name', 'Family Name', 'Email', 'Phone'].indexOf(f) >= 0)) {
+    const c = x.slice(); keys.forEach(f => { c[I[f]] = v[f]; });
+    const o = dupOriginal_(ctx, c, x);
+    if (o) throw new Error('that email or name + phone already belongs to ' + ivLabel_(ctx, o) + ' (' + String(o[I.Email]) + '): use the duplicate tools.');
+  }
+  const was = {};
+  keys.forEach(f => { was[f] = x[I[f]]; });
+  const what = keys.map(f => f + ' ' + shown_(was[f]) + ' → ' + shown_(v[f])).join(', ');
   keys.forEach(f => { x[I[f]] = v[f]; });
-  let where;
-  if (v['1st Choice'] && !x[I.Binome] && x[I.Status] === ST.UNASSIGNED) { // not on hold, not out
+  if (v.Email) x[I['Typed Email']] = v.Email; // the form's own typed copy follows, or the old one would raise the mismatch again
+  let where = '', move = null;
+  const dep = v['1st Choice'];
+  if (dep && !x[I.Binome] && x[I.Status] === ST.UNASSIGNED) { // not on hold, not out
     // a candidate the routing could not place: the right department lets it place them now
     where = assignRow_(ctx, x) ? '; assigned to ' + x[I.Binome] + ' as ' + x[I.Code]
-      : '; still waiting for a binome (' + (bool_(S_().ASSIGNMENTS_OPEN) ? 'no ACTIVE binome takes ' + v['1st Choice'] : 'assignments are closed') + ')';
+      : '; still waiting for a binome (' + (bool_(S_().ASSIGNMENTS_OPEN) ? 'no ACTIVE binome takes ' + dep : 'assignments are closed') + ')';
     indexCtx_(ctx);
-  } else where = refreshFileRow_(ctx, x, what);
-  return ivLabel_(ctx, x) + ': ' + what + where + '.';
+  } else {
+    where = refreshFileRow_(ctx, x, what);
+    const b = dep && x[I.Binome] ? ctx.binByCode[x[I.Binome]] : null;
+    if (b && tagDepts(b.tag).indexOf(dep) < 0) {
+      move = { code: String(x[I.Code]).trim(), binome: b.code, dep: dep };
+      where += '. ' + b.code + ' does not take ' + dep + ': use Move interviewee to give them a binome that does';
+    }
+  }
+  const re = recheckRow_(ctx, x);
+  const checks = (re.closed.length ? '. Closed: ' + re.closed.join(', ') : '') + (re.opened.length ? '. New: ' + re.opened.join(' ') : '');
+  keys.forEach(f => logIvChange_(ctx, String(x[I.Code]).trim() || label, 'Edited ' + f, plainVal_(was[f]), plainVal_(v[f])));
+  return { text: label + ': ' + what + where + checks + '.', move: move };
+}
+
+/** The twelve editable values of one candidate as the Edit form shows them (read only, no lock), with the form's options. */
+function candidateGet_(code) {
+  code = String(code || '').trim();
+  const t = loadTable_(TAB.IV, IV_H), I = t.I, x = t.data.filter(r => String(r[I.Code]).trim() === code)[0];
+  if (!x) throw new Error('Unknown code ' + code);
+  const values = {};
+  QUICK_EDITABLE.forEach(f => { values[f] = f === 'Birth Date' ? (parseLooseDate(x[I[f]]) ? fmt_(parseLooseDate(x[I[f]]), 'dd/MM/yyyy') : plainVal_(x[I[f]])) : plainVal_(x[I[f]]); });
+  return { code: code, name: (x[I['First Name']] + ' ' + x[I['Family Name']]).trim(), status: String(x[I.Status]), binome: String(x[I.Binome]),
+    values: values, fields: FORM_FIELDS, years: FORM_YEARS, days: FORM_DAYS };
+}
+
+/** webRun('editCandidate', {code, values}): the Edit button, an inline cell, the command palette. A direct write, never a pending change. */
+function editCandidateCore_(code, values) {
+  code = String(code || '').trim();
+  const out = withLock_(() => {
+    const ctx = loadCtx_();
+    detectEdits_(ctx);
+    const x = ctx.ivByCode[code];
+    if (!x) throw new Error('Unknown code ' + code);
+    const r = editRow_(ctx, x, values || {});
+    stampConfirmations_(ctx);
+    saveTable_(ctx.iv);
+    commitBase_(ctx);
+    ctx.alerts.flush();
+    sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx);
+    buildTracker_(ctx);
+    return r;
+  }, 60000);
+  if (!out) { busy_(); return null; }
+  say_(out.text.charAt(0).toUpperCase() + out.text.slice(1));
+  return out;
 }
 
 /** Contacted, or the interview date + time, written in the binome sheet (the binome's own cells) and the Master. */

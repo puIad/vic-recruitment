@@ -376,6 +376,65 @@ let oddCode;
   assert(find('FILE_ERROR', x => x.code === it.code && /^Cannot mark/.test(x.msg)), 'an alert to retry the mark');
 }
 
+// ---- edit a candidate's data (webRun editCandidate): twelve fields, the checks, the log, the registration check again ----
+{
+  const edit = (code, values) => call('webRun', 'editCandidate', { code: code, values: values });
+  const log = () => run('master.getSheetByName("Interviewee Changes").getDataRange().getValues().slice(1)');
+  const edited = code => log().filter(l => l[2] === code && /^Edited /.test(l[3]));
+  const ivs = call('webState').interviewees.filter(i => i.binome && i.status !== 'DECLINED');
+  const it = ivs[0], other = ivs[1];
+  const row = () => ivRow(x => x[IV.Code] === it.code);
+  // free text and dropdown fields: Master, one log row each, no MANUAL_EDIT
+  const out = edit(it.code, { Facebook: ' fb.me/x ', Discord: '', Year: '2nd', Field: 'DATA', Availability: 'monday, Sunday' });
+  assert(/Facebook .*→ "fb\.me\/x".*Year .*→ "2ND".*Field .*→ "DATA".*Availability .*→ "Monday, Sunday"/.test(out.messages[0]), out.messages[0]);
+  const r = row();
+  assert.deepStrictEqual(Array.from([r[IV.Facebook], r[IV.Year], r[IV.Field], r[IV.Availability]]), ['fb.me/x', '2ND', 'DATA', 'Monday, Sunday']);
+  assert.deepStrictEqual(Array.from(edited(it.code).map(l => l[3]).sort()), ['Edited Availability', 'Edited Facebook', 'Edited Field', 'Edited Year'], 'one row per changed field (a blank kept blank is no change)');
+  assert.strictEqual(edited(it.code).find(l => l[3] === 'Edited Year')[5], '2ND');
+  const got = call('webRun', 'candidateGet', { code: it.code }).result;
+  assert.deepStrictEqual([got.values.Year, got.values.Facebook, got.values['Birth Date'].length, got.days.length], ['2ND', 'fb.me/x', 10, 7], 'the form reads the Master');
+  call('webRun', 'sync');
+  noEdits();
+  // refused: not a form option, an email another live candidate has, nothing changed; the Master stays as it was
+  assert.throws(() => edit(it.code, { Year: '4TH' }), /Year must be one of 1ST, 2ND, 3RD/);
+  assert.throws(() => edit(it.code, { Availability: 'Someday' }), /days of the week/);
+  assert.throws(() => edit(it.code, { Email: ivRow(x => x[IV.Code] === other.code)[IV.Email] }), new RegExp('already belongs to ' + other.code.replace('.', '\\.')));
+  assert.throws(() => edit(it.code, { Year: '2ND' }), /nothing to change/);
+  assert.strictEqual(row()[IV.Year], '2ND');
+  assert.strictEqual(edited(it.code).length, 4, 'a refusal logs nothing');
+  // the registration check again: a new problem opens, fixing it closes it
+  const bd = edit(it.code, { 'Birth Date': '01/01/1980' });
+  assert(/New: .*birth date.*age of/.test(bd.messages[0]), bd.messages[0]);
+  assert(find('BAD_BIRTHDATE', x => x.code === it.code), 'opened');
+  const fix = edit(it.code, { 'Birth Date': '01/03/2005' });
+  assert(/Closed: bad birthdate/.test(fix.messages[0]), fix.messages[0]);
+  assert(!find('BAD_BIRTHDATE', x => x.code === it.code), 'closed');
+  // an alert closed with Mark resolved stays closed when another field is edited; a fixed email stays fixed
+  const ext = edit(it.code, { Email: 'someone.ext@gmail.com' });
+  assert(/New: .*non-@/.test(ext.messages[0]), ext.messages[0]);
+  assert.strictEqual(row()[IV['Typed Email']], 'someone.ext@gmail.com', 'the typed copy follows the email');
+  call('webRun', 'resolve', { ids: [find('EXTERNAL_EMAIL', x => x.code === it.code).id] });
+  edit(it.code, { Discord: 'someone#1' });
+  assert(!find('EXTERNAL_EMAIL', x => x.code === it.code), 'a resolved alert does not come back');
+  // the alert's Fix leaves its alert open when the problem is still there (the other name is still junk)
+  run(`(function () { master.getSheetByName('Registration Responses').cells.push(regRow(new Date(Date.now() + 9e3), 'junk.name@g.enp.edu.dz', 'Junk', '.', 'junk.name@g.enp.edu.dz', '01/03/2005', '0555999077', 'IT', 'HR')); })()`);
+  call('webRun', 'sync');
+  const mn = find('MISSING_NAME');
+  assert(mn, 'opened');
+  quick('edit', mn.id, { values: { 'First Name': 'Amine' } }); // only the first name differs
+  assert(find('MISSING_NAME'), 'still open: the family name is junk');
+  quick('edit', mn.id, { values: { 'Family Name': 'Belkacem' } });
+  assert(!find('MISSING_NAME'), 'closed once both are real');
+  // a new 1st choice is saved either way; a binome that does not take it is named, and nothing moves
+  const tag = call('webState').binomes.find(b => b.code === it.binome).tag;
+  const dep = ['IT', 'COMM', 'FLER', 'HR'].find(d => !/\ball\b/i.test(tag) && !new RegExp('\\b' + d + '\\b', 'i').test(tag));
+  if (dep) {
+    const mv = edit(it.code, { '1st Choice': dep });
+    assert(new RegExp(it.binome.replace('.', '\\.') + ' does not take ' + dep + ': use Move interviewee').test(mv.messages[0]), mv.messages[0]);
+    assert.deepStrictEqual([mv.result.move.binome, mv.result.move.dep, row()[IV.Binome], row()[IV['1st Choice']]], [it.binome, dep, it.binome, dep]);
+  }
+}
+
 // ---- alert IDs: numbered from the highest one there is (rows deleted by hand never free an ID), and past A-9999 ----
 {
   const raise = ids => run(`(function () { var sh = master.getSheetByName('Alerts');
