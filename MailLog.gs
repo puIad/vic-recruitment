@@ -2,12 +2,12 @@
 // Google reports nothing about delivery, so the script records what it tried. mail_() collects rows in memory; mailLogFlush_ writes them
 // once at the end of the run (withLock_ and the sync do it), so a run that sends gains one write. A run that dies mid-way loses its
 // unwritten rows; the execution log still has its failures.
+// No row cap: vic.rh sends at most 1,500 mails a day (Google blocks it past that), so the log grows by at most that, plus test mode's Held rows.
 
 let _mailBy = 'the sync'; // who triggered what mail_() sends now: the sync, the digest, or an admin's email (webRun sets it)
 let _mailRows = [];       // [{when, kind, to, concerns, by, outcome, error, subject, stored}] not written yet
 let _mailAlerting = false; // inside mailLogFlush_'s own alert: a failure there is logged and raises nothing new
 
-const ML_MAX_ROWS = 1500;         // a run writes at most this many rows (a sync sends a few dozen)
 const ML_STORED_MAX = 45000;      // a cell holds 50,000 characters
 const ML_CANDIDATE_KINDS = ['CONFIRM', 'REJECT', 'QUICKFIX_CAND']; // sent under the candidate-facing sender name
 const ML_NO_RESEND = ['DROP'];    // the next cycle retries these
@@ -37,7 +37,6 @@ function mailLogSheet_() {
 
 function mailLogWrite_(rows) {
   if (!rows.length) return;
-  rows = rows.slice(0, ML_MAX_ROWS);
   const sh = mailLogSheet_();
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, ML_H.length).setValues(rows.map(mailLogRow_));
 }
