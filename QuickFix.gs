@@ -307,20 +307,21 @@ function editValue_(f, raw, cur) {
 
 /** The registration check again on one row: closes the alerts the edit fixed, opens the new problems (REG_CHECKS only;
  *  a duplicate is the sync's call). Keeps the Flags column in step. Returns {closed: [type], opened: [msg]}. */
-function recheckRow_(ctx, x, emailEdited) {
+function recheckRow_(ctx, x) {
   const I = ctx.iv.I, A = ctx.alerts.table.I, rk = String(x[I['Response Key']]), out = { closed: [], opened: [] };
   if (!rk) return out;
   const c1raw = String(x[I['1st Choice']]).trim(), collected = String(x[I.Email]).trim().toLowerCase();
-  const chk = checkRegistration({ ts: x[I['Registered At']], collected: collected, typedEmail: emailEdited ? collected : String(x[I['Typed Email']]).trim(),
+  const chk = checkRegistration({ ts: x[I['Registered At']], collected: collected, typedEmail: String(x[I['Typed Email']]).trim(),
     first: String(x[I['First Name']]).trim(), family: String(x[I['Family Name']]).trim(), birth: x[I['Birth Date']], phone: x[I.Phone],
     c1: normDept(c1raw), c1raw: c1raw, c2: normDept(x[I['2nd Choice']]) }, [], S_().EMAIL_DOMAIN);
-  const now = {};
+  const now = {}, had = String(x[I.Flags]).split(',').map(f => f.trim());
   chk.alerts.forEach(a => { if (REG_CHECKS.indexOf(a.type) >= 0) now[a.type] = a; });
   REG_CHECKS.forEach(t => {
     const key = 'REG|' + t + '|' + rk;
     if (now[t]) {
-      if (ctx.alerts.add({ severity: now[t].severity, type: t, code: ivLabel_(ctx, x), binome: x[I.Binome], msg: now[t].msg, key: key, notifyBinome: false })) out.opened.push(now[t].msg);
-    } else if (ctx.alerts.openKeys[key]) {
+      // only what the row did not already have: a problem an admin closed with Mark resolved stays closed
+      if (had.indexOf(t) < 0 && ctx.alerts.add({ severity: now[t].severity, type: t, code: ivLabel_(ctx, x), binome: x[I.Binome], msg: now[t].msg, key: key, notifyBinome: false })) out.opened.push(now[t].msg);
+    } else if (ctx.alerts.table.data.some(r => String(r[A.Key]) === key && (r[A.Status] === 'OPEN' || r[A.Status] === 'SNOOZED'))) {
       ctx.alerts.resolveWhere(r => String(r[A.Key]) === key, 'RESOLVED');
       out.closed.push(t.toLowerCase().replace(/_/g, ' '));
     }
@@ -354,6 +355,7 @@ function editRow_(ctx, x, values, dry) {
   keys.forEach(f => { was[f] = x[I[f]]; });
   const what = keys.map(f => f + ' ' + shown_(was[f]) + ' → ' + shown_(v[f])).join(', ');
   keys.forEach(f => { x[I[f]] = v[f]; });
+  if (v.Email) x[I['Typed Email']] = v.Email; // the form's own typed copy follows, or the old one would raise the mismatch again
   let where = '', move = null;
   const dep = v['1st Choice'];
   if (dep && !x[I.Binome] && x[I.Status] === ST.UNASSIGNED) { // not on hold, not out
@@ -369,7 +371,7 @@ function editRow_(ctx, x, values, dry) {
       where += '. ' + b.code + ' does not take ' + dep + ': use Move interviewee to give them a binome that does';
     }
   }
-  const re = recheckRow_(ctx, x, keys.indexOf('Email') >= 0);
+  const re = recheckRow_(ctx, x);
   const checks = (re.closed.length ? '. Closed: ' + re.closed.join(', ') : '') + (re.opened.length ? '. New: ' + re.opened.join(' ') : '');
   if (!dry) keys.forEach(f => logIvChange_(ctx, String(x[I.Code]).trim() || label, 'Edited ' + f, plainVal_(was[f]), plainVal_(v[f])));
   return { text: label + ': ' + what + where + checks + '.', move: move };

@@ -409,6 +409,13 @@ let oddCode;
   const fix = edit(it.code, { 'Birth Date': '01/03/2005' });
   assert(/Closed: bad birthdate/.test(fix.messages[0]), fix.messages[0]);
   assert(!find('BAD_BIRTHDATE', x => x.code === it.code), 'closed');
+  // an alert closed with Mark resolved stays closed when another field is edited; a fixed email stays fixed
+  const ext = edit(it.code, { Email: 'someone.ext@gmail.com' });
+  assert(/New: .*non-@/.test(ext.messages[0]), ext.messages[0]);
+  assert.strictEqual(row()[IV['Typed Email']], 'someone.ext@gmail.com', 'the typed copy follows the email');
+  call('webRun', 'resolve', { ids: [find('EXTERNAL_EMAIL', x => x.code === it.code).id] });
+  edit(it.code, { Discord: 'someone#1' });
+  assert(!find('EXTERNAL_EMAIL', x => x.code === it.code), 'a resolved alert does not come back');
   // a new 1st choice is saved either way; a binome that does not take it is named, and nothing moves
   const tag = call('webState').binomes.find(b => b.code === it.binome).tag;
   const dep = ['IT', 'COMM', 'FLER', 'HR'].find(d => !/\ball\b/i.test(tag) && !new RegExp('\\b' + d + '\\b', 'i').test(tag));
