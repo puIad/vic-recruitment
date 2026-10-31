@@ -74,6 +74,12 @@ module.exports = async (req, res) => {
     catch (e) { console.warn(JSON.stringify({ at: 'accept', error: String(e.message).slice(0, 200) })); return direct('Could not save it as pending.'); }
   }
 
+  // going final waits for every Phase 1 Result change to be applied or addressed (docs/admin-features.md): only this side sees the queue
+  if (fn === 'webRun' && args[0] === 'p1Final' && args[1] && args[1].op === 'final') {
+    let open;
+    try { open = await P.resultsOpen(Date.now()); } catch (e) { return done(503, { error: 'Could not check the pending changes: try again.' }, false); }
+    if (open) return done(200, { error: 'A result is still a pending change or a dropped change nobody addressed: settle it first.' }, false);
+  }
   let r, j;
   try {
     r = await fetch(S.runUrl(), {
@@ -110,6 +116,10 @@ module.exports = async (req, res) => {
     return done(200, conflict ? { error: conflict[1], code: 'CONFLICT' } : { error: msg }, false);
   }
   const out = { value: j.response ? j.response.result : null };
+  // the preview lists what refuses going final; the pending check is only ours to make
+  if (fn === 'webRun' && args[0] === 'p1Final' && args[1] && args[1].op === 'preview' && out.value && out.value.result && Array.isArray(out.value.result.refusals)) {
+    try { if (await P.resultsOpen(Date.now())) out.value.result.refusals.push('A result is still a pending change or a dropped change nobody addressed.'); } catch (e) { /* the final click checks again */ }
+  }
   if (fn === 'webAccess' && !!s.acc !== !!(out.value && out.value.ok)) { s.acc = out.value && out.value.ok ? true : undefined; S.addCookie(res, S.sessionCookie(s)); }
   if (fn === 'webPulse' && (b.rec === 2 || (b.rec === 1 && out.value && out.value.pending === true))) {
     try { out.rec = await P.read(s.email, Date.now()); } catch (e) { /* the next flagged pulse reads it */ }

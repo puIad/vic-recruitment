@@ -1,7 +1,7 @@
 // Pending changes (docs/plans.md › Slices 2 to 4): the author's record in Upstash Redis, the accept step and the queue publish.
 // Record = hash pc:<email>, one field per cell ("alert:A-0012", "setting:DIGEST_HOUR", "field:IT.12:Rating", "team:<email>",
 // "bfield:IT.12:Contacted", "binome:B.05", "bmove:IT.12"), each a JSON entry:
-//   {id, cell, kind (alert | setting | field | team | bfield | binome | bmove), alert?, op?, until? (alerts, binome), key? (settings), code?, field? (My binome
+//   {id, cell, kind (alert | setting | field | team | bfield | binome | bmove | result), alert?, op?, until? (alerts, binome), key? (settings), code?, field? (My binome
 //    and bfield), email? (team: the member), binome? (bfield, binome, bmove), note?, codes? (binome: the author's reason, the codes to move),
 //    value (what the author wants), seen (what their screen showed), at (the click),
 //    state: pending | applied | met | dropped, by (apply-by = the sealed token's end), wrote? (Google's write or check
@@ -78,7 +78,7 @@ const BIN_OP = { pause: 'PAUSED', resume: 'ACTIVE', date: 'PAUSED' }, BIN_SEEN =
 const scalar = v => typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v)) || (typeof v === 'string' && v.length <= 2100);
 /** A change as the page sends it, with at (the click) and built? (its snapshot's build time):
  *  {kind: 'alert', alert, op, seen, until?} · {kind: 'setting', key, value, seen} · {kind: 'field', code, field, value, seen} ·
- *  {kind: 'team', email, value, seen} (both booleans) · {kind: 'bfield', binome, code, field, value, seen} ·
+ *  {kind: 'result', code, value, seen, note?} (a Phase 1 Result override, '' clears) · {kind: 'team', email, value, seen} (both booleans) · {kind: 'bfield', binome, code, field, value, seen} ·
  *  {kind: 'binome', binome, op, value, seen, note, until (ms or null), codes}.
  *  The page is not trusted for more than that: the script checks every value again. */
 const valid = c => !!c && Number.isFinite(c.at) && (
@@ -87,11 +87,12 @@ const valid = c => !!c && Number.isFinite(c.at) && (
   : c.kind === 'setting' ? /^[A-Z][A-Z0-9_]{0,40}$/.test(String(c.key)) && scalar(c.value) && scalar(c.seen)
   : c.kind === 'field' ? /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(c.code)) && GOLD.indexOf(c.field) >= 0 && scalar(c.value) && scalar(c.seen)
   : c.kind === 'team' ? /^[^\s@:]{1,80}@[^\s@:]{1,80}$/.test(String(c.email)) && typeof c.value === 'boolean' && typeof c.seen === 'boolean'
+  : c.kind === 'result' ? /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(c.code)) && scalar(c.value) && scalar(c.seen) && (c.note === undefined || (typeof c.note === 'string' && c.note.length <= 300))
   : c.kind === 'binome' ? /^B\.\d{2,3}$/.test(String(c.binome)) && BIN_OP[c.op] === c.value && BIN_SEEN[c.op] === c.seen && typeof c.note === 'string' && c.note.length <= 500 &&
     (c.until === null || c.until === undefined || Number.isFinite(c.until)) && Array.isArray(c.codes) && c.codes.length <= 200 && c.codes.every(x => /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(x)))
   : c.kind === 'bfield' && /^B\.\d{2,3}$/.test(String(c.binome)) && /^[A-Za-z]{1,10}\.\d{1,6}$/.test(String(c.code)) && ADMIN_GOLD.indexOf(c.field) >= 0 &&
     scalar(c.value) && scalar(c.seen));
-const cellOf = c => (c.kind === 'alert' ? 'alert:' + c.alert : c.kind === 'binome' ? 'binome:' + c.binome : c.kind === 'setting' ? 'setting:' + c.key : c.kind === 'team' ? 'team:' + String(c.email).toLowerCase()
+const cellOf = c => (c.kind === 'alert' ? 'alert:' + c.alert : c.kind === 'binome' ? 'binome:' + c.binome : c.kind === 'setting' ? 'setting:' + c.key : c.kind === 'team' ? 'team:' + String(c.email).toLowerCase() : c.kind === 'result' ? 'result:' + c.code
   : (c.kind === 'bfield' ? 'bfield:' : 'field:') + c.code + ':' + c.field);
 const valueOf = c => (c.kind === 'alert' ? VALUE[c.op] : c.value);
 const same = (a, b) => String(a) === String(b); // the page's values: Rating 7.5 or "7.5", Done true or "true"
@@ -123,6 +124,7 @@ async function accept(s, changes, now) {
     const base = { id: crypto.randomUUID(), cell: cell, kind: c.kind, value: value, seen: seen, at: c.at, state: 'pending', by: s.ate };
     writes[cell] = Object.assign(base, c.kind === 'alert' ? { alert: String(c.alert), op: c.op, until: c.op === 'snooze' ? c.until : undefined }
       : c.kind === 'binome' ? { binome: c.binome, op: c.op, note: c.note, until: c.until || null, codes: c.codes.map(String) }
+      : c.kind === 'result' ? { code: c.code, note: c.note }
       : c.kind === 'setting' ? { key: c.key } : c.kind === 'team' ? { email: String(c.email).toLowerCase() }
       : c.kind === 'bfield' ? { binome: c.binome, code: c.code, field: c.field } : { code: c.code, field: c.field });
   });
@@ -158,6 +160,13 @@ async function mark(email, a, now) {
   });
   if (Object.keys(w).length) await save(email, w);
   return Object.assign({}, rec, w);
+}
+
+/** Is any author's Phase 1 Result override ("result:<code>") pending, or dropped and not yet addressed? Going final waits for none. */
+async function resultsOpen(now) {
+  const [emails] = await redis([['SMEMBERS', LIVE]]);
+  const flats = emails.length ? await redis(emails.map(e => ['HGETALL', key(e)])) : [];
+  return flats.some(f => { const { rec } = parse(f, now); return Object.keys(rec).some(c => /^result:/.test(c) && (rec[c].state === 'pending' || (rec[c].state === 'dropped' && !rec[c].addressed))); });
 }
 
 /**
@@ -198,4 +207,4 @@ async function forSync(mailed, now) {
   return out;
 }
 
-module.exports = { FORMAT, LIVE, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync };
+module.exports = { FORMAT, LIVE, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync, resultsOpen };
