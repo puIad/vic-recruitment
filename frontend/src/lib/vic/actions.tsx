@@ -2,8 +2,8 @@ import * as React from "react"
 import { toast } from "sonner"
 import { useConfirm } from "./confirm"
 import { useVic } from "./store"
-import { useUi } from "./ui"
 import { useAnalytics } from "./analytics"
+import { useOfferMove } from "./move-offer"
 import { acceptAlerts } from "./pending"
 import { signInUrl } from "./api"
 import { MemberName, MemberNames } from "@/components/member-name"
@@ -131,6 +131,7 @@ function Warnings({ list }: { list: string[] }) {
 
 export function useActions() {
   const confirm = useConfirm()
+  const offerMove = useOfferMove()
   const run = useVic((s) => s.run)
   const refresh = useVic((s) => s.refresh)
   const dropAlerts = useVic((s) => s.dropAlerts)
@@ -366,23 +367,12 @@ export function useActions() {
       },
 
       /** Edit a candidate's data: a direct write, the admin waits for the reply. A new 1st choice their binome does not take offers the move. */
-      async editCandidate(c: CandidateData, values: Record<string, string>) {
+      async editCandidate(c: CandidateData, values: Record<string, string>, inline = false) {
         const out = await go<EditResult>("editCandidate", { code: c.code, values }, `Edit ${c.code}`)
         after()
         void useAnalytics.getState().load(true)
         const move = out?.result?.move
-        if (move) {
-          const ok = await confirm({
-            title: `Move ${c.name || c.code} to a binome that takes ${move.dep}?`,
-            body: (
-              <p>
-                The change is saved. <Mono>{move.binome}</Mono> does not take {move.dep}, so {c.name || c.code} stays there until you move them. Contacted, the date and the notes go along.
-              </p>
-            ),
-            okLabel: "Choose a binome",
-          })
-          if (ok) useUi.getState().openMoveDialog({ code: move.code })
-        }
+        if (move) await offerMove(move, c.name, inline)
         return !!out?.result
       },
 
@@ -632,5 +622,5 @@ export function useActions() {
       },
     }
     return A
-  }, [confirm, run, refresh, dropAlerts])
+  }, [confirm, run, refresh, dropAlerts, offerMove])
 }

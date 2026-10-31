@@ -9,6 +9,7 @@ import {
   Link2,
   Mail,
   MoveRight,
+  Pencil,
   Send,
   ShieldCheck,
   Sparkles,
@@ -190,6 +191,7 @@ function TypoPanel({ a, v }: { a: Alert; v: RegView }) {
   const quick = useQuick()
   const { busy, pending, act } = useBusy()
   const fields = TYPO_FIELDS[a.type]
+  const openEdit = useUi((s) => s.openEditDialog)
   const [vals, setVals] = React.useState<Record<string, string>>(() => Object.fromEntries(fields.map((f) => [f.key, f.of(v)])))
   const changed = fields.some((f) => (vals[f.key] || "").trim() !== f.of(v).trim())
   const filled = fields.every((f) => (vals[f.key] || "").trim())
@@ -220,6 +222,11 @@ function TypoPanel({ a, v }: { a: Alert; v: RegView }) {
       )}
       <div className="flex flex-wrap items-center justify-end gap-2">
         <p className="mr-auto text-xs text-muted-foreground">Saved in the Master and in their binome sheet.</p>
+        {v.code && (
+          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => openEdit({ code: v.code, field: fields[0].key })}>
+            <Pencil /> All their data…
+          </Button>
+        )}
         <ActionButton id="save" pending={pending} busy={busy} icon={Check} variant="default" type="submit" disabled={!changed || !filled}>
           Save the fix
         </ActionButton>
@@ -263,6 +270,7 @@ function EmailChoice({ a, v }: { a: Alert; v: RegView }) {
 function RoutingPanel({ a, v }: { a: Alert; v: RegView }) {
   const quick = useQuick()
   const openMove = useUi((s) => s.openMoveDialog)
+  const openEdit = useUi((s) => s.openEditDialog)
   const { busy, pending, act } = useBusy()
   const valid = (d: string) => (DEPTS.includes(d) ? d : "")
   const [c1, setC1] = React.useState(valid(v.c1))
@@ -293,6 +301,11 @@ function RoutingPanel({ a, v }: { a: Alert; v: RegView }) {
       {c1 && c1 === c2 && <p className="text-xs text-warning">Both choices are {c1}.</p>}
       <div className="flex flex-wrap items-center justify-end gap-2">
         <p className="mr-auto text-xs text-muted-foreground">{waiting ? "Saving a new 1st choice places them in a binome right away." : "Saved in the Master and in their binome sheet."}</p>
+        {v.code && (
+          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={() => openEdit({ code: v.code, field: "1st Choice" })}>
+            <Pencil /> All their data…
+          </Button>
+        )}
         {a.type === "NO_BINOME" && v.code && (
           <ActionButton id="move" pending={pending} busy={busy} icon={MoveRight} onClick={() => openMove({ code: v.code, alertId: a.id })}>
             Pick a binome…

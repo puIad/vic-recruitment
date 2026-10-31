@@ -423,6 +423,14 @@ let oddCode;
   assert(mn, 'opened');
   quick('edit', mn.id, { values: { 'First Name': 'Amine' } }); // only the first name differs
   assert(find('MISSING_NAME'), 'still open: the family name is junk');
+  // the alert's edit carries the Move offer too, as the Edit form does
+  const jr = ivRow(x => x[IV['First Name']] === 'Amine' && x[IV['Family Name']] === '.');
+  const jtag = call('webState').binomes.find(b => b.code === jr[IV.Binome]).tag;
+  const jdep = ['IT', 'COMM', 'FLER', 'HR'].find(d => !/\ball\b/i.test(jtag) && !new RegExp('\\b' + d + '\\b', 'i').test(jtag));
+  if (jdep) {
+    const mo = quick('edit', mn.id, { values: { '1st Choice': jdep } });
+    assert.deepStrictEqual([mo.result.moves.length, mo.result.moves[0].binome, mo.result.moves[0].dep], [1, jr[IV.Binome], jdep]);
+  }
   quick('edit', mn.id, { values: { 'Family Name': 'Belkacem' } });
   assert(!find('MISSING_NAME'), 'closed once both are real');
   // a new 1st choice is saved either way; a binome that does not take it is named, and nothing moves

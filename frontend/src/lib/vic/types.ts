@@ -109,6 +109,14 @@ export interface HeldAlert {
 export interface QuickOut {
   lines: string[]
   done: string[]
+  /** an edit saved a 1st choice their binome does not take: the page offers Move interviewee */
+  moves?: MoveOffer[]
+}
+
+export interface MoveOffer {
+  code: string
+  binome: string
+  dep: string
 }
 
 export interface MailDraft {
@@ -651,5 +659,5 @@ export interface CandidateData {
 /** webRun('editCandidate'): move is set when their binome does not take the new 1st choice (nothing moved yet) */
 export interface EditResult {
   text: string
-  move: { code: string; binome: string; dep: string } | null
+  move: MoveOffer | null
 }

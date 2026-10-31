@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useConfirm } from "./confirm"
 import { useVic } from "./store"
 import { acceptAlerts, acceptFix } from "./pending"
+import { useOfferMove } from "./move-offer"
 import type { Alert, MailDraft, QuickOut, RepairKind } from "./types"
 
 /**
@@ -71,6 +72,7 @@ function MailEditor({ drafts, testMode, onEdit }: { drafts: MailDraft[]; testMod
 
 export function useQuick() {
   const confirm = useConfirm()
+  const offerMove = useOfferMove()
   const run = useVic((s) => s.run)
   const refresh = useVic((s) => s.refresh)
   const dropAlerts = useVic((s) => s.dropAlerts)
@@ -138,7 +140,9 @@ export function useQuick() {
           })
           if (!ok) return null
         }
-        return q("edit", [a.id], { values }, `Fix ${name(a)}`)
+        const res = await q("edit", [a.id], { values }, `Fix ${name(a)}`)
+        if (res?.moves?.[0]) await offerMove(res.moves[0], name(a))
+        return res
       },
       setCell: async (a: Alert, args: { contacted?: string; date?: string; time?: string }) => ((await acceptFix(a, args)) ? pending([a.id]) : q("setCell", [a.id], args, `Fix ${a.code}`)),
       exclude: (a: Alert) => q("exclude", [a.id], {}, "Exclude"),
@@ -251,5 +255,5 @@ export function useQuick() {
       },
     }
     return Q
-  }, [confirm, run, refresh, dropAlerts])
+  }, [confirm, run, refresh, dropAlerts, offerMove])
 }
