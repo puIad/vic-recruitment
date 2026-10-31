@@ -291,7 +291,8 @@ function interviewForms_(args) {
   const rows = log.data.map((r, i) => ({ r: r, n: i + 2 })).filter(o => (code ? t(o.r[L.Interviewee]) === code : t(o.r[L['Response Key']]) === key));
   const dash = {}, ss = ss_(), dsh = ss.getSheetByName(TAB.DASH), D = idx_(DASH_H);
   if (dsh && dsh.getLastRow() > 1) dsh.getRange(2, 1, dsh.getLastRow() - 1, DASH_H.length).getValues().forEach(r => { dash[t(r[D['Response Key']])] = r; });
-  const gf = {}, ish = rows.some(o => !/^DASH\|/.test(t(o.r[L['Response Key']]))) ? responseSheet_('INT') : null;
+  const isDashKey = k => /^DASH\|/.test(k);
+  const gf = {}, ish = rows.some(o => !isDashKey(t(o.r[L['Response Key']]))) ? responseSheet_('INT') : null;
   if (ish && ish.getLastRow() > 1) {
     const data = ish.getDataRange().getValues(), H = intHeaders_(data[0]), Qc = questionCols_(data[0]);
     for (let k = 1; k < data.length; k++) {
@@ -301,7 +302,7 @@ function interviewForms_(args) {
   }
   const fmt = d => (d instanceof Date && !isNaN(d) ? fmt_(d, 'dd/MM/yyyy HH:mm') : '');
   const forms = rows.map(o => {
-    const lk = t(o.r[L['Response Key']]), isDash = /^DASH\|/.test(lk), d = isDash ? dash[lk] : null;
+    const lk = t(o.r[L['Response Key']]), isDash = isDashKey(lk), d = isDash ? dash[lk] : null;
     const vals = isDash ? (d ? INTERVIEW_QUESTIONS.map((q, j) => d[DQ + j]) : null) : gf[lk] || null, answers = vals ? {} : null;
     if (vals) INTERVIEW_QUESTIONS.forEach((q, j) => { answers[q.id] = vals[j] instanceof Date ? fmt(vals[j]) : vals[j]; });
     return { key: lk, source: isDash ? 'Dashboard' : 'Google Form', at: fmt(o.r[L['Submitted At']]), by: lc_(o.r[L.Submitter]), result: t(o.r[L.Result]),

@@ -256,7 +256,7 @@ export default function InterviewPage() {
   const navigate = useNavigate()
   const base = useBinomeBase(), back = base || "/"
   const member = useVic((s) => s.member)
-  const isAdmin = useVic((s) => s.gate.mode !== "member")
+  const isAdmin = useVic((s) => s.gate.mode === "ok")
   const showProfile = useProfile((s) => s.show)
   const user = useVic((s) => (s.member?.user || s.state?.user || "").toLowerCase())
   const adminLoaded = useVic((s) => s.gate.mode === "ok" && !s.loading)
