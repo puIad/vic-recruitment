@@ -204,6 +204,7 @@ function mailResendCore_(a, args) {
       const x = by[s.id];
       if (!x || x.v[5] !== 'Failed') return lines.push('A mail in the list was already handled (refresh the page).');
       if (ML_NO_RESEND.indexOf(String(x.v[1])) >= 0) return lines.push(x.v[2] + ': the next cycle retries it.');
+      if (mailMarked_(ctx, x)) { x.v[5] = 'Resent'; x.v[8] = ''; mailLogPut_(x); return lines.push(x.v[2] + ': already sent by another path.'); } // the mark was set since the preview
       const to = s.to || String(x.v[2]).trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return lines.push(to + ' is not an email address.');
       if (!String(x.v[8])) return lines.push(x.v[2] + ': the mail was not stored, so it cannot be resent.');
