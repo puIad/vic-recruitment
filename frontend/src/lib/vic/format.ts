@@ -66,6 +66,8 @@ const ALERT_LABELS: Record<string, string> = {
   MEMBER_CHANGED: "Member changed",
   COVER_ADDED: "Cover started",
   TAG_CHANGED: "Department changed",
+  BINOME_STATUS: "Binome paused or resumed",
+  PAUSE_DATE: "Resume date on an active binome",
   REASSIGNED: "Interviewee moved",
   DELETED: "Application deleted",
   MANUAL_EDIT: "Edited by hand",

@@ -221,6 +221,7 @@ function indexCtx_(ctx) {
     members: [[r[B['Member 1']], r[B['Email 1']]], [r[B['Member 2']], r[B['Email 2']]]]
       .filter(m => String(m[0]).trim() || String(m[1]).trim())
       .map(m => ({ name: String(m[0]).trim(), email: String(m[1]).trim().toLowerCase() })),
+    pausedUntil: hasPausedCol_(ctx) && r[B['Paused Until']] instanceof Date && !isNaN(r[B['Paused Until']]) ? r[B['Paused Until']] : null,
     row: r,
   }));
   ctx.binByCode = {}; ctx.binomes.forEach(b => { ctx.binByCode[b.code] = b; });

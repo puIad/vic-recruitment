@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowRightLeft, Building2, ExternalLink, KeyRound, MoveRight, MoreHorizontal, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
+import { ArrowRightLeft, Building2, CalendarClock, ExternalLink, KeyRound, MoveRight, MoreHorizontal, PauseCircle, PlayCircle, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { OpenChip } from "@/components/open-chip"
@@ -16,22 +16,28 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from "@/components/ui/input"
 import { useActions } from "@/lib/vic/actions"
 import { BINOME_STATUS, pct } from "@/lib/vic/format"
+import { pausedLabel } from "@/lib/vic/pause"
+import { useBinomeView, type Mark } from "@/lib/vic/pending"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
-import type { Binome, Cover, Unpaired } from "@/lib/vic/types"
+import type { Binome, BinomeOp, Cover, PendingEntry, Unpaired } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { MemberName, MemberNames } from "@/components/member-name"
+import { PendingMark } from "@/app/alerts/components/pending-mark"
 import { ACCESS_BADGE } from "./components/access-badge"
 import { AccessDialog } from "./components/access-dialog"
 import { PairingPanel } from "./components/pairing-panel"
+import { PauseDialog } from "./components/pause-dialog"
 import { TagDialog } from "./components/tag-dialog"
 
 const NONE: Binome[] = []
+/** A binome as its author's screen shows it: their pending pause over the snapshot, with its mark. */
+type Row = Binome & { mark?: Mark<PendingEntry> }
 
-/** The row menus open the page's dialogs (access, department) on their binome. */
-const DialogCtx = React.createContext<{ access: (b: Binome) => void; tag: (b: Binome) => void }>({ access: () => {}, tag: () => {} })
+/** The row menus open the page's dialogs (access, department, pause) on their binome. */
+const DialogCtx = React.createContext<{ access: (b: Binome) => void; tag: (b: Binome) => void; pause: (b: Binome, op: BinomeOp) => void }>({ access: () => {}, tag: () => {}, pause: () => {} })
 
-function RowActions({ b }: { b: Binome }) {
+function RowActions({ b }: { b: Row }) {
   const open = React.useContext(DialogCtx)
   const openSheet = useUi((s) => s.openMemberSheet)
   const openMove = useUi((s) => s.openMoveDialog)
@@ -57,6 +63,21 @@ function RowActions({ b }: { b: Binome }) {
         <DropdownMenuItem className="cursor-pointer" onSelect={() => open.tag(b)}>
           <Building2 /> Change department…
         </DropdownMenuItem>
+        {b.status === "ACTIVE" && (
+          <DropdownMenuItem disabled={b.mark?.kind === "pending"} className="cursor-pointer" onSelect={() => open.pause(b, "pause")}>
+            <PauseCircle /> Pause…
+          </DropdownMenuItem>
+        )}
+        {b.status === "PAUSED" && (
+          <>
+            <DropdownMenuItem disabled={b.mark?.kind === "pending"} className="cursor-pointer" onSelect={() => open.pause(b, "resume")}>
+              <PlayCircle /> Resume now…
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={b.mark?.kind === "pending"} className="cursor-pointer" onSelect={() => open.pause(b, "date")}>
+              <CalendarClock /> Change resume date…
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem disabled={!locked} className="cursor-pointer" onSelect={() => openSheet({ mode: "replace", binome: b.code })}>
           <Repeat /> Replace a member…
@@ -72,7 +93,7 @@ function RowActions({ b }: { b: Binome }) {
   )
 }
 
-const columns: ColumnDef<Binome>[] = [
+const columns: ColumnDef<Row>[] = [
   {
     accessorKey: "code",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Binome" />,
@@ -94,7 +115,8 @@ const columns: ColumnDef<Binome>[] = [
       return (
         <span className="inline-flex items-center gap-2">
           <span className={cn("size-2.5 rounded-full", s.dot)} aria-hidden="true" />
-          <span className="font-medium">{s.label}</span>
+          <span className="font-medium">{row.original.status === "PAUSED" ? pausedLabel(row.original.pausedUntil) : s.label}</span>
+          <PendingMark mark={row.original.mark} />
           {row.original.tag && <span className="text-muted-foreground">· {row.original.tag === "ALL" ? "takes any department" : row.original.tag}</span>}
           {ACCESS_BADGE[row.original.access || ""] && (
             <span
@@ -238,21 +260,25 @@ export default function BinomesPage() {
   }
 
   const order = { ACTIVE: 0, PAUSED: 1, DRAFT: 2 } as const
+  const over = useBinomeView()
+  const rows = React.useMemo<Row[]>(() => binomes.map((b) => (over[b.code] ? { ...b, status: over[b.code].status, pausedUntil: over[b.code].until, mark: over[b.code].mark } : b)), [binomes, over])
   const data = React.useMemo(() => {
     const s = q.trim().toLowerCase()
-    return binomes
+    return rows
       .slice()
       .sort((a, b) => order[a.status] - order[b.status] || a.code.localeCompare(b.code))
       .filter((b) => !s || `${b.code} ${b.tag} ${b.status} ${b.members.join(" ")}`.toLowerCase().includes(s))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [binomes, q])
+  }, [rows, q])
 
   const locked = binomes.filter((b) => b.status !== "DRAFT").length
   const [accessOf, setAccessOf] = React.useState<string | null>(null)
   const [tagOf, setTagOf] = React.useState<string | null>(null)
+  const [pauseOf, setPauseOf] = React.useState<{ code: string; op: BinomeOp } | null>(null)
+  const pauseBinome = rows.find((b) => b.code === pauseOf?.code) ?? null
   const accessBinome = binomes.find((b) => b.code === accessOf) ?? null
   const tagBinome = binomes.find((b) => b.code === tagOf) ?? null
-  const dialogs = React.useMemo(() => ({ access: (b: Binome) => setAccessOf(b.code), tag: (b: Binome) => setTagOf(b.code) }), [])
+  const dialogs = React.useMemo(() => ({ access: (b: Binome) => setAccessOf(b.code), tag: (b: Binome) => setTagOf(b.code), pause: (b: Binome, op: BinomeOp) => setPauseOf({ code: b.code, op }) }), [])
 
   return (
     <DialogCtx.Provider value={dialogs}>
@@ -310,6 +336,7 @@ export default function BinomesPage() {
       <CoversCard list={covers} />
       <AccessDialog binome={accessBinome} onClose={() => setAccessOf(null)} />
       <TagDialog binome={tagBinome} onClose={() => setTagOf(null)} />
+      {pauseBinome && pauseOf && <PauseDialog key={pauseOf.code + pauseOf.op} binome={pauseBinome} op={pauseOf.op} all={rows} interviewees={state?.interviewees ?? []} onClose={() => setPauseOf(null)} />}
     </BaseLayout>
     </DialogCtx.Provider>
   )

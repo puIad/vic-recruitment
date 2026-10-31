@@ -28,6 +28,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | `Sync.gs` | pull binome sheets, timing alerts, Tracker, the main cycle `runCycle_`, triggers |
 | `Setup.gs` | menu, `setup`, tabs, form links, trigger install (owner only) |
 | `Team.gs` | team import, Draft / Lock / Re-share, Reset all binomes (`resetBinomesCore_`) |
+| `Pause.gs` | pause and resume a binome: the status write, its moves, resume from the date |
 | `Members.gs` | after lock: change / swap members, temporary covers (Member Changes tab) |
 | `Actions.gs` | Move interviewee, resolve alerts, daily digest |
 | `Screening.gs` | screening ([launch-features.md](launch-features.md#2-screening-hold-low-effort-applications-decline-vic-members)): the VIC members sheet through the script cache, `screenWaiting_` each run, Approve / Decline / Restore (`reviewRow_`), Send rejections |
@@ -46,7 +47,7 @@ All `.gs` files share one global scope; `Config.gs` loads first (constants), the
 | Alerts | script (+ admins resolve) | ID, severity, type, status OPEN / RESOLVED / AUTO-RESOLVED / AUTO-FIXED / SNOOZED / MUTED, key (dedup) |
 | Interviewees | script (warning-protected) | one row per registration: code, binome, status, contact data, what the binome wrote; Risk and Screening (admins only) |
 | Binomes | admins before Lock, then the tools | code, 2 members, tag, status DRAFT / ACTIVE / PAUSED, sheet link |
-| Member Changes | script | PERMANENT (change/swap) and TEMPORARY (cover) rows |
+| Member Changes | script | PERMANENT (change/swap), TEMPORARY (cover), TAG (department) and STATUS (pause, resume, resume date) rows |
 | Team | import + admins | name, email, department, Pair As, Exclude |
 | Interview Log | script | every interview form, result OK / AUTOCORRECTED / FLAGGED; a dashboard form's key is `DASH\|binome\|code`, and an edit rewrites its row |
 | Settings | admins / dashboard | key → value (source of truth) |

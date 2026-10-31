@@ -128,6 +128,8 @@ export interface Binome {
   code: string
   tag: string
   status: BinomeStatus
+  /** the date a paused binome resumes (ms); absent on an older script */
+  pausedUntil?: number | null
   fileUrl: string
   members: string[]
   people: Person[]
@@ -300,7 +302,7 @@ export interface SettingRow {
 export interface HistoryRow {
   at: string
   by: string
-  type: "PERMANENT" | "TEMPORARY" | "TAG" | string
+  type: "PERMANENT" | "TEMPORARY" | "TAG" | "STATUS" | string
   binome: string
   out: string
   inn: string
@@ -412,6 +414,8 @@ export interface MemberState {
   binome: string
   tag: string
   status: BinomeStatus | ""
+  /** the date a paused binome resumes (ms); absent on an older script or read from the sheet */
+  pausedUntil?: number | null
   fileUrl: string
   members: string[]
   candidates: Candidate[]
@@ -602,7 +606,25 @@ export interface BFieldEntry extends EntryBase {
   value: CellValue
   seen: CellValue
 }
-export type PendingEntry = AlertEntry | SettingEntry | FieldEntry | TeamEntry | BFieldEntry
+export type BinomeOp = "pause" | "resume" | "date"
+/** An admin's pause, resume or change of resume date of one binome, with the codes to move away on a pause */
+export interface BinomeEntry extends EntryBase {
+  kind: "binome"
+  binome: string
+  op: BinomeOp
+  value: "ACTIVE" | "PAUSED"
+  seen: "ACTIVE" | "PAUSED"
+  note: string
+  until: number | null
+  codes: string[]
+}
+/** A move a pause could not make: always a drop, with its reason */
+export interface BMoveEntry extends EntryBase {
+  kind: "bmove"
+  binome: string
+  code: string
+}
+export type PendingEntry = AlertEntry | SettingEntry | FieldEntry | TeamEntry | BFieldEntry | BinomeEntry | BMoveEntry
 /** cell → entry */
 export type PendingRec = Record<string, PendingEntry>
 /** A change as the page sends it to the accept step. built = its snapshot's build time (admins). */
@@ -612,3 +634,4 @@ export type PendingChange =
   | { kind: "field"; code: string; field: GoldKey; value: CellValue; seen: CellValue; at: number }
   | { kind: "team"; email: string; value: boolean; seen: boolean; at: number }
   | { kind: "bfield"; binome: string; code: string; field: AdminGoldKey; value: CellValue; seen: CellValue; at: number }
+  | { kind: "binome"; binome: string; op: BinomeOp; value: BinomeEntry["value"]; seen: BinomeEntry["seen"]; note: string; until: number | null; codes: string[]; at: number }

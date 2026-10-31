@@ -1,6 +1,7 @@
 // Queue consumer (topic vic-apply, web/vercel.json): applies an author's pending changes through the script's webApply,
 // as them, with the access token sealed in the message (docs/plans.md › Slice 2). The changes come from the author's
 // record, never from the message, so a forged delivery can at most replay a real one.
+const crypto = require('crypto');
 const S = require('../lib/session'), P = require('../lib/pending');
 
 /** Thrown to have the message delivered again in `after` seconds. */
@@ -46,7 +47,7 @@ async function handle(msg, meta) {
 
   const batch = pending.slice(0, BATCH);
   const changes = batch.map(e => ({ id: e.id, kind: e.kind, alert: e.alert, op: e.op, until: e.until, key: e.key, code: e.code, field: e.field,
-    email: e.email, binome: e.binome, value: e.value, seen: e.seen, at: e.at }));
+    email: e.email, binome: e.binome, note: e.note, codes: e.codes, value: e.value, seen: e.seen, at: e.at }));
   let r, j;
   try {
     r = await fetch(S.runUrl(), {
@@ -77,6 +78,12 @@ async function handle(msg, meta) {
     const x = by[e.id];
     return x.end === 'dropped' ? { state: 'dropped', sheet: x.sheet, reason: x.reason, wrote: x.at, again: !x.reason } : { state: x.end, wrote: x.at };
   });
+  // the moves a pause could not make: each its own drop, answered like any other (the pause itself stands)
+  const moves = {}, at = Date.now();
+  batch.forEach(e => ((by[e.id] && by[e.id].moves) || []).forEach(m => {
+    moves['bmove:' + m.code] = { id: crypto.randomUUID(), cell: 'bmove:' + m.code, kind: 'bmove', binome: e.binome, code: m.code, value: '', seen: '', at: e.at, state: 'dropped', reason: m.reason, droppedAt: at };
+  }));
+  if (Object.keys(moves).length) await P.save(email, moves);
   if (mine.some(e => !by[e.id])) throw new Later(GAP_MS / 1000 + 1); // past the batch: the next call, a minute on
 }
 

@@ -92,6 +92,14 @@ const MAILS = [
     ['heading', '{cover} covers {codes}'],
     ['text', 'Hi {first},\n\n**{cover}** ({coverEmail}) covers **{codes}** for your binome{instead}{reason}. ' +
       'You stay responsible for the binome sheet: keep Contacted / Date / Time up to date for them.']] },
+  { id: 'BINOME_PAUSED', name: 'Binome paused', to: 'binome', vars: ['first', 'binome', 'until'], fields: [
+    ['subject', '[VIC Recruitment] Binome {binome} is paused'],
+    ['heading', 'Binome {binome} is paused'],
+    ['text', 'Hi {first},\n\nYour binome **{binome}** is paused{until}. It gets no new candidates for now: keep going with the ones you have.']] },
+  { id: 'BINOME_RESUMED', name: 'Binome resumed', to: 'binome', vars: ['first', 'binome'], fields: [
+    ['subject', '[VIC Recruitment] Binome {binome} is active again'],
+    ['heading', 'Binome {binome} is active again'],
+    ['text', 'Hi {first},\n\nYour binome **{binome}** is active again: new candidates will come.']] },
 ];
 const MAIL_MAX = 2000; // a pending change refuses a text over 2,100 characters (web/lib/pending.js)
 const MAIL_FIELD_LABEL = { subject: 'subject', heading: 'heading', above: 'text above', below: 'text below', text: 'text', codeLabel: 'code box label' };
@@ -133,7 +141,7 @@ const TAB = {
 };
 
 const TEAM_H = ['Full Name', 'Email', 'Department', 'Pair As', 'Exclude', 'Notes', 'Experienced'];
-const BIN_H = ['Binome', 'Member 1', 'Email 1', 'Member 2', 'Email 2', 'Tag', 'Status', 'File', 'File ID', 'Created'];
+const BIN_H = ['Binome', 'Member 1', 'Email 1', 'Member 2', 'Email 2', 'Tag', 'Status', 'File', 'File ID', 'Created', 'Paused Until'];
 // Plain-text ('@') columns: Setup / formatBinomeSheet_ format them, plainRows_ writes them as they are
 const IV_TEXT_COLS = ['Code', 'Phone', 'Facebook', 'Discord', 'Year', 'Interview Date', 'Interview Time', 'Response Key'];
 const BF_TEXT_COLS = ['Phone'];
@@ -262,7 +270,7 @@ const PENDING_STATUSES = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED];
 const SEV_RANK = { INFO: 1, MEDIUM: 2, HIGH: 3 };
 // Alert types that close themselves once the problem disappears
 // (timingAlerts_ closes these; the screening alerts NEEDS_REVIEW, VIC_MEMBER and MEMBERS_SHEET close in screenWaiting_)
-const AUTO_RESOLVING = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'NO_BINOME', 'UNPAIRED_MEMBER'];
+const AUTO_RESOLVING = ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE', 'BAD_DATE', 'NO_BINOME', 'UNPAIRED_MEMBER', 'PAUSE_DATE'];
 // Statuses of an alert put aside from the dashboard: its key is not raised again while it holds one
 const HELD_STATUSES = ['SNOOZED', 'MUTED'];
 

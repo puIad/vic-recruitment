@@ -37,6 +37,9 @@ function pendingSwitch_(a, on) {
  *  - {id, kind: 'bfield', binome, code, field, value, seen, at} (admins): Contacted, Interview Date or Interview Time of one
  *    candidate in that binome's sheet (the alerts' Fix, setCell_), compared and written as a member's field; the Master takes
  *    it at the next sync, which reads that sheet (dirty).
+ *  - {id, kind: 'binome', binome, op, note, until, codes, value, seen, at} (admins): pause, resume or change the resume date of one
+ *    binome, with the codes to move away on a pause (Pause.gs). The one kind that takes the script lock, after the document lock is
+ *    released; a call that can't finish it (lock busy, out of time) gives no result for it, and the consumer calls again.
  * Each change is judged against the sheet as it is when it applies (an earlier change of the same call included):
  * applied (written), met (the sheet already does it: no notice) or dropped (with the sheet's value, or a reason: a value the
  * sheet refuses, a candidate gone from the binome; no retry for those).
@@ -58,18 +61,25 @@ function webApply(call) {
   }
   const bf = admin ? changes.filter(c => c && c.kind === 'bfield').map(c => String(c.binome || '').trim()) : [];
   if (bf.length) w.bins = binomeTargets_(bf);
+  const statuses = admin ? changes.filter(c => c && c.kind === 'binome') : [], rest = changes.filter(c => statuses.indexOf(c) < 0);
   const lock = LockService.getDocumentLock(); // shared by everyone (issue 59); the sync holds only the script lock
   if (!lock.tryLock(5000)) return { v: APPLY_FORMAT, retry: 'BUSY' };
+  let out;
   try {
-    const results = changes.map(c => applyOne_(w, c || {}));
+    const results = rest.map(c => applyOne_(w, c || {}));
     if (results.some(r => r.end === 'applied')) { SpreadsheetApp.flush(); _settings = null; }
     w.wrote.forEach(f => Object.keys(f.wrote).forEach(code => goldPatch_(f.b, f.sh, f.rows[code].row, code, f.wrote[code])));
     // shortcut: outside the script lock, so a Pair or Redraw rewriting the drafts in the same seconds may keep its own note
     if (w.team && w.team.wrote.length) draftNotes_({ team: w.team.t, bin: loadTable_(TAB.BINOMES, BIN_H) }, w.team.wrote);
     const t = Date.now();
     results.forEach(r => { r.at = t; });
-    return { v: APPLY_FORMAT, results: results };
+    out = { v: APPLY_FORMAT, results: results };
   } finally { lock.releaseLock(); }
+  if (statuses.length) {
+    const done = binomeChanges_(statuses) || [], t = Date.now();
+    done.forEach(r => { r.at = t; out.results.push(r); });
+  }
+  return out;
 }
 
 function applyOne_(w, c) {
@@ -230,6 +240,7 @@ const DROP_REASON = { // the consumer's reasons; the script's own come as senten
 };
 const DROP_STATUS = { OPEN: 'Open', SNOOZED: 'Snoozed', MUTED: 'Muted', RESOLVED: 'Resolved', 'AUTO-RESOLVED': 'Closed by the script' };
 const DROP_OP = { resolve: 'Resolve', snooze: 'Snooze', mute: 'Mute', unmute: 'Unmute' };
+const BINOME_OP = { pause: 'Pause', resume: 'Resume', date: 'Change resume date' };
 
 function dropsSync_(ctx) {
   const props = PropertiesService.getScriptProperties(), secret = props.getProperty('DROPS_SECRET');
@@ -262,8 +273,9 @@ function dropsMail_(ctx, drops) {
   const blocks = drops.map(d => {
     const a = d.kind === 'alert' ? rows[d.alert] : null;
     const what = d.kind === 'alert' ? 'Alert ' + d.alert + (a ? ' · ' + a[KI.Type] + (a[KI.Interviewee] ? ' · ' + a[KI.Interviewee] : '') : '')
+      : d.kind === 'binome' ? 'Binome ' + d.binome : d.kind === 'bmove' ? d.code + ' · move out of ' + d.binome
       : d.kind === 'setting' ? 'Setting ' + d.key : d.kind === 'team' ? 'Team · ' + d.email + ' · Experienced' : d.code + ' · ' + d.field;
-    const mine = d.kind === 'alert' ? DROP_OP[d.op] || d.op : text(d.value);
+    const mine = d.kind === 'alert' ? DROP_OP[d.op] || d.op : d.kind === 'binome' ? BINOME_OP[d.op] || d.op : d.kind === 'bmove' ? 'Move to another binome' : text(d.value);
     const sheet = d.kind === 'alert' ? DROP_STATUS[d.sheet] || d.sheet : text(d.sheet);
     return mailH_(what) + mailList_([['You asked', mine], d.reason ? ['Why', DROP_REASON[d.reason] || d.reason] : ['The sheet now', sheet]]);
   });

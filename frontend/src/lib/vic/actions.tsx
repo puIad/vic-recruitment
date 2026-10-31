@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type {
   Alert,
+  BinomeOp,
   ChangeCheck,
   DraftPairOut,
   ChangePlan,
@@ -207,6 +208,14 @@ export function useActions() {
         const out = await go("teamSet", { email, experienced }, experienced ? "Mark experienced" : "Mark new")
         await refresh(true)
         return !!out
+      },
+      /** Pause, resume or change the resume date: a pending change when the owner's switch is on, else the direct write. */
+      async binomeStatus(binome: string, op: BinomeOp, note: string, until: number | null, codes: string[]) {
+        const value = op === "resume" ? "ACTIVE" : "PAUSED", seen = op === "pause" ? "ACTIVE" : "PAUSED"
+        if ((await useVic.getState().accept([{ kind: "binome", binome, op, value, seen, note, until, codes, at: Date.now() }])) === "ok") return true
+        const out = await go<{ end: string } | null>("binomeStatus", { binome, op, note, until, codes }, op === "pause" ? `Pause ${binome}` : op === "resume" ? `Resume ${binome}` : `Resume date ${binome}`)
+        await refresh(true)
+        return !!out && out.result?.end !== "dropped"
       },
       /** Draw the rest: the free members only; every draft there is stays. */
       async drawRest() {

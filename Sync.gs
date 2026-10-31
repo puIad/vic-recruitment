@@ -157,6 +157,12 @@ function timingAlerts_(ctx) {
         key: key, notifyBinome: true });
     });
   });
+  if (hasPausedCol_(ctx)) ctx.binomes.filter(b => b.status === 'ACTIVE' && String(b.row[ctx.bin.I['Paused Until']]).trim()).forEach(b => {
+    const key = 'PAUSEDATE|' + b.code;
+    current[key] = true;
+    ctx.alerts.add({ severity: 'INFO', type: 'PAUSE_DATE', code: '', binome: b.code, key: key,
+      msg: b.code + ' is ACTIVE but has a date in Paused Until in the Binomes tab: it is ignored. Clear the cell.' });
+  });
   if (activeOrPaused_(ctx).length) unpairedMembers(teamMembers_(ctx), ctx.binomes).forEach(m => {
     const key = 'UNPAIRED|' + m.email;
     current[key] = true;
@@ -292,6 +298,7 @@ function runCycle_(opts) {
     _settings = null;
     const ctx = loaded = loadCtx_(); lap('load');
     detectEdits_(ctx); lap('edits');
+    if (opts.timing) resumeDue_(ctx); // before the assignment: a binome back today can get today's registrants
     processRegistrations_(ctx);
     screenWaiting_(ctx); // before the assignment: a VIC member waiting for a binome is declined, not placed
     // placing gets 90 s, and ends 3 min after the call started (a long lock wait included): the writes after it need the rest
