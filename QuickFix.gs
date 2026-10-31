@@ -166,7 +166,8 @@ function quickCore_(op, a) {
         if (!r || (op === 'unmute' ? !held : r[A.Status] !== 'OPEN')) return lines.push(id + ': ' + (op === 'unmute' ? 'not snoozed or muted' : 'no longer open') + ' (refresh the page).');
         try {
           const msg = quickOne_(ctx, op, r, a);
-          if (!a.dryRun && QUICK_RESOLVES[op]) ctx.alerts.resolveWhere(x => x === r, 'RESOLVED');
+          // an edit closes a registration-check alert only if recheckRow_ found the problem gone
+          if (!a.dryRun && QUICK_RESOLVES[op] && !(op === 'edit' && REG_CHECKS.indexOf(String(r[A.Type])) >= 0)) ctx.alerts.resolveWhere(x => x === r, 'RESOLVED');
           lines.push(id + ': ' + msg);
           done.push(id);
         } catch (e) { lines.push(id + ': ' + e.message); }
@@ -195,7 +196,7 @@ function quickOne_(ctx, op, r, a) {
     case 'snooze': return snooze_(ctx, r, ref, String(a.for || ''));
     case 'mute': ctx.alerts.setStatus(r, 'MUTED', ctx.now); return 'muted: it will not be raised again.';
     case 'unmute': ctx.alerts.setStatus(r, 'OPEN'); return 'back with the open alerts.';
-    case 'edit': return editRow_(ctx, regRow_(ctx, ref), a.values || {}, !!a.dryRun).text;
+    case 'edit': return editRow_(ctx, regRow_(ctx, ref), a.values || {}).text;
     case 'setCell': return setCell_(ctx, ivRow_(ctx, ref), a);
     case 'exclude': return exclude_(ctx, ref);
     case 'pickCandidate': return pickCandidate_(ctx, ref, a.code);
@@ -336,7 +337,7 @@ function recheckRow_(ctx, x) {
  *  the binome sheet row and (by the caller's commit) the baseline stay in step; the registration check runs again; one
  *  Interviewee Changes row per changed field. Returns {text, move}: move = {code, binome, dep} when their binome does not
  *  take the new 1st choice (nothing moves without a second click). */
-function editRow_(ctx, x, values, dry) {
+function editRow_(ctx, x, values) {
   const I = ctx.iv.I, rk = String(x[I['Response Key']]), label = ivLabel_(ctx, x);
   if (isOut_(x[I.Status])) throw new Error(label + ' is ' + String(x[I.Status]).toLowerCase() + ': restore it first.');
   const v = {};
@@ -373,7 +374,7 @@ function editRow_(ctx, x, values, dry) {
   }
   const re = recheckRow_(ctx, x);
   const checks = (re.closed.length ? '. Closed: ' + re.closed.join(', ') : '') + (re.opened.length ? '. New: ' + re.opened.join(' ') : '');
-  if (!dry) keys.forEach(f => logIvChange_(ctx, String(x[I.Code]).trim() || label, 'Edited ' + f, plainVal_(was[f]), plainVal_(v[f])));
+  keys.forEach(f => logIvChange_(ctx, String(x[I.Code]).trim() || label, 'Edited ' + f, plainVal_(was[f]), plainVal_(v[f])));
   return { text: label + ': ' + what + where + checks + '.', move: move };
 }
 
@@ -396,7 +397,7 @@ function editCandidateCore_(code, values) {
     detectEdits_(ctx);
     const x = ctx.ivByCode[code];
     if (!x) throw new Error('Unknown code ' + code);
-    const r = editRow_(ctx, x, values || {}, false);
+    const r = editRow_(ctx, x, values || {});
     stampConfirmations_(ctx);
     saveTable_(ctx.iv);
     commitBase_(ctx);

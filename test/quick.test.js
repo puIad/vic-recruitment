@@ -416,6 +416,15 @@ let oddCode;
   call('webRun', 'resolve', { ids: [find('EXTERNAL_EMAIL', x => x.code === it.code).id] });
   edit(it.code, { Discord: 'someone#1' });
   assert(!find('EXTERNAL_EMAIL', x => x.code === it.code), 'a resolved alert does not come back');
+  // the alert's Fix leaves its alert open when the problem is still there (the other name is still junk)
+  run(`(function () { master.getSheetByName('Registration Responses').cells.push(regRow(new Date(Date.now() + 9e3), 'junk.name@g.enp.edu.dz', 'Junk', '.', 'junk.name@g.enp.edu.dz', '01/03/2005', '0555999077', 'IT', 'HR')); })()`);
+  call('webRun', 'sync');
+  const mn = find('MISSING_NAME');
+  assert(mn, 'opened');
+  quick('edit', mn.id, { values: { 'First Name': 'Amine' } }); // only the first name differs
+  assert(find('MISSING_NAME'), 'still open: the family name is junk');
+  quick('edit', mn.id, { values: { 'Family Name': 'Belkacem' } });
+  assert(!find('MISSING_NAME'), 'closed once both are real');
   // a new 1st choice is saved either way; a binome that does not take it is named, and nothing moves
   const tag = call('webState').binomes.find(b => b.code === it.binome).tag;
   const dep = ['IT', 'COMM', 'FLER', 'HR'].find(d => !/\ball\b/i.test(tag) && !new RegExp('\\b' + d + '\\b', 'i').test(tag));

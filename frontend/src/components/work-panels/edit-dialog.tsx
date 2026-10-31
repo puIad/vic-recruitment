@@ -31,7 +31,7 @@ const FIELDS: { key: string; label: string; kind: Kind; options?: (d: CandidateD
   { key: "Discord", label: "Discord", kind: "text" },
 ]
 
-function Form({ code, focus }: { code: string; focus?: string }) {
+function Form({ code }: { code: string }) {
   const { candidateGet, editCandidate } = useActions()
   const busy = useVic((s) => s.busy)
   const jobs = useVic((s) => s.jobs)
@@ -90,7 +90,7 @@ function Form({ code, focus }: { code: string; focus?: string }) {
               </Label>
               {f.kind === "choice" ? (
                 <Select value={v} onValueChange={set} disabled={locked}>
-                  <SelectTrigger id={id} className="w-full" autoFocus={focus === f.key}>
+                  <SelectTrigger id={id} className="w-full">
                     <SelectValue placeholder="Choose…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -102,7 +102,7 @@ function Form({ code, focus }: { code: string; focus?: string }) {
                   </SelectContent>
                 </Select>
               ) : (
-                <Input id={id} type={f.kind === "email" ? "email" : f.kind === "tel" ? "tel" : "text"} value={v} onChange={(e) => set(e.target.value)} placeholder={f.hint} autoComplete="off" disabled={locked} autoFocus={focus === f.key} />
+                <Input id={id} type={f.kind === "email" ? "email" : f.kind === "tel" ? "tel" : "text"} value={v} onChange={(e) => set(e.target.value)} placeholder={f.hint} autoComplete="off" disabled={locked} />
               )}
             </div>
           )
@@ -134,7 +134,7 @@ export function EditDialog() {
           <DialogTitle className="text-xl font-extrabold text-heading">Edit {d?.code}</DialogTitle>
           <DialogDescription>Fix what they typed. The checks are the registration form's own.</DialogDescription>
         </DialogHeader>
-        {d && <Form key={d.nonce} code={d.code} focus={d.field} />}
+        {d && <Form key={d.nonce} code={d.code} />}
       </DialogContent>
     </Dialog>
   )

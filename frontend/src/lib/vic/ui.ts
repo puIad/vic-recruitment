@@ -38,9 +38,9 @@ interface UiStore {
   moveDialog: { open: boolean; code?: string; binome?: string; alertId?: string; nonce: number } | null
   openMoveDialog: (o?: { code?: string; binome?: string; alertId?: string }) => void
   closeMoveDialog: () => void
-  /** Edit a candidate's data: opened from a profile, an Interviewees row, Ctrl K or an alert; field = the one to focus */
-  editDialog: { open: boolean; code: string; field?: string; nonce: number } | null
-  openEditDialog: (o: { code: string; field?: string }) => void
+  /** Edit a candidate's data: opened from a profile, an Interviewees row, Ctrl K or an alert */
+  editDialog: { open: boolean; code: string; nonce: number } | null
+  openEditDialog: (o: { code: string }) => void
   closeEditDialog: () => void
 }
 
