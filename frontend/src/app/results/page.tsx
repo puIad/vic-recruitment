@@ -5,7 +5,7 @@ import { BaseLayout } from "@/components/layouts/base-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { RESULT_VALUES, setResult, useReloadOnEnd, useResultRows, useResults, type ResultRow } from "@/lib/vic/results"
+import { DEPT_RESULTS, RESULT_VALUES, setResult, useReloadOnEnd, useResultRows, useResults, type ResultRow } from "@/lib/vic/results"
 import { cn } from "@/lib/utils"
 import { FinalBar } from "./final-bar"
 import { Dot, Marks, RatingBar, ResultChip } from "./result-parts"
@@ -114,6 +114,15 @@ export default function ResultsPage() {
             </span>
           </div>
           {mailsGone && !clicks && <p className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">Group link clicks are unavailable right now (the site could not be reached). Everything else works.</p>}
+          {mailsGone && clicks && (
+            <p className="text-sm text-muted-foreground">
+              Opened the group link:{" "}
+              {DEPT_RESULTS.map((d) => {
+                const told = all.filter((r) => r.told.startsWith(d + " "))
+                return <span key={d} className="mr-3"><b className="text-foreground">{d}</b> <span className="num">{told.filter((r) => clicks[r.code]).length}/{told.length}</span></span>
+              })}
+            </p>
+          )}
           <FinalBar view={view} rows={all} needs={needs} saving={saving} undealt={undealt} />
           <div className="flex items-center gap-3">
             <div className="relative w-full sm:w-80">
