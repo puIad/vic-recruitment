@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BinomeColumns } from "@/components/binome-columns"
 import { InterviewForms } from "@/components/interview-forms"
+import { MailsSection } from "@/components/mail-log"
 import { MemberNames } from "@/components/member-name"
 import {
   ageOn,
@@ -215,6 +216,12 @@ function Profile({ row: r, tz }: { row: AnalyticsRow; tz: string }) {
               </div>
             )}
             <InterviewForms key={r.code} code={r.code} />
+          </Section>
+        )}
+
+        {r.code && (
+          <Section title="Mails">
+            <MailsSection key={r.code} scope={{ code: r.code }} />
           </Section>
         )}
 

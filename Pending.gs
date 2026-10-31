@@ -258,7 +258,7 @@ function dropsSync_(ctx) {
   const mailed = [];
   (out.mail || []).forEach(m => {
     const n = m.drops.length;
-    if (mail_(m.email, '[VIC Recruitment] ' + (n === 1 ? 'Your change was' : n + ' of your changes were') + ' not applied', dropsMail_(ctx, m.drops)))
+    if (mail_(m.email, '[VIC Recruitment] ' + (n === 1 ? 'Your change was' : n + ' of your changes were') + ' not applied', dropsMail_(ctx, m.drops), undefined, { kind: 'DROP', concerns: m.drops.reduce((all, d) => all.concat([d.binome, d.code]), []).filter(Boolean) }))
       mailed.push({ email: m.email, cells: m.drops.map(d => d.cell), at: Date.now() });
   });
   if (mailed.length) props.setProperty('DROPS_MAILED', JSON.stringify(mailed)); else props.deleteProperty('DROPS_MAILED');

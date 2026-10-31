@@ -928,7 +928,7 @@ function mailPreviewCore_(a, args) {
   m.fields.forEach(f => { if (texts[f[0]] != null) mailCheck_('MAIL_' + id + '_' + f[0].toUpperCase(), texts[f[0]]); });
   const out = mailSample_(id, texts);
   if (args.send) {
-    out.sent = mail_(a.email, '[TEST] ' + out.subject, out.html, out.from);
+    out.sent = mail_(a.email, '[TEST] ' + out.subject, out.html, out.from, { kind: 'TEST' });
     _webOut.push(out.sent ? 'Test mail sent to ' + a.email : mailHeld_(a.email) ? 'Not sent: test mode is on and ' + a.email + ' is not in ADMIN_EMAIL'
       : 'Not sent: the mailer did not take it. Check the script logs, MAILER_URL and MAIL_SEND_SECRET');
   }
@@ -992,11 +992,12 @@ function webRun(action, args) {
   if (action === 'interviewGet') return { messages: [], result: interviewGet_(a, args || {}) };
   if (action === 'interviewSave') return { messages: [], result: interviewSave_(a, args || {}) };
   if (a.role !== 'admin') throw new Error('Not allowed');
+  _mailBy = a.email;
   if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'mailLog', 'mailResendPreview'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -1055,6 +1056,9 @@ function webRun(action, args) {
       case 'membersRefresh': result = membersRefreshCore_(); break;
       case 'rejections': result = rejectionsCore_(args); break;
       case 'mailPreview': result = mailPreviewCore_(a, args); break;
+      case 'mailLog': result = mailLogGet_(args); break;
+      case 'mailResendPreview': result = mailResendPreview_(); break;
+      case 'mailResend': result = mailResendCore_(a, args); break;
       case 'resolve': _webOut.push(resolveAlertsById_(args.ids) + ' alert(s) marked as resolved'); break;
       case 'saveSettings': _webOut.push(saveSettings_(args.values)); break;
       case 'setup': setup(); break;
@@ -1069,6 +1073,7 @@ function webRun(action, args) {
     throw e;
   } finally {
     _webOut = null;
+    mailLogSettle_(); // a mail sent outside the lock (a test mail)
     const tp = Date.now(), ph = _act || {};
     _act = null; // the publish's own lock wait and load count in publish
     if (wrote && !refused) publishFresh_(); // also after a failure halfway: what was written shows

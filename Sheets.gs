@@ -168,7 +168,7 @@ function withLock_(fn, waitMs) {
   _lockWait = Date.now() - t0;
   actTime_('lockWait', _lockWait);
   if (!got) { console.warn('Busy: another run holds the lock (waited ' + _lockWait + ' ms)'); return null; }
-  try { return fn(); } finally { lock.releaseLock(); }
+  try { return fn(); } finally { mailLogFlush_(); lock.releaseLock(); } // rows of mails sent under the lock are written before it is released
 }
 
 let _webOut = null; // set by the web dashboard: messages are collected and returned to the page instead of shown in a dialog
@@ -287,6 +287,7 @@ function alertBuffer_(ctx) {
       let n = t.data.reduce((m, r) => Math.max(m, Number(String(r[I.ID]).replace(/^A-/, '')) || 0), 0);
       const rows = fresh.map(a => {
         n++;
+        a.id = 'A-' + String(n).padStart(4, '0'); // the Mail Log's Concerns
         const to = [];
         const instant = SEV_RANK[a.severity] >= minRank && a.status !== 'AUTO-FIXED';
         if (instant) admins.forEach(e => { push(e, a); to.push(e); });
@@ -294,7 +295,7 @@ function alertBuffer_(ctx) {
           ctx.binByCode[a.binome].members.forEach(m => { if (m.email) { push(m.email, a); if (to.indexOf(m.email) < 0) to.push(m.email); } });
           (ctx.coverMap[a.code] || []).forEach(e => { push(e, a); if (to.indexOf(e) < 0) to.push(e); }); // whoever covers that interviewee
         }
-        return ['A-' + String(n).padStart(4, '0'), ctx.now, a.severity, a.type, a.code || '', a.binome || '', a.msg,
+        return [a.id, ctx.now, a.severity, a.type, a.code || '', a.binome || '', a.msg,
           to.join(', '), a.status || 'OPEN', a.status && a.status !== 'OPEN' ? ctx.now : '', a.key || ''];
       });
       t.sh.getRange(t.sh.getLastRow() + 1, 1, rows.length, ALERT_H.length).setValues(plainRows_(rows));
@@ -304,14 +305,15 @@ function alertBuffer_(ctx) {
         const isAdmin = admins.indexOf(email) >= 0;
         const sheet = !isAdmin && ctx.binByCode[list[0].binome] ? ctx.binByCode[list[0].binome].fileUrl : '';
         const high = list.some(a => a.severity === 'HIGH') ? ' (HIGH)' : '', table = [mailAlerts_(list.map(a => [a.severity, a.type, a.code || '', a.msg]))];
+        const meta = { kind: 'ALERT', concerns: list.map(a => a.id).concat(list.map(a => a.code), list.map(a => a.binome)).filter((v, i, all) => v && all.indexOf(v) === i) };
         if (!isAdmin) { // the binome's mail is editable; the admins' stays as written here
           const m = mailFrom_('ALERT', { n: list.length, s: list.length > 1 ? 's' : '' },
             { blocks: table, cta: mailDashboardCta_(), footer: mailTeamFooter_(sheet) });
-          return mail_(email, m.subject + high, m.html);
+          return mail_(email, m.subject + high, m.html, undefined, meta);
         }
         const html = mailHtml_({ title: list.length + ' new alert' + (list.length > 1 ? 's' : ''), intro: 'New recruitment alert(s):', blocks: table,
           cta: { label: 'Open the master sheet', url: ss_().getUrl() }, footer: mailTeamFooter_(sheet) });
-        mail_(email, '[VIC Recruitment] ' + list.length + ' alert' + (list.length > 1 ? 's' : '') + high, html);
+        mail_(email, '[VIC Recruitment] ' + list.length + ' alert' + (list.length > 1 ? 's' : '') + high, html, undefined, meta);
       });
       fresh.length = 0;
     },
@@ -322,12 +324,13 @@ let _mailsSent = 0; // calls of mail_() since runCycle_ reset it (TEST_MODE skip
 /** TEST_MODE keeps every mail to the admins. */
 function mailHeld_(to) { return bool_(S_().TEST_MODE) && adminEmails_().map(e => e.toLowerCase()).indexOf(String(to).trim().toLowerCase()) < 0; }
 
-/** True when the email left; false when TEST_MODE held it or the send failed (logged, never thrown). Sent by the mailer
+/** True when the email left; false when TEST_MODE held it or the send failed (logged, never thrown). meta {kind, concerns[]} is for the Mail Log (MailLog.gs). Sent by the mailer
  *  (mailer/Code.gs, runs as vic.rh): MailApp here would send from whoever runs this code, the admin or member on the dashboard. */
-function mail_(to, subject, html, from) {
+function mail_(to, subject, html, from, meta) {
   _mailsSent++;
   if (mailHeld_(to)) {
     console.log('TEST_MODE: email to ' + to + ' not sent: ' + subject);
+    mailLogAdd_(to, subject, html, meta, 'Held', '');
     return false;
   }
   try {
@@ -336,6 +339,7 @@ function mail_(to, subject, html, from) {
       payload: JSON.stringify({ secret: props.getProperty('MAIL_SEND_SECRET'), mail: { to: to, subject: subject, html: html, name: from || 'VIC Recruitment Bot' } }) });
     const out = JSON.parse(r.getContentText());
     if (!out.ok) throw new Error('the mailer refused it: ' + out.reason);
+    mailLogAdd_(to, subject, html, meta, 'Sent', '');
     return true;
-  } catch (e) { console.error('Mail to ' + to + ' failed: ' + e); return false; }
+  } catch (e) { console.error('Mail to ' + to + ' failed: ' + e); mailLogAdd_(to, subject, html, meta, 'Failed', String(e && e.message || e)); return false; }
 }

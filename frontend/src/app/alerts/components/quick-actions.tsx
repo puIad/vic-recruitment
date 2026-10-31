@@ -46,6 +46,7 @@ import { useFormsRead } from "@/lib/vic/forms"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { MemberName } from "@/components/member-name"
+import { ResendPanel } from "@/components/mail-resend"
 import { REVIEW, TIMING } from "./alert-kinds"
 
 /* ---------- which alerts get which actions ---------- */
@@ -718,6 +719,9 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     hint = r ? "The script can put it right in the binome sheet." : "Fix it in the sheet; the alert closes at the next sheet check."
     if (r) btn("repair", r === "reshare" ? ShieldCheck : Wrench, REPAIR_LABEL[r], () => quick.repair([a]), "default")
     links.push({ key: "cell", label: `The spot in ${a.binome}'s sheet`, target: "cell" })
+  } else if (a.type === "MAIL_FAILED") {
+    hint = "Google accepted none of these. Fix a wrong address, then resend; dismiss one that no longer matters. The alert closes once every listed mail is handled."
+    panel = <ResendPanel key={a.id} />
   } else if (a.type === "FILE_ERROR") {
     const r = repairOf(a)
     hint = r ? "Try the failed step again now instead of waiting for the next sync." : "Something only a person can do: fix it, then mark it resolved."

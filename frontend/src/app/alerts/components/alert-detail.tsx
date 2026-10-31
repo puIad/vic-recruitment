@@ -10,6 +10,7 @@ import type { Alert, FixMode } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
 import { QuickActions, SnoozeMenu } from "./quick-actions"
 import { MemberNames } from "@/components/member-name"
+import { MailsSection } from "@/components/mail-log"
 
 const FIX_ICON: Record<FixMode, typeof Wrench> = { apply: Wrench, revert: RotateCcw, accept: Check }
 
@@ -93,6 +94,10 @@ export function AlertDetail({ alert }: { alert: Alert | null }) {
           </div>
         )}
         <QuickActions key={alert.id} alert={alert} />
+        <section aria-label="Mails about this alert" className="space-y-2 border-t pt-5">
+          <h3 className="font-bold">Mails about it</h3>
+          <MailsSection key={alert.id} scope={{ alertId: alert.id }} />
+        </section>
       </div>
       <Separator />
       <div className="flex flex-wrap items-center justify-between gap-2 p-4">

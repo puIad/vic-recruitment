@@ -141,13 +141,14 @@ function mailFrom_(id, vars, o) {
   if (id === 'CODE' || id === 'CONFIRM') blocks.push(mailCode_(t('codeLabel'), vars.code, theme));
   if (id === 'REJECT') blocks.push(mailP_(t('text')));
   if (has('below') && t('below')) blocks.push(mailP_(t('below')));
-  return { subject: subject, from: m.to === 'candidate' ? MAIL.candidateFrom : undefined,
+  return { id: id, subject: subject, from: m.to === 'candidate' ? MAIL.candidateFrom : undefined,
     html: mailHtml_({ title: has('heading') ? t('heading') : subject, intro: has('above') ? t('above') : has('text') && id !== 'REJECT' ? t('text') : '',
       blocks: blocks, cta: o.cta, footer: o.footer, theme: theme }) };
 }
 /** The confirmation's stripe: the 1st choice's house on the form, aquamarine for a department it doesn't know. */
 function formHouseColour_(dept) { const h = FORM_HOUSE[String(dept == null ? '' : dept).trim()]; return h ? h.colour : MAIL.aqua; }
-function mailSend_(to, m) { return mail_(to, m.subject, m.html, m.from); }
+/** concerns: the candidate codes, binome code or alert IDs the mail is about, for the Mail Log. */
+function mailSend_(to, m, concerns) { return mail_(to, m.subject, m.html, m.from, { kind: m.id, concerns: concerns }); }
 
 /** The mail with sample data, for the dashboard's preview. */
 function mailSample_(id, texts) {

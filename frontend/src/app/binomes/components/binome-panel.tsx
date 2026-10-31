@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { useAlertsOf } from "@/lib/vic/binome-view"
 import { useBinomeRows } from "@/lib/vic/pending"
 import type { BinomeDialogs } from "./binome-dialogs"
-import { AlertsCard, BinomeActions, DraftNote, MembersCard, PausedNote, ProgressCard, StatusLine } from "./binome-parts"
+import { AlertsCard, BinomeActions, DraftNote, MailsCard, MembersCard, PausedNote, ProgressCard, StatusLine } from "./binome-parts"
 
 /**
  * One binome's summary from the Binomes table (docs/admin-features.md › One binome's panel and page): header and actions, members
@@ -70,6 +70,7 @@ export function BinomePanel({ code, onClose, dialogs }: { code: string | null; o
                 <>
                   <ProgressCard b={b} />
                   <AlertsCard code={b.code} alerts={alerts} onOpen={setAlertId} />
+                  <MailsCard code={b.code} />
                 </>
               )}
             </div>

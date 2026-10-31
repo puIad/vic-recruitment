@@ -164,9 +164,9 @@ function applyMemberPlans_(ctx, plans, reason) {
       blocks: pending.length ? [mailP_('Interviewees still in progress:'), mailList_(pending.map(r => [r[I.Code],
         r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' + String(r[I.Status]).toLowerCase() +
         (r[I['Interview Date']] ? ' · ' + r[I['Interview Date']] + ' ' + r[I['Interview Time']] : '')]))] : [],
-      cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }))) pairedMark_([b.code + '|' + p.inn.email]);
+      cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }), b.code)) pairedMark_([b.code + '|' + p.inn.email]);
     if (p.out && p.out.email) mailSend_(p.out.email, mailFrom_('LEFT', { first: (p.out.name || '').split(' ')[0], binome: b.code,
-      replaced: p.inn ? ' (replaced by ' + p.inn.name + ')' : '' }, { footer: mailTeamFooter_() }));
+      replaced: p.inn ? ' (replaced by ' + p.inn.name + ')' : '' }, { footer: mailTeamFooter_() }), b.code);
   });
   ctx.alerts.flush();
   buildTracker_(ctx);
@@ -462,11 +462,11 @@ function addCoverCore_(a) {
         blocks: [mailList_(rows.map(r => [r[I.Code], r[I['First Name']] + ' ' + r[I['Family Name']] + ' · ' +
           String(r[I.Phone]).replace(/^'/, '') + ' · available: ' + r[I.Availability] +
           (r[I['Interview Date']] ? ' · interview ' + r[I['Interview Date']] + ' ' + r[I['Interview Time']] : '')]))],
-        cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }));
+        cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }), [b.code].concat(g.codes));
       b.members.forEach(m => {
         if (m.email) mailSend_(m.email, mailFrom_('COVERED', { first: m.name.split(' ')[0], cover: p.inn.name, coverEmail: p.inn.email,
           codes: g.codes.join(', '), binome: b.code, instead: instead, reason: a.reason ? ' (' + a.reason + ')' : '' },
-          { cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }));
+          { cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }), [b.code].concat(g.codes));
       });
     });
     ctx.covers = loadCovers_(); ctx.coverMap = coverMap_(ctx);

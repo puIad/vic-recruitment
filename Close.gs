@@ -89,7 +89,7 @@ function closeAlerts_(ctx) {
 function closeMails_(ctx, id) {
   activeOrPaused_(ctx).forEach(b => b.members.forEach(m => {
     if (!m.email) return;
-    try { mailSend_(m.email, mailFrom_(id, { first: (m.name || '').split(' ')[0], binome: b.code }, { cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) })); }
+    try { mailSend_(m.email, mailFrom_(id, { first: (m.name || '').split(' ')[0], binome: b.code }, { cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }), b.code); }
     catch (e) { console.warn('Mail to ' + m.email + ' not sent: ' + e.message); }
   }));
 }

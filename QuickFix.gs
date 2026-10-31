@@ -724,10 +724,11 @@ function sendMails_(ctx, rows, to, drafts) {
   gs.forEach(g => {
     // the edited plain text, wrapped in the template; candidate footer (no internal links): some go to candidates
     const d = by[g.id], html = mailHtml_({ title: d.subject.replace(/^\[VIC Recruitment\]\s*/, ''), blocks: [mailP_(d.body)] });
-    g.emails.forEach(e => mail_(e, d.subject, html, to === 'candidate' ? MAIL.candidateFrom : undefined));
-    g.alerts.forEach(r => {
+    const concerns = g.alerts.map(r => String(r[A.ID])).concat(g.alerts.map(r => String(r[A.Interviewee]).trim()), g.alerts.map(r => String(r[A.Binome]).trim())).filter((v, i, all) => v && all.indexOf(v) === i);
+    const reached = g.emails.filter(e => mail_(e, d.subject, html, to === 'candidate' ? MAIL.candidateFrom : undefined, { kind: to === 'candidate' ? 'QUICKFIX_CAND' : 'QUICKFIX', concerns: concerns }));
+    g.alerts.forEach(r => { // only whoever the mail reached (or test mode held): a failed send is no 'Emailed To'
       const had = String(r[A['Emailed To']] || '').split(/,\s*/).filter(Boolean);
-      r[A['Emailed To']] = had.concat(g.emails.filter(e => had.indexOf(e) < 0)).join(', ');
+      r[A['Emailed To']] = had.concat(g.emails.filter(e => had.indexOf(e) < 0 && (reached.indexOf(e) >= 0 || mailHeld_(e)))).join(', ');
     });
   });
   ctx.alerts.touch();

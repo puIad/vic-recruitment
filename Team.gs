@@ -348,7 +348,7 @@ function pairedTodo_(ctx) {
 /** The PAIRED mail for member m of binome `code` (names: both members), sent by Lock, the catch-up and Pair two…. */
 function pairedMail_(code, m, names, url) {
   return mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: code, members: names },
-    { cta: mailDashboardCta_(), footer: mailTeamFooter_(url) }));
+    { cta: mailDashboardCta_(), footer: mailTeamFooter_(url) }), code);
 }
 /** Send PAIRED to everyone pairedTodo_ lists. TEST_MODE skips non-admins and leaves them untold, so going live sends theirs.
  *  Returns {sent, failed[] (emails)}. */
@@ -445,7 +445,7 @@ function resetBinomesCore_(phrase) {
       } catch (e) { failed.push(b.code + ': ' + driveErr_(e)); }
     });
     const nBinomes = ctx.binomes.length, nTeam = ctx.team.data.filter(r => String(r[ctx.team.I.Email]).trim()).length;
-    [[TAB.BINOMES, BIN_H], [TAB.TEAM, TEAM_H], [TAB.CHANGES, MC_H], [TAB.IV_CHANGES, IC_H]].forEach(t => {
+    [[TAB.BINOMES, BIN_H], [TAB.TEAM, TEAM_H], [TAB.CHANGES, MC_H], [TAB.IV_CHANGES, IC_H], [TAB.MAIL_LOG, ML_H]].forEach(t => {
       const sh = ss_().getSheetByName(t[0]);
       if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, t[1].length).clearContent();
       if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 1).clearNote().setBackground(null);
