@@ -526,23 +526,25 @@ function formValue_(book, code, field, tz) {
 function adminFormFill_(a, args) {
   const code = String(args.code || '').trim(), field = String(args.field || '');
   if (['Rating', 'Final Affectation'].indexOf(field) < 0) throw new Error('Not allowed');
-  const t = adminSheetOf_(code), sh = t.f.sh, want = formValue_(sh.getParent(), code, field, t.f.tz);
+  const t = adminSheetOf_(code), sh = t.f.sh;
   const lock = memberLock_();
   if (!lock.tryLock(10000)) throw new Error('BUSY: The sheet of ' + t.b + ' is busy with another edit. Nothing was changed: try again.');
   let old, now, marks;
   try {
+    if (bfLayout_(sh) !== 'v2') throw new Error('The header of the sheet of ' + t.b + ' was changed by hand: repair it before editing from here.');
     const row = findFileRow_(sh, code);
     if (row < 0) throw new Error(code + ' is no longer in the sheet of ' + t.b + '.');
+    const want = formValue_(sh.getParent(), code, field, t.f.tz); // read under the lock: a form saved a moment ago counts
     old = goldValues_(sh, row)[field];
     goldWrite_(sh, row, field, want);
     SpreadsheetApp.flush();
     now = goldPatch_(t.b, sh, row, code, [field], clearMarks_(code, [field]))[field];
     marks = goldMarks_()[code] || {};
+    if (ss_().getSheetByName(TAB.DASH)) { // what the form filled, so a later form save updates the cell again; inside the lock, with the cell
+      const d = loadTable_(TAB.DASH, DASH_H), D = d.I, own = d.data.filter(r => String(r[DQ - 1]).trim() === code)[0];
+      if (own) { own[D[field === 'Rating' ? 'Filled Rating' : 'Filled Affectation']] = now; saveTable_(d); }
+    }
   } finally { lock.releaseLock(); }
-  if (ss_().getSheetByName(TAB.DASH)) {
-    const d = loadTable_(TAB.DASH, DASH_H), D = d.I, own = d.data.filter(r => String(r[DQ - 1]).trim() === code)[0];
-    if (own) { own[D[field === 'Rating' ? 'Filled Rating' : 'Filled Affectation']] = now; saveTable_(d); }
-  }
   logIvChange_({ now: new Date() }, code, 'Form filled ' + field, goldText_(field, old), goldText_(field, now));
   return { code: code, field: field, value: now, setBy: marks };
 }

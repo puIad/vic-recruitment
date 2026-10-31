@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Spinner } from "@/lib/vic/confirm"
+import { displayName } from "@/lib/vic/format"
 import { useVic, type MemberSetResult } from "@/lib/vic/store"
 import { again, REASON, useMemberView, type Mark } from "@/lib/vic/pending"
 import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type CellValue, type FieldEntry, type GoldKey, type SetBy } from "@/lib/vic/types"
@@ -256,10 +257,6 @@ export function GoldForm({ code, candidate, onDirty, children, admin }: { code: 
   )
 }
 
-/** An admin's name from their email: sara.benali@… → Sara Benali. */
-const adminName = (email: string) =>
-  email.split("@")[0].split(/[._-]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ") || email
-
 /** One gold column inside a GoldForm: holds a draft, written only by the form's Save. */
 export function GoldField({ k }: { k: GoldKey }) {
   const form = React.useContext(FormCtx)!
@@ -354,7 +351,7 @@ export function GoldField({ k }: { k: GoldKey }) {
       )}
       {mark && !dirty && (
         <p className="text-xs text-muted-foreground">
-          set by <b className="font-semibold text-foreground/80">{adminName(mark.by)}</b> · {mark.at}
+          set by <b className="font-semibold text-foreground/80">{displayName(mark.by)}</b> · {mark.at}
         </p>
       )}
 

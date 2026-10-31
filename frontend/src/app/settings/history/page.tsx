@@ -35,7 +35,9 @@ function fromIv(r: IvHistoryRow): HistoryRow {
   const moved = r.what === "Moved"
   const named = (s: string) => (/\bB\.\d+/.exec(s) ?? [])[0]
   const binome = moved ? r.to : /^B\.\d+$/.test(r.code) ? r.code : named(r.to) ?? named(r.from) ?? ""
-  return { at: r.at, by: r.by, type: moved ? "MOVED" : "EDIT", binome, out: r.from, inn: r.to, codes: [r.code], reason: "", status: "" }
+  // the binome's columns (Admin set / Form filled / Form kept): the row says which column, so the history line does too
+  const column = /^(Admin set|Form filled|Form kept) /.test(r.what)
+  return { at: r.at, by: r.by, type: moved ? "MOVED" : "EDIT", binome, out: column ? `${r.what}: ${r.from || "empty"}` : r.from, inn: r.to, codes: [r.code], reason: "", status: "" }
 }
 
 /** dd/MM/yyyy HH:mm → a key that sorts by time */
