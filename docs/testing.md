@@ -11,6 +11,7 @@ Everything runs on an in-memory mock of the Apps Script services (`test/mockgas.
 | `test/web.test.js` | every dashboard action through `webState` / `webRun` under web-app conditions: TEST_MODE, change/swap, covers, every manual-edit fix path, odd values, the full sheet check, access control (admins in a binome included), `interviewGet` / `interviewSave` |
 | `test/vercel.test.js` | the Vercel functions against a mocked Google (`test/googlemock.js`): session, proxy, refusals; the UI calls only `/api/run` and its `API_VERSION` matches the script |
 | `test/pause.test.js` | pause and resume a binome: the apply entry, its moves and retries, the date, the direct write, the dialog's rules |
+| `test/close.test.js` | closing the interview phase: preview, close and reopen, what locks for binomes and what stays open, the admin way round, the sync guard and `LOCKED_EDIT`, `CLOSE_DUE`, silenced timing alerts, the two mails |
 | `test/reset.test.js` | Reset all binomes: the typed phrase, what is wiped and what stays, then a new team drafted and locked |
 | `test/quick.test.js` | the Alerts page's quick actions: fixes in Master + binome sheet with no manual edit flagged, duplicates, snooze / expiry / mute / unmute, odd values, exclude, interview forms, links, every sheet repair (dry run first), sharing, the email preview and send |
 | `test/tour.test.js` | the onboarding tour's steps per role (admin, member, admin in a binome) and when it starts by itself: per role and email, versioned, blocked storage counts as seen ([onboarding-tour.md](onboarding-tour.md)) |

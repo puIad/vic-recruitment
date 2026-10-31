@@ -311,7 +311,7 @@ function runCycle_(opts) {
     // placing gets 90 s, and ends 3 min after the call started (a long lock wait included): the writes after it need the rest
     assignUnassigned_(ctx, opts.assignBy !== undefined ? opts.assignBy : Math.min(Date.now() + 90000, t0 + 180000)); lap('regs');
     processInterviews_(ctx); lap('forms');
-    if (opts.pull) { pullBinomeFiles_(ctx, opts.force); armClose_(); } lap('pull');
+    if (opts.pull) { pullBinomeFiles_(ctx, opts.force); if (Object.keys(ctx.readAt || {}).length) armClose_(); } // the guard starts only once a sheet was read since the close lap('pull');
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });
     endFinishedCovers_(ctx); stampConfirmations_(ctx); lap('statuses');
     if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); closeAlerts_(ctx); } lap('timing');
