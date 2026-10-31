@@ -54,10 +54,10 @@ export function overlay(view: P1View | null, rec: PendingRec, startedAt: number,
   let needs = 0, saving = 0, undealt = 0
   const rows = (view?.rows ?? []).map((r): ResultRow => {
     const e = mine.get(r.code)
-    let override = r.override, pending = false, dropped: ResultEntry | undefined, over = false
+    let override = r.override, note = r.note, pending = false, dropped: ResultEntry | undefined, over = false
     if (e && !view?.final) {
-      if (e.state === "pending") { override = e.value; pending = true; over = true }
-      else if (e.state === "applied" || e.state === "met") { if ((ended[e.id] ?? 0) >= startedAt) { override = e.value; over = true } }
+      if (e.state === "pending") { override = e.value; note = e.note ?? ""; pending = true; over = true }
+      else if (e.state === "applied" || e.state === "met") { if ((ended[e.id] ?? 0) >= startedAt) { override = e.value; note = e.note ?? ""; over = true } }
       else if (e.state === "dropped" && !e.addressed) dropped = e
     }
     const result = override || (view?.final ? "" : r.proposal)
@@ -67,8 +67,8 @@ export function overlay(view: P1View | null, rec: PendingRec, startedAt: number,
     else needs++
     const choices = [r.c1, r.c2]
     return { ...r, override, result, needs: !result, warn: (DEPT_RESULTS as readonly string[]).includes(result) && !choices.includes(result), pending, dropped, over,
-      // a change of mine not loaded yet has no note or proposal history to show
-      changed: over ? false : r.changed, note: over && !override ? "" : r.note }
+      // a change of mine not loaded yet has no proposal history to show
+      changed: over ? false : r.changed, note }
   })
   return { rows, counts, needs, saving, undealt }
 }
@@ -95,6 +95,11 @@ export function useReloadOnEnd() {
     })
     if (again) void load()
   }, [rec, load])
+  // a load that began before a change ended can't hold it: go again once it returns
+  const loading = useResults((s) => s.loading), startedAt = useResults((s) => s.startedAt), ended = useVic((s) => s.ended)
+  React.useEffect(() => {
+    if (!loading && Object.values(rec).some((e) => e.kind === "result" && e.state !== "pending" && (ended[e.id] ?? 0) >= startedAt)) void load()
+  }, [loading, startedAt, ended, rec, load])
 }
 
 /**

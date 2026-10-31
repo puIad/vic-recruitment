@@ -61,15 +61,19 @@ export default function ResultsPage() {
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
-      if ((e.target as HTMLElement).closest("input, textarea, select, [contenteditable]")) return
+      // not while typing, nor behind a menu, a dialog or a focused button (Enter and digits belong to them)
+      if ((e.target as HTMLElement).closest("input, textarea, select, button, [contenteditable]") || document.querySelector('[role="menu"], [role="dialog"]')) return
       if (e.key === "ArrowDown") { e.preventDefault(); move(1) }
       else if (e.key === "ArrowUp") { e.preventDefault(); move(-1) }
       else if (e.key === "Enter" && active && !open) { e.preventDefault(); setOpen(active.code) }
-      else if (/^[1-5]$/.test(e.key) && active && !final) void setResult(active, RESULT_VALUES[+e.key - 1])
+      else if (/^[1-5]$/.test(e.key) && !final) {
+        const target = open ? all.find((r) => r.code === open) : active // the panel's candidate, even if it left the tab
+        if (target) void setResult(target, RESULT_VALUES[+e.key - 1])
+      }
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [rows, at, active, cursor, open, final])
+  }, [rows, all, at, active, cursor, open, final])
 
   const tabs = [
     { k: "All", label: "Everyone", n: all.length },
