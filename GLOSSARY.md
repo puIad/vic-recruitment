@@ -67,6 +67,10 @@ _Avoid_: binome file, binome tab
 The timed cycle that reads the forms and the binome sheets into the Master and raises alerts.
 _Avoid_: refresh, flush
 
+**Watchdog**:
+The small trigger on the owner's own account that mails the owner and vic.rh when the timed sync stops finishing cycles.
+_Avoid_: monitor, health check
+
 **Snapshot**:
 The copy of the Master that every dashboard screen shows, published again when the data changed (mostly by the sync).
 A change in the sheet reaches other people's screens only when a snapshot that includes it is published; until then its
