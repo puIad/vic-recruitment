@@ -67,10 +67,15 @@ function mailLogFlush_(ctx) {
   } catch (e) { console.warn('Mail Log not written: ' + e); }
 }
 
-/** For a caller that sends outside any lock (the digest): the lock's release writes the log; a busy lock writes it unlocked. */
+/** For a caller that sends outside any lock (the digest): the lock's release writes the log. A lock still busy after 60 s: the rows are
+ *  appended one at a time (Sheets applies each append atomically, so a sync's rows are not overwritten) and no alert is raised, since
+ *  its ID would be read outside the lock. The execution log still has any failure. */
 function mailLogSettle_() {
   if (!_mailRows.length) return;
-  if (withLock_(() => true, 60000) === null) mailLogFlush_();
+  if (withLock_(() => true, 60000) !== null) return;
+  const rows = _mailRows;
+  _mailRows = [];
+  try { const sh = mailLogSheet_(); rows.forEach(r => sh.appendRow(mailLogRow_(r))); } catch (e) { console.warn('Mail Log not written: ' + e); }
 }
 
 /* ---------- reading ---------- */
@@ -193,7 +198,6 @@ function mailResendCore_(a, args) {
   const send = [].concat(args.send || []).map(s => (typeof s === 'object' ? { id: String(s.id), to: String(s.to || '').trim() } : { id: String(s), to: '' }));
   const dismiss = [].concat(args.dismiss || []).map(String);
   if (!send.length && !dismiss.length) throw new Error('No mail chosen.');
-  _mailBy = a.email;
   const out = withLock_(() => {
     const ctx = loadCtx_(), rows = mailLogRows_(), by = {};
     rows.forEach(x => { by[mailRowId_(x)] = x; });

@@ -328,7 +328,7 @@ function MailsCardFor({ code, className }: { code: string; className?: string })
         <CardDescription>{last ? `Last mail: ${mailKind(last.kind)}, ${last.outcome.toLowerCase()}, ${last.when}` : "What the script mailed to its members and covers."}</CardDescription>
       </CardHeader>
       <CardContent className="max-h-[26rem] overflow-y-auto">
-        <MailsSection key={code} scope={{ binome: code }} onLoad={(d) => setLast(d.last)} />
+        <MailsSection scope={{ binome: code }} onLoad={(d) => setLast(d.last)} />
       </CardContent>
     </Card>
   )
