@@ -60,7 +60,7 @@ export function SendResultsDialog({ onClose }: { onClose: () => void }) {
   }
   async function send() {
     setBusy(true)
-    const out = await run<{ sent: number; failed: number; left: number }>("resultsMail", { op: "send", ...body() }, "Send results")
+    const out = await run<{ sent: number; failed: number; left: number }>("resultsMail", { op: "send", ...body(), budgetMs: 200000 }, "Send results") // ends before the proxy's limit
     await useResults.getState().load()
     setBusy(false)
     if (out && !out.result.left) onClose()

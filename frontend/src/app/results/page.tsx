@@ -161,7 +161,7 @@ export default function ResultsPage() {
                     {tabKey === "Unopened" && <td className="px-2 py-2.5 text-sm">{r.phone || "—"}<br /><span className="text-muted-foreground">{r.email}</span></td>}
                   </tr>
                 ))}
-                {!rows.length && <tr><td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">Nobody fits this filter.</td></tr>}
+                {!rows.length && <tr><td colSpan={tabKey === "Unopened" ? 9 : 8} className="px-3 py-10 text-center text-sm text-muted-foreground">Nobody fits this filter.</td></tr>}
               </tbody>
             </table>
           </div>

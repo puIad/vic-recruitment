@@ -47,28 +47,34 @@ function resLink_(code, test) {
 }
 function resConfigured_() { const p = PropertiesService.getScriptProperties(); return !!p.getProperty('JOIN_URL') && !!p.getProperty('JOIN_SECRET'); }
 
-/** Gives vic-enp the four group links and these candidates' current results ({code: result}). Throws when it can't, so nothing is sent. */
+const resLinks_ = () => { const links = {}; DEPTS.forEach(d => { links[d] = resGroup_(d); }); return links; };
+/** Everyone told (or about to be told, extra: codes) with the result they hold, {code: result}: what every push to vic-enp carries. */
+function resToldMap_(iv, extra) {
+  const I = iv.I, told = {};
+  iv.data.forEach(r => {
+    const code = String(r[I.Code]).trim(), result = p1Stored_(I, r);
+    if (code && resValid_(result) && (resTold_(I, r) || (extra && extra[code]))) told[code] = result;
+  });
+  return told;
+}
+/** POST to vic-enp's join-sync; the response code. */
+function resPost_(body) {
+  return UrlFetchApp.fetch(resUrl_() + '/api/join-sync', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + resSecret_() },
+    payload: JSON.stringify(body), muteHttpExceptions: true }).getResponseCode();
+}
+/** Gives vic-enp the four group links and the told candidates' results ({code: result}). Throws when it can't, so nothing is sent. */
 function resPush_(told) {
-  const links = {}; DEPTS.forEach(d => { links[d] = resGroup_(d); });
-  const body = { links: links, told: told };
-  let r;
-  try {
-    r = UrlFetchApp.fetch(resUrl_() + '/api/join-sync', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + resSecret_() },
-      payload: JSON.stringify(body), muteHttpExceptions: true });
-  } catch (e) { throw new Error('The push to vic-enp failed (' + String(e && e.message || e).slice(0, 120) + '): nothing was sent.'); }
-  if (r.getResponseCode() !== 200) throw new Error('The push to vic-enp failed (it answered ' + r.getResponseCode() + '): nothing was sent.');
-  return body;
+  let code;
+  try { code = resPost_({ links: resLinks_(), told: told }); } catch (e) { throw new Error('The push to vic-enp failed (' + String(e && e.message || e).slice(0, 120) + '): nothing was sent.'); }
+  if (code !== 200) throw new Error('The push to vic-enp failed (it answered ' + code + '): nothing was sent.');
 }
 
 /** The timed sync: once mails have gone, keeps vic-enp's links and results current (a changed link also fixes the mails already sent). */
 function resSyncLinks_(ctx) {
   const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('JOIN_SECRET') || !props.getProperty('JOIN_URL')) return;
-  const I = ctx.iv.I, told = {};
-  if (!ctx.iv.data.some(r => resTold_(I, r))) return;
-  ctx.iv.data.forEach(r => { if (resTold_(I, r) && resValid_(p1Stored_(I, r))) told[String(r[I.Code]).trim()] = p1Stored_(I, r); });
-  const links = {}; DEPTS.forEach(d => { links[d] = resGroup_(d); });
-  const h = hash_(JSON.stringify({ links: links, told: told }));
+  if (!resConfigured_()) return;
+  if (!ctx.iv.data.some(r => resTold_(ctx.iv.I, r))) return;
+  const told = resToldMap_(ctx.iv), h = hash_(JSON.stringify({ links: resLinks_(), told: told }));
   if (props.getProperty('JOIN_PUSHED') === h) return;
   resPush_(told);
   props.setProperty('JOIN_PUSHED', h);
@@ -80,9 +86,8 @@ function resJoinReset_() {
   props.deleteProperty('JOIN_PUSHED');
   if (!resConfigured_()) return;
   try {
-    const r = UrlFetchApp.fetch(resUrl_() + '/api/join-sync', { method: 'post', contentType: 'application/json', headers: { Authorization: 'Bearer ' + resSecret_() },
-      payload: JSON.stringify({ reset: true }), muteHttpExceptions: true });
-    if (r.getResponseCode() !== 200) console.warn('Join reset: vic-enp answered ' + r.getResponseCode());
+    const code = resPost_({ reset: true });
+    if (code !== 200) console.warn('Join reset: vic-enp answered ' + code);
   } catch (e) { console.warn('Join reset: ' + e); }
 }
 
@@ -239,9 +244,8 @@ function resultsMailCore_(a, args) {
     resSecret_(); resUrl_();
     // the words go to Settings before the first mail, so Send again and later corrections use the same words
     resSaveTexts_(a, args);
-    const told = {};
-    iv.data.forEach(r => { const c = resCand_(I, r); if (c.told || aud.send.some(x => x.code === c.code)) told[c.code] = c.result; });
-    resPush_(told);
+    const next = {}; aud.send.forEach(c => { next[c.code] = true; });
+    resPush_(resToldMap_(iv, next));
     const byCode = {}; iv.data.forEach(r => { byCode[String(r[I.Code]).trim()] = r; });
     let i = 0, sent = 0, failed = 0, unsaved = 0;
     for (; i < aud.send.length && Date.now() - t0 < budget; i++) {
@@ -294,8 +298,8 @@ function resultMailOneCore_(a, args) {
       mailLogSettle_();
       return { test: true, sent: !!sent };
     }
-    const told = {}; told[code] = b.c.result;
-    resPush_(told);
+    const next = {}; next[code] = true;
+    resPush_(resToldMap_(b.iv, next));
     if (!mailSend_(b.c.email, b.m, [code, b.c.result])) return { sent: false, test: false };
     b.r[b.I[RES_COL]] = resMark_(b.c.result, new Date());
     saveTable_(b.iv);
