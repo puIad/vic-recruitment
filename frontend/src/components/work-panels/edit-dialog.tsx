@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
+import { DEPTS } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { CandidateData } from "@/lib/vic/types"
 
-const DEPTS = ["IT", "COMM", "FLER", "HR"]
 type Kind = "text" | "email" | "tel" | "choice" | "days"
 const FIELDS: { key: string; label: string; kind: Kind; options?: (d: CandidateData) => string[]; hint?: string }[] = [
   { key: "First Name", label: "First name", kind: "text" },
@@ -31,7 +31,7 @@ const FIELDS: { key: string; label: string; kind: Kind; options?: (d: CandidateD
   { key: "Discord", label: "Discord", kind: "text" },
 ]
 
-function Form({ code }: { code: string }) {
+function Form({ code, focus }: { code: string; focus?: string }) {
   const { candidateGet, editCandidate } = useActions()
   const busy = useVic((s) => s.busy)
   const jobs = useVic((s) => s.jobs)
@@ -90,7 +90,7 @@ function Form({ code }: { code: string }) {
               </Label>
               {f.kind === "choice" ? (
                 <Select value={v} onValueChange={set} disabled={locked}>
-                  <SelectTrigger id={id} className="w-full">
+                  <SelectTrigger id={id} className="w-full" autoFocus={focus === f.key}>
                     <SelectValue placeholder="Choose…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -102,7 +102,7 @@ function Form({ code }: { code: string }) {
                   </SelectContent>
                 </Select>
               ) : (
-                <Input id={id} type={f.kind === "email" ? "email" : f.kind === "tel" ? "tel" : "text"} value={v} onChange={(e) => set(e.target.value)} placeholder={f.hint} autoComplete="off" disabled={locked} />
+                <Input id={id} type={f.kind === "email" ? "email" : f.kind === "tel" ? "tel" : "text"} value={v} onChange={(e) => set(e.target.value)} placeholder={f.hint} autoComplete="off" disabled={locked} autoFocus={focus === f.key} />
               )}
             </div>
           )
@@ -134,7 +134,7 @@ export function EditDialog() {
           <DialogTitle className="text-xl font-extrabold text-heading">Edit {d?.code}</DialogTitle>
           <DialogDescription>Fix what they typed. The checks are the registration form's own.</DialogDescription>
         </DialogHeader>
-        {d && <Form key={d.nonce} code={d.code} />}
+        {d && <Form key={d.nonce} code={d.code} focus={d.field} />}
       </DialogContent>
     </Dialog>
   )

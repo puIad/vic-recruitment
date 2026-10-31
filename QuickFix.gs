@@ -180,7 +180,7 @@ function quickCore_(op, a) {
     ctx.alerts.flush();
     sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx);
     buildTracker_(ctx);
-    return { lines: lines, done: done };
+    return { lines: lines, done: done, moves: ctx.moves || [] };
   }, 60000);
   if (!res) { busy_(); return null; }
   const text = (ids.length === 1 ? res.lines.map(l => l.replace(/^A-\d+: /, '')) : res.lines).join('\n');
@@ -196,7 +196,11 @@ function quickOne_(ctx, op, r, a) {
     case 'snooze': return snooze_(ctx, r, ref, String(a.for || ''));
     case 'mute': ctx.alerts.setStatus(r, 'MUTED', ctx.now); return 'muted: it will not be raised again.';
     case 'unmute': ctx.alerts.setStatus(r, 'OPEN'); return 'back with the open alerts.';
-    case 'edit': return editRow_(ctx, regRow_(ctx, ref), a.values || {}).text;
+    case 'edit': { // a 1st choice their binome does not take: the page offers Move interviewee (res.moves)
+      const e = editRow_(ctx, regRow_(ctx, ref), a.values || {});
+      if (e.move) (ctx.moves = ctx.moves || []).push(e.move);
+      return e.text;
+    }
     case 'setCell': return setCell_(ctx, ivRow_(ctx, ref), a);
     case 'exclude': return exclude_(ctx, ref);
     case 'pickCandidate': return pickCandidate_(ctx, ref, a.code);

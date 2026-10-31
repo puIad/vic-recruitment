@@ -15,8 +15,10 @@ import { useActions } from "@/lib/vic/actions"
 import { cn } from "@/lib/utils"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
-import { useProfile } from "@/lib/vic/analytics"
-import type { Interviewee } from "@/lib/vic/types"
+import { useAnalytics, useProfile } from "@/lib/vic/analytics"
+import { CELL_FIELDS } from "./components/cell-fields"
+import { EditCell } from "./components/edit-cell"
+import type { AnalyticsRow, Interviewee } from "@/lib/vic/types"
 
 const NONE: Interviewee[] = []
 const STATUS_ORDER: Record<string, number> = Object.fromEntries(STAGES.concat(SCREEN_STAGES).map((s, i) => [s.key, i]))
@@ -30,7 +32,7 @@ const columns: ColumnDef<Interviewee>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
-    cell: ({ row }) => <span className="block max-w-[20rem] truncate" title={row.original.name}>{row.original.name || "—"}</span>,
+    cell: ({ row }) => <CellOf iv={row.original} id="name" shown={row.original.name || "—"} />,
   },
   {
     accessorKey: "binome",
@@ -66,6 +68,35 @@ const columns: ColumnDef<Interviewee>[] = [
     cell: ({ row }) => <RowAction iv={row.original} />,
   },
 ]
+
+const canEdit = (i: Interviewee) => !!i.code && i.status !== "DECLINED" && i.status !== "DUPLICATE"
+
+/** The registration rows by code, built once per read (the table reads thousands of cells from it). */
+const byCode = new WeakMap<AnalyticsRow[], Map<string, AnalyticsRow>>()
+function regOf(rows: AnalyticsRow[] | undefined, code: string) {
+  if (!rows) return undefined
+  let m = byCode.get(rows)
+  if (!m) byCode.set(rows, (m = new Map(rows.filter((r) => r.code).map((r) => [r.code, r]))))
+  return m.get(code)
+}
+
+/** A value of an editable column: click to edit it in place (declined and duplicate rows are read-only). */
+function CellOf({ iv, id, shown }: { iv: Interviewee; id: string; shown: React.ReactNode }) {
+  const rows = useAnalytics((s) => s.data?.rows)
+  const field = CELL_FIELDS.find((f) => f.id === id)!
+  if (!canEdit(iv)) return <span className="block max-w-[20rem] truncate">{shown}</span>
+  return <EditCell iv={iv} field={field} row={regOf(rows, iv.code)} shown={shown} />
+}
+
+/** Email, choices, field, year and availability: columns of the registration, hidden until chosen in View. */
+function extraColumns(rows: AnalyticsRow[] | undefined): ColumnDef<Interviewee>[] {
+  return CELL_FIELDS.filter((f) => f.id !== "name").map((f) => ({
+    id: f.id,
+    accessorFn: (i: Interviewee) => (regOf(rows, i.code) ? f.read(regOf(rows, i.code)!).join(" ") : ""),
+    header: ({ column }) => <DataTableColumnHeader column={column} title={f.title} />,
+    cell: ({ row }) => <CellOf iv={row.original} id={f.id} shown={<span className={cn(!row.getValue(f.id) && "text-muted-foreground")}>{(row.getValue(f.id) as string) || "—"}</span>} />,
+  }))
+}
 
 /** The code opens the applicant profile (admins only: members never see this page). */
 function ProfileLink({ code }: { code: string }) {
@@ -147,6 +178,12 @@ export default function IntervieweesPage() {
   const list = useVic((s) => s.state?.interviewees) ?? NONE
   const loading = useVic((s) => !s.state)
   const showProfile = useProfile((s) => s.show)
+  const rows = useAnalytics((s) => s.data?.rows)
+  const loadRegs = useAnalytics((s) => s.load)
+  React.useEffect(() => {
+    void loadRegs() // the editable columns read the registrations
+  }, [loadRegs])
+  const allColumns = React.useMemo(() => columns.slice(0, -1).concat(extraColumns(rows), columns.slice(-1)), [rows])
   const [params, setParams] = useSearchParams()
   const q = params.get("q") || ""
   const setQ = (v: string) => {
@@ -185,8 +222,8 @@ export default function IntervieweesPage() {
     >
       <DataTable
         key={scored ? "scored" : "plain"}
-        initialVisibility={scored ? {} : { risk: false }}
-        columns={columns}
+        initialVisibility={{ ...(scored ? {} : { risk: false }), email: false, c1: false, c2: false, field: false, year: false, avail: false }}
+        columns={allColumns}
         data={data}
         loading={loading}
         getRowId={(i) => i.code}
