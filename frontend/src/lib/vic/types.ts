@@ -493,13 +493,8 @@ export type InterviewSaved = Omit<InterviewData, "binome" | "name" | "firstChoic
 
 /** webRun binomeColumnsGet: one candidate's binome columns, read from the binome sheet, for an admin's form. */
 export interface AdminColumns {
-  code: string
-  name: string
   binome: string
-  status: string
   setBy: SetBy
-  /** the binome sheet holds an interview form for them */
-  hasForm: boolean
   candidate: Pick<Candidate, GoldKey | "Code" | "setBy">
 }
 /** webRun adminSet: memberSet's answer per field, plus the candidate's marks now. */

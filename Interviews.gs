@@ -146,8 +146,9 @@ function fillFromForm_(ctx, b, code, vals, prev) {
   Object.keys(want).forEach(k => {
     const cell = sh.getRange(row, bfCol_(k)), cur = t(cell.getValue()), v = want[k];
     if (cur === t(v)) { out[k] = v; return; }
-    if (cur && cur !== t(prev[k])) { // typed by a person: it stays; when an admin typed it, the skip is logged
-      if ((goldMarks_()[code] || {})[k]) logIvChange_(ctx, code, 'Form kept ' + k, cur, t(v));
+    const marked = (goldMarks_()[code] || {})[k];
+    if (cur && (cur !== t(prev[k]) || marked)) { // typed by a person, or set by an admin (even to what the form filled before): it stays
+      if (marked) logIvChange_(ctx, code, 'Form kept ' + k, cur, t(v));
       return;
     }
     cell.setValue(v);

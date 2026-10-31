@@ -1475,7 +1475,7 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
 
   // the read: the sheet's values in the slice's form, no marks, no form yet
   let g = get(c1);
-  assert.deepStrictEqual([g.code, g.binome, g.hasForm, g.setBy, g.candidate.Contacted, g.candidate['Interview Done'], g.candidate.Rating], [c1, b1.code, false, {}, 'Not yet', false, '']);
+  assert.deepStrictEqual([g.candidate.Code, g.binome, g.setBy, g.candidate.Contacted, g.candidate['Interview Done'], g.candidate.Rating], [c1, b1.code, {}, 'Not yet', false, '']);
 
   // several fields in one call, each answered on its own; a refused value stops only itself
   const pv = (as(mem), m.call('webPulse'));
@@ -1547,7 +1547,6 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   m.call('webRun', 'sync');
   assert.deepStrictEqual([cell(c2, 'Rating'), cell(c2, 'Final Affectation')], ['3', 'IT'], 'the form filled the empty cell and left the admin\'s');
   assert.deepStrictEqual(logRows().filter(r => r[2] === c2 && /^Form kept /.test(r[3])).map(r => [r[3], r[4], r[5]]), [['Form kept Rating', '3', '7']], 'Interviewee Changes logs the skip');
-  assert.strictEqual(get(c2).hasForm, true);
   // Let the form fill it: the latest form's value, the mark goes, it is logged, later form saves update it again
   const f1 = m.call('webRun', 'adminFormFill', { code: c2, field: 'Rating' }).result;
   assert.deepStrictEqual([f1.value, cell(c2, 'Rating'), f1.setBy.Rating], [7, '7', undefined]);

@@ -431,7 +431,7 @@ function clearMarks_(code, fields) {
   return { setBy: all[code] };
 }
 
-/** code's binome sheet, opened with the signed-in admin's own access: {b, f: sheetTarget_, name, status}. Throws when the candidate
+/** code's binome sheet, opened with the signed-in admin's own access: {b, f: sheetTarget_}. Throws when the candidate
  *  is unknown or has no binome yet, or the admin can't open the sheet (naming it). */
 function adminSheetOf_(code) {
   const t = loadTable_(TAB.IV, IV_H), I = t.I, x = t.data.filter(r => String(r[I.Code]).trim() === code)[0];
@@ -440,7 +440,7 @@ function adminSheetOf_(code) {
   if (!b) throw new Error(code + ' has no binome yet: there are no columns to fill in.');
   const f = binomeTargets_([b])[b];
   if (f.gone) throw new Error(f.gone);
-  return { b: b, f: f, name: (x[I['First Name']] + ' ' + x[I['Family Name']]).trim(), status: String(x[I.Status]) };
+  return { b: b, f: f };
 }
 /** The seven columns of one row as the slice holds them. */
 function goldValues_(sh, row) {
@@ -450,16 +450,12 @@ function goldValues_(sh, row) {
 }
 
 /** webRun('binomeColumnsGet', {code}): admins read one candidate's binome columns straight from the binome sheet, for the details
- *  form: {code, name, binome, status, candidate: {Code, the seven values, setBy?}, setBy, hasForm}. hasForm = the sheet holds an
- *  interview form for them (Let the form fill it has something to take). No lock. */
+ *  form: {binome, setBy, candidate: {Code, the seven values}}. No lock. */
 function binomeColumnsGet_(code) {
   code = String(code || '').trim();
-  const t = adminSheetOf_(code), sh = t.f.sh, row = findFileRow_(sh, code);
+  const t = adminSheetOf_(code), row = findFileRow_(t.f.sh, code);
   if (row < 0) throw new Error(code + ' is no longer in the sheet of ' + t.b + '.');
-  const setBy = goldMarks_()[code] || {};
-  const hasForm = !!answersRow_(sh.getParent().getSheetByName(IA_TAB), code) || !!String(sh.getRange(row, bfCol_('Interview Form')).getValue()).trim();
-  return { code: code, name: t.name, binome: t.b, status: t.status, setBy: setBy, hasForm: hasForm,
-    candidate: Object.assign({ Code: code }, goldValues_(sh, row), Object.keys(setBy).length ? { setBy: setBy } : {}) };
+  return { binome: t.b, setBy: goldMarks_()[code] || {}, candidate: Object.assign({ Code: code }, goldValues_(t.f.sh, row)) };
 }
 
 /** webRun('adminSet', {code, fields: [{field, value, seen}]}): an admin sets the binome's columns of one candidate in that binome's
