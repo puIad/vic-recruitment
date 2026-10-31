@@ -717,7 +717,15 @@ export interface BMoveEntry extends EntryBase {
   binome: string
   code: string
 }
-export type PendingEntry = AlertEntry | SettingEntry | FieldEntry | TeamEntry | BFieldEntry | BinomeEntry | BMoveEntry
+/** An admin's Phase 1 Result override of one candidate ("" = follow the binome's proposal) */
+export interface ResultEntry extends EntryBase {
+  kind: "result"
+  code: string
+  value: string
+  seen: string
+  note?: string
+}
+export type PendingEntry = AlertEntry | SettingEntry | FieldEntry | TeamEntry | BFieldEntry | BinomeEntry | BMoveEntry | ResultEntry
 /** cell → entry */
 export type PendingRec = Record<string, PendingEntry>
 /** A change as the page sends it to the accept step. built = its snapshot's build time (admins). */
@@ -726,6 +734,7 @@ export type PendingChange =
   | { kind: "setting"; key: string; value: CellValue; seen: CellValue; at: number; built?: number }
   | { kind: "field"; code: string; field: GoldKey; value: CellValue; seen: CellValue; at: number }
   | { kind: "team"; email: string; value: boolean; seen: boolean; at: number }
+  | { kind: "result"; code: string; value: string; seen: string; note?: string; at: number }
   | { kind: "bfield"; binome: string; code: string; field: AdminGoldKey; value: CellValue; seen: CellValue; at: number }
   | { kind: "binome"; binome: string; op: BinomeOp; value: BinomeEntry["value"]; seen: BinomeEntry["seen"]; note: string; until: number | null; codes: string[]; at: number }
 
@@ -745,4 +754,43 @@ export interface CandidateData {
 export interface EditResult {
   text: string
   move: MoveOffer | null
+}
+
+/** One candidate in the results view (webRun p1View): the binome's proposal, the override, the result and what the room reads beside it. */
+export interface P1Row {
+  code: string
+  name: string
+  binome: string
+  status: string
+  c1: string
+  c2: string
+  rating: number | null
+  notes: string
+  interviewed: boolean
+  proposal: string
+  override: string
+  /** the override's note, for admins only */
+  note: string
+  result: string
+  needs: boolean
+  warn: boolean
+  /** the proposal changed after the override was set */
+  changed: boolean
+}
+/** webRun p1View, as of the last sync. */
+export interface P1View {
+  final: { at: number; by: string } | null
+  /** the first result mail has gone */
+  mails: boolean
+  counts: Record<string, number>
+  needs: number
+  rows: P1Row[]
+}
+/** webRun p1Final {op: "preview"}: only vic.rh (owner) can go final or reopen. */
+export interface P1Preview {
+  final: boolean
+  owner: boolean
+  counts: Record<string, number>
+  needs: number
+  refusals: string[]
 }

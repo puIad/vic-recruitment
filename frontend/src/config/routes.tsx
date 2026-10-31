@@ -12,6 +12,7 @@ const Interviewees = lazy(() => import("@/app/interviewees/page"))
 const Team = lazy(() => import("@/app/team/page"))
 const Schedule = lazy(() => import("@/app/calendar/page"))
 const Analytics = lazy(() => import("@/app/analytics/page"))
+const Results = lazy(() => import("@/app/results/page"))
 const MaintenancePage = lazy(() => import("@/app/maintenance/page"))
 const Help = lazy(() => import("@/app/faqs/page"))
 const SettingsGeneral = lazy(() => import("@/app/settings/general/page"))
@@ -50,6 +51,8 @@ export const shellRoutes: RouteConfig[] = [
   { path: "/my-binome/interview/:code", element: <Interview /> },
   { path: "/schedule", element: <Schedule /> },
   { path: "/analytics", element: <Analytics /> },
+  /** every Master editor, in deliberation (docs/admin-features.md › The results view) */
+  { path: "/results", element: <Results /> },
   { path: "/maintenance", element: <MaintenancePage /> },
   { path: "/help", element: <Help /> },
   { path: "/settings/general", element: <SettingsGeneral /> },

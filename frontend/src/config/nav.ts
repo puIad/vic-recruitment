@@ -9,6 +9,7 @@ import {
   Mail,
   Network,
   Palette,
+  Trophy,
   Settings,
   SlidersHorizontal,
   Share2,
@@ -54,6 +55,7 @@ export const navGroups: NavGroup[] = [
       { title: "Interviewees", url: "/interviewees", icon: ListChecks },
       { title: "Schedule", url: "/schedule", icon: CalendarDays },
       { title: "Analytics", url: "/analytics", icon: ChartNoAxesCombined },
+      { title: "Results", url: "/results", icon: Trophy },
     ],
   },
   {
