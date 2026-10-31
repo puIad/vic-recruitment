@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
 import { useVic } from "@/lib/vic/store"
+import { PhaseRow } from "./phase-row"
 
 interface Tool {
   action: string
@@ -46,6 +47,7 @@ export default function MaintenancePage() {
         </CardHeader>
         <CardContent>
           <ul className="divide-y">
+            <PhaseRow />
             {tools
               .filter((t) => !t.ownerOnly || owner)
               .map((t) => (

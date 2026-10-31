@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpRight, Check, PanelRightOpen, Search, X } from "lucide-react"
+import { ArrowUpRight, Check, Lock, PanelRightOpen, Search, X } from "lucide-react"
 
 import { DataTable } from "@/components/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
@@ -303,6 +303,9 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
     onClose()
   }
 
+  // closed interview phase with a form on file: Rating and Final Affectation are read-only here (the script refuses them too)
+  const locked = !!c && !!member?.close?.on && !!(c.interview || cellText(c["Interview Form"]).trim())
+
   return (
     <Sheet open={!!candidate} onOpenChange={(o) => !o && close()}>
       <SheetContent className="w-full gap-0 overflow-y-auto sm:max-w-lg">
@@ -326,12 +329,18 @@ export function CandidateSheet({ candidate, candidates, fileUrl, editable, onClo
                   <InterviewAction c={c} m={member} wide />
                 </section>
               )}
+              {locked && (
+                <p role="note" className="flex gap-2 rounded-xl border border-info/20 bg-info-soft px-3 py-2.5 text-sm text-foreground/90">
+                  <Lock className="mt-0.5 size-4 shrink-0 text-info" />
+                  <span>The interview phase is closed. The form, Rating and Final Affectation are locked. Ask an admin for a correction.</span>
+                </p>
+              )}
               {GROUPS.map((g, gi) => {
                 const edits = editable && gi === 0
                 const dl = (
                     <dl className={cn("divide-y rounded-xl border", edits && "border-vic-aqua/50 bg-accent/30")}>
                       {g.keys.map((k) =>
-                        edits && isGold(k) ? (
+                        edits && isGold(k) && !(locked && (k === "Rating" || k === "Final Affectation")) ? (
                           <div key={k} className="grid grid-cols-1 gap-1.5 px-3 py-3 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3">
                             <dt className="pt-2 font-medium text-foreground/80">
                               <label htmlFor={`gold-${cellText(c.Code)}-${k.replace(/\s+/g, "-")}`}>{SHEET_LABEL[k]}</label>

@@ -34,6 +34,7 @@ function pullBinomeFiles_(ctx, force) {
     const lu = updated[b.fileId], p = pre[b.fileId];
     // rebuilding a first-layout sheet takes seconds: at most UPGRADE_PER_RUN per run, the rest wait for the next ones
     if (!p && !seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
+    if (ctx.guard) ctx.guard.bins[b.code] = (readAt[b.fileId] || 0) > ctx.guard.at; // read once since the close: from here its locked rows are guarded
     ctx.opened[b.code] = force ? 'forced' : edited(b) ? 'edited' : upgrade[b.fileId] ? 'upgrade' : reread[b.fileId] ? 'reread' : 'changed';
     const readFrom = p ? p.at : Date.now(); // a prefetched sheet was read as of the fetch: a save after it stays dirty
     let sh = null, vals = [], disp = [];
@@ -55,14 +56,19 @@ function pullBinomeFiles_(ctx, force) {
         const contacted = String(v[F.Contacted]).trim();
         if (contacted && contacted !== 'Not yet' && !r[I['Contacted Seen At']]) r[I['Contacted Seen At']] = ctx.now;
         r[I.Contacted] = contacted;
+        // closed phase: Rating and Final Affectation of a row with a form stay the Master's; a typed difference is put back and alerted
+        let keep = false;
+        if (guarded_(ctx, b, code)) try { keep = restoreLocked_(ctx, b, r, v, k + 2); } catch (e) { keep = true; console.warn('Locked row ' + code + ' not restored: ' + e); }
         const dStr = disp[k][F['Interview Date']].trim(), tStr = disp[k][F['Interview Time']].trim();
         r[I['Interview Date']] = dStr; r[I['Interview Time']] = tStr;
         const at = buildInterviewAt(dStr, tStr, offset);
         r[I['Interview At']] = at === null ? '' : at;
         r[I['Binome Notes']] = String(v[F.Notes]);
         r[I['Interview Done']] = v[F['Interview Done']] === true;
-        r[I.Rating] = typeof v[F.Rating] === 'number' ? v[F.Rating] : String(v[F.Rating]).trim();
-        r[I['Final Affectation']] = String(v[F['Final Affectation']]).trim();
+        if (!keep) {
+          r[I.Rating] = typeof v[F.Rating] === 'number' ? v[F.Rating] : String(v[F.Rating]).trim();
+          r[I['Final Affectation']] = String(v[F['Final Affectation']]).trim();
+        }
         r[I.Status] = statusOf_(ctx, r);
       });
     }
@@ -140,7 +146,7 @@ function timingAlerts_(ctx) {
   const s = S_(), I = ctx.iv.I;
   const lim = { contactH: num_(s.HOURS_NOT_CONTACTED, 24), dateH: num_(s.HOURS_NO_INTERVIEW_DATE, 48), afterH: num_(s.HOURS_AFTER_INTERVIEW_NO_FORM, 12) };
   const current = {};
-  const noneActive = !activeBinomes_(ctx).length;
+  const noneActive = !activeBinomes_(ctx).length, closed = interviewClosed_();
   ctx.iv.data.forEach(r => {
     const code = String(r[I.Code]).trim();
     if (r[I.Status] === ST.UNASSIGNED && DEPTS.indexOf(String(r[I['1st Choice']])) >= 0 && bool_(s.ASSIGNMENTS_OPEN)) {
@@ -150,7 +156,8 @@ function timingAlerts_(ctx) {
     const at = r[I['Interview At']];
     const issues = timingIssues({ code: code, status: r[I.Status], registeredAt: r[I['Registered At']], assignedAt: r[I['Assigned At']], contacted: r[I.Contacted],
       interviewAt: at === '' ? null : at, interviewLabel: fmt_(at), submittedAt: r[I['Interview Submitted At']] }, ctx.now, lim);
-    issues.forEach(x => {
+    // closed phase: late contacts, dates and forms stop being alerts (open ones close below, and come back on a reopen)
+    issues.filter(x => !closed || ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE'].indexOf(x.type) < 0).forEach(x => {
       const key = 'TIME|' + x.type + '|' + code;
       current[key] = true;
       ctx.alerts.add({ severity: 'MEDIUM', type: x.type, code: code, binome: r[I.Binome], msg: x.msg + ' (binome ' + r[I.Binome] + ')',
@@ -298,6 +305,7 @@ function runCycle_(opts) {
     _settings = null;
     const ctx = loaded = loadCtx_(); lap('load');
     detectEdits_(ctx); lap('edits');
+    ctx.guard = closeGuard_(ctx); // what was locked when this sync started
     if (opts.timing) resumeDue_(ctx); // before the assignment: a binome back today can get today's registrants
     processRegistrations_(ctx);
     screenWaiting_(ctx); // before the assignment: a VIC member waiting for a binome is declined, not placed
@@ -307,7 +315,7 @@ function runCycle_(opts) {
     if (opts.pull) pullBinomeFiles_(ctx, opts.force); lap('pull');
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });
     endFinishedCovers_(ctx); stampConfirmations_(ctx); lap('statuses');
-    if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); } lap('timing');
+    if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); closeAlerts_(ctx); } lap('timing');
     if (opts.integrity) ctx.integrityMsg = integrityCheck_(ctx, t0 + opts.integrity); lap('integrity');
     // the dashboard forms' Master copy last: one saved before its log row would never be logged
     saveTable_(ctx.iv); appendLog_(ctx); if (ctx.dash) saveTable_(ctx.dash); lap('save');

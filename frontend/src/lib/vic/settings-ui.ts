@@ -177,6 +177,7 @@ export const SETTING_UI: Record<string, SettingUi> = {
     control: { type: "choice", custom: { unit: "points", min: 0, max: 100 } },
   },
   VIC_MEMBERS_SHEET: { label: "VIC members sheet", icon: Table2, help: "The Google Sheet listing the VIC members." },
+  INTERVIEW_CLOSE_DATE: { label: "Interview close date", icon: Table2, help: "A reminder only, in Algiers time (YYYY-MM-DD or YYYY-MM-DD HH:mm). Nothing locks by itself: close the phase from Maintenance." },
 }
 
 /* ---------- Settings › Emails ---------- */
@@ -196,6 +197,8 @@ export const MAIL_UI: Record<string, { label: string; help: string; icon: Lucide
   COVERED: { label: "Someone covers for you", help: "Sent to the members of a binome when someone covers for them.", icon: MailMinus },
   BINOME_PAUSED: { label: "Binome paused", help: "Sent to both members of a binome when an admin pauses it.", icon: Users2 },
   BINOME_RESUMED: { label: "Binome resumed", help: "Sent to both members of a binome when it resumes, by hand or from its date.", icon: Users2 },
+  INTERVIEW_CLOSED: { label: "Interview phase closed", help: "Sent to both members of every active or paused binome when an admin closes the interview phase.", icon: Users2 },
+  INTERVIEW_REOPENED: { label: "Interview phase reopened", help: "Sent to both members of every active or paused binome when an admin reopens the interview phase.", icon: Users2 },
 }
 
 export const MAIL_FIELD_LABEL: Record<string, string> = {

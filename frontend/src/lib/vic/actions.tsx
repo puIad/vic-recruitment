@@ -17,6 +17,7 @@ import type {
   ChangePlan,
   Cover,
   CandidateData,
+  ClosePreview,
   CoverCheck,
   EditResult,
   FixMode,
@@ -612,6 +613,25 @@ export function useActions() {
           okLabel: "Run setup",
         })
         const out = ok ? await go("setup", {}, "Setup") : null
+        after()
+        return !!out
+      },
+      /** Maintenance › Interview phase: what a close would lock, read-only. */
+      async closePreview() {
+        const out = await go<ClosePreview>("closePreview", {}, "Preview the close")
+        return out?.result ?? null
+      },
+      /** Close or reopen the interview phase: direct writes (never pending). A reopen takes a reason and the reminder's new value. */
+      async interviewClose(op: "close" | "reopen", reason = "", date?: string) {
+        const out = await go("interviewClose", { op, reason, ...(date === undefined ? {} : { date }) }, op === "close" ? "Close the interview phase" : "Reopen the interview phase")
+        after()
+        return !!out
+      },
+      /** The close reminder date as a setting: a pending change when the switch is on, else saved at once. */
+      async closeDate(value: string, seen: string) {
+        const st = useVic.getState()
+        if (st.pendingOn && st.gate.mode === "ok" && (await st.accept([{ kind: "setting", key: "INTERVIEW_CLOSE_DATE", value, seen, at: Date.now(), built: st.state?.built }])) === "ok") return true
+        const out = await go("saveSettings", { values: { INTERVIEW_CLOSE_DATE: value } }, "Save the close date")
         after()
         return !!out
       },

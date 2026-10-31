@@ -8,6 +8,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { ThemeCustomizer } from "@/components/theme-customizer"
 import { DropsDialog } from "@/components/drops-dialog"
 import { SyncStoppedBanner } from "@/components/sync-stopped-banner"
+import { CloseDueBanner } from "@/components/close-due-banner"
 import { TourProvider } from "@/components/tour/tour"
 import { ChangeMembersSheet } from "@/components/work-panels/change-members-sheet"
 import { MoveDialog } from "@/components/work-panels/move-dialog"
@@ -46,6 +47,7 @@ export function AppShell() {
     <SidebarInset className="min-w-0">
       <SiteHeader />
       {!member && <SyncStoppedBanner />}
+      {!member && <CloseDueBanner />}
       <div className="@container/main flex flex-1 flex-col">
         <Outlet />
       </div>

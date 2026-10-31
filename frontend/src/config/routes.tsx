@@ -41,6 +41,8 @@ export const shellRoutes: RouteConfig[] = [
   /** one binome's page for any admin (docs/admin-features.md › One binome's panel and page) */
   { path: "/binomes/:code", element: <BinomeDetail /> },
   { path: "/interviewees", element: <Interviewees /> },
+  /** an admin edits one candidate's interview form with their own sheet access, the interview phase open or closed */
+  { path: "/interviewees/interview/:code", element: <Interview /> },
   { path: "/team", element: <Team /> },
   /** an admin in a binome (nav shows it only then); the page reads the store's member */
   { path: "/my-binome", element: <MyBinome /> },
