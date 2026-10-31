@@ -87,16 +87,26 @@ clearMails();
 run('syncWatchdog()');
 assert.deepStrictEqual(mails(), [], 'once on recovery');
 
-// a stop nobody could be told about is retried at the next run; one that reached someone is not
+// the mailer is down with vic.rh's grant: the owner's grant sends it; a stop nobody could be told about is retried at the next run
 setStamp(20); clearMails();
 run('__mailerOk = __mailer; __mailer = function () { return { code: 200, body: { ok: false, reason: "down" } }; }');
+run('__sendOk = MailApp.sendEmail; MailApp.sendEmail = function () { throw new Error("over quota"); }');
 run('syncWatchdog()');
-run('__mailer = __mailerOk');
-assert.deepStrictEqual(mails(), [], 'the mailer is down');
+run('MailApp.sendEmail = __sendOk');
+assert.deepStrictEqual(mails(), [], 'no way out at all');
 run('syncWatchdog()');
-assert.strictEqual(mails().length, 2, 'retried once the mailer is back');
+assert.deepStrictEqual(mails().map(m => m.to).sort(), [OWNER, RH].sort(), 'retried, and sent without the mailer');
 clearMails();
-run(`__sendOk = MailApp.sendEmail; MailApp.sendEmail = function (o) { if (o.to === ${J(RH)}) throw new Error('over quota'); __sendOk(o); }`);
+run('syncWatchdog()');
+assert.deepStrictEqual(mails(), [], 'once per stop, by either route');
+setStamp(1); run('syncWatchdog()'); clearMails();
+setS('TEST_MODE', true); setStamp(20);
+run('syncWatchdog()');
+assert.deepStrictEqual(mails().map(m => m.to), [OWNER], 'the fallback keeps TEST_MODE: only the admins');
+setS('TEST_MODE', false);
+run('__mailer = __mailerOk');
+clearMails();
+run(`MailApp.sendEmail = function (o) { if (o.to === ${J(RH)}) throw new Error('over quota'); __sendOk(o); }`);
 setStamp(1); run('syncWatchdog()'); // the recovery reaches the owner only
 run('MailApp.sendEmail = __sendOk');
 assert.deepStrictEqual(mails().map(m => m.to), [OWNER]);

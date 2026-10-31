@@ -355,7 +355,12 @@ function watchdogAlert_(ctx) {
     msg: 'The sync watchdog has not run since ' + fmt_(new Date(ran), 'dd/MM HH:mm') + ', so a stopped sync would mail nobody. The Master\'s owner re-authorizes it from their own account: ' + REAUTH_STEPS });
 }
 
-/** The stop or recovery mail, to the Master's owner and vic.rh. True when it reached at least one of them. */
+/** The mailer runs as vic.rh, so the lost grant this watches for can take it down too. The one mail allowed to send as the account running it: the Master's owner, on the watchdog's trigger. */
+function watchdogOwnMail_(to, subject, html) {
+  try { MailApp.sendEmail({ to: to, subject: subject, htmlBody: html, name: 'VIC Recruitment Bot' }); return true; } catch (e) { console.error('Watchdog mail to ' + to + ' failed: ' + e); return false; }
+}
+
+/** The stop or recovery mail, to the Master's owner and vic.rh: through the mailer, else on the owner's grant (never one TEST_MODE held). True when it reached at least one of them. */
 function watchdogMail_(stopped, stamp) {
   const since = fmt_(new Date(stamp), 'dd/MM HH:mm'), title = stopped ? 'The timed sync has stopped' : 'The timed sync is back';
   const html = mailHtml_({ title: title, blocks: stopped ? [
@@ -365,7 +370,8 @@ function watchdogMail_(stopped, stamp) {
     cta: stopped ? { label: 'Open the project', url: projectUrl_() } : { label: 'Open the dashboard', url: DASHBOARD_URL },
     footer: mailTeamFooter_() });
   const owner = lc_(ss_().getOwner().getEmail()), rh = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
-  return [owner, rh].filter((e, i, all) => e && all.indexOf(e) === i).map(e => mail_(e, '[VIC Recruitment] ' + title, html)).some(Boolean);
+  const subject = '[VIC Recruitment] ' + title;
+  return [owner, rh].filter((e, i, all) => e && all.indexOf(e) === i).map(e => mail_(e, subject, html) || (!mailHeld_(e) && watchdogOwnMail_(e, subject, html))).some(Boolean);
 }
 
 /** Trigger on the Master owner's account (installWatchdog), so a lost vic.rh grant doesn't stop it. A mail that reached nobody is retried at the next run. */
