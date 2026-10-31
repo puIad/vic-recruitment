@@ -265,7 +265,7 @@ assert(/Unknown code/.test(out.messages[0]));
   call('webRun', 'sync');
   const count = () => call('webState').interviewees.length, n = count(), rows = regRows();
   out = call('webRun', 'deleteApplication', { code: fresh.code });
-  assert(/answer stays in Registration Responses/.test(out.messages[0]), out.messages[0]);
+  assert(/raw answers stay in the Registration Responses tab/.test(out.messages[0]), out.messages[0]);
   assert.deepStrictEqual([regRows(), count()], [rows, n - 1], 'answer kept, interviewee gone');
   call('webRun', 'sync');
   const st3 = call('webState');

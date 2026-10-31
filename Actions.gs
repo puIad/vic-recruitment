@@ -136,7 +136,7 @@ function deleteApplication_(ctx, code) {
     // a later answer without an email is keyed by its row number: deleting this row would shift it and import it again,
     // so this one stays (the baseline remembers it, so it is never imported again either)
     if (at < 0) kept.push('their answer was not found in Registration Responses');
-    else if (data.slice(at + 1).some(row => get(row, H.ts) && !email(row))) kept.push('their answer stays in Registration Responses (a later answer has no email): delete it there by hand only once no answer without an email is below it');
+    else if (data.slice(at + 1).some(row => get(row, H.ts) && !email(row))) kept.push('their raw answers stay in the Registration Responses tab (a later answer has no email, so the row stays and is never imported again)');
     else { reg.deleteRow(at + 1); if (ctx.base) delete ctx.base.iv[key]; } // nothing left to re-import: the baseline need not remember it
   }
   const A = ctx.alerts.table.I;

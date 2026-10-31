@@ -270,3 +270,45 @@ function appendLog_(ctx) {
   t.sh.getRange(t.originalLength + 2, 1, t.data.length - t.originalLength, LOG_H.length).setValues(t.data.slice(t.originalLength));
   t.originalLength = t.data.length;
 }
+
+/** webRun('interviewForms', {code | key}): an admin reads every interview form of one candidate, without opening a sheet: their
+ *  Interview Log rows (result, notes, what was typed, who sent it), each with its answers from Dashboard Interviews (a DASH| key)
+ *  or Interview Responses; counts marks the form their Interviewees row points at. key (an alert's Interview Log key) alone reaches
+ *  a form that matched nobody, and a form of a known candidate brings all of theirs. Read only: no lock, no publish. */
+function interviewForms_(args) {
+  let code = String(args.code || '').trim();
+  const key = String(args.key || '').trim();
+  if (!code && !key) throw new Error('Not allowed');
+  const iv = loadTable_(TAB.IV, IV_H), log = loadTable_(TAB.LOG, LOG_H), L = log.I, I = iv.I, t = x => String(x == null ? '' : x).trim();
+  if (!code) {
+    const k = log.data.filter(r => t(r[L['Response Key']]) === key)[0];
+    if (!k) throw new Error('That form is not in the Interview Log any more.');
+    code = t(k[L.Interviewee]);
+  }
+  const x = code ? iv.data.filter(r => t(r[I.Code]) === code)[0] : null;
+  if (code && !x) throw new Error('Unknown code ' + code);
+  const counted = x ? Number(x[I['Interview Log Row']]) : 0;
+  const rows = log.data.map((r, i) => ({ r: r, n: i + 2 })).filter(o => (code ? t(o.r[L.Interviewee]) === code : t(o.r[L['Response Key']]) === key));
+  const dash = {}, ss = ss_(), dsh = ss.getSheetByName(TAB.DASH), D = idx_(DASH_H);
+  if (dsh && dsh.getLastRow() > 1) dsh.getRange(2, 1, dsh.getLastRow() - 1, DASH_H.length).getValues().forEach(r => { dash[t(r[D['Response Key']])] = r; });
+  const gf = {}, ish = rows.some(o => !/^DASH\|/.test(t(o.r[L['Response Key']]))) ? responseSheet_('INT') : null;
+  if (ish && ish.getLastRow() > 1) {
+    const data = ish.getDataRange().getValues(), H = intHeaders_(data[0]), Qc = questionCols_(data[0]);
+    for (let k = 1; k < data.length; k++) {
+      const ts = H.ts >= 0 ? data[k][H.ts] : '';
+      if (ts) gf[responseKey_(ts, t(H.collected >= 0 ? data[k][H.collected] : '').toLowerCase(), k + 1)] = Qc.map(c => (c >= 0 ? data[k][c] : ''));
+    }
+  }
+  const fmt = d => (d instanceof Date && !isNaN(d) ? fmt_(d, 'dd/MM/yyyy HH:mm') : '');
+  const forms = rows.map(o => {
+    const lk = t(o.r[L['Response Key']]), isDash = /^DASH\|/.test(lk), d = isDash ? dash[lk] : null;
+    const vals = isDash ? (d ? INTERVIEW_QUESTIONS.map((q, j) => d[DQ + j]) : null) : gf[lk] || null, answers = vals ? {} : null;
+    if (vals) INTERVIEW_QUESTIONS.forEach((q, j) => { answers[q.id] = vals[j] instanceof Date ? fmt(vals[j]) : vals[j]; });
+    return { key: lk, source: isDash ? 'Dashboard' : 'Google Form', at: fmt(o.r[L['Submitted At']]), by: lc_(o.r[L.Submitter]), result: t(o.r[L.Result]),
+      notes: t(o.r[L.Notes]), typedBinome: t(o.r[L['Typed Binome']]), typedInterviewee: t(o.r[L['Typed Interviewee']]), binome: t(o.r[L.Binome]),
+      finalDep: t(o.r[L['Final Dep']]), counts: !!counted && o.n === counted, answers: answers, rating: vals ? formRating_(vals) : '',
+      editedAt: d ? fmt(d[D['Edited At']]) : '', editedBy: d ? t(d[D['Edited By']]) : '' };
+  });
+  return { code: code, name: x ? (t(x[I['First Name']]) + ' ' + t(x[I['Family Name']])).trim() : '', binome: x ? t(x[I.Binome]) : '', forms: forms,
+    sections: INTERVIEW_SECTIONS, questions: INTERVIEW_QUESTIONS };
+}

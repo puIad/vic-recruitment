@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { BinomeColumns } from "@/components/binome-columns"
+import { InterviewForms } from "@/components/interview-forms"
 import { MemberNames } from "@/components/member-name"
 import {
   ageOn,
@@ -195,6 +196,12 @@ function Profile({ row: r, tz }: { row: AnalyticsRow; tz: string }) {
               Written straight into {r.binome}'s sheet. Anything the binome typed can be replaced; a field they changed since this opened is refused.
             </p>
             <BinomeColumns key={r.code} code={r.code} />
+          </Section>
+        )}
+
+        {r.code && (
+          <Section title="Interview form">
+            <InterviewForms key={r.code} code={r.code} />
           </Section>
         )}
 

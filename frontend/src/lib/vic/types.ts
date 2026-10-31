@@ -59,6 +59,8 @@ export interface RegView {
 /** One Interview Log row. subBinome = the locked binome its sender is a member of. */
 export interface FormView {
   row: number
+  /** its Interview Log key, which webRun interviewForms reads by; absent on an older script */
+  key?: string
   at: string
   submitter: string
   submitterName: string
@@ -145,6 +147,12 @@ export interface Binome {
   interviewed: number
   withdrew: number
   open: number
+  /** the Tracker tab's counts (contacted and scheduled include the interviewed; the last three are open alerts); absent on an older script */
+  contacted?: number
+  scheduled?: number
+  notContacted?: number
+  noDate?: number
+  overdue?: number
   /** the load the next pick compares (Balance interviewees by); absent on an older script */
   load?: number
   /** the level an admin last opened this binome at from the dashboard ("" = never); Drive is the truth (binomeAccess) */
@@ -489,6 +497,37 @@ export type InterviewSaved = Omit<InterviewData, "binome" | "name" | "firstChoic
   interview: CandidateInterview
   /** Rating / Final Affectation an admin set, which this form did not overwrite (absent on an older script) */
   kept?: GoldKey[]
+}
+
+/** One interview form of a candidate, as webRun interviewForms reads it: its Interview Log row and its answers (null: the row is gone). */
+export interface FormRead {
+  key: string
+  source: "Dashboard" | "Google Form"
+  at: string
+  by: string
+  /** the Interview Log's result: OK, AUTOCORRECTED, FLAGGED or IGNORED */
+  result: string
+  notes: string
+  typedBinome: string
+  typedInterviewee: string
+  binome: string
+  finalDep: string
+  /** the form their Interviewees row counts */
+  counts: boolean
+  answers: Record<string, InterviewAnswer> | null
+  /** the average of its scores */
+  rating: number | ""
+  editedAt: string
+  editedBy: string
+}
+/** webRun interviewForms: every form of one candidate (code "" for a form that matched nobody), with the questions to draw them. */
+export interface FormsRead {
+  code: string
+  name: string
+  binome: string
+  forms: FormRead[]
+  sections: InterviewSection[]
+  questions: InterviewQuestion[]
 }
 
 /** webRun binomeColumnsGet: one candidate's binome columns, read from the binome sheet, for an admin's form. */

@@ -77,7 +77,7 @@ function appView_(ctx, x) {
 function formView_(ctx, i) {
   const L = ctx.log.I, r = ctx.log.data[i], sub = lc_(r[L.Submitter]);
   const own = activeOrPaused_(ctx).filter(b => b.members.some(m => m.email === sub))[0];
-  return { row: i + 2, at: fmt_(r[L['Submitted At']], 'dd/MM/yyyy HH:mm'), submitter: sub, submitterName: ctx.nameByEmail[sub] || '',
+  return { row: i + 2, key: String(r[L['Response Key']]), at: fmt_(r[L['Submitted At']], 'dd/MM/yyyy HH:mm'), submitter: sub, submitterName: ctx.nameByEmail[sub] || '',
     typedBinome: String(r[L['Typed Binome']]), typedIv: String(r[L['Typed Interviewee']]), binome: String(r[L.Binome]),
     interviewee: String(r[L.Interviewee]), result: String(r[L.Result]), finalDep: String(r[L['Final Dep']]), subBinome: own ? own.code : '' };
 }
