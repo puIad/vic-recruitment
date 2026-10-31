@@ -161,7 +161,9 @@ const IV_H = ['Code', 'Binome', 'Status', 'Registered At', 'Assigned At', 'First
   // added 2026-10-04: more of the registration (shown in the binome sheets) and what the binome records after the interview
   'Birth Date', 'Discovered VIC', 'Why VIC', 'Other Clubs', 'Department Questions', 'Interview Done', 'Rating', 'Final Affectation',
   // added 2026-10-15, admins only (never in the binome sheets): the screening score and its reasons, then each decision
-  'Risk', 'Screening'];
+  'Risk', 'Screening',
+  // added 2026-10-31, admins only (never in the binome sheets): overrides of Final Affectation before final, every result after (Phase1.gs)
+  'Phase 1 Result'];
 const LOG_H = ['Submitted At', 'Submitter', 'Typed Binome', 'Typed Interviewee', 'Binome', 'Interviewee',
   'Result', 'Notes', 'Final Dep', 'Response Key'];
 // One row per member change after lock (history; also tells the interview check who used to be in a binome)

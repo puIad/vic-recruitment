@@ -163,12 +163,13 @@ function binSlices_(ctx) {
     out[b.code] = { v: API_VERSION, binome: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl,
       members: b.members.map(m => m.name || m.email), candidates: [], alerts: [], fromSheet: false };
   });
-  const L = ctx.log.I, marks = goldMarks_();
+  const L = ctx.log.I, marks = goldMarks_(), told = resultMailsStarted_(); // a result reaches a binome only once the first result mail has gone
   ctx.iv.data.forEach(r => {
     const s = out[String(r[I.Binome]).trim()];
     if (!s || !r[I.Code] || isOut_(r[I.Status])) return;
     const c = candidate_(ivToFileRow_(ctx, r, ivCarry_(ctx, r)), r[I.Status]), at = r[I['Interview Submitted At']];
     if (marks[String(r[I.Code]).trim()]) c.setBy = marks[String(r[I.Code]).trim()];
+    if (told) c.result = p1Stored_(I, r);
     // the form that counts: a dashboard one (log key DASH|…) is edited from My binome, a Google Form one only viewed there
     const lr = at ? ctx.log.data[Number(r[I['Interview Log Row']]) - 2] : null;
     if (at) c.interview = { at: fmt_(at, 'dd/MM HH:mm'), by: lr ? lc_(lr[L.Submitter]) : '',
@@ -997,7 +998,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'mailLog', 'mailResendPreview'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'p1View', 'mailLog', 'mailResendPreview'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -1047,6 +1048,10 @@ function webRun(action, args) {
       case 'binomeView': result = binomeViewCore_(args); break;
       case 'adminSet': result = adminSet_(a, args); break;
       case 'adminFormFill': result = adminFormFill_(a, args); break;
+      case 'p1View': result = p1View_(); break;
+      case 'p1Set': result = p1SetCore_(args); break;
+      case 'p1Never': result = p1NeverCore_(args); break;
+      case 'p1Final': result = p1FinalCore_(a, args); break;
       case 'closePreview': result = interviewCloseCore_(a, { op: 'preview' }); break;
       case 'interviewClose': result = interviewCloseCore_(a, args); break;
       case 'editCandidate': result = editCandidateCore_(args.code, args.values); break;

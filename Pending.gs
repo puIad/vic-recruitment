@@ -32,6 +32,8 @@ function pendingSwitch_(a, on) {
  *  - {id, kind: 'field', code, field, value, seen, at} (a member, or an admin in a binome, who can edit their binome sheet): one gold cell of one
  *    candidate, compared as memberSet_ does (goldText_); then the dirty:<binome> mark and patchSlice_, so the partner sees it
  *    at their next poll.
+ *  - {id, kind: 'result', code, value, seen, note?, at} (admins): one candidate's Phase 1 Result override ('' clears it), compared to the
+ *    override the author saw (Phase1.gs); refused once the results are final.
  *  - {id, kind: 'team', email, value, seen, at} (admins): the Team tab's Experienced tick of one member (teamSet_'s cell),
  *    true or false; the drafts holding them get their note again.
  *  - {id, kind: 'bfield', binome, code, field, value, seen, at} (admins): Contacted, Interview Date or Interview Time of one
@@ -67,6 +69,7 @@ function webApply(call) {
   let out;
   try {
     const results = rest.map(c => applyOne_(w, c || {}));
+    p1Flush_(w);
     if (results.some(r => r.end === 'applied')) { SpreadsheetApp.flush(); _settings = null; }
     // a cell written here is no longer what an admin set from the binome's columns: its mark goes
     w.wrote.forEach(f => Object.keys(f.wrote).forEach(code => goldPatch_(f.b, f.sh, f.rows[code].row, code, f.wrote[code], clearMarks_(code, f.wrote[code]))));
@@ -95,6 +98,7 @@ function applyOne_(w, c) {
     return applyAlert_(w.alerts, c);
   }
   if (c.kind === 'field') return w.member ? applyField_(w, w.mine, c, id, 'This candidate is no longer in your binome.') : drop("Only the binome's members fill in its sheet from here.");
+  if (c.kind === 'result') return w.admin ? p1Apply_(w, c, id) : drop('Only an admin can make this change.');
   if (c.kind === 'team' || c.kind === 'bfield') {
     if (!w.admin) return drop('Only an admin can make this change.');
     if (c.kind === 'team') return applyTeam_(w.team || (w.team = { t: loadTable_(TAB.TEAM, TEAM_H), wrote: [] }), c, id);

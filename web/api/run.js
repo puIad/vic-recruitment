@@ -74,6 +74,12 @@ module.exports = async (req, res) => {
     catch (e) { console.warn(JSON.stringify({ at: 'accept', error: String(e.message).slice(0, 200) })); return direct('Could not save it as pending.'); }
   }
 
+  // going final waits for every Phase 1 Result change to be applied or addressed (docs/admin-features.md): only this side sees the queue
+  if (fn === 'webRun' && args[0] === 'p1Final' && args[1] && args[1].op === 'final') {
+    let open;
+    try { open = await P.resultsOpen(Date.now()); } catch (e) { return done(503, { error: 'Could not check the pending changes: try again.' }, false); }
+    if (open) return done(200, { error: 'A result is still a pending change or a dropped change nobody addressed: settle it first.' }, false);
+  }
   let r, j;
   try {
     r = await fetch(S.runUrl(), {
