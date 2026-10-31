@@ -146,7 +146,10 @@ function fillFromForm_(ctx, b, code, vals, prev) {
   Object.keys(want).forEach(k => {
     const cell = sh.getRange(row, bfCol_(k)), cur = t(cell.getValue()), v = want[k];
     if (cur === t(v)) { out[k] = v; return; }
-    if (cur && cur !== t(prev[k])) return; // typed by a person
+    if (cur && cur !== t(prev[k])) { // typed by a person: it stays; when an admin typed it, the skip is logged
+      if ((goldMarks_()[code] || {})[k]) logIvChange_(ctx, code, 'Form kept ' + k, cur, t(v));
+      return;
+    }
     cell.setValue(v);
     SpreadsheetApp.flush(); // a refused write throws here, before the Master copies it (see appendToBinomeFile_)
     if (r) r[I[k]] = v;

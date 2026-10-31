@@ -373,7 +373,11 @@ export type Candidate = Record<SheetKey, string | number | boolean> & {
   /** the interview form that counts, once one is in (absent on an older script): Dashboard = edited from My binome,
    *  Google Form = only viewed there. at dd/MM HH:mm, by = who sent it first (an email). */
   interview?: CandidateInterview
+  /** binome columns an admin set last (WebApp.gs goldMarks_), until the binome edits that field again: who (an email) and when */
+  setBy?: SetBy
 }
+/** An admin's mark on a binome column: set by this admin (an email) at dd/MM HH:mm. */
+export type SetBy = Partial<Record<GoldKey, { by: string; at: string }>>
 export interface CandidateInterview {
   at: string
   by: string
@@ -481,7 +485,36 @@ export interface InterviewData {
   stamp: string
 }
 /** webRun interviewSave: the row as saved, and the candidate's interview as the slice now holds it. */
-export type InterviewSaved = Omit<InterviewData, "binome" | "name" | "firstChoice" | "edit" | "sections" | "questions" | "formUrl"> & { interview: CandidateInterview }
+export type InterviewSaved = Omit<InterviewData, "binome" | "name" | "firstChoice" | "edit" | "sections" | "questions" | "formUrl"> & {
+  interview: CandidateInterview
+  /** Rating / Final Affectation an admin set, which this form did not overwrite (absent on an older script) */
+  kept?: GoldKey[]
+}
+
+/** webRun binomeColumnsGet: one candidate's binome columns, read from the binome sheet, for an admin's form. */
+export interface AdminColumns {
+  code: string
+  name: string
+  binome: string
+  status: string
+  setBy: SetBy
+  /** the binome sheet holds an interview form for them */
+  hasForm: boolean
+  candidate: Pick<Candidate, GoldKey | "Code" | "setBy">
+}
+/** webRun adminSet: memberSet's answer per field, plus the candidate's marks now. */
+export interface AdminSetOut {
+  code: string
+  setBy: SetBy
+  fields: MemberSetField[]
+}
+/** webRun adminFormFill */
+export interface AdminFillOut {
+  code: string
+  field: GoldKey
+  value: string | number | boolean
+  setBy: SetBy
+}
 
 /** What webRun returns: messages for the activity log and toast, plus an action-specific result. */
 export interface RunOut<R = unknown> {

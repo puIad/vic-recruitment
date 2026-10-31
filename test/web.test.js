@@ -1450,6 +1450,121 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   assert.throws(() => get(c1), /^Error: Not allowed$/, 'an admin in no binome reads the Master instead');
 }
 
+// ---- admins fill in a binome's columns (docs/admin-features.md): a direct write into the binome sheet, marked "set by" ----
+{
+  const m = require('./seed')(), J = JSON.stringify;
+  ['importTeam', 'draft', 'lock'].forEach(a => m.call('webRun', a, { link: '' }));
+  m.addRegistrations(30, 3);
+  m.call('webRun', 'sync');
+  m.run('var __admin = Session; var __as = e => { Session = e === "admin@g.enp.edu.dz" ? __admin : { getEffectiveUser: () => ({ getEmail: () => e }), getActiveUser: () => ({ getEmail: () => e }) }; }');
+  const as = e => m.run('__as(' + J(e) + ')');
+  const ADMIN = 'admin@g.enp.edu.dz';
+  const admin = m.call('webState');
+  const ivOf = code => admin.interviewees.filter(i => i.binome === code).map(i => i.code).sort();
+  const b1 = admin.binomes.find(b => b.people.length === 2 && ivOf(b.code).length >= 3);
+  const [mem] = b1.people.map(p => p.email), fid = b1.fileUrl.split('/d/')[1], [c1, c2] = ivOf(b1.code);
+  m.run('__acl = true');
+  m.call('webRun', 'binomeAccess', { binome: b1.code, level: 'edit' });
+  m.call('webRun', 'sync');
+  const set = (code, fields) => m.call('webRun', 'adminSet', { code, fields }).result;
+  const get = code => m.call('webRun', 'binomeColumnsGet', { code }).result;
+  const cell = (code, k) => JSON.parse(m.run(`(function(){var sh=__files[${J(fid)}].obj.sheets[0], r=sh.getRange(findFileRow_(sh, ${J(code)}), bfCol_(${J(k)})); return JSON.stringify(r.getDisplayValue());})()`));
+  const logRows = () => JSON.parse(m.run(`JSON.stringify((ss_().getSheetByName('Interviewee Changes') || { cells: [] }).cells.slice(1))`));
+  const changes = () => logRows().filter(r => /^Admin set /.test(r[3]));
+  const slice = (e, code) => { as(e); try { return m.call('webState').candidates.find(c => c.Code === code); } finally { as(ADMIN); } };
+
+  // the read: the sheet's values in the slice's form, no marks, no form yet
+  let g = get(c1);
+  assert.deepStrictEqual([g.code, g.binome, g.hasForm, g.setBy, g.candidate.Contacted, g.candidate['Interview Done'], g.candidate.Rating], [c1, b1.code, false, {}, 'Not yet', false, '']);
+
+  // several fields in one call, each answered on its own; a refused value stops only itself
+  const pv = (as(mem), m.call('webPulse'));
+  as(ADMIN);
+  const r1 = set(c1, [{ field: 'Contacted', value: 'Yes', seen: 'Not yet' }, { field: 'Rating', value: '7,5', seen: '' },
+    { field: 'Notes', value: 'admin note', seen: '' }, { field: 'Final Affectation', value: 'MATH', seen: '' }]);
+  assert.deepStrictEqual(r1.fields, [{ field: 'Contacted', value: 'Yes' }, { field: 'Rating', value: 7.5 }, { field: 'Notes', value: 'admin note' },
+    { field: 'Final Affectation', error: 'Final Affectation must be one of: IT, COMM, FLER, HR, Not accepted, or empty.' }]);
+  assert.deepStrictEqual([cell(c1, 'Contacted'), cell(c1, 'Rating'), cell(c1, 'Notes'), cell(c1, 'Final Affectation')], ['Yes', '7.5', 'admin note', ''], 'written into the binome sheet');
+  assert.deepStrictEqual(Object.keys(r1.setBy).sort(), ['Contacted', 'Notes', 'Rating'], 'a mark for each field written');
+  assert.deepStrictEqual([r1.setBy.Rating.by, /^\d\d\/\d\d \d\d:\d\d$/.test(r1.setBy.Rating.at)], [ADMIN, true]);
+  assert.deepStrictEqual(changes().map(r => [r[1], r[2], r[3], r[4], r[5]]).sort(),
+    [[ADMIN, c1, 'Admin set Contacted', 'Not yet', 'Yes'], [ADMIN, c1, 'Admin set Notes', '', 'admin note'], [ADMIN, c1, 'Admin set Rating', '', '7.5']].sort(), 'one row per changed field');
+  assert(m.run(`!!__cache[${J('dirty:' + b1.code)}]`), 'dirty: the next sync reads the sheet');
+  // the binome sees it at its next poll, with who set it
+  as(mem);
+  assert.strictEqual(m.call('webPulse'), pv + 1, 'one new version for the whole save');
+  let sl = m.call('webState').candidates.find(c => c.Code === c1);
+  assert.deepStrictEqual([sl.Contacted, sl.Rating, sl.setBy.Contacted.by, Object.keys(sl.setBy).length], ['Yes', 7.5, ADMIN, 3], 'the patched slice carries the marks');
+  as(ADMIN);
+  assert.deepStrictEqual(get(c1).setBy, r1.setBy, 'the read shows the marks');
+  // marks survive a sync's republish
+  m.call('webRun', 'sync');
+  assert.deepStrictEqual(Object.keys(slice(mem, c1).setBy).sort(), ['Contacted', 'Notes', 'Rating'], 'a sync keeps the marks in the slice');
+
+  // the binome changed a cell since the admin's screen: that field is refused with the new value, the others are written
+  as(mem);
+  m.call('webRun', 'memberSet', { code: c1, fields: [{ field: 'Contacted', value: 'No answer', seen: 'Yes' }] });
+  sl = m.call('webState').candidates.find(c => c.Code === c1);
+  assert.deepStrictEqual([sl.setBy.Contacted, Object.keys(sl.setBy).sort()], [undefined, ['Notes', 'Rating']], 'the binome editing a field again takes its mark away');
+  as(ADMIN);
+  const r2 = set(c1, [{ field: 'Contacted', value: 'Withdrew', seen: 'Yes' }, { field: 'Rating', value: 9, seen: 7.5 }]);
+  assert.deepStrictEqual(r2.fields, [{ field: 'Contacted', conflict: 'No answer' }, { field: 'Rating', value: 9 }]);
+  assert.deepStrictEqual([cell(c1, 'Contacted'), cell(c1, 'Rating')], ['No answer', '9'], 'the conflict left the cell, the other was written');
+  assert.strictEqual(changes().filter(r => r[3] === 'Admin set Rating').length, 2, 'only the written field is logged');
+  // a value the cell already holds is no change: no mark, no log row, and not a conflict
+  const n0 = changes().length;
+  assert.deepStrictEqual(set(c1, [{ field: 'Contacted', value: 'No answer', seen: 'No answer' }]).fields, [{ field: 'Contacted', value: 'No answer' }]);
+  assert.strictEqual(changes().length, n0);
+  // an emptied cell carries no mark
+  assert.strictEqual(set(c1, [{ field: 'Notes', value: '', seen: 'admin note' }]).setBy.Notes, undefined, 'nothing is set by anyone in an empty cell');
+
+  // refusals
+  assert.throws(() => set('NOPE.99', [{ field: 'Contacted', value: 'Yes', seen: '' }]), /Unknown code NOPE\.99/);
+  assert.throws(() => set(c1, [{ field: 'Email', value: 'a@b.dz', seen: '' }]), /^Error: Not allowed$/, 'only the binome\'s seven columns');
+  assert.throws(() => set(c1, []), /^Error: Not allowed$/);
+  assert.throws(() => set(c1, [{ field: 'Notes', value: 'a', seen: '' }, { field: 'Notes', value: 'b', seen: '' }]), /^Error: Not allowed$/, 'a field twice');
+  as(mem);
+  assert.throws(() => set(c1, [{ field: 'Contacted', value: 'Yes', seen: '' }]), /^Error: Not allowed$/, 'a member goes through memberSet');
+  assert.throws(() => get(c1), /^Error: Not allowed$/);
+  as(ADMIN);
+  m.run('__docLockBusy = true');
+  assert.throws(() => set(c1, [{ field: 'Contacted', value: 'Yes', seen: 'No answer' }]), /^Error: BUSY: /);
+  m.run('__docLockBusy = false');
+  m.run('var __sobi = SpreadsheetApp.openById; SpreadsheetApp.openById = id => { if (id === ' + J(fid) + ') throw new Error("You do not have permission to access the requested document."); return __sobi.call(SpreadsheetApp, id); }');
+  assert.throws(() => set(c1, [{ field: 'Contacted', value: 'Yes', seen: 'No answer' }]), new RegExp('You cannot open the sheet of ' + b1.code.replace('.', '\\.')), 'an admin who cannot open that sheet gets an error naming it');
+  assert.throws(() => get(c1), /You cannot open the sheet of /);
+  m.run('SpreadsheetApp.openById = __sobi');
+  assert.strictEqual(cell(c1, 'Contacted'), 'No answer', 'nothing written by a refused call');
+
+  // the interview form: it keeps an admin's Rating, says so in the save's reply, and the skip is logged at the next sync
+  const Q = JSON.parse(m.run('JSON.stringify(INTERVIEW_QUESTIONS)'));
+  const full = dept => { const a = {}; Q.filter(q => ['first', 'final', dept].includes(q.section)).forEach(q => { a[q.id] = q.type === 'score' ? 7 : q.type === 'choice' ? q.options[0] : 'Calm'; }); return Object.assign(a, { firstChoice: dept, finalDep: dept }); };
+  set(c2, [{ field: 'Rating', value: 3, seen: '' }]);
+  as(mem);
+  const sv = m.call('webRun', 'interviewSave', { code: c2, answers: full('IT'), seen: '' }).result;
+  assert.deepStrictEqual(sv.kept, ['Rating'], 'Rating stays as the admin set it; Final Affectation was empty and the form fills it');
+  as(ADMIN);
+  m.call('webRun', 'sync');
+  assert.deepStrictEqual([cell(c2, 'Rating'), cell(c2, 'Final Affectation')], ['3', 'IT'], 'the form filled the empty cell and left the admin\'s');
+  assert.deepStrictEqual(logRows().filter(r => r[2] === c2 && /^Form kept /.test(r[3])).map(r => [r[3], r[4], r[5]]), [['Form kept Rating', '3', '7']], 'Interviewee Changes logs the skip');
+  assert.strictEqual(get(c2).hasForm, true);
+  // Let the form fill it: the latest form's value, the mark goes, it is logged, later form saves update it again
+  const f1 = m.call('webRun', 'adminFormFill', { code: c2, field: 'Rating' }).result;
+  assert.deepStrictEqual([f1.value, cell(c2, 'Rating'), f1.setBy.Rating], [7, '7', undefined]);
+  assert.deepStrictEqual(logRows().filter(r => r[2] === c2 && r[3] === 'Form filled Rating').map(r => [r[4], r[5]]), [['3', '7']]);
+  assert.strictEqual(slice(mem, c2).setBy, undefined, 'the binome no longer sees a mark');
+  as(mem);
+  const edited = m.call('webRun', 'interviewGet', { code: c2 }).result;
+  m.call('webRun', 'interviewSave', { code: c2, answers: Object.assign(full('IT'), { intro: 5 }), seen: edited.stamp });
+  as(ADMIN); m.call('webRun', 'sync');
+  assert.notStrictEqual(cell(c2, 'Rating'), '7', 'a later form save updates it again, as before an admin touched it');
+  // no form yet: it empties the cell
+  set(c1, [{ field: 'Rating', value: 4, seen: '9' }]);
+  const f2 = m.call('webRun', 'adminFormFill', { code: c1, field: 'Rating' }).result;
+  assert.deepStrictEqual([f2.value, cell(c1, 'Rating')], ['', ''], 'no form yet: blank');
+  assert.throws(() => m.call('webRun', 'adminFormFill', { code: c1, field: 'Notes' }), /^Error: Not allowed$/, 'only Rating and Final Affectation');
+}
+
 run('__as("")');
 assert.strictEqual(run('access_().reason'), 'NO_EMAIL', 'hidden email is denied');
 assert.throws(() => call('webState'), /Not allowed/);

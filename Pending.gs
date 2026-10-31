@@ -68,7 +68,8 @@ function webApply(call) {
   try {
     const results = rest.map(c => applyOne_(w, c || {}));
     if (results.some(r => r.end === 'applied')) { SpreadsheetApp.flush(); _settings = null; }
-    w.wrote.forEach(f => Object.keys(f.wrote).forEach(code => goldPatch_(f.b, f.sh, f.rows[code].row, code, f.wrote[code])));
+    // a cell written here is no longer what an admin set from the binome's columns: its mark goes
+    w.wrote.forEach(f => Object.keys(f.wrote).forEach(code => goldPatch_(f.b, f.sh, f.rows[code].row, code, f.wrote[code], clearMarks_(code, f.wrote[code]))));
     // shortcut: outside the script lock, so a Pair or Redraw rewriting the drafts in the same seconds may keep its own note
     if (w.team && w.team.wrote.length) draftNotes_({ team: w.team.t, bin: loadTable_(TAB.BINOMES, BIN_H) }, w.team.wrote);
     const t = Date.now();
