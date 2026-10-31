@@ -314,6 +314,7 @@ export default function BinomesPage() {
         data={data}
         loading={loading}
         getRowId={(b) => b.code}
+        onRowClick={(b) => setPanelOf(b.code)}
         initialSorting={[]}
         initialVisibility={TRACKER_HIDDEN}
         empty={
