@@ -937,6 +937,27 @@ function logAction_(action, outcome, t0, tp, ph) {
     writes: Math.max(0, tp - t0 - lockWait - load - tracker), tracker: tracker, publish: end - tp, snapT: _snapT, mailsSent: _mailsSent }));
 }
 
+/** webRun('binomeView', {binome, live?}): one locked binome's slice for an admin, the page a member of it would get (members, candidates
+ *  with statuses and forms, its alerts), from the last sync's copy plus dashboard edits. live: the candidates read from the binome
+ *  sheet now with the admin's own access, keeping each one's status from the Master; an admin without that access gets a plain
+ *  answer and keeps the copy they have. A read: nothing is written or published. */
+function binomeViewCore_(args) {
+  const code = String(args.binome || '').trim(), map = savedMemberMap_();
+  const who = Object.keys(map).filter(e => map[e].b === code && !map[e].cover)[0];
+  if (!who) throw new Error(code + ' has no sheet yet.');
+  const noAccess = e => { throw /shared with you/.test(e.message) ? new Error("You can't open the sheet of " + code + " with your account.") : e; };
+  let sl;
+  try { sl = memberState_({ m: map[who], edit: true }); } catch (e) { noAccess(e); }
+  if (args.live) {
+    let now;
+    try { now = sliceFromSheet_(map[who]); } catch (e) { noAccess(e); }
+    const status = {}; sl.candidates.forEach(c => { status[String(c.Code)] = c.Status; });
+    sl.candidates = now.candidates.map(c => Object.assign(c, { Status: status[String(c.Code)] || '' }));
+    sl.fromSheet = false;
+  }
+  return sl;
+}
+
 /** One entry point for every dashboard button. Returns {messages[], result}. args.budgetMs (lock): the Vercel front sends
  *  ~200s so the run ends before its 300s function limit; the old dashboard and the menu keep 270s. */
 function webRun(action, args) {
@@ -950,7 +971,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -997,6 +1018,7 @@ function webRun(action, args) {
       case 'candidateGet': result = candidateGet_(args.code); break;
       case 'binomeColumnsGet': result = binomeColumnsGet_(args.code); break;
       case 'interviewForms': result = interviewForms_(args); break;
+      case 'binomeView': result = binomeViewCore_(args); break;
       case 'adminSet': result = adminSet_(a, args); break;
       case 'adminFormFill': result = adminFormFill_(a, args); break;
       case 'editCandidate': result = editCandidateCore_(args.code, args.values); break;

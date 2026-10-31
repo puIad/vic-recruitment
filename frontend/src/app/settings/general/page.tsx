@@ -78,7 +78,7 @@ function HrShare({ weight, total }: { weight: number; total: boolean }) {
               {hrOnly.map((b) =>
                 row(
                   b.code,
-                  <Link to={`/binomes?q=${encodeURIComponent(b.code)}`} className="text-primary hover:underline">{b.code}</Link>,
+                  <Link to={`/binomes/${encodeURIComponent(b.code)}`} className="text-primary hover:underline">{b.code}</Link>,
                   lightest ? `HR-only · about ${one(target)} at this weight` : "HR-only",
                   load(b),
                   "bg-vic-ring",
