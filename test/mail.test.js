@@ -176,7 +176,8 @@ assert(/Daily digest · /.test(digest) && /New registrations <b/.test(digest) &&
 {
   const fs = require('fs');
   fs.readdirSync(__dirname + '/..').filter(f => f.endsWith('.gs')).forEach(f =>
-    assert(!/\b(MailApp|GmailApp)\./.test(fs.readFileSync(__dirname + '/../' + f, 'utf8')), f + ' must not send as the account running it: use mail_()'));
+    // the one exception: the watchdog's fallback, for when the mailer is down with vic.rh's grant (test/watch.test.js)
+    assert(!/\b(MailApp|GmailApp)\./.test(fs.readFileSync(__dirname + '/../' + f, 'utf8').replace(/function watchdogOwnMail_[\s\S]*?\n}/, '')), f + ' must not send as the account running it: use mail_()'));
   run('__outbox.length = 0');
   const html = R(`mailHtml_({ title: 'x' })`);
   assert.strictEqual(R(`mail_('a@g.enp.edu.dz', 'Hello', ${J(html)}, 'VIC Recruitment')`), true);
