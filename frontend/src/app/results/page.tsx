@@ -28,6 +28,8 @@ export default function ResultsPage() {
   const [open, setOpen] = React.useState<string | null>(null)
   const [cursor, setCursor] = React.useState<string | null>(null)
   const final = !!view?.final
+  const clicks = useResults((s) => s.clicks)
+  const mailsGone = !!view?.mails
 
   // best rating first, nobody rated last
   const sorted = React.useMemo(() => [...all].sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1) || a.code.localeCompare(b.code)), [all])
@@ -39,9 +41,10 @@ export default function ResultsPage() {
       if (s && !`${r.code} ${r.name} ${r.binome}`.toLowerCase().includes(s)) return false
       if (tabKey === "All") return true
       if (tabKey === "Needs") return r.needs
+      if (tabKey === "Unopened") return !!r.told && r.told.indexOf("Not accepted") !== 0 && !!clicks && !clicks[r.code]
       return basis === "first" ? r.c1 === tabKey : r.result === tabKey
     })
-  }, [sorted, q, tabKey, basis])
+  }, [sorted, q, tabKey, basis, clicks])
 
   // Up and down move the highlighted row (the open panel follows); a row that leaves the tab hands the highlight to the row that takes its place.
   const [lastAt, setLastAt] = React.useState(0)
@@ -80,6 +83,8 @@ export default function ResultsPage() {
     { k: "All", label: "Everyone", n: all.length },
     ...RESULT_VALUES.filter((v) => basis === "result" || v !== "Not accepted").map((v) => ({ k: v as string, label: v as string, n: basis === "first" ? all.filter((r) => r.c1 === v).length : counts[v] ?? 0 })),
     { k: "Needs", label: "Needs a decision", n: needs },
+    // told as accepted and no click on the group link yet (a mail scanner can mark someone opened, so this can miss people)
+    ...(mailsGone && clicks ? [{ k: "Unopened", label: "Not opened", n: all.filter((r) => r.told && r.told.indexOf("Not accepted") !== 0 && !clicks[r.code]).length }] : []),
   ]
   const opened = open ? all.find((r) => r.code === open) : undefined
 
@@ -108,6 +113,7 @@ export default function ResultsPage() {
               </button>
             </span>
           </div>
+          {mailsGone && !clicks && <p className="rounded-lg border px-3 py-2 text-sm text-muted-foreground">Group link clicks are unavailable right now (the site could not be reached). Everything else works.</p>}
           <FinalBar view={view} rows={all} needs={needs} saving={saving} undealt={undealt} />
           <div className="flex items-center gap-3">
             <div className="relative w-full sm:w-80">
@@ -128,6 +134,7 @@ export default function ResultsPage() {
                   <th className="px-2 py-2.5 font-semibold">Proposed</th>
                   <th className="px-2 py-2.5 font-semibold">Result</th>
                   <th className="px-2 py-2.5 font-semibold">Binome's notes</th>
+                  {tabKey === "Unopened" && <th className="px-2 py-2.5 font-semibold">Phone and email</th>}
                 </tr>
               </thead>
               <tbody>
@@ -142,6 +149,7 @@ export default function ResultsPage() {
                     <td className="px-2 py-2.5 text-sm">{r.proposal || <span className="text-muted-foreground">Nothing</span>}</td>
                     <td className="px-2 py-2.5"><span className="inline-flex items-center gap-2"><ResultChip r={r} final={final} /><Marks r={r} /></span></td>
                     <td className="max-w-[18rem] truncate px-2 py-2.5 text-sm text-muted-foreground" title={r.notes}>{r.notes.split("\n")[0]}</td>
+                    {tabKey === "Unopened" && <td className="px-2 py-2.5 text-sm">{r.phone || "—"}<br /><span className="text-muted-foreground">{r.email}</span></td>}
                   </tr>
                 ))}
                 {!rows.length && <tr><td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">Nobody fits this filter.</td></tr>}

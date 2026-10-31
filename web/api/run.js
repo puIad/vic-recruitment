@@ -80,6 +80,12 @@ module.exports = async (req, res) => {
     try { open = await P.resultsOpen(Date.now()); } catch (e) { return done(503, { error: 'Could not check the pending changes: try again.' }, false); }
     if (open) return done(200, { error: 'A result is still a pending change or a dropped change nobody addressed: settle it first.' }, false);
   }
+  // Send results waits for the result mails' texts too (same reason, same side)
+  if (fn === 'webRun' && args[0] === 'resultsMail' && args[1] && args[1].op === 'send') {
+    let open;
+    try { open = await P.resultTextsOpen(Date.now()); } catch (e) { return done(503, { error: 'Could not check the pending changes: try again.' }, false); }
+    if (open) return done(200, { error: 'A result mail text, next step or group link is still a pending change or a dropped change nobody addressed: settle it first.' }, false);
+  }
   let r, j;
   try {
     r = await fetch(S.runUrl(), {
@@ -119,6 +125,9 @@ module.exports = async (req, res) => {
   // the preview lists what refuses going final; the pending check is only ours to make
   if (fn === 'webRun' && args[0] === 'p1Final' && args[1] && args[1].op === 'preview' && out.value && out.value.result && Array.isArray(out.value.result.refusals)) {
     try { if (await P.resultsOpen(Date.now())) out.value.result.refusals.push('A result is still a pending change or a dropped change nobody addressed.'); } catch (e) { /* the final click checks again */ }
+  }
+  if (fn === 'webRun' && args[0] === 'resultsMail' && args[1] && args[1].op === 'preview' && out.value && out.value.result && Array.isArray(out.value.result.refusals)) {
+    try { if (await P.resultTextsOpen(Date.now())) out.value.result.refusals.push('A result mail text, next step or group link is still a pending change or a dropped change nobody addressed.'); } catch (e) { /* the send checks again */ }
   }
   if (fn === 'webAccess' && !!s.acc !== !!(out.value && out.value.ok)) { s.acc = out.value && out.value.ok ? true : undefined; S.addCookie(res, S.sessionCookie(s)); }
   if (fn === 'webPulse' && (b.rec === 2 || (b.rec === 1 && out.value && out.value.pending === true))) {

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Lock, RotateCcw } from "lucide-react"
+import { Lock, RotateCcw, Send } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -9,6 +9,7 @@ import { RESULT_VALUES, useResults, type ResultRow } from "@/lib/vic/results"
 import { useVic } from "@/lib/vic/store"
 import type { P1Preview, P1View, RunOut } from "@/lib/vic/types"
 import { Dot } from "./result-parts"
+import { SendResultsDialog } from "./send-results"
 
 interface Props {
   view: P1View
@@ -87,6 +88,7 @@ export function FinalBar({ view, rows, needs, saving, undealt }: Props) {
   const [never, setNever] = React.useState<string[] | null>(null)
   const [fin, setFin] = React.useState<P1Preview | null>(null)
   const [busy, setBusy] = React.useState(false)
+  const [sending, setSending] = React.useState(false)
   const owner = !!preview?.owner
   const neverCount = rows.filter((r) => r.needs && !r.interviewed).length
   const blocks = [
@@ -120,10 +122,21 @@ export function FinalBar({ view, rows, needs, saving, undealt }: Props) {
       ) : (
         <span className="text-muted-foreground">Not final{blocks.length ? `: ${blocks.join(", ")}.` : ". Ready."}</span>
       )}
+      {view.final && view.send && view.mails && (
+        <span className="text-sm text-muted-foreground">
+          Told <b className="num text-foreground">{view.send.told}</b> · left <b className="num text-foreground">{view.send.left}</b>
+          {view.send.owed > 0 && <> · mail owed <b className="num text-warning">{view.send.owed}</b></>}
+        </span>
+      )}
       {!view.final && neverCount > 0 && (
         <Button size="sm" variant="outline" disabled={busy} onClick={() => void openNever()}>Set {neverCount} never interviewed to Not accepted…</Button>
       )}
-      <span className="ml-auto">
+      <span className="ml-auto inline-flex flex-wrap items-center gap-3">
+        <Button size="sm" variant={view.final ? "default" : "outline"} disabled={!view.final} onClick={() => setSending(true)}
+          title={view.final ? undefined : "Results must be final first"}>
+          <Send /> Send results…
+        </Button>
+        {!view.final && <span className="text-sm text-muted-foreground">Final first</span>}
         {view.final ? (
           owner && !view.mails ? <Button size="sm" variant="outline" onClick={() => void reopen()}><RotateCcw /> Reopen</Button>
           : view.mails ? <span className="text-sm text-muted-foreground">Result mails have gone: corrections are one candidate at a time</span> : null
@@ -134,6 +147,7 @@ export function FinalBar({ view, rows, needs, saving, undealt }: Props) {
         )}
       </span>
       {never && <NeverDialog codes={never} rows={rows} onClose={() => setNever(null)} />}
+      {sending && <SendResultsDialog onClose={() => setSending(false)} />}
       {fin && <FinalDialog counts={fin.counts} refusals={fin.refusals} onClose={() => setFin(null)} />}
     </div>
   )

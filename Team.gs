@@ -451,6 +451,7 @@ function resetBinomesCore_(phrase) {
       if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, 1).clearNote().setBackground(null);
     });
     let nIv = 0;
+    ctx.iv.data.forEach(r => { r[I[RES_COL]] = ''; }); // Result Told: nobody is told anything in a new season
     ctx.iv.data.forEach(r => {
       // on hold and out stay as they are: a held row sent back to UNASSIGNED would be assigned at the next Lock
       if (isOut_(r[I.Status]) || r[I.Status] === ST.HELD || !(r[I.Binome] || r[I.Code])) return;
@@ -460,6 +461,7 @@ function resetBinomesCore_(phrase) {
       nIv++;
     });
     saveTable_(ctx.iv);
+    resJoinReset_(); // vic-enp forgets the told candidates and the clicks (best effort: it says so in the log)
     let nAlerts = 0;
     const alerts = ctx.alerts.table;
     alerts.data.forEach((r, i) => {

@@ -916,6 +916,7 @@ function settingValue_(r, raw) {
   if (/^MAIL_/.test(k)) { mailCheck_(k, v); if (v === mailKey_(k).f[1]) v = ''; } // a text equal to the script's is saved blank, so a new default still reaches it
   if (k === 'ADMIN_EMAIL' && v && !String(v).split(/[,;\s]+/).filter(Boolean).every(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) throw new Error('ADMIN_EMAIL: invalid email address');
   if (k === 'INTERVIEW_CLOSE_DATE') parseCloseDate_(v);
+  if (/^RESULT_(NEXT|GROUP)_/.test(k) || k === 'RESULT_REPLACES') resultSettingCheck_(k, v);
   if (k === 'DIGEST_HOUR' && (v < 0 || v > 23 || v % 1)) throw new Error('DIGEST_HOUR must be a whole number from 0 to 23');
   return v;
 }
@@ -998,7 +999,8 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'p1View', 'mailLog', 'mailResendPreview'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'p1View', 'mailLog', 'mailResendPreview', 'resultClicks'].indexOf(action) < 0 && !args.dryRun &&
+    !(action === 'resultsMail' && args.op !== 'send' && args.op !== 'test') && !(action === 'resultMailOne' && args.op !== 'send') &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -1052,6 +1054,9 @@ function webRun(action, args) {
       case 'p1Set': result = p1SetCore_(args); break;
       case 'p1Never': result = p1NeverCore_(args); break;
       case 'p1Final': result = p1FinalCore_(a, args); break;
+      case 'resultsMail': result = resultsMailCore_(a, args); break;
+      case 'resultMailOne': result = resultMailOneCore_(a, args); break;
+      case 'resultClicks': result = resClicksCore_(); break;
       case 'closePreview': result = interviewCloseCore_(a, { op: 'preview' }); break;
       case 'interviewClose': result = interviewCloseCore_(a, args); break;
       case 'editCandidate': result = editCandidateCore_(args.code, args.values); break;

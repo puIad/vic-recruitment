@@ -42,8 +42,9 @@ function p1SetAgainst_() {
 
 /** webRun('p1View'): the candidates who need a result with their proposal, override and result, the accepted counts per department
  *  and what is left to decide; also what the results view shows beside them, as of the last sync (rating, choices, the binome's
- *  notes). Admins only (webRun). Returns {final, mails, counts, needs, rows: [{code, name, binome, status, c1, c2, rating (number or
- *  null), notes, interviewed, proposal, override, note (the override's, admins only), result, needs, warn, changed}]}. */
+ *  notes). Admins only (webRun). Returns {final, mails, counts, needs, send: {told, left, owed} (once final), rows: [{code, name, binome,
+ *  status, c1, c2, rating (number or null), notes, interviewed, proposal, override, note (the override's, admins only), result, needs,
+ *  warn, changed, told (Result Told), owed (a result mail is owed), phone, email}]}. */
 function p1View_() {
   const iv = loadTable_(TAB.IV, IV_H), I = iv.I, fin = p1Final_(), against = fin ? {} : p1SetAgainst_(), s = v => String(v == null ? '' : v).trim();
   const counts = {}; AFFECTATION_OPTIONS.forEach(o => { counts[o] = 0; });
@@ -58,9 +59,15 @@ function p1View_() {
     rows.push({ code: code, name: (s(r[I['First Name']]) + ' ' + s(r[I['Family Name']])).trim(), binome: s(r[I.Binome]), status: r[I.Status],
       c1: p1Choices_(I, r)[0], c2: p1Choices_(I, r)[1], rating: isNaN(rating) ? null : rating, notes: s(r[I['Binome Notes']]),
       interviewed: r[I.Status] === ST.INTERVIEWED || !!r[I['Interview Submitted At']], proposal: proposal, override: override, note: set ? set.note : '',
-      result: result, needs: need, warn: p1Warn_(I, r, result), changed: !fin && !!set && set.proposal !== proposal });
+      result: result, needs: need, warn: p1Warn_(I, r, result), changed: !fin && !!set && set.proposal !== proposal, told: resTold_(I, r), owed: false,
+      phone: s(r[I.Phone]), email: s(r[I.Email]) });
   });
-  return { final: fin ? { at: fin.at, by: fin.by } : null, mails: resultMailsStarted_(), counts: counts, needs: needs, rows: rows };
+  // what the result mails still owe (Results.gs): the row's Mail owed mark, and the bar's told and left counts
+  const aud = fin ? resAudience_(iv) : null, owed = {};
+  if (aud) aud.owed.forEach(c => { owed[c.code] = true; });
+  rows.forEach(x => { x.owed = !!owed[x.code]; });
+  return { final: fin ? { at: fin.at, by: fin.by } : null, mails: resultMailsStarted_(), counts: counts, needs: needs, rows: rows,
+    send: aud ? { told: aud.told, left: aud.send.length, owed: aud.owed.length } : null };
 }
 
 /* ---------- overrides ---------- */

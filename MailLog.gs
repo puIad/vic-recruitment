@@ -9,7 +9,7 @@ let _mailRows = [];       // [{when, kind, to, concerns, by, outcome, error, sub
 let _mailAlerting = false; // inside mailLogFlush_'s own alert: a failure there is logged and raises nothing new
 
 const ML_STORED_MAX = 45000;      // a cell holds 50,000 characters
-const ML_CANDIDATE_KINDS = ['CONFIRM', 'REJECT', 'QUICKFIX_CAND']; // sent under the candidate-facing sender name
+const ML_CANDIDATE_KINDS = ['CONFIRM', 'REJECT', 'QUICKFIX_CAND', 'RESULT_YES', 'RESULT_NO', 'RESULT_NO_NI']; // sent under the candidate-facing sender name
 const ML_NO_RESEND = ['DROP'];    // the next cycle retries these
 
 /** Called by mail_() for every send: held (test mode) and failed ones too. */
@@ -130,6 +130,12 @@ function mailStale_(ctx, x) {
   const kind = String(x.v[1]), to = lc_(x.v[2]), tokens = mailTokens_(x.v[3]);
   const code = tokens.filter(t => ctx.ivByCode[t] !== undefined || /^[A-Z]+\.\d+$/.test(t))[0];
   if ((kind === 'CONFIRM' || kind === 'REJECT') && code && !ctx.ivByCode[code]) return code + ' is not in the Interviewees tab any more';
+  if (RES_KINDS.indexOf(kind) >= 0) { // a result mail is for the result it carried (its second token): a changed result can only be dismissed
+    const row = ctx.ivByCode[code], I = ctx.iv.I, res = tokens.filter(t => AFFECTATION_OPTIONS.indexOf(t) >= 0)[0];
+    if (!row) return code + ' is not in the Interviewees tab any more';
+    if (p1NoResult_(row[I.Status])) return code + ' is now ' + row[I.Status];
+    if (res && p1Stored_(I, row) !== res) return code + '\'s result changed since (now ' + (p1Stored_(I, row) || 'empty') + ')';
+  }
   const bin = tokens.filter(t => ctx.binByCode[t])[0];
   if (['PAIRED', 'JOINED', 'LEFT', 'COVER', 'COVERED', 'NEW_IV', 'BINOME_PAUSED', 'BINOME_RESUMED', 'INTERVIEW_CLOSED', 'INTERVIEW_REOPENED'].indexOf(kind) >= 0) {
     if (!bin) return 'the binome is gone';
@@ -144,6 +150,10 @@ function mailMarked_(ctx, x, paired) {
   if (kind === 'REJECT') {
     const r = tokens.map(t => ctx.ivByCode[t]).filter(Boolean)[0];
     return !!r && /Rejection sent/.test(String(r[ctx.iv.I.Screening]));
+  }
+  if (RES_KINDS.indexOf(kind) >= 0) { // already told this result by a later mail
+    const r = tokens.map(t => ctx.ivByCode[t]).filter(Boolean)[0], res = tokens.filter(t => AFFECTATION_OPTIONS.indexOf(t) >= 0)[0];
+    return !!r && !!res && resTold_(ctx.iv.I, r) !== '' && resToldResult_(resTold_(ctx.iv.I, r)) === res;
   }
   if (kind === 'PAIRED') return tokens.some(t => (paired || pairedSent_()).indexOf(t + '|' + to) >= 0);
   return false;
@@ -222,6 +232,10 @@ function mailResendCore_(a, args) {
       if (kind === 'REJECT') {
         const r = tokens.map(t => ctx.ivByCode[t]).filter(Boolean)[0];
         if (r && !/Rejection sent/.test(String(r[ctx.iv.I.Screening]))) { r[ctx.iv.I.Screening] = String(r[ctx.iv.I.Screening]).trim() + '; Rejection sent ' + fmt_(ctx.now, 'dd/MM'); marked = true; }
+      }
+      if (RES_KINDS.indexOf(kind) >= 0) { // the Result Told the original would have written
+        const r = tokens.map(t => ctx.ivByCode[t]).filter(Boolean)[0], res = tokens.filter(t => AFFECTATION_OPTIONS.indexOf(t) >= 0)[0];
+        if (r && res) { r[ctx.iv.I[RES_COL]] = resMark_(res, ctx.now); marked = true; }
       }
       if (kind === 'PAIRED') tokens.filter(t => ctx.binByCode[t]).forEach(t => { if (pairedSent_().indexOf(t + '|' + lc_(to)) < 0) pairedMark_([t + '|' + lc_(to)]); });
     });

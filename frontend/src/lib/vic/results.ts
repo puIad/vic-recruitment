@@ -15,6 +15,8 @@ export const DEPT_RESULTS = ["IT", "COMM", "FLER", "HR"] as const
 interface ResultsStore {
   view: P1View | null
   preview: P1Preview | null
+  /** first click on the group link by code (ms); null = vic-enp could not say, or nothing to read yet */
+  clicks: Record<string, number> | null
   loading: boolean
   error: string | null
   /** when the last load began (an ended pending change is held by a load that began after it ended) */
@@ -27,6 +29,7 @@ interface ResultsStore {
 export const useResults = create<ResultsStore>((set, get) => ({
   view: null,
   preview: null,
+  clicks: null,
   loading: false,
   error: null,
   startedAt: 0,
@@ -38,6 +41,11 @@ export const useResults = create<ResultsStore>((set, get) => ({
     try {
       const [v, p] = await Promise.all([call<RunOut<P1View>>("webRun", ["p1View", {}]), call<RunOut<P1Preview>>("webRun", ["p1Final", { op: "preview" }])])
       set({ view: v.result, preview: p.result, loading: false, startedAt: at })
+      // who opened their group link: from vic-enp, once result mails have gone; if it is down the page says so
+      if (v.result.mails) {
+        call<RunOut<{ ok: boolean; clicks?: Record<string, number> }>>("webRun", ["resultClicks", {}])
+          .then((c) => set({ clicks: c.result.ok ? c.result.clicks ?? {} : null }), () => set({ clicks: null }))
+      } else set({ clicks: null })
     } catch (e) {
       set({ loading: false, error: (e as Error).message || "Could not load the results." })
     }
