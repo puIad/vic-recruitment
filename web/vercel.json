@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm --prefix ../frontend ci && npm --prefix ../frontend run build",
   "outputDirectory": "dist",
-  "ignoreCommand": "test -n \"$VERCEL_GIT_PREVIOUS_SHA\" && test \"$VERCEL_GIT_PREVIOUS_SHA\" != \"$(git rev-parse HEAD)\" && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../frontend",
+  "ignoreCommand": "test -n \"$VERCEL_GIT_PREVIOUS_SHA\" && test \"$VERCEL_GIT_PREVIOUS_SHA\" != \"$(git rev-parse HEAD)\" && git rev-parse -q --verify \"$VERCEL_GIT_PREVIOUS_SHA^{commit}\" >/dev/null && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../frontend",
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
   "functions": {
     "api/run.js": { "maxDuration": 300 },
