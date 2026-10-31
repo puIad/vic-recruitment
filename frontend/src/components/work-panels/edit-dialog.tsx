@@ -109,7 +109,7 @@ function Form({ code }: { code: string }) {
         })}
       </div>
       <p className="rounded-2xl bg-muted/70 p-3 text-sm leading-relaxed text-muted-foreground">
-        Saved straight to the Master and to {data.binome ? `the sheet of ${data.binome}` : "their binome sheet once they have one"}. The registration check runs again and each change goes in Change history. Nobody is emailed. Their own written answers stay read-only.
+        Saved straight to the Master and to {data.binome ? `the sheet of ${data.binome}` : "their binome sheet once they have one"}. The registration check runs again and each change goes in Change history. Nobody is emailed{data.status === "UNASSIGNED" ? ", unless a new 1st choice places them in a binome (that binome gets its usual new-interviewee email)" : ""}. Their own written answers stay read-only.
       </p>
       <DialogFooter className="gap-2 sm:gap-2">
         <Button type="button" variant="ghost" onClick={close}>
