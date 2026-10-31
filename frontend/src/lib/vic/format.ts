@@ -22,6 +22,7 @@ export const SCREEN_STAGES: { key: Status; label: string; hint: string; color: s
 ]
 
 /** Out of the recruitment, never counted as registrants (Config.gs isOut_). */
+export const DEPTS = ["IT", "COMM", "FLER", "HR"]
 export const isOut = (status: string) => status === "DUPLICATE" || status === "DECLINED"
 
 export const STATUS_COLOR: Record<string, string> = Object.fromEntries(STAGES.concat(SCREEN_STAGES).map((s) => [s.key, s.color]))

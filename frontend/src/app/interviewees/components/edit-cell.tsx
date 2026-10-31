@@ -9,8 +9,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
+import { DEPTS } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
-import type { AnalyticsRow } from "@/lib/vic/types"
+import type { AnalyticsRow, CandidateData } from "@/lib/vic/types"
 import type { CellField } from "./cell-fields"
 
 /** A value in the table that opens a small editor on a click. One cell, one save, same checks as the Edit form. */
@@ -20,13 +21,14 @@ export function EditCell({ iv, field, row, shown }: { iv: { code: string; name: 
   const [open, setOpen] = React.useState(false)
   const [vals, setVals] = React.useState<string[]>([])
   const [saving, setSaving] = React.useState(false)
+  const [cand, setCand] = React.useState<CandidateData | null>(null)
   const start = row ? field.read(row) : []
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     try {
-      const c = await candidateGet(iv.code)
+      const c = cand ?? (await candidateGet(iv.code))
       if (!c) return
       const values = Object.fromEntries(field.keys.map((k, i) => [k, vals[i] ?? ""]).filter(([k, v]) => v.trim() !== (c.values[k] ?? "").trim()))
       if (!Object.keys(values).length) return setOpen(false)
@@ -40,7 +42,11 @@ export function EditCell({ iv, field, row, shown }: { iv: { code: string; name: 
     <Popover
       open={open}
       onOpenChange={(o) => {
-        if (o) setVals(start)
+        if (o) {
+          setVals(start)
+          setCand(null)
+          if (field.options) void candidateGet(iv.code).then(setCand) // the server's own option lists
+        }
         setOpen(o)
       }}
     >
@@ -51,7 +57,7 @@ export function EditCell({ iv, field, row, shown }: { iv: { code: string; name: 
           aria-label={`Edit ${field.title} of ${iv.code}`}
           className="group -mx-1.5 inline-flex max-w-[16rem] items-center gap-1.5 rounded px-1.5 py-0.5 text-left hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:hover:bg-transparent"
         >
-          <span className="truncate">{shown}</span>
+          <span className="truncate" title={typeof shown === "string" ? shown : undefined}>{shown}</span>
           {row && <Pencil className="size-3 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />}
         </button>
       </PopoverTrigger>
@@ -60,14 +66,15 @@ export function EditCell({ iv, field, row, shown }: { iv: { code: string; name: 
           <p className="text-sm font-semibold">
             {field.title} <span className="font-normal text-muted-foreground">· {iv.code}</span>
           </p>
-          {field.keys.map((k, i) =>
-            field.options ? (
+          {field.keys.map((k, i) => {
+            const list = field.options === "depts" ? DEPTS : field.options === "fields" ? cand?.fields : field.options === "years" ? cand?.years : undefined
+            return field.options ? (
               <Select key={k} value={vals[i] ?? ""} onValueChange={(v) => setVals((p) => p.map((x, j) => (j === i ? v : x)))}>
                 <SelectTrigger className="w-full" aria-label={k}>
                   <SelectValue placeholder="Choose…" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(vals[i] && !field.options.includes(vals[i]) ? [vals[i], ...field.options] : field.options).map((o) => (
+                  {(vals[i] && !(list ?? []).includes(vals[i]) ? [vals[i], ...(list ?? [])] : list ?? []).map((o) => (
                     <SelectItem key={o} value={o}>
                       {o}
                     </SelectItem>
@@ -85,7 +92,7 @@ export function EditCell({ iv, field, row, shown }: { iv: { code: string; name: 
                 autoFocus={i === 0}
               />
             )
-          )}
+          })}
           <div className="flex justify-end gap-2">
             <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
               Cancel

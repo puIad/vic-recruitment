@@ -10,11 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
+import { DEPTS } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { CandidateData } from "@/lib/vic/types"
 
-const DEPTS = ["IT", "COMM", "FLER", "HR"]
 type Kind = "text" | "email" | "tel" | "choice" | "days"
 const FIELDS: { key: string; label: string; kind: Kind; options?: (d: CandidateData) => string[]; hint?: string }[] = [
   { key: "First Name", label: "First name", kind: "text" },

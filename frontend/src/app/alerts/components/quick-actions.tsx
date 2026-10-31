@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Spinner } from "@/lib/vic/confirm"
 import { useActions } from "@/lib/vic/actions"
+import { DEPTS } from "@/lib/vic/format"
 import { REPAIR_LABEL, repairOf, useQuick, type LocateTarget, type SnoozeFor } from "@/lib/vic/quick"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
@@ -49,7 +50,6 @@ import { REVIEW, TIMING } from "./alert-kinds"
 const TYPO = ["BAD_PHONE", "BAD_EMAIL", "BAD_BIRTHDATE", "MISSING_NAME"]
 const ROUTING = ["INVALID_CHOICE", "SAME_CHOICES", "NO_BINOME"]
 const WHO = ["BINOME_MISMATCH", "BACKUP_INTERVIEWER", "NOT_ASSIGNED"]
-const DEPTS = ["IT", "COMM", "FLER", "HR"]
 const NO_IVS: never[] = []
 const CONTACT_OPTIONS = ["Not yet", "Yes", "No answer", "Withdrew"]
 
