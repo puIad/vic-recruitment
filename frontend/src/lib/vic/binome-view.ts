@@ -46,9 +46,19 @@ export function useBinomeSlice(code: string, locked: boolean) {
     [code]
   )
 
-  // a new snapshot, or the details just closed: the copy again (a live read is the admin's to ask for)
+  // a new snapshot, or the details just closed: the copy again. A sheet read the admin asked for stays a sheet read: an edit made
+  // in the details refreshes it from the sheet, and a new snapshot leaves it alone.
+  const liveRef = React.useRef(false)
+  const heldLive = held?.code === code && held.live
   React.useEffect(() => {
-    if (locked && !profileOpen) void get(false)
+    liveRef.current = heldLive
+  }, [heldLive])
+  const lastBuilt = React.useRef(built)
+  React.useEffect(() => {
+    const snapshot = lastBuilt.current !== built
+    lastBuilt.current = built
+    if (!locked || profileOpen || (snapshot && liveRef.current)) return
+    void get(liveRef.current)
   }, [get, locked, built, profileOpen])
 
   const read = React.useCallback(
