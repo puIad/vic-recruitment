@@ -3,7 +3,11 @@
 const fs = require('fs'), vm = require('vm');
 
 module.exports = function seed() {
-  const ctx = vm.createContext({ console, Proxy, JSON, Math });
+  const crypto = require('crypto');
+  // host helpers for the mock's Utilities (HMAC and base64): the context has no node modules
+  const ctx = vm.createContext({ console, Proxy, JSON, Math,
+    __hmac: (s, k) => [...crypto.createHmac('sha256', String(k)).update(String(s), 'utf8').digest()].map(b => (b > 127 ? b - 256 : b)),
+    __b64: bytes => Buffer.from(bytes.map(b => b & 255)).toString('base64') });
   vm.runInContext(fs.readFileSync(__dirname + '/mockgas.js', 'utf8'), ctx, { filename: 'test/mockgas.js' });
   require('./gs')(ctx);
   const run = code => vm.runInContext(code, ctx);

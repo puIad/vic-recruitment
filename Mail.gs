@@ -137,12 +137,12 @@ function mailFrom_(id, vars, o) {
   o = o || {};
   const m = mailDef_(id), has = f => m.fields.some(x => x[0] === f), t = f => mailFill_(mailField_(id, f, o.texts), vars);
   const subject = t('subject'), blocks = (o.blocks || []).slice();
-  const theme = id === 'CODE' ? MAIL.aqua : id === 'CONFIRM' ? formHouseColour_(o.dept) : '';
+  const theme = id === 'CODE' ? MAIL.aqua : id === 'CONFIRM' || id === 'RESULT_YES' ? formHouseColour_(o.dept) : '';
   if (id === 'CODE' || id === 'CONFIRM') blocks.push(mailCode_(t('codeLabel'), vars.code, theme));
-  if (id === 'REJECT') blocks.push(mailP_(t('text')));
+  if (id === 'REJECT' || id === 'RESULT_NO' || id === 'RESULT_NO_NI') blocks.push(mailP_(t('text')));
   if (has('below') && t('below')) blocks.push(mailP_(t('below')));
   return { id: id, subject: subject, from: m.to === 'candidate' ? MAIL.candidateFrom : undefined,
-    html: mailHtml_({ title: has('heading') ? t('heading') : subject, intro: has('above') ? t('above') : has('text') && id !== 'REJECT' ? t('text') : '',
+    html: mailHtml_({ title: has('heading') ? t('heading') : subject, intro: [o.lead, has('above') ? t('above') : has('text') && !/^(REJECT|RESULT_NO)/.test(id) ? t('text') : ''].filter(Boolean).join('\n\n'),
       blocks: blocks, cta: o.cta, footer: o.footer, theme: theme }) };
 }
 /** The confirmation's stripe: the 1st choice's house on the form, aquamarine for a department it doesn't know. */
@@ -154,7 +154,7 @@ function mailSend_(to, m, concerns) { return mail_(to, m.subject, m.html, m.from
 function mailSample_(id, texts) {
   const v = { first: 'Amina', code: 'IT.42', names: 'Amina & Yanis', binome: 'B3', n: 2, s: 's', hours: 24, members: 'Amina K. & Yanis B.',
     replaced: ' (replaced by Sara B.)', instead: ' instead of Yanis K.', reason: ' (exam)', cover: 'Sara B.', coverEmail: 'sara.b@g.enp.edu.dz',
-    codes: 'IT.12, IT.15', until: ' until 03/11 08:00' };
+    codes: 'IT.12, IT.15', until: ' until 03/11 08:00', department: 'IT', next: 'Join the IT group with the button below: the team will tell you there when and where we meet.' };
   if (id === 'CODE') v.code = '482913';
   const people = mailList_([['IT.12', 'Lina A. · 0550 00 00 00 · available: evenings'], ['IT.15', 'Omar S. · 0661 00 00 00 · available: weekends']]);
   const o = { texts: texts, dept: 'IT', footer: MAILS.some(m => m.id === id && m.to === 'candidate') ? undefined : mailTeamFooter_(DASHBOARD_URL) };
@@ -163,5 +163,6 @@ function mailSample_(id, texts) {
   if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: mailDashboardCta_() });
   if (id === 'PAIRED' || id === 'COVERED' || id === 'BINOME_PAUSED' || id === 'BINOME_RESUMED' || id === 'INTERVIEW_CLOSED' || id === 'INTERVIEW_REOPENED') o.cta = mailDashboardCta_();
   if (id === 'COVER') Object.assign(o, { blocks: [people], cta: mailDashboardCta_() });
+  if (id === 'RESULT_YES') o.cta = { label: 'Join the IT group', url: DASHBOARD_URL };
   return mailFrom_(id, v, o);
 }

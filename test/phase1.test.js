@@ -111,8 +111,8 @@ call('p1Final', { op: 'final' });
 assert.throws(() => call('p1Final', { op: 'correct', code: d, value: 'IT', reason: '' }), /reason/);
 assert.throws(() => call('p1Final', { op: 'correct', code: d, value: 'IT', reason: 'x' }), /reopen/);
 // a mail has gone: a correction applies and is logged; binomes now see results
-const told = run('IV_H.length') + 1;
-run(`(function(){var sh=master.getSheetByName('Interviewees'); sh.getRange(1,${told}).setValue('Result Told'); sh.getRange(2,${told}).setValue('IT 12/11');})()`);
+const told = I['Result Told'] + 1;
+run(`(function(){var sh=master.getSheetByName('Interviewees'); sh.getRange(2,${told}).setValue('IT 12/11');})()`);
 assert.throws(() => call('p1Final', { op: 'reopen' }), /first result mail/);
 const fx = call('p1Final', { op: 'correct', code: b, value: 'COMM', reason: 'club decision' });
 assert.strictEqual(fx.end, 'applied');

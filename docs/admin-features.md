@@ -688,6 +688,23 @@ write to Settings. All of this touches the Master only.
 first (the route, the push, the read and the secret), then clasp (the mails, the send, the column), then Vercel (the bar, the filter,
 Settings). The mailer does not change. Before results week, run one test-mode send, one live send to a test address, and a click.
 
+**Built (#195).** Where the build settled what the spec left open:
+- **Setup.** vic-enp gets `JOIN_SECRET` (Vercel env var) and the script gets `JOIN_URL` (vic-enp's origin, no trailing slash) and the
+  same `JOIN_SECRET` as script properties. The token is `<code>~<first 22 characters of base64url(HMAC-SHA256("join:" + code))>`.
+  Without them the preview says so and Send results is refused.
+- **Clicks.** The script reads them (`webRun resultClicks`, which calls vic-enp's `/api/join-clicks` with the secret), so the secret
+  lives in one place besides vic-enp. Down or unset: the page says clicks are unavailable and the Not opened filter is hidden.
+- **Pending texts.** The Vercel proxy refuses Send while a result text, next step or group link is a pending change or an
+  unaddressed dropped change, as it does for going final (`web/api/run.js`, `resultTextsOpen`).
+- **Corrections.** A final result is corrected from the row's panel by vic.rh (a reason is required); the dialog continues into that
+  candidate's mail. A row is Mail owed when it was told something else, or when it got its result by a correction after mails started.
+- **Test.** Send me a test (and Send in test mode) mails one copy of each of the six samples to the presser as `[TEST]`, kind TEST.
+- **Resend.** A failed result mail carries `<code>, <result>` as its concerns; Resend writes the Result Told the original would have,
+  and a row whose result changed since can only be dismissed.
+- **Timed sync.** Once mails have gone it pushes the links and results to vic-enp whenever they differ from the last push.
+- **Left for the first live run.** None of this has run against the real vic-enp or Google yet; the order and tests in the spec's
+  Deploy paragraph still apply.
+
 ## When the timed sync stops
 
 Decided in [#181](https://github.com/puIad/vic-recruitment/issues/181). A timed sync that loses its authorization stops silently:

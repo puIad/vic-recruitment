@@ -267,7 +267,8 @@ var UrlFetchApp = {
 };
 var MailApp = { sendEmail(o) { if (!/^<!DOCTYPE html>[\s\S]*vic-logo-white\.png/.test(o.htmlBody)) __untemplated.push(o.subject); __outbox.push(o); } };
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };
-var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { } };
+var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { },
+  computeHmacSha256Signature: (v, k) => __hmac(v, k), base64EncodeWebSafe: bytes => __b64(bytes).replace(/\+/g, '-').replace(/\//g, '_') };
 var HtmlService = { createHtmlOutput: h => chain({ _html: h }) };
 var ScriptApp = { getOAuthToken() { return "token"; }, getScriptId() { return "script-id"; }, getProjectTriggers() { return __triggers; }, deleteTrigger() { }, newTrigger(h) { const c = chain({ create: () => { __triggers.push({ getHandlerFunction: () => h }); } }); return c; } };
 var Logger = { log: console.log };

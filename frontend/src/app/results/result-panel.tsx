@@ -10,9 +10,10 @@ import { Textarea } from "@/components/ui/textarea"
 import { STATUS_LABEL } from "@/lib/vic/format"
 import { useFormsRead } from "@/lib/vic/forms"
 import { again } from "@/lib/vic/pending"
-import { RESULT_VALUES, setResult, type ResultRow } from "@/lib/vic/results"
+import { RESULT_VALUES, setResult, useResults, type ResultRow } from "@/lib/vic/results"
 import { useVic } from "@/lib/vic/store"
 import { Dot, Marks } from "./result-parts"
+import { CorrectionDialog, ResultMailDialog } from "./send-results"
 
 const Fact = ({ k, v }: { k: string; v: string }) => <div><p className="text-xs text-muted-foreground">{k}</p><p className="text-base font-semibold">{v}</p></div>
 
@@ -60,6 +61,10 @@ function Answers({ code }: { code: string }) {
 /** The panel's content for one candidate; keyed by code, so the note draft starts empty for each. */
 function PanelBody({ r, final }: { r: ResultRow; final: boolean }) {
   const [note, setNote] = React.useState("")
+  const [dialog, setDialog] = React.useState<"correct" | "mail" | null>(null)
+  const owner = useResults((s) => !!s.preview?.owner)
+  const mailsGone = useResults((s) => !!s.view?.mails)
+  const click = useResults((s) => s.clicks?.[r.code])
   return (
     <>
       <SheetHeader className="px-0">
@@ -74,7 +79,16 @@ function PanelBody({ r, final }: { r: ResultRow; final: boolean }) {
                 <Fact k="Status" v={STATUS_LABEL[r.status] || r.status} />
               </div>
               {final ? (
-                <p className="inline-flex items-center gap-2 text-base font-bold">{r.result && <Dot v={r.result} />}{r.result || "No result"} (final)</p>
+                <div className="space-y-2">
+                  <p className="inline-flex flex-wrap items-center gap-2 text-base font-bold">{r.result && <Dot v={r.result} />}{r.result || "No result"} (final)<Marks r={r} /></p>
+                  {r.told && <p className="text-sm text-muted-foreground">Told: {r.told}.{r.told.indexOf("Not accepted") !== 0 && (click ? <> Opened the group link on {new Date(click).toLocaleDateString()}.</> : <> Has not opened the group link.</>)}</p>}
+                  {owner && (
+                    <div className="flex flex-wrap gap-2">
+                      {r.owed && mailsGone && <Button size="sm" onClick={() => setDialog("mail")}>Send the result mail…</Button>}
+                      <Button size="sm" variant="outline" onClick={() => setDialog("correct")}>Correct the result…</Button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -106,6 +120,8 @@ function PanelBody({ r, final }: { r: ResultRow; final: boolean }) {
                 <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">Never interviewed ({STATUS_LABEL[r.status] || r.status}). No form.</p>
               )}
             </div>
+      {dialog === "correct" && <CorrectionDialog r={r} onClose={() => setDialog(null)} />}
+      {dialog === "mail" && <ResultMailDialog r={r} onClose={() => setDialog(null)} />}
     </>
   )
 }

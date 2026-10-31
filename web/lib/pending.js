@@ -163,11 +163,14 @@ async function mark(email, a, now) {
 }
 
 /** Is any author's Phase 1 Result override ("result:<code>") pending, or dropped and not yet addressed? Going final waits for none. */
-async function resultsOpen(now) {
+async function cellsOpen(now, re) {
   const [emails] = await redis([['SMEMBERS', LIVE]]);
   const flats = emails.length ? await redis(emails.map(e => ['HGETALL', key(e)])) : [];
-  return flats.some(f => { const { rec } = parse(f, now); return Object.keys(rec).some(c => /^result:/.test(c) && (rec[c].state === 'pending' || (rec[c].state === 'dropped' && !rec[c].addressed))); });
+  return flats.some(f => { const { rec } = parse(f, now); return Object.keys(rec).some(c => re.test(c) && (rec[c].state === 'pending' || (rec[c].state === 'dropped' && !rec[c].addressed))); });
 }
+const resultsOpen = now => cellsOpen(now, /^result:/);
+/** Is any text of the result mails (their words, next steps, group links, the replaces line) pending or dropped and not yet addressed? Send results waits for none. */
+const resultTextsOpen = now => cellsOpen(now, /^setting:(MAIL_RESULT_|RESULT_)/);
 
 /**
  * The sync's call each cycle (docs/plans.md › Slice 4, issue 54), over the authors in the live set (LIVE: pending or unaddressed dropped entries):
@@ -207,4 +210,4 @@ async function forSync(mailed, now) {
   return out;
 }
 
-module.exports = { FORMAT, LIVE, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync, resultsOpen };
+module.exports = { FORMAT, LIVE, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync, resultsOpen, resultTextsOpen };

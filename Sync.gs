@@ -322,6 +322,7 @@ function runCycle_(opts) {
     saveTable_(ctx.iv); appendLog_(ctx); if (ctx.dash) saveTable_(ctx.dash); lap('save');
     commitBase_(ctx); lap('base'); // before the mails: if they fail, the tabs and the baseline still agree
     if (opts.timing) try { dropsSync_(ctx); } catch (e) { console.warn('Drops: ' + e); } lap('drops'); // dropped dashboard changes: emails and DROPPED| alerts (Pending.gs); never fails the sync
+    if (opts.timing) try { resSyncLinks_(ctx); } catch (e) { console.warn('Join links: ' + e); } lap('joinLinks'); // vic-enp's group links and results, once result mails have gone (Results.gs)
     if (opts.watch) watchdogAlert_(ctx);
     if (opts.timing) try { mailFailedSettle_(ctx); } catch (e) { console.warn('MAIL_FAILED not settled: ' + e); }
     ctx.alerts.flush(); lap('alerts');

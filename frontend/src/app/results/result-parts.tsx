@@ -30,6 +30,7 @@ export function Marks({ r }: { r: ResultRow }) {
       {r.warn && <span title={`Not their 1st (${r.c1}) or 2nd (${r.c2}) choice`} className="text-warning"><AlertTriangle className="size-4" /><span className="sr-only">Not a choice they made</span></span>}
       {r.changed && <span title={`The binome's proposal changed to ${r.proposal || "nothing"} after this override`} className="text-info"><CircleDot className="size-4" /><span className="sr-only">Proposal changed</span></span>}
       {r.note && <span title={r.note} className="text-muted-foreground"><MessageSquareText className="size-4" /><span className="sr-only">Has a note</span></span>}
+      {r.owed && <span title="The result differs from what they were told, or they have no mail yet" className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-bold text-warning">Mail owed</span>}
       {r.pending && <span className="text-sm text-muted-foreground">Saving</span>}
       {r.dropped && <span title={`Your change was not applied; the sheet kept ${r.override || "the binome's proposal"}`} className="text-sm font-semibold text-warning">Not applied</span>}
     </span>

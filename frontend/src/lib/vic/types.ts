@@ -776,6 +776,12 @@ export interface P1Row {
   warn: boolean
   /** the proposal changed after the override was set */
   changed: boolean
+  /** Result Told: what the candidate was told and when ("IT 12/11"), empty = not told */
+  told: string
+  /** a result mail is owed: the result differs from what they were told, or a late result has no mail yet */
+  owed: boolean
+  phone: string
+  email: string
 }
 /** webRun p1View, as of the last sync. */
 export interface P1View {
@@ -784,7 +790,41 @@ export interface P1View {
   mails: boolean
   counts: Record<string, number>
   needs: number
+  /** once final: how many are told, how many Send results still reaches, how many correction mails are owed */
+  send: { told: number; left: number; owed: number } | null
   rows: P1Row[]
+}
+/** webRun resultsMail {op: "preview"} (docs/admin-features.md › Telling candidates their result). */
+export interface ResultsMailPreview {
+  final: boolean
+  owner: boolean
+  started: boolean
+  counts: { RESULT_YES: Record<string, number>; RESULT_NO: number; RESULT_NO_NI: number }
+  total: number
+  told: number
+  left: number
+  owed: number
+  skipped: { code: string; name: string; why: string }[]
+  notInterviewed: { code: string; name: string; status: string; proposal: string }[]
+  declinedWaiting: number
+  samples: { kind: string; label: string; code: string; name: string; subject: string; html: string }[]
+  texts: Record<string, Record<string, string>>
+  nexts: Record<string, string>
+  replaces: string
+  refusals: string[]
+  testMode: boolean
+}
+/** webRun resultMailOne {op: "preview"}: one candidate's mail. */
+export interface ResultOnePreview {
+  code: string
+  name: string
+  to: string
+  result: string
+  told: string
+  subject: string
+  html: string
+  replaces: string
+  testMode: boolean
 }
 /** webRun p1Final {op: "preview"}: only vic.rh (owner) can go final or reopen. */
 export interface P1Preview {

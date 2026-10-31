@@ -177,6 +177,15 @@ export const SETTING_UI: Record<string, SettingUi> = {
     control: { type: "choice", custom: { unit: "points", min: 0, max: 100 } },
   },
   VIC_MEMBERS_SHEET: { label: "VIC members sheet", icon: Table2, help: "The Google Sheet listing the VIC members." },
+  RESULT_NEXT_IT: { label: "IT: next step", icon: Mail, help: "What an accepted IT candidate does next. It replaces {next} in the accepted mail. Send results waits until every department with accepted candidates has one." },
+  RESULT_NEXT_COMM: { label: "COMM: next step", icon: Mail, help: "What an accepted COMM candidate does next." },
+  RESULT_NEXT_FLER: { label: "FLER: next step", icon: Mail, help: "What an accepted FLER candidate does next." },
+  RESULT_NEXT_HR: { label: "HR: next step", icon: Mail, help: "What an accepted HR candidate does next." },
+  RESULT_GROUP_IT: { label: "IT: Messenger group link", icon: Mail, help: "An https link. The mail button reaches it through the site, which records the first click." },
+  RESULT_GROUP_COMM: { label: "COMM: Messenger group link", icon: Mail, help: "An https link." },
+  RESULT_GROUP_FLER: { label: "FLER: Messenger group link", icon: Mail, help: "An https link." },
+  RESULT_GROUP_HR: { label: "HR: Messenger group link", icon: Mail, help: "An https link." },
+  RESULT_REPLACES: { label: "Corrected result: replaces-the-earlier-mail line", icon: Mail, help: "Added at the top of a result mail sent again to a candidate who was already told. Editable when you send it." },
   INTERVIEW_CLOSE_DATE: { label: "Interview close date", icon: Table2, help: "A reminder only, in Algiers time (YYYY-MM-DD or YYYY-MM-DD HH:mm). Nothing locks by itself: close the phase from Maintenance." },
 }
 
@@ -188,6 +197,9 @@ export const MAIL_UI: Record<string, { label: string; help: string; icon: Lucide
   CODE: { label: "Registration ticket", help: "Sent by the registration form to the ENP address a candidate types, with the six-digit ticket that proves it is theirs. Always on: the form cannot start without it.", icon: Ticket, vars: { code: "The six-digit ticket" } },
   CONFIRM: { label: "Registrant confirmation", help: "Sent once to each new registrant, with their code.", icon: MailCheck, switch: "CONFIRM_REGISTRANTS" },
   REJECT: { label: "Rejection", help: "Sent to declined applicants when an admin presses Send rejections in Maintenance. This is the text the dialog starts from.", icon: MailX },
+  RESULT_YES: { label: "Result: accepted", help: "Sent to each accepted candidate by Send results, with a button to their department's Messenger group. It is also the invitation to the next phase.", icon: MailCheck, vars: { department: "The department they got", next: "The department's next step (below)" } },
+  RESULT_NO: { label: "Result: not accepted, interviewed", help: "Sent by Send results to a candidate who was interviewed and not accepted.", icon: MailX },
+  RESULT_NO_NI: { label: "Result: not accepted, not interviewed", help: "Sent by Send results to a candidate who was not accepted and never interviewed. It never mentions an interview.", icon: MailX },
   NEW_IV: { label: "New interviewees", help: "Sent to both members of a binome when new candidates are given to them.", icon: MailPlus, switch: "NOTIFY_BINOME_ON_NEW_INTERVIEWEE" },
   ALERT: { label: "Alert mail to a binome", help: "Sent to a binome (and whoever covers) when an alert concerns them.", icon: Siren, switch: "NOTIFY_BINOME_ON_ALERT" },
   JOINED: { label: "Joined a binome", help: "Sent to a member who joins a binome after the lock.", icon: UserRoundPlus },
@@ -226,6 +238,8 @@ export const PLACEHOLDER_HELP: Record<string, string> = {
   cover: "The cover's name",
   coverEmail: "The cover's email",
   reason: "“ (reason)” or nothing",
+  department: "The department they got",
+  next: "The department's next step",
 }
 
 export const MAIL_MAX = 2000

@@ -59,6 +59,18 @@ const MAILS = [
     ['text', 'Hi {first},\n\nThank you for applying to the Vision & Innovation Club. We read every application carefully, ' +
       'and we are sorry to tell you that we will not be moving forward with yours this year.\n\nWe hope to see you at our events, ' +
       'and you are welcome to apply again next year.\n\nThe VIC team']] },
+  // the result mails (Results.gs). {department} is the department's name and {next} its next-step paragraph (RESULT_NEXT_<DEPT> below)
+  { id: 'RESULT_YES', name: 'Result: accepted', to: 'candidate', vars: ['first', 'code', 'department', 'next'], fields: [
+    ['subject', 'VIC Recruitment 2026: welcome to {department}'],
+    ['heading', 'Welcome to {department}, {first}!'],
+    ['above', 'We are glad to tell you that you are accepted into the **{department}** department of the Vision & Innovation Club.\n\n{next}'],
+    ['below', 'Your code is **{code}**. Keep it: we may ask for it.\n\nWelcome aboard,\nThe VIC team']] },
+  { id: 'RESULT_NO', name: 'Result: not accepted, interviewed', to: 'candidate', vars: ['first', 'code'], fields: [
+    ['subject', 'VIC Recruitment 2026: your result'],
+    ['text', 'Hi {first},\n\nThank you for the time you gave us at your interview. After the deliberation, we are sorry to tell you that we cannot offer you a place in the club this year.\n\nThis says little about what you can do, and we enjoyed meeting you. You are welcome to apply again next year, and to come to our events.\n\nThe VIC team']] },
+  { id: 'RESULT_NO_NI', name: 'Result: not accepted, not interviewed', to: 'candidate', vars: ['first', 'code'], fields: [
+    ['subject', 'VIC Recruitment 2026: your application'],
+    ['text', 'Hi {first},\n\nThank you for applying to the Vision & Innovation Club. We were not able to offer a place to every applicant, and we are sorry to tell you that we cannot offer you one this year.\n\nYou are welcome to apply again next year, and to come to our events.\n\nThe VIC team']] },
   { id: 'NEW_IV', name: 'New interviewees', to: 'binome', vars: ['names', 'binome', 'n', 's', 'hours'], fields: [
     ['subject', '[VIC Recruitment] New interviewee(s) for {binome}'],
     ['heading', '{n} new interviewee{s} for {binome}'],
@@ -137,7 +149,16 @@ const SETTINGS_DEFAULTS = [
   ['SCREEN_HOLD_AT', 50, 'Risk score (0-100) at or above which a new application waits for an admin instead of going to a binome'],
   ['VIC_MEMBERS_SHEET', '', 'Link of the Google Sheet listing the VIC members (a column whose header contains "mail"): their applications are declined silently'],
   ['INTERVIEW_CLOSE_DATE', '', 'Optional reminder, YYYY-MM-DD or YYYY-MM-DD HH:mm in Algiers time: after it an alert and a banner ask an admin to close the interview phase. Nothing locks by itself. Blank = no date'],
-
+  // the result mails (Results.gs): each department's next step and Messenger group. Blank until the owner fills them: Send results is refused for a department with candidates and neither
+  ['RESULT_NEXT_IT', '', 'Result mail: what an accepted IT candidate does next (placed where the mail says {next})'],
+  ['RESULT_NEXT_COMM', '', 'Result mail: what an accepted COMM candidate does next (placed where the mail says {next})'],
+  ['RESULT_NEXT_FLER', '', 'Result mail: what an accepted FLER candidate does next (placed where the mail says {next})'],
+  ['RESULT_NEXT_HR', '', 'Result mail: what an accepted HR candidate does next (placed where the mail says {next})'],
+  ['RESULT_GROUP_IT', '', 'Link of the IT Messenger group (https). The mail button reaches it through vic-enp'],
+  ['RESULT_GROUP_COMM', '', 'Link of the COMM Messenger group (https). The mail button reaches it through vic-enp'],
+  ['RESULT_GROUP_FLER', '', 'Link of the FLER Messenger group (https). The mail button reaches it through vic-enp'],
+  ['RESULT_GROUP_HR', '', 'Link of the HR Messenger group (https). The mail button reaches it through vic-enp'],
+  ['RESULT_REPLACES', 'This mail replaces the one we sent you earlier. Please follow this one.', 'Result mail: the line added to a corrected result for a candidate already told'],
 ].concat(MAILS.reduce((rows, m) => rows.concat(m.fields.map(f => ['MAIL_' + m.id + '_' + f[0].toUpperCase(), '',
   'Email text (Settings › Emails): ' + m.name + ', ' + MAIL_FIELD_LABEL[f[0]] + ". Blank = the script's text. Placeholders: " +
   m.vars.map(v => '{' + v + '}').join(', ')])), []));
@@ -163,7 +184,9 @@ const IV_H = ['Code', 'Binome', 'Status', 'Registered At', 'Assigned At', 'First
   // added 2026-10-15, admins only (never in the binome sheets): the screening score and its reasons, then each decision
   'Risk', 'Screening',
   // added 2026-10-31, admins only (never in the binome sheets): overrides of Final Affectation before final, every result after (Phase1.gs)
-  'Phase 1 Result'];
+  'Phase 1 Result',
+  // added 2026-11, admins only (Results.gs): what the candidate was told and when, e.g. "IT 12/11". Empty = not told
+  'Result Told'];
 const LOG_H = ['Submitted At', 'Submitter', 'Typed Binome', 'Typed Interviewee', 'Binome', 'Interviewee',
   'Result', 'Notes', 'Final Dep', 'Response Key'];
 // One row per member change after lock (history; also tells the interview check who used to be in a binome)

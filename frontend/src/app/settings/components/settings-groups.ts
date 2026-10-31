@@ -25,7 +25,13 @@ export const GROUPS: Record<"general" | "timing" | "sharing" | "emails" | "scree
   emails: {
     title: "Emails",
     description: "The mails the script sends to candidates and binome members. You change the words; the layout, who gets each mail and test mode stay the same.",
-    sections: [],
+    sections: [
+      {
+        title: "Result mails: next steps and group links",
+        description: "Each department's next step and Messenger group. Send results is refused for a department with accepted candidates and no next step or no https link. The mail button goes through the site, which records the first click and sends them to the group.",
+        keys: ["RESULT_NEXT_IT", "RESULT_NEXT_COMM", "RESULT_NEXT_FLER", "RESULT_NEXT_HR", "RESULT_GROUP_IT", "RESULT_GROUP_COMM", "RESULT_GROUP_FLER", "RESULT_GROUP_HR", "RESULT_REPLACES"],
+      },
+    ],
     own: ["CONFIRM_REGISTRANTS", "NOTIFY_BINOME_ON_NEW_INTERVIEWEE", "NOTIFY_BINOME_ON_ALERT"],
     mail: true,
   },
