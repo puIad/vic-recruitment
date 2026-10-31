@@ -6,7 +6,8 @@ const J = JSON.stringify, MIN = 60000, OWNER = 'admin@g.enp.edu.dz', RH = 'vic.r
 const setS = (k, v) => run(`(function () { var c = master.getSheetByName('Settings').cells; for (var i = 1; i < c.length; i++) if (c[i][0] === ${J(k)}) c[i][1] = ${J(v)}; _settings = null; })()`);
 const stamp = () => run('__props.SYNC_STAMP');
 const setStamp = minsAgo => run(`__props.SYNC_STAMP = String(Date.now() - ${minsAgo * MIN}); _settings = null`);
-const mails = () => JSON.parse(run('JSON.stringify(__outbox.map(function (m) { return { to: m.to, subject: m.subject }; }))'));
+// the watchdog's mails: a failed one also raises MAIL_FAILED, whose alert mail to the admins is not under test here
+const mails = () => JSON.parse(run('JSON.stringify(__outbox.map(function (m) { return { to: m.to, subject: m.subject }; }))')).filter(m => !/alert/.test(m.subject));
 const clearMails = () => run('__outbox.length = 0');
 const openWatchAlerts = () => JSON.parse(run(`JSON.stringify((function () { var I = idx_(ALERT_H); return master.getSheetByName('Alerts').cells.slice(1)
   .filter(function (r) { return r[I.Key] === 'WATCHDOG' && r[I.Status] === 'OPEN'; }).map(function (r) { return { severity: r[I.Severity], msg: r[I.Message] }; }); })())`));
