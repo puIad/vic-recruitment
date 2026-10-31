@@ -19,6 +19,8 @@ interface ResultsStore {
   error: string | null
   /** when the last load began (an ended pending change is held by a load that began after it ended) */
   startedAt: number
+  /** a load was asked for while one ran: go again when it ends */
+  again: boolean
   load: () => Promise<void>
 }
 
@@ -28,8 +30,9 @@ export const useResults = create<ResultsStore>((set, get) => ({
   loading: false,
   error: null,
   startedAt: 0,
+  again: false,
   load: async () => {
-    if (get().loading) return
+    if (get().loading) { set({ again: true }); return }
     const at = Date.now()
     set({ loading: true, error: null })
     try {
@@ -38,6 +41,7 @@ export const useResults = create<ResultsStore>((set, get) => ({
     } catch (e) {
       set({ loading: false, error: (e as Error).message || "Could not load the results." })
     }
+    if (get().again) { set({ again: false }); void get().load() }
   },
 }))
 
@@ -104,11 +108,15 @@ export function useReloadOnEnd() {
 
 /**
  * Set one candidate's result: a pending change when the switch is on, else the direct write. Choosing the binome's own proposal on
- * an override clears it (follow the binome); choosing what already shows does nothing. value "" clears. Resolves true when it went.
+ * an override clears it (follow the binome); choosing what already shows does nothing. value "" clears. Resolves true when it went (or needed nothing), false when a typed note was kept back.
  */
 export async function setResult(row: ResultRow, value: string, note = ""): Promise<boolean> {
   const to = value === row.proposal ? "" : value
-  if (to === row.override && !note) return true
+  if (to === row.override) {
+    // nothing would change, so a typed note would be dropped: say so and keep it
+    if (note) { toast.warning("Pick a different result to keep this note"); return false }
+    return true
+  }
   const st = useVic.getState()
   const seen = row.override
   if (st.pendingOn && st.gate.mode === "ok") {

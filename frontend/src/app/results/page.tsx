@@ -61,11 +61,12 @@ export default function ResultsPage() {
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return
-      // not while typing, nor behind a menu, a dialog or a focused button (Enter and digits belong to them)
-      if ((e.target as HTMLElement).closest("input, textarea, select, button, [contenteditable]") || document.querySelector('[role="menu"], [role="dialog"]')) return
+      // not while typing, nor behind a menu, another dialog or a focused button; the candidate's own panel keeps the keys
+      const t = e.target as HTMLElement, inSheet = t.closest('[data-slot="sheet-content"]')
+      if (t.closest("input, textarea, select, [contenteditable]") || (!inSheet && t.closest("button")) || document.querySelector('[role="menu"], [role="dialog"]:not([data-slot="sheet-content"])')) return
       if (e.key === "ArrowDown") { e.preventDefault(); move(1) }
       else if (e.key === "ArrowUp") { e.preventDefault(); move(-1) }
-      else if (e.key === "Enter" && active && !open) { e.preventDefault(); setOpen(active.code) }
+      else if (e.key === "Enter" && active && !open && !inSheet) { e.preventDefault(); setOpen(active.code) }
       else if (/^[1-5]$/.test(e.key) && !final) {
         const target = open ? all.find((r) => r.code === open) : active // the panel's candidate, even if it left the tab
         if (target) void setResult(target, RESULT_VALUES[+e.key - 1])

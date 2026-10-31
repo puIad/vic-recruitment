@@ -79,7 +79,7 @@ function PanelBody({ r, final }: { r: ResultRow; final: boolean }) {
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-1.5">
                     {RESULT_VALUES.map((v, k) => (
-                      <Button key={v} size="sm" variant={r.result === v ? "default" : "outline"} onClick={() => { void setResult(r, v, note.trim()); setNote("") }} className="gap-1.5">
+                      <Button key={v} size="sm" variant={r.result === v ? "default" : "outline"} onClick={() => { void setResult(r, v, note.trim()).then((went) => went && setNote("")) }} className="gap-1.5">
                         <Dot v={v} /> {v}
                         <kbd className="hidden text-[10px] opacity-60 lg:inline">{k + 1}</kbd>
                       </Button>
