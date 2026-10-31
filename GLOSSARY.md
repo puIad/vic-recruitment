@@ -148,6 +148,21 @@ A change vic.rh makes to one candidate's phase-1 result once result mails have s
 result for a candidate who appears after that point.
 _Avoid_: override (for a change made after the first result mail)
 
+**Result mail**:
+The mail that tells a candidate their phase-1 result: accepted, which also invites them to the next phase, or not accepted.
+The screening's rejection is not one.
+_Avoid_: rejection (for a not-accepted mail), acceptance letter
+
+**Told**:
+A candidate whose result mail Google accepted, recorded with what they were told in the Master's Result Told column. It
+differs from their phase-1 result when a correction mail is owed.
+_Avoid_: notified, informed
+
+**Group link**:
+The personal link in an accepted mail that forwards a candidate to their current department's Messenger group. Opening it
+records a click, which does not prove they joined.
+_Avoid_: invite link, joined (for a click)
+
 ## Signing in
 
 **Sign-in**:

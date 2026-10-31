@@ -495,8 +495,9 @@ candidate who first needs a result after final, from a late interview or a resto
 gets it through the same correction once mails have started; everyone else stays final. Before the first mail, they are decided
 the same way, with no reopen needed.
 
-**What binomes see.** The result of their own candidates in My binome, read-only, only once results are final. The read must not
-expose overrides before that.
+**What binomes see.** The result of their own candidates in My binome, read-only, only once the first result mail has gone
+([#178](#telling-candidates-their-result) moved this from final, so a binome can't tell a candidate before the club does). The
+read must not expose overrides or results before that.
 
 **Risk.** Final depends on vic.rh signing in to the dashboard. [#179](https://github.com/puIad/vic-recruitment/issues/179) left a
 Vercel sign-in by vic.rh unproven, and the trigger stoppage behind
@@ -547,8 +548,99 @@ read-only.
 them as of the last sync, and a new admin read serves them. It stays out of `webState`, as `webAnalytics` does, and loads when
 the page opens. Form answers load when the panel opens.
 
-**Not here.** The result mails are [#178](https://github.com/puIad/vic-recruitment/issues/178). The prototype's phone layout is not a
-design: on a phone the table scrolls sideways.
+**Not here.** The result mails are in [Telling candidates their result](#telling-candidates-their-result), which adds Send results
+to the final bar and a Not opened filter to this page. The prototype's phone layout is not a design: on a phone the table scrolls
+sideways.
 
 **Deploy.** A clasp deploy for the read, with the ones in [How a phase-1 result is decided](#how-a-phase-1-result-is-decided), and a
 Vercel deploy for the page.
+
+## Telling candidates their result
+
+Decided in [#178](https://github.com/puIad/vic-recruitment/issues/178) (owner, 2026-10-31). Builds on
+[How a phase-1 result is decided](#how-a-phase-1-result-is-decided) and
+[Email and notification status](#email-and-notification-status).
+
+**The mails.** Two outcomes, three texts, all in Settings › Emails under To candidates.
+
+| Mail | Who | Text |
+|---|---|---|
+| Accepted | result is a department | One shared text with `{first}`, `{code}` and `{department}`, a next-step paragraph per department through `{next}`, and a button to the department's group |
+| Not accepted, interviewed | result is Not accepted, Status is `INTERVIEWED` | Thanks them for the interview |
+| Not accepted, not interviewed | result is Not accepted, any other Status | Never mentions an interview, with the warning the confirmation mail has |
+
+The accepted mail is also the invitation to the next phase, so there is no third mail. It has the department's house colour from
+`FORM_HOUSE`, as the confirmation does. Not accepted stays neutral, like the rejection. The default texts are plain and kind, and
+the only theme is the colour. They are drafted when this is built, for the owner to edit.
+
+**Send rejections stays separate.** Declined applicants have no result, so they get no results mail. Maintenance's wording says the
+action covers applicants declined at screening and not interviewed candidates, and the results preview shows how many declined
+applicants have not had their rejection yet.
+
+**Sending.** The vic.rh sign-in only, with the same check as Make results final, since the first mail ends Reopen and can't be
+recalled. Send results sits in the Results page's final bar, disabled with a reason until results are final. Everyone goes in one
+batch from one preview, never per department or automatically. A run that nears its time limit stops and says how many are left, and
+Send again reaches only those not told. Once sending has started the bar shows told and left counts.
+
+**The preview.** Counts per mail and department, and the six mails drawn with real candidates' data: four accepted and two not
+accepted. It also lists:
+- candidates skipped because they are now DUPLICATE, DECLINED or WITHDRAWN, or have a missing or invalid address;
+- candidates who are not `INTERVIEWED` but have a binome proposal, who get the not-interviewed text unless their form is logged
+  first, so they can be checked;
+- the declined applicants still waiting for a rejection.
+
+The texts are editable in the dialog, with Send me a test. Edits are written to Settings when Send is pressed, before the first mail,
+as a logged direct write, so Send again and later corrections use the same words and a batch cut short can't go out in two versions.
+Send is refused while:
+- results are not final;
+- a department with accepted candidates has no next step or group link;
+- any of these texts has a pending or dropped change;
+- the push to vic-enp below fails.
+
+**Test mode.** One copy of each mail to the presser. Result Told stays empty, the group link records nothing, and these Held rows are
+not the first result mail, so Reopen stays available.
+
+**Result Told.** A new Master column holding what the candidate was told and when, such as `IT 12/11`, written only after Google
+accepts the mail. Empty means not told. A value that differs from Phase 1 Result means a correction mail is owed. Reset clears it.
+"The first result mail" in [How a phase-1 result is decided](#how-a-phase-1-result-is-decided) means the first Result Told written.
+
+**Corrections.** A correction changes Phase 1 Result only, and the Results page marks the row Mail owed. The correction dialog ends with
+a preview of that candidate's mail for the new result and a Send, and the row's menu offers the same later. A candidate already told
+also gets an editable line from Settings saying this mail replaces the earlier one. Someone with no Result Told, such as a late first
+result, gets the normal mail without it. Send results never picks up owed corrections. Anyone already in the wrong Messenger group is
+removed by hand.
+
+**Failures.** As in [Email and notification status](#email-and-notification-status): a failed mail gets a Failed row, no Result Told and
+the HIGH `MAIL_FAILED` alert. Send again and Resend both reach it, and Resend writes the Result Told the original would have, so nothing
+goes twice. A stored mail whose result has changed since can only be dismissed. The 1,500-a-day quota on vic.rh shows up as failures to
+retry the next day.
+
+**Group links.** Each department has a Messenger group, with its link in a box in Settings › Emails, set as a pending change and checked
+as an https link. Each accepted mail's button carries that candidate's own signed link, `/join/<token>` on the vic-enp site. The token
+identifies the candidate and holds no department.
+- **On a click** vic-enp records the time of the candidate's first click and redirects straight to the group of their current department.
+  There is no page in between. A candidate now Not accepted, or a token it doesn't know, gets a short "this link is no longer active"
+  page. A test-mode token records nothing.
+- **What vic-enp holds.** The four links and each told candidate's code and current department, pushed by the script at send and at each
+  correction. A changed link goes with the next sync, and it also fixes mails already sent. A failed push at send sends nothing. A
+  candidate who withdraws after being told keeps a working link.
+- **What a click stores.** The code and the time, with no IP address or device. It stays in vic-enp's Redis with no expiry, and Reset
+  clears it. Nothing is written to the Master.
+
+A click is not a join: only Messenger knows who joined. With no page in between, a mail scanner that opens links can also mark someone
+as opened, so Opened can be wrong in that direction and the Not opened list can miss someone.
+
+**Where admins see clicks.** Every Master editor. The dashboard's server reads clicks from vic-enp with a shared secret when the page
+opens, and if vic-enp is down the page says clicks are unavailable. A candidate's details show Opened group link with its date. The
+Results page shows counts per department and, once mails have gone, a Not opened filter with phone and email for following up by hand.
+There is no reminder mail and no tracked reply. Replies land in vic.rh's inbox. Since clicks stay out of the Master, a next-phase list
+made from it won't include them.
+
+**Binomes.** No mail. They see their own candidates' results once the first result mail has gone.
+
+**Writes.** Result Told is written by the script, so no pending change and no `MANUAL_EDIT`. Dialog edits to the texts are a direct
+write to Settings. All of this touches the Master only.
+
+**Deploy.** After applications close on 5 Nov 18:00, since vic-enp takes live registrations until then, asked before each one: vic-enp
+first (the route, the push, the read and the secret), then clasp (the mails, the send, the column), then Vercel (the bar, the filter,
+Settings). The mailer does not change. Before results week, run one test-mode send, one live send to a test address, and a click.
