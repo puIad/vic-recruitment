@@ -302,6 +302,15 @@ export default function MyBinomePage() {
           <b className="font-bold">You can view your binome for now.</b> Filling it in from here or in your sheet opens once an admin gives your binome edit access.
         </Note>
       )}
+      {m.close && (m.close.on || m.close.date) && (
+        <Note icon={Lock} tone="info">
+          {m.close.on ? (
+            <><b className="font-bold">The interview phase is closed.</b> A candidate whose interview form is filed has the form, Rating and Final Affectation locked: ask an admin for a correction. Candidates not interviewed yet can still be interviewed.</>
+          ) : (
+            <><b className="font-bold">Interviews are meant to be done by {resumeLabel(m.close.date!)}.</b> It is a reminder: nothing locks by itself.</>
+          )}
+        </Note>
+      )}
       {m.cover && (
         <Note icon={UserRoundCheck} tone="info">
           <b className="font-bold">You're a cover.</b> When the cover ends, these candidates go back to the binome's own members and this page closes.

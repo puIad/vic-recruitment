@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom"
+import { Link, Navigate, useMatch, useNavigate, useParams } from "react-router-dom"
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group"
 import { toast } from "sonner"
 import { AlertTriangle, ArrowLeft, ArrowUpRight, BookOpen, Check, ClipboardPen, Eye, History, Lock, RotateCcw, SendHorizontal, Undo2 } from "lucide-react"
@@ -254,7 +254,9 @@ function startAnswers(d: InterviewData): Answers {
 export default function InterviewPage() {
   const { code = "" } = useParams()
   const navigate = useNavigate()
-  const base = useBinomeBase(), back = base || "/"
+  // an admin editing from a candidate's details (/interviewees/interview/:code): their own access to that binome's sheet, open or closed
+  const adminMode = !!useMatch("/interviewees/interview/:code")
+  const base = useBinomeBase(), back = adminMode ? "/interviewees" : base || "/"
   const member = useVic((s) => s.member)
   const isAdmin = useVic((s) => s.gate.mode === "ok")
   const showProfile = useProfile((s) => s.show)
@@ -274,7 +276,7 @@ export default function InterviewPage() {
   const [saving, setSaving] = React.useState(false)
   const ready = phase.s === "ready" ? phase.data : null
 
-  const load = React.useCallback(() => call<RunOut<InterviewData>>("webRun", ["interviewGet", { code }]).then((o) => o.result), [code])
+  const load = React.useCallback(() => call<RunOut<InterviewData>>("webRun", ["interviewGet", { code, ...(adminMode ? { admin: true } : {}) }]).then((o) => o.result), [code, adminMode])
 
   // another candidate's page starts loading again (load changes only with code)
   const [loadedFor, setLoadedFor] = React.useState(code)
@@ -313,7 +315,7 @@ export default function InterviewPage() {
   }, [answers, dirty, ready, readOnly])
 
   // an admin at this address who is in no binome: back to the Overview, as My binome does
-  if (!member && adminLoaded) return <Navigate to="/" replace />
+  if (!member && adminLoaded && !adminMode) return <Navigate to="/" replace />
 
   const set = (id: string, v: string) => setAnswers((cur) => ({ ...cur, [id]: v }))
 
@@ -349,7 +351,7 @@ export default function InterviewPage() {
     }
     setSaving(true)
     try {
-      const out = await call<RunOut<InterviewSaved>>("webRun", ["interviewSave", { code: ready.code, answers: toSend(ready.questions, ready.sections, answers), seen: stamp }])
+      const out = await call<RunOut<InterviewSaved>>("webRun", ["interviewSave", { ...(adminMode ? { admin: true } : {}), code: ready.code, answers: toSend(ready.questions, ready.sections, answers), seen: stamp }])
       clearDraft(ready.binome, ready.code)
       patchInterview(ready.code, out.result.interview)
       toast.success(ready.answers ? "Changes saved" : "Interview form submitted", {
@@ -373,7 +375,7 @@ export default function InterviewPage() {
   const backLink = (
     <Button asChild variant="ghost" size="sm" className="-ml-3 text-muted-foreground">
       <Link to={back}>
-        <ArrowLeft /> My binome
+        <ArrowLeft /> {adminMode ? "Interviewees" : "My binome"}
       </Link>
     </Button>
   )
@@ -527,8 +529,12 @@ export default function InterviewPage() {
           </Note>
         )}
         {readOnly && d.answers && (
-          <Note icon={Eye} tone="info">
-            {fromForm ? (
+          <Note icon={d.locked ? Lock : Eye} tone="info">
+            {d.locked ? (
+              <>
+                <b className="font-bold">The interview phase is closed.</b> This form is locked. Ask an admin for a correction.
+              </>
+            ) : fromForm ? (
               <>
                 <b className="font-bold">Sent with the Google Form.</b> Its answers show here read-only; the Google Form is where they were written.
               </>

@@ -204,6 +204,16 @@ function Profile({ row: r, tz }: { row: AnalyticsRow; tz: string }) {
 
         {r.code && (
           <Section title="Interview form">
+            {r.binome && (
+              <div className="-mt-1 flex flex-wrap items-center gap-3">
+                <Button asChild size="sm" variant="outline">
+                  <Link to={`/interviewees/interview/${encodeURIComponent(r.code)}`}>
+                    <Pencil /> Edit the form
+                  </Link>
+                </Button>
+                <span className="text-xs text-muted-foreground">Works with the interview phase open or closed. A Google Form's answers stay read-only.</span>
+              </div>
+            )}
             <InterviewForms key={r.code} code={r.code} />
           </Section>
         )}

@@ -223,7 +223,7 @@ function memberState_(a) {
     sl.alerts = sl.alerts.filter(x => m.codes.indexOf(x.code) >= 0);
   }
   return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail(), pending: pendingOn_(),
-    interviewForm: interviewFormUrl_(m.b) });
+    interviewForm: interviewFormUrl_(m.b), close: closeInfo_() });
 }
 /** The binome sheet of a member view (asMember_), opened with the signed-in account's own access. */
 function memberBook_(m) {
@@ -365,10 +365,13 @@ function memberSet_(a, args) {
     const rng = sh.getRange(row, BF_COL, 1, BF_H.length), F = idx_(BF_H), was = rng.getValues()[0], wasShown = rng.getDisplayValues()[0];
     list.forEach(x => {
       if (x.error) return;
+      x.error = closeLock_(file, sh, row, code, x.field);
+      if (x.error) return;
       const cur = goldText_(x.field, goldOf_(x.field, was[F[x.field]], wasShown[F[x.field]]));
       if (cur !== goldText_(x.field, x.seen)) { x.conflict = cur; return; }
       goldWrite_(sh, row, x.field, x.v);
     });
+    if (!batch && list[0].error) throw new Error(list[0].error);
     const written = list.filter(x => !x.error && x.conflict === undefined);
     if (written.length) {
       SpreadsheetApp.flush();
@@ -498,6 +501,12 @@ function adminSet_(a, args) {
       if (Object.keys(mine).length) all[code] = mine; else delete all[code];
       savePropChunks_(MARKS_KEY, JSON.stringify(all));
       goldPatch_(t.b, sh, row, code, wrote.map(x => x.field), { setBy: all[code] });
+      // while closed the sync guards these two against the Master's copy: it takes the admin's value in the same call
+      // shortcut: a sync running in these seconds saved its own copy of the Master and may undo it; the admin sees it and writes again
+      if (interviewClosed_() && wrote.some(x => LOCKED_FIELDS.indexOf(x.field) >= 0)) {
+        const iv = loadTable_(TAB.IV, IV_H), own = iv.data.filter(r => String(r[iv.I.Code]).trim() === code)[0];
+        if (own) { wrote.forEach(x => { if (LOCKED_FIELDS.indexOf(x.field) >= 0) own[iv.I[x.field]] = x.now; }); saveTable_(iv); }
+      }
     }
     marks = goldMarks_()[code] || {};
   } finally { lock.releaseLock(); }
@@ -605,22 +614,35 @@ function interviewAnswers_(raw) {
   });
 }
 
+/** Whose sheet a form call works on: the caller's own binome (a member, an admin in a binome, a cover for the codes they cover), or with
+ *  args.admin (admins only) the candidate's binome sheet opened with the admin's own access, for the form in a candidate's details.
+ *  Returns {b, book, edit, cover, admin}. */
+function formTarget_(a, args, code) {
+  if (args.admin) {
+    if (a.role !== 'admin') throw new Error('Not allowed');
+    const t = adminSheetOf_(code);
+    return { b: t.b, book: t.f.sh.getParent(), edit: true, cover: false, admin: true };
+  }
+  const mv = asMember_(a);
+  if (!mv) throw new Error('Not allowed');
+  if (mv.cover && (mv.m.codes || []).indexOf(code) < 0) throw new Error('Not allowed');
+  return { b: mv.m.b, book: memberBook_(mv.m), edit: !!mv.edit, cover: !!mv.cover, admin: false };
+}
+
 /** webRun('interviewGet', {code}): the interview form of one candidate of the caller's binome, read with their own access: a
  *  member, an admin in a binome, or a cover for the codes they cover. The questions, the candidate (name, 1st choice from the
  *  registration), the answers row if there is one (answers null if not), the prefilled Google Form. edit = they may save here
  *  (edit access, not a cover); a Google Form row stays read-only for everyone. No lock. */
 function interviewGet_(a, args) {
-  const mv = asMember_(a);
-  if (!mv) throw new Error('Not allowed');
-  const m = mv.m, code = String(args.code || '').trim();
-  if (mv.cover && (m.codes || []).indexOf(code) < 0) throw new Error('Not allowed');
-  const book = memberBook_(m), sh = book.getSheets()[0], row = findFileRow_(sh, code);
-  if (row < 0) throw new Error('This candidate is no longer in your binome.');
+  const code = String(args.code || '').trim(), who = formTarget_(a, args, code);
+  const m = { b: who.b }, mv = { edit: who.edit, cover: who.cover }, book = who.book, sh = book.getSheets()[0], row = findFileRow_(sh, code);
+  if (row < 0) throw new Error('This candidate is no longer in ' + (who.admin ? 'that binome.' : 'your binome.'));
   const F = idx_(BF_H), v = sh.getRange(row, BF_COL, 1, BF_H.length).getValues()[0], got = answersRow_(book.getSheetByName(IA_TAB), code);
   // no row but a mark in Interview Form: a Google Form logged before the tab existed, read-only
   const old = !got && String(v[F['Interview Form']]).trim() ? { answers: null, source: 'Google Form', stamp: '' } : null;
+  const locked = !who.admin && interviewClosed_() && !!(got || old); // closed with a form on file: read-only for the binome, admins still edit
   return Object.assign({ code: code, binome: m.b, name: (String(v[F['First Name']]) + ' ' + String(v[F['Family Name']])).trim(),
-    firstChoice: String(v[F['1st Choice']]).trim(), edit: !!mv.edit && !mv.cover, sections: INTERVIEW_SECTIONS, questions: INTERVIEW_QUESTIONS,
+    firstChoice: String(v[F['1st Choice']]).trim(), edit: !!mv.edit && !mv.cover && !locked, locked: locked, sections: INTERVIEW_SECTIONS, questions: INTERVIEW_QUESTIONS,
     formUrl: interviewFormUrl_(m.b) }, got ? answersView_(got.v, book.getSpreadsheetTimeZone()) : old || { answers: null, source: '', stamp: '' });
 }
 
@@ -631,11 +653,11 @@ function interviewGet_(a, args) {
  *  the binome is marked dirty (the next sync logs it) and its cached slice shows the interview, so the partner sees Submitted at
  *  their next poll. A direct write with pending changes on too: an answer set is not a one-cell change. */
 function interviewSave_(a, args) {
-  const mv = asMember_(a);
-  if (!mv || mv.cover) throw new Error('Not allowed');
-  if (!mv.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
-  const m = mv.m, code = String(args.code || '').trim(), vals = interviewAnswers_(args.answers), me = lc_(a.email), seen = String(args.seen || '');
-  const book = memberBook_(m), sh = book.getSheets()[0], tz = book.getSpreadsheetTimeZone();
+  const code = String(args.code || '').trim(), who = formTarget_(a, args, code);
+  if (who.cover) throw new Error('Not allowed');
+  if (!who.edit) throw new Error('You can view your binome sheet but not edit it. Ask an admin for edit access.');
+  const m = { b: who.b }, vals = interviewAnswers_(args.answers), me = lc_(a.email), seen = String(args.seen || '');
+  const book = who.book, sh = book.getSheets()[0], tz = book.getSpreadsheetTimeZone();
   const lock = memberLock_();
   if (!lock.tryLock(10000)) throw new Error('BUSY: Your sheet is busy with another edit. Nothing was saved: try again.');
   try {
@@ -644,6 +666,7 @@ function interviewSave_(a, args) {
     const tab = answersTab_(book, true), got = answersRow_(tab, code), had = got ? answersView_(got.v, tz) : null;
     // no row but a mark in Interview Form: a Google Form logged before the tab existed
     const marked = !got && String(sh.getRange(row, bfCol_('Interview Form')).getValue()).trim();
+    if (!who.admin && interviewClosed_() && (had || marked)) throw new Error(CLOSE_MSG);
     if ((had && had.source !== 'Dashboard') || marked) throw new Error('These answers came from the Google Form: they can only be viewed here.');
     if (!had && seen) throw new Error('CONFLICT: These answers were removed from your sheet meanwhile.');
     if (had && had.stamp !== seen) throw new Error('CONFLICT: ' + (had.editedBy || had.submittedBy) + ' saved this form at ' + (had.editedAt || had.submittedAt) + '.');
@@ -830,6 +853,7 @@ function buildState_(ctx) {
       // Schedule (docs/plans.md): the interview time the sync read from the binome sheet ('' typed or unreadable = null)
       dept: String(r[I['1st Choice']]), contacted: String(r[I.Contacted]), at: ms_(r[I['Interview At']]),
       assignedAt: ms_(r[I['Assigned At']]), avail: String(r[I.Availability]) })),
+    close: closeInfo_(),
     screening: { on: screenOn_(), holdAt: num_(s.SCREEN_HOLD_AT, 50), linked: !!String(s.VIC_MEMBERS_SHEET || '').trim(), members: membersStatus_() },
   };
 }
@@ -889,6 +913,7 @@ function settingValue_(r, raw) {
   else { v = String(v).trim(); if (kind.type === 'enum' && kind.options.map(String).indexOf(v) < 0) throw new Error(k + ' must be one of ' + kind.options.join(', ')); if (typeof r[1] === 'number') v = Number(v); }
   if (/^MAIL_/.test(k)) { mailCheck_(k, v); if (v === mailKey_(k).f[1]) v = ''; } // a text equal to the script's is saved blank, so a new default still reaches it
   if (k === 'ADMIN_EMAIL' && v && !String(v).split(/[,;\s]+/).filter(Boolean).every(e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) throw new Error('ADMIN_EMAIL: invalid email address');
+  if (k === 'INTERVIEW_CLOSE_DATE') parseCloseDate_(v);
   if (k === 'DIGEST_HOUR' && (v < 0 || v > 23 || v % 1)) throw new Error('DIGEST_HOUR must be a whole number from 0 to 23');
   return v;
 }
@@ -970,7 +995,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -1020,6 +1045,8 @@ function webRun(action, args) {
       case 'binomeView': result = binomeViewCore_(args); break;
       case 'adminSet': result = adminSet_(a, args); break;
       case 'adminFormFill': result = adminFormFill_(a, args); break;
+      case 'closePreview': result = interviewCloseCore_(a, { op: 'preview' }); break;
+      case 'interviewClose': result = interviewCloseCore_(a, args); break;
       case 'editCandidate': result = editCandidateCore_(args.code, args.values); break;
       case 'binomeAccess': result = binomeAccessCore_(String(args.binome || ''), args.level, a.email); break;
       case 'restore': result = restoreCore_(args.codes); break;

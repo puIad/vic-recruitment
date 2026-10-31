@@ -100,6 +100,14 @@ const MAILS = [
     ['subject', '[VIC Recruitment] Binome {binome} is active again'],
     ['heading', 'Binome {binome} is active again'],
     ['text', 'Hi {first},\n\nYour binome **{binome}** is active again: new candidates will come.']] },
+  { id: 'INTERVIEW_CLOSED', name: 'Interview phase closed', to: 'binome', vars: ['first', 'binome'], fields: [
+    ['subject', '[VIC Recruitment] The interview phase is closed'],
+    ['heading', 'The interview phase is closed'],
+    ['text', 'Hi {first},\n\nThe interview phase is closed. For a candidate whose interview form is already filed, the form, Rating and Final Affectation are locked now. Candidates not interviewed yet can still be interviewed: fill in their row and save the form as usual.\n\nNeed a correction on a locked row? Ask an admin.']] },
+  { id: 'INTERVIEW_REOPENED', name: 'Interview phase reopened', to: 'binome', vars: ['first', 'binome'], fields: [
+    ['subject', '[VIC Recruitment] The interview phase is open again'],
+    ['heading', 'The interview phase is open again'],
+    ['text', 'Hi {first},\n\nThe interview phase is open again: every interview form, Rating and Final Affectation of your binome can be edited as before.']] },
 ];
 const MAIL_MAX = 2000; // a pending change refuses a text over 2,100 characters (web/lib/pending.js)
 const MAIL_FIELD_LABEL = { subject: 'subject', heading: 'heading', above: 'text above', below: 'text below', text: 'text', codeLabel: 'code box label' };
@@ -128,6 +136,7 @@ const SETTINGS_DEFAULTS = [
   ['SCREENING', false, 'TRUE = hold low-effort applications for an admin to review and decline VIC members silently; FALSE = every application goes to a binome as before'],
   ['SCREEN_HOLD_AT', 50, 'Risk score (0-100) at or above which a new application waits for an admin instead of going to a binome'],
   ['VIC_MEMBERS_SHEET', '', 'Link of the Google Sheet listing the VIC members (a column whose header contains "mail"): their applications are declined silently'],
+  ['INTERVIEW_CLOSE_DATE', '', 'Optional reminder, YYYY-MM-DD or YYYY-MM-DD HH:mm in Algiers time: after it an alert and a banner ask an admin to close the interview phase. Nothing locks by itself. Blank = no date'],
 
 ].concat(MAILS.reduce((rows, m) => rows.concat(m.fields.map(f => ['MAIL_' + m.id + '_' + f[0].toUpperCase(), '',
   'Email text (Settings › Emails): ' + m.name + ', ' + MAIL_FIELD_LABEL[f[0]] + ". Blank = the script's text. Placeholders: " +

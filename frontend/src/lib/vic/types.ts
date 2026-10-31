@@ -372,6 +372,20 @@ export interface WebState {
   interviewees: Interviewee[]
   /** absent on an older script */
   screening?: ScreeningState
+  close?: CloseInfo
+}
+
+/** The interview phase (docs/admin-features.md › Closing the interview phase). date = the reminder only; nothing locks by itself. */
+export interface CloseInfo {
+  on: boolean
+  at: number | null
+  by: string
+  date: number | null
+}
+/** webRun closePreview: what a close would do. */
+export interface ClosePreview {
+  on: boolean
+  preview: { forms: number; doneNoForm: string[]; notInterviewed: number }
 }
 
 /** A candidate as their binome sheet holds it (WebApp.gs candidate_: the BF_H keys, plus Status from the Master;
@@ -450,6 +464,8 @@ export interface MemberState {
   /** the Google Form prefilled with the binome code, ending in the interviewee code's entry= (append the code); "" while the
    *  script doesn't know its URL yet. Absent on a script without the dashboard form: the interview buttons stay hidden. */
   interviewForm?: string
+  /** the interview phase; absent on an older script */
+  close?: CloseInfo
 }
 
 /** One question of Interview Form 2026 as Config.gs INTERVIEW_QUESTIONS holds it (the page draws the form from these). */
@@ -481,6 +497,8 @@ export interface InterviewData {
   firstChoice: string
   /** may save here: edit access, not a cover (a Google Form row stays read-only anyway) */
   edit: boolean
+  /** closed phase with a form on file: read-only for the binome, asking an admin; absent on an older script */
+  locked?: boolean
   sections: InterviewSection[]
   questions: InterviewQuestion[]
   formUrl: string

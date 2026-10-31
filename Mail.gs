@@ -160,7 +160,7 @@ function mailSample_(id, texts) {
   if (id === 'NEW_IV') Object.assign(o, { blocks: [people], cta: mailDashboardCta_() });
   if (id === 'ALERT') Object.assign(o, { blocks: [mailAlerts_([['HIGH', 'NOT_CONTACTED', 'IT.12', 'IT.12 has not been contacted yet']])], cta: mailDashboardCta_() });
   if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: mailDashboardCta_() });
-  if (id === 'PAIRED' || id === 'COVERED' || id === 'BINOME_PAUSED' || id === 'BINOME_RESUMED') o.cta = mailDashboardCta_();
+  if (id === 'PAIRED' || id === 'COVERED' || id === 'BINOME_PAUSED' || id === 'BINOME_RESUMED' || id === 'INTERVIEW_CLOSED' || id === 'INTERVIEW_REOPENED') o.cta = mailDashboardCta_();
   if (id === 'COVER') Object.assign(o, { blocks: [people], cta: mailDashboardCta_() });
   return mailFrom_(id, v, o);
 }

@@ -151,6 +151,8 @@ function applyField_(w, f, c, id, gone) {
   if (x.row < 0) return drop(gone);
   const cur = x.text[field];
   if (cur === goldText_(field, c.value)) return { id: id, end: 'met' }; // a retry, or the partner typed the same
+  const shut = closeLock_(f.sh.getParent(), f.sh, x.row, code, field);
+  if (shut) return drop(shut); // closed since it was queued
   if (cur !== goldText_(field, c.seen)) return { id: id, end: 'dropped', sheet: cur }; // the partner changed it
   goldWrite_(f.sh, x.row, field, v);
   x.text[field] = goldText_(field, c.value);
