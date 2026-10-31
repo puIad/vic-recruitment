@@ -644,3 +644,50 @@ write to Settings. All of this touches the Master only.
 **Deploy.** After applications close on 5 Nov 18:00, since vic-enp takes live registrations until then, asked before each one: vic-enp
 first (the route, the push, the read and the secret), then clasp (the mails, the send, the column), then Vercel (the bar, the filter,
 Settings). The mailer does not change. Before results week, run one test-mode send, one live send to a test address, and a click.
+
+## When the timed sync stops
+
+Decided in [#181](https://github.com/puIad/vic-recruitment/issues/181). A timed sync that loses its authorization stops silently:
+Google's failure mail reaches only vic.rh, and one stop ran 16 h overnight unnoticed. The form trigger and the daily digest run on the
+same grant and stop with it. Sync now keeps working, because it runs as the signed-in admin. A dead trigger can't report itself
+([#179](https://github.com/puIad/vic-recruitment/issues/179)), so the dashboard and a second trigger watch it from outside.
+
+**The stamp.** `syncAll` writes a new script property when it ends ok or busy. Sync now and form cycles never move it, so pressing Sync
+now can't hide a dead trigger, and a sync that starts but keeps failing or timing out counts as stopped too. The snapshot's `built`
+can't do this job: it moves only when the content changed, and Sync now moves it too. The stamp stays out of the snapshot, so it never
+bumps `SNAP_VER`.
+
+**The threshold.** Stopped means no stamp for 3 × `SYNC_EVERY_MINUTES`, with a 15 min floor: 15 min at a 5-minute sync. `webPulse`
+returns the time since the stamp, computed on the server so a wrong laptop clock can't fake a stop. There is no banner until the first
+stamp exists after the deploy. A `SYNC_EVERY_MINUTES` change saved without rerunning Setup uses the new value at once, so going from 30
+to 5 min can show a false banner until Setup runs; Settings already says to run it.
+
+**On the dashboard.** Every Master editor sees a red banner on top of every admin page, and the header's Live pill turns red with the
+last cycle's time. The banner can't be dismissed and clears by itself at the next finished cycle. Members see nothing. It is not an
+Alerts row, since the stopped trigger can't write one. Everyone reads:
+
+> The timed sync has not finished a cycle since <time>. New registrations and binome edits wait until someone presses Sync now, and the
+> digest won't go out. Tell vic.rh.
+
+**What vic.rh does.** The vic.rh sign-in also gets a link to the project on script.google.com and the steps: pick `reauthorize` in the
+function list, press Run, tick every box. `reauthorize()` is a new function that only logs a line, so nobody runs Setup or a sync by
+mistake from that list. Re-authorizing is the whole fix; the triggers don't need reinstalling. If the banner is still red after the next
+interval, a second line says to run Setup from the Master's menu.
+
+**The watchdog.** A small trigger owned by the owner's ENP account, the one that owns the Master, with its own grant, so a lost vic.rh
+grant doesn't stop it. Every 15 min it reads the stamp against the same threshold. It mails the owner and vic.rh once per stop and once
+on recovery, through the normal mail template, with a tab-only Mail Log row like the digest
+([#175](https://github.com/puIad/vic-recruitment/issues/175)). This is what catches a stop overnight with no admin on the dashboard. A
+scope added by a deploy stops both triggers until both accounts re-authorize; the banner still shows then.
+
+**If the watchdog stops.** It stamps its own runs. When `syncAll` finds no watchdog stamp for 3 h, it raises a MEDIUM alert telling the
+owner to re-authorize, and resolves it when the stamp returns.
+
+**No off switch this season.** Nothing stops the sync on purpose before phase-1 results. Deleting the watchdog trigger stops the mail,
+and a code change removes the banner after the season.
+
+**Writes.** Script properties only, plus the one alert above and the Mail Log row. No pending change and no `MANUAL_EDIT`.
+
+**Deploy.** Asked before each one: clasp first (the stamp, `webPulse`, the watchdog, `reauthorize`), since older pages ignore the new
+field, then Vercel (the banner and the pill). The owner installs the watchdog trigger from their own account, and vic.rh tries the steps
+once.
