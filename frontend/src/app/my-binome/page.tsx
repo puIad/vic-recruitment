@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { alertLabel, cellText, fullName, initials, SEVERITY, SHEET_LABEL, sheetTime, STAGES } from "@/lib/vic/format"
 import { GUIDELINE_URL } from "@/lib/vic/interview"
+import { resumeLabel } from "@/lib/vic/pause"
 import { useVic } from "@/lib/vic/store"
 import { REASON, useMemberView } from "@/lib/vic/pending"
 import type { Candidate, FieldEntry, MemberAlert, MemberState } from "@/lib/vic/types"
@@ -288,7 +289,7 @@ export default function MyBinomePage() {
     >
       {m.status === "PAUSED" && (
         <Note icon={PauseCircle} tone="warning">
-          <b className="font-bold">Your binome is paused.</b> It gets no new candidates until an admin resumes it; keep going with the ones you have.
+          <b className="font-bold">Your binome is paused{m.pausedUntil ? ` until ${resumeLabel(m.pausedUntil)}` : ""}.</b> It gets no new candidates until {m.pausedUntil ? "then" : "an admin resumes it"}; keep going with the ones you have.
         </Note>
       )}
       {m.fromSheet && (

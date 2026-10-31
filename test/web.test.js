@@ -789,7 +789,7 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
   as(mem);
   assert.deepStrictEqual(m.call('webAccess'), { ok: true, role: 'member', email: mem, reason: '', owner: false, binome: b1.code, cover: false, v: 3, photo: PHOTO });
   let st = m.call('webState');
-  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'interviewForm', 'members', 'pending', 'role', 'status', 'tag', 'user', 'v'],
+  assert.deepStrictEqual(Object.keys(st).sort(), ['alerts', 'binome', 'candidates', 'cover', 'edit', 'fileUrl', 'fromSheet', 'interviewForm', 'members', 'pausedUntil', 'pending', 'role', 'status', 'tag', 'user', 'v'],
     'no settings, team, history, other binomes or admin lists');
   assert.strictEqual(st.edit, true);
   assert.deepStrictEqual([st.binome, st.role, st.fromSheet, st.candidates.map(c => c.Code).sort()], [b1.code, 'member', false, ivOf(b1.code)]);

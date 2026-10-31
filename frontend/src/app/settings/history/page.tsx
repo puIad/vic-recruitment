@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ArrowRightLeft, Building2, MoveRight, PenLine, Repeat, Search, Trash2, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
+import { ArrowRightLeft, Building2, MoveRight, PauseCircle, PenLine, Repeat, Search, Trash2, UserMinus, UserRoundPlus, UsersRound, X, type LucideIcon } from "lucide-react"
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +12,7 @@ import { useVic } from "@/lib/vic/store"
 import type { HistoryRow, IvHistoryRow } from "@/lib/vic/types"
 import { MemberName } from "@/components/member-name"
 
-type Kind = "replace" | "swap" | "cover" | "tag" | "moved" | "deleted" | "edit"
+type Kind = "replace" | "swap" | "cover" | "tag" | "status" | "moved" | "deleted" | "edit"
 
 const ALL = "all" // the Binome dropdown's "All binomes": Select items can't hold an empty value
 
@@ -20,6 +20,7 @@ const KINDS: Record<Kind, { label: string }> = {
   replace: { label: "Replaced" },
   swap: { label: "Swapped" },
   cover: { label: "Cover" },
+  status: { label: "Pause / resume" },
   tag: { label: "Department" },
   moved: { label: "Moved" },
   deleted: { label: "Deleted" },
@@ -82,6 +83,7 @@ function describe(h: HistoryRow): { kind: Kind; title: string; icon: LucideIcon;
       text: `${h.out} → ${h.inn}${kept}`,
     }
   }
+  if (h.type === "STATUS") return { kind: "status", title: "Pause / resume", icon: PauseCircle, what: <>{h.out} → <b>{h.inn}</b></>, text: `${h.out} → ${h.inn}` }
   const arrow = { what: <>{out} → {inn}</>, text: `${h.out} → ${h.inn}` }
   if (/^swap /i.test(h.reason)) return { kind: "swap", title: "Swapped", icon: ArrowRightLeft, ...arrow }
   if (h.out && h.inn) return { kind: "replace", title: "Replaced", icon: Repeat, ...arrow }

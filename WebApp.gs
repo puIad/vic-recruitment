@@ -160,7 +160,7 @@ function candidate_(row, status, tz) { const c = { Status: status || '' }; BF_H.
 function binSlices_(ctx) {
   const I = ctx.iv.I, A = ctx.alerts.table.I, out = {};
   activeOrPaused_(ctx).forEach(b => {
-    out[b.code] = { v: API_VERSION, binome: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl,
+    out[b.code] = { v: API_VERSION, binome: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl,
       members: b.members.map(m => m.name || m.email), candidates: [], alerts: [], fromSheet: false };
   });
   const L = ctx.log.I;
@@ -673,7 +673,7 @@ function buildState_(ctx) {
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
-      return { code: b.code, tag: b.tag, status: b.status, fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
+      return { code: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
         people: b.members.map(m => ({ name: m.name, email: m.email })), access: (opened[b.code] || {}).level || '',
         byHand: b.status === 'DRAFT' && hand.indexOf(handKey_(b.members.map(m => m.email))) >= 0,
         assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open,
@@ -850,6 +850,7 @@ function webRun(action, args) {
       case 'swapMembers': result = swapMembersCore_(args); break;
       case 'newBinome': result = newBinomeCore_(args); break;
       case 'binomeTag': result = binomeTagCore_(args); break;
+      case 'binomeStatus': result = binomeStatusCore_(args); break;
       case 'addCover': result = addCoverCore_(args); break;
       case 'endCover': result = endCoverCore_(args); break;
       case 'quick': result = quickCore_(String(args.op || ''), args); break;

@@ -153,14 +153,14 @@ function mailSend_(to, m) { return mail_(to, m.subject, m.html, m.from); }
 function mailSample_(id, texts) {
   const v = { first: 'Amina', code: 'IT.42', names: 'Amina & Yanis', binome: 'B3', n: 2, s: 's', hours: 24, members: 'Amina K. & Yanis B.',
     replaced: ' (replaced by Sara B.)', instead: ' instead of Yanis K.', reason: ' (exam)', cover: 'Sara B.', coverEmail: 'sara.b@g.enp.edu.dz',
-    codes: 'IT.12, IT.15' };
+    codes: 'IT.12, IT.15', until: ' until 03/11 08:00' };
   if (id === 'CODE') v.code = '482913';
   const people = mailList_([['IT.12', 'Lina A. · 0550 00 00 00 · available: evenings'], ['IT.15', 'Omar S. · 0661 00 00 00 · available: weekends']]);
   const o = { texts: texts, dept: 'IT', footer: MAILS.some(m => m.id === id && m.to === 'candidate') ? undefined : mailTeamFooter_(DASHBOARD_URL) };
   if (id === 'NEW_IV') Object.assign(o, { blocks: [people], cta: mailDashboardCta_() });
   if (id === 'ALERT') Object.assign(o, { blocks: [mailAlerts_([['HIGH', 'NOT_CONTACTED', 'IT.12', 'IT.12 has not been contacted yet']])], cta: mailDashboardCta_() });
   if (id === 'JOINED') Object.assign(o, { blocks: [mailP_('Interviewees still in progress:'), people], cta: mailDashboardCta_() });
-  if (id === 'PAIRED' || id === 'COVERED') o.cta = mailDashboardCta_();
+  if (id === 'PAIRED' || id === 'COVERED' || id === 'BINOME_PAUSED' || id === 'BINOME_RESUMED') o.cta = mailDashboardCta_();
   if (id === 'COVER') Object.assign(o, { blocks: [people], cta: mailDashboardCta_() });
   return mailFrom_(id, v, o);
 }

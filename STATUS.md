@@ -6,6 +6,8 @@ else: [docs/](docs/README.md).
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
 
+**Pause and resume a binome (#186, built 2026-10-31, spec in [docs/admin-features.md](docs/admin-features.md#pause-and-resume-a-binome)).** Row menu on the Binomes page, code in `Pause.gs`. Deploy order: `clasp push` and both deployments, **vic.rh runs Setup** (adds Paused Until), then Vercel. A pending change of kind `binome`; moves that fail become `bmove` drops.
+
 **Where it stands, 2026-10-24.** Applications open **Monday 26 Oct 2026 at 18:00** and close **Thursday 5 Nov at
 18:00**, Algiers time (vic-enp decisions 130 and 147). Built and live: everything in the launch scope, the registration
 form at `/apply` (section below) and the Overview as the admin's to-do. The owner's launch steps are done (section

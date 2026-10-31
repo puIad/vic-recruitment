@@ -509,6 +509,28 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
         assert.strictEqual((await accept(own, bad)).json.code, 'DIRECT', JSON.stringify(bad));
     }
 
+    // a pause and its moves are one change; a move that can't be made gets its own dropped cell, like any other drop
+    {
+      const target = seed.call('webState').binomes.find(b => b.status === 'ACTIVE'), pc = 'binome:' + target.code;
+      const pause = { kind: 'binome', binome: target.code, op: 'pause', value: 'PAUSED', seen: 'ACTIVE', note: 'exams', until: null, codes: ['IT.999'] };
+      r = await accept(own, pause);
+      assert.deepStrictEqual([r.json.value[pc].state, r.json.value[pc].op, r.json.value[pc].note, r.json.value[pc].codes], ['pending', 'pause', 'exams', ['IT.999']]);
+      await deliver();
+      let rec3 = (await pulse(own, 2)).json.rec;
+      assert.strictEqual(rec3[pc].state, 'applied');
+      assert.deepStrictEqual([rec3['bmove:IT.999'].state, rec3['bmove:IT.999'].binome, rec3['bmove:IT.999'].reason, !!rec3['bmove:IT.999'].again], ['dropped', target.code, 'no longer registered', false]);
+      // a date change has value = seen, and is still a change
+      r = await accept(own, { kind: 'binome', binome: target.code, op: 'date', value: 'PAUSED', seen: 'PAUSED', note: '', until: Date.now() + 864e5, codes: [] });
+      assert.strictEqual(r.json.value[pc].state, 'pending', 'not cancelled as typed-then-undone');
+      await deliver();
+      rec3 = (await pulse(own, 2)).json.rec;
+      assert.strictEqual(rec3[pc].state, 'applied');
+      for (const bad of [Object.assign({}, pause, { op: 'nope' }), Object.assign({}, pause, { value: 'ACTIVE' }), Object.assign({}, pause, { binome: 'B5' }), Object.assign({}, pause, { codes: 'IT.1' }), Object.assign({}, pause, { note: 'x'.repeat(501) })])
+        assert.strictEqual((await accept(own, bad)).json.code, 'DIRECT', JSON.stringify(bad).slice(0, 80));
+      await accept(own, { kind: 'binome', binome: target.code, op: 'resume', value: 'ACTIVE', seen: 'PAUSED', note: '', until: null, codes: [] });
+      await deliver();
+    }
+
     // slice 4: the sync's call (api/drops.js), the apply-by sweep, the seen mark on the pulse
     {
       const dropsApi = require('../web/api/drops');

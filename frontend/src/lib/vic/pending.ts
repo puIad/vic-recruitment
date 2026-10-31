@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useVic } from "./store"
-import type { AdminGoldKey, Alert, AlertEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
+import type { AdminGoldKey, Alert, AlertEntry, BinomeEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
 
 /**
  * The author's view of the alerts: the snapshot with their pending changes over it (docs/plans.md › Slice 2, issue 61).
@@ -163,6 +163,8 @@ export function again(e: PendingEntry, built: number | undefined, at: number): P
     const seen = e.sheet === "OPEN" || e.sheet === "SNOOZED" || e.sheet === "MUTED" ? e.sheet : e.seen
     return { kind: "alert", alert: e.alert, op: e.op, seen, at, until: e.until, built }
   }
+  if (e.kind === "bmove") return null
+  if (e.kind === "binome") return { kind: "binome", binome: e.binome, op: e.op, value: e.value, seen: e.seen, note: e.note, until: e.until, codes: e.codes, at }
   if (e.kind === "setting") return { kind: "setting", key: e.key, value: e.value, seen: e.sheet ?? e.seen, at, built }
   if (e.kind === "team") return { kind: "team", email: e.email, value: e.value, seen: e.sheet === undefined ? e.seen : e.sheet === "true", at }
   if (e.kind === "bfield") return { kind: "bfield", binome: e.binome, code: e.code, field: e.field, value: e.value, seen: e.sheet ?? e.seen, at }
@@ -197,6 +199,28 @@ export function useTeamView() {
   const state = useVic((s) => s.state)
   const rec = useVic((s) => s.rec)
   return React.useMemo(() => teamView(state, rec), [state, rec])
+}
+
+/**
+ * code → what the author's screen shows of a binome over the snapshot: theirs while it is pending, and once it ended until a
+ * snapshot built at or after the write holds it. A drop shows the snapshot, and the drops dialog asks about it.
+ */
+export type BinomeOver = { status: BinomeEntry["value"]; until: number | null; mark?: Mark<PendingEntry> }
+export function binomeView(state: WebState | null, rec: PendingRec, flash: Record<string, number>, now = Date.now()): Record<string, BinomeOver> {
+  const out: Record<string, BinomeOver> = {}, built = state?.built ?? 0
+  Object.values(rec).forEach((e) => {
+    if (e.kind !== "binome") return
+    if (e.state === "pending") out[e.binome] = { status: e.value, until: e.until, mark: { kind: "pending", entry: e } }
+    else if ((e.state === "applied" || e.state === "met") && !(e.wrote !== undefined && built >= e.wrote))
+      out[e.binome] = { status: e.value, until: e.until, mark: (flash[e.cell] ?? 0) > now ? { kind: "flash", entry: e } : undefined }
+  })
+  return out
+}
+export function useBinomeView() {
+  const state = useVic((s) => s.state)
+  const rec = useVic((s) => s.rec)
+  const flash = useVic((s) => s.flash)
+  return React.useMemo(() => binomeView(state, rec, flash), [state, rec, flash])
 }
 
 /* ---------- settings and My binome fields (docs/plans.md › Slice 3) ---------- */

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { AlertTriangle, Bell, Settings2, UserRound } from "lucide-react"
+import { AlertTriangle, Bell, PauseCircle, Settings2, UserRound } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -22,6 +22,8 @@ function describe(e: PendingEntry, state: WebState | null) {
     const a = state?.alerts.find((x) => x.id === e.alert) ?? state?.muted?.find((x) => x.id === e.alert)
     return { icon: Bell, what: `Alert ${e.alert}${a ? ` · ${a.type}${a.code ? ` · ${a.code}` : ""}` : ""}`, mine: YOURS[e.op], sheet: STATUS[e.sheet ?? ""] ?? e.sheet }
   }
+  if (e.kind === "binome") return { icon: PauseCircle, what: `Binome ${e.binome}`, mine: { pause: "Pause", resume: "Resume", date: "Change resume date" }[e.op], sheet: undefined }
+  if (e.kind === "bmove") return { icon: UserRound, what: `${e.code} · move out of ${e.binome}`, mine: "Move to another binome", sheet: undefined }
   if (e.kind === "setting") return { icon: Settings2, what: `Setting ${e.key}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
   if (e.kind === "team") return { icon: UserRound, what: `${e.email} · Experienced`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet === "true") }
   if (e.kind === "bfield") return { icon: UserRound, what: `${e.code} (${e.binome}) · ${e.field}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }

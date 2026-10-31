@@ -194,6 +194,8 @@ export const MAIL_UI: Record<string, { label: string; help: string; icon: Lucide
   PAIRED: { label: "New binome", help: "Sent to both members of a binome created after the lock.", icon: Users2 },
   COVER: { label: "You cover", help: "Sent to a person who covers candidates for a binome.", icon: Handshake },
   COVERED: { label: "Someone covers for you", help: "Sent to the members of a binome when someone covers for them.", icon: MailMinus },
+  BINOME_PAUSED: { label: "Binome paused", help: "Sent to both members of a binome when an admin pauses it.", icon: Users2 },
+  BINOME_RESUMED: { label: "Binome resumed", help: "Sent to both members of a binome when it resumes, by hand or from its date.", icon: Users2 },
 }
 
 export const MAIL_FIELD_LABEL: Record<string, string> = {

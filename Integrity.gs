@@ -11,7 +11,7 @@ const EDIT_GROUPS = {
   iv: { Code: ['Code'], Binome: ['Binome'], Status: ['Status'], Person: ['First Name', 'Family Name', 'Email'] },
 };
 // Stored but never compared: only needed to rebuild a deleted row on Revert (dates kept as ISO text)
-const BASE_KEEP = { bin: ['Created'], iv: ['Assigned At', 'Interview Submitted At', 'Interview Log Row', 'Screening'] };
+const BASE_KEEP = { bin: ['Created', 'Paused Until'], iv: ['Assigned At', 'Interview Submitted At', 'Interview Log Row', 'Screening'] };
 const BASE_F = { bin: [].concat.apply([], Object.keys(EDIT_GROUPS.bin).map(g => EDIT_GROUPS.bin[g])).concat(BASE_KEEP.bin),
   iv: [].concat.apply([], Object.keys(EDIT_GROUPS.iv).map(g => EDIT_GROUPS.iv[g])).concat(BASE_KEEP.iv) };
 
@@ -145,6 +145,13 @@ function binEdits_(ctx, p) {
         msg: code + ' set to ' + cur.Status + ' in the Binomes tab' + (cur.Status === 'PAUSED' ? ': it keeps its interviewees but gets no new ones.' : ': it receives interviewees again.') });
     } else flag('Status', 'MEDIUM', 'Status of ' + code + ' changed by hand: ' + prev.Status + ' → ' + (cur.Status || '(empty)') +
       '. Only ACTIVE and PAUSED binomes are synced. Revert puts ' + prev.Status + ' back.');
+  }
+  // a typed resume date on a paused binome is honoured (resumeDue_); on an ACTIVE one timingAlerts_ flags it
+  if (cur.Status === 'PAUSED' && cur['Paused Until'] && hasPausedCol_(ctx) && (prev['Paused Until'] || '') !== cur['Paused Until']) {
+    const at = ctx.binByCode[code] && ctx.binByCode[code].pausedUntil;
+    ctx.alerts.add({ severity: 'INFO', type: 'MANUAL_EDIT', status: 'AUTO-FIXED', code: '', binome: code, key: '',
+      msg: at ? 'Resume date of ' + code + ' set to ' + fmt_(at, 'dd/MM/yyyy HH:mm') + ' in the Binomes tab: it resumes at the first sync after it.'
+        : 'Resume date of ' + code + ' typed in the Binomes tab is not a date ("' + cur['Paused Until'] + '"): it is ignored.' });
   }
   if (differs('File')) flag('File', 'MEDIUM', 'Sheet link of ' + code + ' changed by hand (File ID ' + (prev['File ID'] || '(empty)') + ' → ' + (cur['File ID'] || '(empty)') +
     '): the script now reads and writes another sheet. Revert puts the previous one back.');
@@ -288,7 +295,7 @@ function revertEdit_(ctx, p, group) {
   if (p.kind === 'bin') {
     const B = ctx.bin.I;
     if (group === '*') {
-      const row = BIN_H.map(h => (h === 'Created' ? (p.prev.Created ? new Date(p.prev.Created) : '') : h in p.prev ? p.prev[h] : ''));
+      const row = BIN_H.map(h => (h === 'Created' || h === 'Paused Until' ? (p.prev[h] ? new Date(p.prev[h]) : '') : h in p.prev ? p.prev[h] : ''));
       ctx.bin.sh.getRange(ctx.bin.sh.getLastRow() + 1, 1, 1, BIN_H.length).setValues([row]);
       ctx.bin.data.push(row);
     } else {

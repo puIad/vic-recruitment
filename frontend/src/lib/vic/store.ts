@@ -126,7 +126,7 @@ let polls = 0
 let wantRec = true
 const hasPending = (rec: PendingRec) => Object.values(rec).some((e) => e.state === "pending")
 /** kinds whose drop has no row of its own on the page: the drops dialog asks about them */
-const ROWLESS = new Set(["team", "bfield"])
+const ROWLESS = new Set(["team", "bfield", "binome", "bmove"])
 const openDrops = (rec: PendingRec) => Object.values(rec).filter((e) => e.state === "dropped" && !e.addressed).map((e) => e.cell)
 /** the first record this visit reads opens the dialog for the drops waiting in it */
 let firstRec = true

@@ -79,6 +79,8 @@ function ensureTabs_(ss) {
   bn.getRange('G2:G300').setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInList(['DRAFT', 'ACTIVE', 'PAUSED'], true).setAllowInvalid(false).build());
   bn.getRange(1, 7).setNote('DRAFT = not created yet · ACTIVE = receives interviewees · PAUSED = keeps its interviewees but gets no new ones.');
+  bn.getRange(2, BIN_H.indexOf('Paused Until') + 1, 299, 1).setNumberFormat('dd/mm/yyyy HH:mm');
+  bn.getRange(1, BIN_H.indexOf('Paused Until') + 1).setNote('Resume date of a PAUSED binome (Algiers time): the first sync after it resumes the binome. Ignored on an ACTIVE binome.');
   bn.getRange(1, 6).setNote('Tag decides who they receive: "IT & HR" = IT and HR candidates, "ALL" = everyone.');
   // Interviewees (script-managed)
   const iv = mk(TAB.IV, IV_H);

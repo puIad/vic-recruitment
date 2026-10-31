@@ -218,10 +218,12 @@ function sendDailyDigest() {
   const lag = Object.keys(perBinome).sort((a, b) => perBinome[b] - perBinome[a]).slice(0, 8);
   const statuses = [ST.ASSIGNED, ST.CONTACTED, ST.SCHEDULED, ST.INTERVIEWED, ST.WITHDRAWN, ST.UNASSIGNED, ST.HELD, ST.DECLINED, ST.DUPLICATE]
     .map(s => [s.charAt(0) + s.slice(1).toLowerCase(), count[s] || 0]);
+  const paused = ctx.alerts.table.data.filter(r => r[A.Type] === 'BINOME_STATUS' && r[A.Created] > yesterday);
   const html = mailHtml_({ title: 'Daily digest · ' + fmt_(ctx.now, 'EEE dd/MM'),
     blocks: [mailH_('Last 24h'), mailStats_([['New registrations', newRegs], ['Interviews submitted', newInts]]),
       mailH_('Interviewees'), mailStats_(statuses)]
       .concat(lag.length ? [mailP_('**Binomes with the most open alerts:** ' + lag.map(b => b + ' (' + perBinome[b] + ')').join(', '))] : [])
+      .concat(paused.length ? [mailH_('Binomes paused or resumed'), mailList_(paused.map(r => [r[A.Binome], r[A.Message]]))] : [])
       .concat(mailH_('Open alerts (' + open.length + ')'))
       .concat(open.length ? [mailAlerts_(open.slice(0, 60).map(r => [r[A.Severity], r[A.ID], r[A.Type], r[A.Binome], r[A.Message]]))]
         .concat(open.length > 60 ? [mailP_('…and ' + (open.length - 60) + ' more.')] : []) : [mailP_('Nothing open 🎉')]),
