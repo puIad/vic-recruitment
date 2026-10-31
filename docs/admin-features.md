@@ -2,7 +2,51 @@
 
 The spec built ticket by ticket on the map [#166](https://github.com/puIad/vic-recruitment/issues/166): dashboard
 features that let admins do what they still open the Master or a binome sheet for. The sheets stay the store; nobody
-should need to open them. One section per decided feature, newest last. Vocabulary: [GLOSSARY.md](../GLOSSARY.md).
+should need to open them. The signed build order comes first, then one section per decided feature, newest last. Vocabulary:
+[GLOSSARY.md](../GLOSSARY.md).
+
+## Build order
+
+Signed by the owner in [#180](https://github.com/puIad/vic-recruitment/issues/180), 2026-10-31. The deliberation is expected
+around 12 Nov 2026; applications close on 5 Nov at 18:00 Algiers. Nothing here was built when it was signed. Sizes are estimates in
+build sessions, each plus review, and every deploy is asked first.
+
+| Rank | Build ticket | Feature | Size | Deploy | Before results |
+|---|---|---|---|---|---|
+| 1 | [#185](https://github.com/puIad/vic-recruitment/issues/185) | [When the timed sync stops](#when-the-timed-sync-stops) | M, 1 | clasp, Vercel, owner's watchdog trigger | Must |
+| 2 | [#186](https://github.com/puIad/vic-recruitment/issues/186) | [Pause and resume a binome](#pause-and-resume-a-binome) | M to L, 1.5 | clasp with Setup, Vercel | Must, live by 5 Nov 18:00 |
+| 3 | [#187](https://github.com/puIad/vic-recruitment/issues/187) | [Edit a candidate's data](#edit-a-candidates-data) | M, 1 | clasp, Vercel | Must |
+| 4 | [#188](https://github.com/puIad/vic-recruitment/issues/188) | [Admins fill in a binome's columns](#admins-fill-in-a-binomes-columns) | M, 1 | clasp, Vercel | Must |
+| 5 | [#189](https://github.com/puIad/vic-recruitment/issues/189) | [Raw responses, Interview Log and Tracker](#raw-responses-interview-log-and-tracker) | M, 1 | clasp, Vercel | Must |
+| 6 | [#190](https://github.com/puIad/vic-recruitment/issues/190) | [One binome's panel and page](#one-binomes-panel-and-page) | L, 2 | clasp, Vercel | Must |
+| 7 | [#191](https://github.com/puIad/vic-recruitment/issues/191) | [Closing the interview phase](#closing-the-interview-phase) | M, 1 | clasp, Vercel | Must |
+| 8 | [#192](https://github.com/puIad/vic-recruitment/issues/192) | [Email and notification status](#email-and-notification-status) | M to L, 1.5 | clasp, Vercel | Must |
+| 9 | [#193](https://github.com/puIad/vic-recruitment/issues/193) | [How a phase-1 result is decided](#how-a-phase-1-result-is-decided) | M to L, 1.5 | clasp, Vercel | Must |
+| 10 | [#194](https://github.com/puIad/vic-recruitment/issues/194) | [The results view](#the-results-view) | M, 1 | clasp, Vercel | Must |
+| 11 | [#195](https://github.com/puIad/vic-recruitment/issues/195) | [Telling candidates their result](#telling-candidates-their-result) | L, 2 | vic-enp after 5 Nov 18:00, clasp, Vercel | Must |
+| | **Cut line: about 14.5 sessions above** | | | | |
+| 12 | [#196](https://github.com/puIad/vic-recruitment/issues/196) | [Buttons for the menu-only actions](#buttons-for-the-menu-only-actions) | S, 0.5 | clasp, Vercel | No |
+| 13 | [#197](https://github.com/puIad/vic-recruitment/issues/197) | [Add, edit and remove Team members](#add-edit-and-remove-team-members) | L, 2 | clasp, Vercel | No |
+| 14 | [#198](https://github.com/puIad/vic-recruitment/issues/198) | Locate links | S, 0.5 | Vercel | No |
+
+**Hard dependencies.** The binome page needs candidate edits, the binome's columns and the form read. Closing the phase needs the
+binome's columns. Results need the close. The results view needs results and the form read. Result mails need mail status, results and the
+results view. Locate links wait for the binome page and the form read. The build tickets carry these as blockers.
+
+**vic.rh sign-in test.** Run live right after the sync watch is deployed, with vic.rh on hand to re-authorize. Going final and sending
+results depend on that sign-in, so the answer arrives while the results build can still change.
+
+**Mail status.** One build: the log, `MAIL_FAILED`, Resend and the views ship together.
+
+**Owner's accepted risks.**
+- **No deploy freeze** before applications close. Each deploy is judged when asked, and the pause build lands in the last days of
+  applications.
+- **No checkpoint.** If the build runs late, the deliberation moves; the order and scope stay.
+
+**Locate links.** The alert panels' six "Go to" targets stay until each one's edits and reads have shipped, and #198 then removes the ones
+no longer needed.
+
+**After results.** What the next phase needs from phase-1 results goes to a phase-2 map, not this spec.
 
 ## Edit a candidate's data
 
