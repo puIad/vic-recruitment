@@ -158,42 +158,21 @@ const columns: ColumnDef<Row>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Open alerts" />,
     cell: ({ row }) => <OpenChip code={row.original.code} open={row.original.open} />,
   },
-  {
-    id: "contacted",
-    accessorFn: (b) => b.contacted ?? 0,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Contacted" />,
-    cell: ({ row }) => <span className="num text-sm">{row.original.contacted ?? 0}</span>,
-  },
-  {
-    id: "scheduled",
-    accessorFn: (b) => b.scheduled ?? 0,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Scheduled" />,
-    cell: ({ row }) => <span className="num text-sm">{row.original.scheduled ?? 0}</span>,
-  },
-  {
-    id: "withdrew",
-    accessorFn: (b) => b.withdrew ?? 0,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Withdrew" />,
-    cell: ({ row }) => <span className="num text-sm">{row.original.withdrew ?? 0}</span>,
-  },
-  {
-    id: "not contacted",
-    accessorFn: (b) => b.notContacted ?? 0,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Not contacted" />,
-    cell: ({ row }) => <span className="num text-sm">{row.original.notContacted ?? 0}</span>,
-  },
-  {
-    id: "no date",
-    accessorFn: (b) => b.noDate ?? 0,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="No date" />,
-    cell: ({ row }) => <span className="num text-sm">{row.original.noDate ?? 0}</span>,
-  },
-  {
-    id: "overdue",
-    accessorFn: (b) => b.overdue ?? 0,
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Overdue" />,
-    cell: ({ row }) => <span className="num text-sm">{row.original.overdue ?? 0}</span>,
-  },
+  ...(
+    [
+      ["contacted", "Contacted", "contacted"],
+      ["scheduled", "Scheduled", "scheduled"],
+      ["withdrew", "Withdrew", "withdrew"],
+      ["not contacted", "Not contacted", "notContacted"],
+      ["no date", "No date", "noDate"],
+      ["overdue", "Overdue", "overdue"],
+    ] as const
+  ).map(([id, title, k]): ColumnDef<Row> => ({
+    id,
+    accessorFn: (b) => b[k] ?? 0,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={title} />,
+    cell: ({ row }) => <span className="num text-sm">{row.original[k] ?? 0}</span>,
+  })),
   { id: "actions", enableHiding: false, cell: ({ row }) => <div className="flex justify-end"><RowActions b={row.original} /></div> },
 ]
 

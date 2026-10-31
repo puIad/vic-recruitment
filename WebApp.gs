@@ -751,14 +751,14 @@ function buildState_(ctx) {
 
   const byStatus = {}; Object.keys(ST).forEach(k => { byStatus[ST[k]] = 0; });
   const byDep = {}; DEPTS.forEach(d => { byDep[d] = 0; });
-  const perBin = {};
+  const perBin = {}, blank = () => ({ assigned: 0, interviewed: 0, withdrew: 0, open: 0, contacted: 0, scheduled: 0, notContacted: 0, noDate: 0, overdue: 0 });
   lap('bPre'); const loadOf = loads_(ctx); // the load pickBinome compares (BALANCE_BY), for Settings › General
   ctx.iv.data.forEach(r => {
     if (!r[I.Code] && !r[I['Response Key']]) return;
     byStatus[r[I.Status]] = (byStatus[r[I.Status]] || 0) + 1;
     if (isOut_(r[I.Status])) return;
     if (byDep[r[I['1st Choice']]] !== undefined) byDep[r[I['1st Choice']]]++;
-    const p = r[I.Binome] && (perBin[r[I.Binome]] = perBin[r[I.Binome]] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0, contacted: 0, scheduled: 0, notContacted: 0, noDate: 0, overdue: 0 });
+    const p = r[I.Binome] && (perBin[r[I.Binome]] = perBin[r[I.Binome]] || blank());
     if (!p) return;
     p.assigned++;
     if (r[I.Status] === ST.INTERVIEWED) p.interviewed++;
@@ -811,7 +811,7 @@ function buildState_(ctx) {
     ivHistory: ivHistory,
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
     binomes: ctx.binomes.map(b => {
-      const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0, contacted: 0, scheduled: 0, notContacted: 0, noDate: 0, overdue: 0 };
+      const p = perBin[b.code] || blank();
       return { code: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
         people: b.members.map(m => ({ name: m.name, email: m.email })), access: (opened[b.code] || {}).level || '',
         byHand: b.status === 'DRAFT' && hand.indexOf(handKey_(b.members.map(m => m.email))) >= 0,

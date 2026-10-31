@@ -692,13 +692,13 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     links.push({ key: "team", label: "Their Team row", target: "team" })
   } else if (log && a.type === "UNKNOWN_INTERVIEWEE") {
     hint = "Link the form to the candidate it was about, or ask its sender to send it again."
-    panel = <><PickPanel key={a.id} a={a} f={log.form} /><AlertAnswers key={"ans" + a.id} keys={[log.form.key]} /></>
+    panel = <><PickPanel key={a.id} a={a} f={log.form} /><AlertAnswers keys={[log.form.key]} /></>
     btn("mail", Mail, "Ask to send it again", () => quick.mail([a.id], "submitter"))
     links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (log && WHO.includes(a.type)) {
     const to = log.form.subBinome
     hint = a.type === "NOT_ASSIGNED" ? "Give the candidate to the binome that interviewed them." : "Keep it as it is, or move the candidate to the binome that really interviewed."
-    panel = <><Well><FormFacts f={log.form} /></Well><AlertAnswers key={"ans" + a.id} keys={[log.form.key]} /></>
+    panel = <><Well><FormFacts f={log.form} /></Well><AlertAnswers keys={[log.form.key]} /></>
     if (a.type !== "NOT_ASSIGNED") btn("fine", Check, "It's fine, keep it", () => resolve([a.id]), "default")
     if (a.code && to && to !== a.binome) btn("move", MoveRight, `Move ${a.code} to ${to}…`, () => openMove({ code: a.code, binome: to, alertId: a.id }), a.type === "NOT_ASSIGNED" ? "default" : "outline")
     else if (a.code && a.type === "NOT_ASSIGNED") btn("move", MoveRight, "Pick a binome…", () => openMove({ code: a.code, alertId: a.id }), "default")
