@@ -59,7 +59,7 @@ export function useBinomeSlice(code: string, locked: boolean) {
     const snapshot = lastBuilt.current !== built
     lastBuilt.current = built
     if (!locked || profileOpen || (snapshot && (liveRef.current || readingRef.current))) return
-    void get(liveRef.current)
+    void get(liveRef.current || readingRef.current)
   }, [get, locked, built, profileOpen])
 
   const read = React.useCallback(
