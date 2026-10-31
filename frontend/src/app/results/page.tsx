@@ -54,7 +54,7 @@ export default function ResultsPage() {
   }, [active])
   React.useEffect(() => {
     const move = (d: number) => {
-      const n = rows[Math.max(0, Math.min(rows.length - 1, (cursor === null && !open ? -1 : at) + d))]
+      const n = rows[Math.max(0, Math.min(rows.length - 1, (cursor === null && !open ? -1 : found < 0 && d > 0 ? at - 1 : at) + d))]
       if (!n) return
       setCursor(n.code)
       if (open) setOpen(n.code)
@@ -74,7 +74,7 @@ export default function ResultsPage() {
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [rows, all, at, active, cursor, open, final])
+  }, [rows, all, at, found, active, cursor, open, final])
 
   const tabs = [
     { k: "All", label: "Everyone", n: all.length },
