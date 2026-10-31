@@ -56,7 +56,7 @@ stay remembered. Used live on 2026-10-03 to redo the binomes.
 **Change history is real**: `webState.history` reads the Member Changes tab (`historyRows_` in WebApp.gs, newest first,
 last 300) and `webState.ivHistory` the Interviewee Changes tab (`ivHistoryRows_`: every interviewee move and accepted hand
 edit, written by `logIvChange_`); Settings › Change history merges both, newest first, with search, a Replaced / Swapped
-/ Cover / Department / Moved / Edit accepted filter and a Binome dropdown (a move shows under both its binomes).
+/ Cover / Department / Pause / resume / Moved / Edit accepted filter and a Binome dropdown (a move shows under both its binomes).
 
 | Page | State |
 |---|---|

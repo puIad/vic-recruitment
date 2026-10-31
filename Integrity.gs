@@ -147,7 +147,7 @@ function binEdits_(ctx, p) {
       '. Only ACTIVE and PAUSED binomes are synced. Revert puts ' + prev.Status + ' back.');
   }
   // a typed resume date on a paused binome is honoured (resumeDue_); on an ACTIVE one timingAlerts_ flags it
-  if (cur.Status === 'PAUSED' && cur['Paused Until'] && hasPausedCol_(ctx) && (prev['Paused Until'] || '') !== cur['Paused Until']) {
+  if (cur.Status === 'PAUSED' && cur['Paused Until'] && hasPausedCol_(ctx) && ((prev['Paused Until'] || '') !== cur['Paused Until'] || prev.Status !== 'PAUSED')) {
     const at = ctx.binByCode[code] && ctx.binByCode[code].pausedUntil;
     ctx.alerts.add({ severity: 'INFO', type: 'MANUAL_EDIT', status: 'AUTO-FIXED', code: '', binome: code, key: '',
       msg: at ? 'Resume date of ' + code + ' set to ' + fmt_(at, 'dd/MM/yyyy HH:mm') + ' in the Binomes tab: it resumes at the first sync after it.'

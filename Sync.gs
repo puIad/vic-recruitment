@@ -315,7 +315,7 @@ function runCycle_(opts) {
     if (opts.timing) try { dropsSync_(ctx); } catch (e) { console.warn('Drops: ' + e); } lap('drops'); // dropped dashboard changes: emails and DROPPED| alerts (Pending.gs); never fails the sync
     if (opts.watch) watchdogAlert_(ctx);
     ctx.alerts.flush(); lap('alerts');
-    sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx); sendBinomeStatusMails_(ctx); lap('mails');
+    sendNewIntervieweeMails_(ctx); sendConfirmations_(ctx); lap('mails');
     if (opts.tracker) buildTracker_(ctx); lap('tracker');
     saveMemberMap_(ctx); // covers ended above, hand edits of the Binomes tab
     // the dashboard's snapshot; a failure must not fail the sync, and must not leave a snapshot that misses this run

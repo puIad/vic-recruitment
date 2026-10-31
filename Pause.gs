@@ -31,6 +31,7 @@ function setBinomeStatus_(ctx, c) {
   ctx.bin.sh.getRange(row, B['Paused Until'] + 1).setValue(until || '');
   b.row[B.Status] = to; b.row[B['Paused Until']] = until || '';
   indexCtx_(ctx);
+  ctx.statusWrote = true;
   const nb = ctx.binByCode[code], when = until ? ' until ' + fmt_(until, 'dd/MM/yyyy HH:mm') : '';
   try { changesSheet_().appendRow([ctx.now, by, 'STATUS', code, was, '', to + when, '', '', note, 'DONE'].map(plain_)); }
   catch (e) { console.warn('Member Changes not written: ' + e.message); } // a failed history write never undoes the change
@@ -49,10 +50,19 @@ function sendBinomeStatusMails_(ctx) {
   ctx.statusMails = [];
 }
 
+/** A change's baseline, alert and mails, at once: a retry finds it met, so anything left for later would never go out. */
+function tellBinomeStatus_(ctx) {
+  if (!(ctx.statusMails || []).length && !ctx.statusWrote) return;
+  ctx.statusWrote = false;
+  commitBase_(ctx);
+  ctx.alerts.flush();
+  sendBinomeStatusMails_(ctx);
+}
+
 /** The first sync after a PAUSED binome's date resumes it, as a manual Resume does. Never fails the sync. */
 function resumeDue_(ctx) {
   ctx.binomes.filter(b => b.status === 'PAUSED' && b.pausedUntil && b.pausedUntil <= ctx.now).forEach(b => {
-    try { setBinomeStatus_(ctx, { binome: b.code, op: 'resume', note: 'Resume date reached' }); }
+    try { setBinomeStatus_(ctx, { binome: b.code, op: 'resume', note: 'Resume date reached' }); tellBinomeStatus_(ctx); }
     catch (e) { console.warn('Resume of ' + b.code + ': ' + e.message); }
   });
 }
@@ -90,7 +100,12 @@ function movesOut_(ctx, c, deadline) {
     const load = loads_(ctx), pick = pickBinome(dep, activeBinomes_(ctx).filter(b => !bad[b.code]).map(b => ({ code: b.code, tag: b.tag, load: load[b.code] || 0 })),
       num_(s.ALL_BINOME_WEIGHT, 1), num_(s.HR_ONLY_WEIGHT, 1));
     if (!pick) { drop('no other ' + dep + ' binome'); continue; }
-    try { moveInterviewee_(ctx, iv, pick.code); } catch (e) { bad[pick.code] = true; drop(e.message); }
+    try { moveInterviewee_(ctx, iv, pick.code); } catch (e) {
+      if (/try again/.test(e.message)) return { moves: drops, more: true }; // a member saving in the sheet: nothing moved, the retry goes on
+      if (/^Nothing moved/.test(e.message)) bad[pick.code] = true;
+      drop(e.message);
+    }
+    saveTable_(ctx.iv); commitBase_(ctx); // the sheets have changed: the Master and the baseline follow before anything can cut the run
   }
   return { moves: drops };
 }
@@ -105,6 +120,7 @@ function binomeChanges_(changes) {
     changes.forEach(c => {
       if (Date.now() > deadline) return;
       const r = Object.assign({ id: String(c.id || '') }, setBinomeStatus_(ctx, c));
+      tellBinomeStatus_(ctx);
       if (c.op === 'pause' && r.end !== 'dropped') {
         const m = movesOut_(ctx, c, deadline);
         r.moves = m.moves;
@@ -112,10 +128,7 @@ function binomeChanges_(changes) {
       }
       out.push(r);
     });
-    saveTable_(ctx.iv);
-    commitBase_(ctx); // before the mails: if they fail, the tabs and the baseline still agree
     ctx.alerts.flush();
-    sendBinomeStatusMails_(ctx);
     sendNewIntervieweeMails_(ctx);
     buildTracker_(ctx);
     return out;
@@ -127,7 +140,7 @@ function binomeStatusCore_(a) {
   const res = binomeChanges_([Object.assign({}, a, { id: 'direct' })]);
   if (!res) { busy_(); return null; }
   const r = res[0], code = String(a.binome || '').trim();
-  if (!r) { say_(code + ' is paused, but time ran out before every move: do the same again to finish them.'); return { end: 'applied', moves: [] }; }
+  if (!r) { say_(code + ' is paused, but not every move was made: move the rest with Move interviewee.'); return { end: 'applied', moves: [] }; }
   if (r.end === 'dropped') { say_(r.reason); return r; }
   say_(code + (a.op === 'pause' ? ' is paused.' : a.op === 'resume' ? ' is active again.' : ': resume date saved.') +
     ((r.moves || []).length ? ' Not moved: ' + r.moves.map(m => m.code + ' (' + m.reason + ')').join(', ') + '.' : ''));

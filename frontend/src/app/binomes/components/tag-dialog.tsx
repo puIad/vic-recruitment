@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Skeleton } from "@/components/ui/skeleton"
 import { call } from "@/lib/vic/api"
 import { Spinner } from "@/lib/vic/confirm"
+import { depsOf } from "@/lib/vic/pause"
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { Binome, BinomeTagCheck, RunOut } from "@/lib/vic/types"
@@ -19,12 +20,6 @@ const DEPTS = [
   { key: "HR", house: "Slytherin" },
 ] as const
 
-/** Departments of a tag, as the script reads it (Matching.gs tagDepts); "ALL" is every department. */
-const depsOf = (tag: string) => {
-  const t = tag.toUpperCase()
-  if (/\bALL\b/.test(t)) return DEPTS.map((d) => d.key as string)
-  return DEPTS.map((d) => d.key as string).filter((k) => new RegExp(`\\b${k}\\b`).test(t))
-}
 const tagFor = (pick: Set<string>) => DEPTS.filter((d) => pick.has(d.key)).map((d) => d.key).join(" & ")
 /** A binome sheet wears the house of its non-HR side (BinomeFiles.gs houseOf_). */
 const houseOf = (tag: string) => (DEPTS.find((d) => d.key !== "HR" && depsOf(tag).includes(d.key)) ?? DEPTS[3]).house

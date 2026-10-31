@@ -107,7 +107,7 @@ export function PauseDialog({ binome, op, all, interviewees, onClose }: { binome
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium">Move to other {depts.join(" / ")} binomes (optional)</legend>
               <p className="text-xs text-muted-foreground">Assigned and not contacted yet. Each goes to the least-loaded binome when this is applied; untick any who should stay.</p>
-              <ul className="max-h-48 divide-y overflow-y-auto rounded-xl border" data-lenis-prevent>
+              <ul className="max-h-48 divide-y overflow-y-auto rounded-xl border">
                 {moves.map((i) => (
                   <li key={i.code}>
                     <Label className="flex cursor-pointer items-center gap-3 px-3 py-2 font-normal">

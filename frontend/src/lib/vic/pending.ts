@@ -206,8 +206,8 @@ export function useTeamView() {
  * snapshot built at or after the write holds it. A drop shows the snapshot, and the drops dialog asks about it.
  */
 export type BinomeOver = { status: BinomeEntry["value"]; until: number | null; mark?: Mark<PendingEntry> }
-export function binomeView(state: WebState | null, rec: PendingRec, flash: Record<string, number>, now = Date.now()): Record<string, BinomeOver> {
-  const out: Record<string, BinomeOver> = {}, built = state?.built ?? 0
+export function binomeView(state: WebState | null, rec: PendingRec, flash: Record<string, number>): Record<string, BinomeOver> {
+  const out: Record<string, BinomeOver> = {}, built = state?.built ?? 0, now = Date.now()
   Object.values(rec).forEach((e) => {
     if (e.kind !== "binome") return
     if (e.state === "pending") out[e.binome] = { status: e.value, until: e.until, mark: { kind: "pending", entry: e } }

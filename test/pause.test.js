@@ -3,7 +3,7 @@ const assert = require('assert');
 const { run, call, addRegistrations } = require('./seed')();
 
 call('webRun', 'importTeam', { link: '' }); call('webRun', 'draft'); call('webRun', 'lock');
-addRegistrations(8, 3);
+addRegistrations(30, 3);
 call('webRun', 'saveSettings', { values: { TEST_MODE: false } });
 call('webRun', 'sync');
 
@@ -149,7 +149,8 @@ assert.strictEqual(B['Paused Until'], B.Created + 1, 'after the old last column'
   call('webRun', 'sync'); // the apply entry doesn't publish
   const st = state(), p = withWaiting.code;
   const i = st.interviewees.find(x => x.binome === p && x.status === 'ASSIGNED');
-  if (i) {
+  assert(i, 'someone left to contact');
+  {
     const fileId = run(`loadCtx_().binByCode['${p}'].fileId`);
     run(`(function () { var sh = SpreadsheetApp.openById('${fileId}').getSheets()[0], F = idx_(BF_H), n = bfLastRow_(sh), d = sh.getRange(2, BF_COL, n - 1, 1).getValues();
       for (var k = 0; k < d.length; k++) if (String(d[k][0]).trim() === '${i.code}') sh.getRange(k + 2, BF_COL + F.Contacted).setValue('Yes'); })()`);
@@ -169,6 +170,79 @@ assert.strictEqual(B['Paused Until'], B.Created + 1, 'after the old last column'
   assert.strictEqual(bin(code)[B.Status], 'ACTIVE');
 }
 
+// ---- a crash mid-move: the pause is already told and in the baseline; what moved is saved; the retry goes on ----
+const nextMovable = () => { call('webRun', 'sync'); const st = state(); return st.interviewees.find(x => x.binome === withWaiting.code && x.status === 'ASSIGNED' && (!x.contacted || x.contacted === 'Not yet') &&
+  st.binomes.some(o => o.code !== withWaiting.code && o.status === 'ACTIVE' && takes(o.tag, x.dept))); };
+const pauseMoving = code => apply({ binome: withWaiting.code, op: 'pause', value: 'PAUSED', seen: 'ACTIVE', note: 'exams', codes: [code] });
+const resumeIt = () => apply({ binome: withWaiting.code, op: 'resume', value: 'ACTIVE', seen: 'PAUSED', note: '' });
+const ivBinome = c => rows('Interviewees').find(r => r[I.Code] === c)[I.Binome];
+{
+  const p = withWaiting.code, i = nextMovable(), n = mailsTo().length, told = alerts('BINOME_STATUS', p).length;
+  assert(i, 'someone movable');
+  run("var __loads = loads_; loads_ = function () { throw new Error('killed'); }");
+  try { assert.throws(() => pauseMoving(i.code), /killed/); } finally { run('loads_ = __loads'); }
+  assert.strictEqual(bin(p)[B.Status], 'PAUSED');
+  assert(mailsTo().slice(n).some(m => /is paused/.test(m.subject)), 'mailed before the moves');
+  assert.strictEqual(alerts('BINOME_STATUS', p).length, told + 1, 'alerted before the moves');
+  call('webRun', 'sync');
+  assert(!alerts('MANUAL_EDIT', p).some(a => /set to PAUSED/.test(a[A.Message])), 'the baseline holds it: not a hand edit');
+  const sent = mailsTo().filter(m => /is paused/.test(m.subject)).length, out = pauseMoving(i.code);
+  assert.deepStrictEqual([ends(out), out.results[0].moves], [['met'], []]);
+  assert.notStrictEqual(ivBinome(i.code), p, 'the retry moved them');
+  assert.strictEqual(mailsTo().filter(m => /is paused/.test(m.subject)).length, sent, 'no second mail');
+  assert.deepStrictEqual(ends(resumeIt()), ['applied']);
+}
+
+// ---- a member saving in the sheet is a retry, not a lost move, and doesn't blame the target ----
+{
+  const p = withWaiting.code, i = nextMovable();
+  assert(i, 'someone movable');
+  run("var __ml = withMemberLock_; withMemberLock_ = function (b) { throw new Error('A member is saving in the sheet of ' + b.code + ': nothing was changed, try again.'); }");
+  let out;
+  try { out = pauseMoving(i.code); } finally { run('withMemberLock_ = __ml'); }
+  assert.deepStrictEqual(out.results, [], 'no result: the consumer calls again');
+  assert.strictEqual(ivBinome(i.code), p);
+  const again = pauseMoving(i.code);
+  assert.deepStrictEqual([ends(again), again.results[0].moves], [['met'], []]);
+  assert.notStrictEqual(ivBinome(i.code), p);
+  resumeIt();
+}
+
+// ---- a moved row is saved at once: the Master agrees with the sheets however the run ends ----
+{
+  const p = withWaiting.code, a = nextMovable();
+  assert(a, 'someone movable');
+  run("var __ti = sendNewIntervieweeMails_; sendNewIntervieweeMails_ = function () { throw new Error('killed'); }");
+  try { assert.throws(() => pauseMoving(a.code), /killed/); } finally { run('sendNewIntervieweeMails_ = __ti'); }
+  assert.notStrictEqual(ivBinome(a.code), p, 'saved before the end of the run');
+  call('webRun', 'sync');
+  assert(!alerts('MANUAL_EDIT', ivBinome(a.code)).some(x => x[A.Status] === 'OPEN' && x[A.Message].includes(a.code)), 'and in the baseline');
+  resumeIt();
+}
+
+// ---- no Paused Until column of ours: refused, says to run Setup, writes nothing ----
+{
+  const K = B['Paused Until'] + 1, cell = v => run(`master.getSheetByName('Binomes').getRange(1, ${K}).setValue('${v}')`);
+  cell('Notes');
+  let r;
+  try { r = apply({ binome: code, op: 'pause', value: 'PAUSED', seen: 'ACTIVE', note: 'x' }).results[0]; } finally { cell('Paused Until'); }
+  assert.strictEqual(r.end, 'dropped');
+  assert(/Setup/.test(r.reason));
+  assert.strictEqual(bin(code)[B.Status], 'ACTIVE');
+}
+
+// ---- a date typed first, then PAUSED typed: honoured, and flagged like any typed date ----
+{
+  const n = alerts('MANUAL_EDIT', code).filter(a => /resume date/i.test(a[A.Message])).length;
+  setCell(code, 'Paused Until', 'new Date(Date.now() + 864e5)');
+  call('webRun', 'sync');
+  setCell(code, 'Status', "'PAUSED'");
+  call('webRun', 'sync');
+  assert.strictEqual(alerts('MANUAL_EDIT', code).filter(a => /resume date/i.test(a[A.Message])).length, n + 1);
+  assert.deepStrictEqual(ends(apply({ binome: code, op: 'resume', value: 'ACTIVE', seen: 'PAUSED', note: '' })), ['applied']);
+  call('webRun', 'sync');
+}
+
 // ---- the switch off: the same write through webRun; a member can't ----
 {
   const out = call('webRun', 'binomeStatus', { binome: code, op: 'pause', note: 'direct', until: Date.now() + DAY, codes: [] });
@@ -178,9 +252,12 @@ assert.strictEqual(B['Paused Until'], B.Created + 1, 'after the old last column'
   assert.strictEqual(s.status, 'PAUSED', 'published at once');
   call('webRun', 'binomeStatus', { binome: code, op: 'resume', note: '' });
   assert.strictEqual(bin(code)[B.Status], 'ACTIVE');
+  const who = binomes.find(b => b.code === code).people[0].email;
+  run(`var __real = Session; Session = { getEffectiveUser: () => ({ getEmail: () => '${who}' }), getActiveUser: () => ({ getEmail: () => '${who}' }) }`);
+  try { assert.throws(() => call('webRun', 'binomeStatus', { binome: code, op: 'pause', note: 'x' }), /Not allowed/); } finally { run('Session = __real'); }
 }
 
-// ---- a registrant is never routed to a paused binome; the digest lists the pauses ----
+// ---- the digest lists the pauses ----
 {
   const html = run(`(function () { var seen = []; var keep = mail_; mail_ = function (to, s, h) { seen.push(h); return true; }; sendDailyDigest(); mail_ = keep; return seen.filter(function (h) { return /Daily digest/.test(h); })[0]; })()`);
   assert(/paused or resumed/i.test(html), 'the digest lists them');
