@@ -129,7 +129,17 @@ function p1FinalCore_(a, args) {
   const op = String(args.op || '');
   if (['preview', 'final', 'reopen', 'correct'].indexOf(op) < 0) throw new Error('Not a change this entry knows.');
   if (op !== 'preview' && !p1IsOwner_(a)) throw new Error('Only vic.rh (the Master\'s owner) can ' + (op === 'correct' ? 'correct a result' : op + ' the results') + '.');
+  // the document lock too (overrides hold only that one): an override can't land between the read and the write, or the final flag
   const out = withLock_(() => {
+    const dl = LockService.getDocumentLock();
+    if (op !== 'preview' && !dl.tryLock(10000)) return null;
+    try { return p1FinalOp_(a, args, op); } finally { if (op !== 'preview') dl.releaseLock(); }
+  }, 20000);
+  if (!out) busy_();
+  return out;
+}
+function p1FinalOp_(a, args, op) {
+  {
     const iv = loadTable_(TAB.IV, IV_H), I = iv.I, fin = p1Final_(), props = PropertiesService.getScriptProperties();
     const view = () => { const counts = {}; AFFECTATION_OPTIONS.forEach(o => { counts[o] = 0; }); let needs = 0;
       iv.data.forEach(r => { if (!String(r[I.Code]).trim() || p1NoResult_(r[I.Status])) return; const x = p1Result_(I, r, !!fin); if (x) counts[x]++; else needs++; });
@@ -176,7 +186,5 @@ function p1FinalCore_(a, args) {
     saveTable_(iv);
     logIvChange_({ now: new Date() }, code, 'Phase 1 Result correction: ' + reason, was, value);
     return { code: code, value: value, end: 'applied', remail: resultMailsStarted_() }; // the new mail is flagged by #178
-  }, 20000);
-  if (!out) busy_();
-  return out;
+  }
 }
