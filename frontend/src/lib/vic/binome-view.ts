@@ -53,20 +53,23 @@ export function useBinomeSlice(code: string, locked: boolean) {
   React.useEffect(() => {
     liveRef.current = heldLive
   }, [heldLive])
+  const readingRef = React.useRef(false) // a sheet read in flight: a snapshot refetch would take its place and drop its answer
   const lastBuilt = React.useRef(built)
   React.useEffect(() => {
     const snapshot = lastBuilt.current !== built
     lastBuilt.current = built
-    if (!locked || profileOpen || (snapshot && liveRef.current)) return
+    if (!locked || profileOpen || (snapshot && (liveRef.current || readingRef.current))) return
     void get(liveRef.current)
   }, [get, locked, built, profileOpen])
 
   const read = React.useCallback(
     async (fresh: boolean) => {
       setReading(true)
+      readingRef.current = true
       try {
         await get(fresh)
       } finally {
+        readingRef.current = false
         setReading(false)
       }
     },

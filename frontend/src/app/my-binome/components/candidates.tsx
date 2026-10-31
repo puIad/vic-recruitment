@@ -101,7 +101,7 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
       ? [
           {
             id: "Interview form",
-            accessorFn: (c: Candidate) => (c.interview ? `${c.interview.at} · ${c.interview.source}` : ""),
+            accessorFn: (c: Candidate) => (c.interview ? [c.interview.at, c.interview.source].filter(Boolean).join(" · ") : ""),
             header: ({ column }) => <DataTableColumnHeader column={column} title="Interview form" />,
             cell: ({ row, getValue }) =>
               getValue() ? (

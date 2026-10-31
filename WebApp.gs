@@ -953,7 +953,6 @@ function binomeViewCore_(args) {
     try { now = sliceFromSheet_(map[who]); } catch (e) { noAccess(e); }
     const status = {}; sl.candidates.forEach(c => { status[String(c.Code)] = c.Status; });
     sl.candidates = now.candidates.map(c => Object.assign(c, { Status: status[String(c.Code)] || '' }));
-    sl.fromSheet = false;
   }
   return sl;
 }
