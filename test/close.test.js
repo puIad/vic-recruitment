@@ -104,6 +104,12 @@ assert(late.stamp);
 assert.throws(() => call('memberSet', { code: c2, field: 'Rating', value: 6, seen: '5' }), /interview phase is closed/, 'the saved form locks the row at once');
 assert.throws(() => save(c2, full('IT'), late.stamp), /interview phase is closed/);
 
+// a Rating queued before the close and applied after it is dropped with that reason; the cell stays
+const q = m.call('webApply', { v: 1, changes: [{ id: 'p1', kind: 'field', code: c1, field: 'Rating', value: 2, seen: '7', at: Date.now() }, { id: 'p2', kind: 'field', code: c1, field: 'Notes', value: 'queued', seen: 'still open', at: Date.now() }] });
+assert.deepStrictEqual(q.results.map(x => x.end), ['dropped', 'applied']);
+assert(/interview phase is closed/.test(q.results[0].reason));
+assert.strictEqual(cell(c1, 'Rating'), 7);
+
 // an admin is locked too on My binome, and changes both through the binome columns, the Master following in the same call
 as(ADMIN);
 call('adminSet', { code: c1, fields: [{ field: 'Rating', value: 4, seen: '7' }] });

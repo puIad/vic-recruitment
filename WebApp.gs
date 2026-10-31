@@ -363,10 +363,11 @@ function memberSet_(a, args) {
     if (row < 0) throw new Error('This candidate is no longer in your binome.');
     // the row read once before the writes and once after them: a read between two writes would flush each one
     const rng = sh.getRange(row, BF_COL, 1, BF_H.length), F = idx_(BF_H), was = rng.getValues()[0], wasShown = rng.getDisplayValues()[0];
+    // closed with a form on file: Rating and Final Affectation refuse; asked once, before the writes
+    const shut = interviewClosed_() && (!!String(was[F['Interview Form']]).trim() || !!answersRow_(file.getSheetByName(IA_TAB), code));
     list.forEach(x => {
       if (x.error) return;
-      x.error = closeLock_(file, sh, row, code, x.field);
-      if (x.error) return;
+      if (shut && LOCKED_FIELDS.indexOf(x.field) >= 0) { x.error = CLOSE_MSG; return; }
       const cur = goldText_(x.field, goldOf_(x.field, was[F[x.field]], wasShown[F[x.field]]));
       if (cur !== goldText_(x.field, x.seen)) { x.conflict = cur; return; }
       goldWrite_(sh, row, x.field, x.v);

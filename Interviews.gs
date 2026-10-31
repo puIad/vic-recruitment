@@ -234,7 +234,7 @@ function syncAnswers_(ctx, b, book, rows) {
     const copy = d.data.filter(x => t(x[CODE]) === code)[0];
     const at = saveToken_(v[4], v[5], v[2], v[3]), was = copy ? saveToken_(copy[D['Edited At']], copy[D['Edited By']], copy[D.Timestamp], copy[D['Email Address']]) : '';
     // closed phase, a locked row changed in the tab and not saved from the dashboard (a hand edit): put back from the Master's copy
-    if (copy && ctx.guard && ctx.guard[code] && at === was && !vals.every((x, j) => t(x) === t(copy[DQ + j]).replace(/^'/, ''))) { // the copy keeps a text's apostrophe
+    if (copy && guarded_(ctx, b, code) && at === was && !vals.every((x, j) => t(x) === t(copy[DQ + j]).replace(/^'/, ''))) { // the copy keeps a text's apostrophe
       try {
         if (!tab) tab = (ctx.books[b.fileId] = ctx.books[b.fileId] || SpreadsheetApp.openById(b.fileId)).getSheetByName(IA_TAB);
         tab.getRange(k + 2, 1, 1, IA_H.length).setValues([answersCells_([code, 'Dashboard', copy[D.Timestamp], copy[D['Email Address']], copy[D['Edited At']], copy[D['Edited By']]],

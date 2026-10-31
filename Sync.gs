@@ -34,6 +34,7 @@ function pullBinomeFiles_(ctx, force) {
     const lu = updated[b.fileId], p = pre[b.fileId];
     // rebuilding a first-layout sheet takes seconds: at most UPGRADE_PER_RUN per run, the rest wait for the next ones
     if (!p && !seen['v2|' + b.fileId] && (ctx.upgraded || 0) >= UPGRADE_PER_RUN) return;
+    if (ctx.guard) ctx.guard.bins[b.code] = (readAt[b.fileId] || 0) > ctx.guard.at; // read once since the close: from here its locked rows are guarded
     ctx.opened[b.code] = force ? 'forced' : edited(b) ? 'edited' : upgrade[b.fileId] ? 'upgrade' : reread[b.fileId] ? 'reread' : 'changed';
     const readFrom = p ? p.at : Date.now(); // a prefetched sheet was read as of the fetch: a save after it stays dirty
     let sh = null, vals = [], disp = [];
@@ -57,7 +58,7 @@ function pullBinomeFiles_(ctx, force) {
         r[I.Contacted] = contacted;
         // closed phase: Rating and Final Affectation of a row with a form stay the Master's; a typed difference is put back and alerted
         let keep = false;
-        if (ctx.guard && ctx.guard[code]) try { keep = restoreLocked_(ctx, b, r, v, k + 2); } catch (e) { keep = true; console.warn('Locked row ' + code + ' not restored: ' + e); }
+        if (guarded_(ctx, b, code)) try { keep = restoreLocked_(ctx, b, r, v, k + 2); } catch (e) { keep = true; console.warn('Locked row ' + code + ' not restored: ' + e); }
         const dStr = disp[k][F['Interview Date']].trim(), tStr = disp[k][F['Interview Time']].trim();
         r[I['Interview Date']] = dStr; r[I['Interview Time']] = tStr;
         const at = buildInterviewAt(dStr, tStr, offset);
@@ -311,7 +312,7 @@ function runCycle_(opts) {
     // placing gets 90 s, and ends 3 min after the call started (a long lock wait included): the writes after it need the rest
     assignUnassigned_(ctx, opts.assignBy !== undefined ? opts.assignBy : Math.min(Date.now() + 90000, t0 + 180000)); lap('regs');
     processInterviews_(ctx); lap('forms');
-    if (opts.pull) { pullBinomeFiles_(ctx, opts.force); if (Object.keys(ctx.readAt || {}).length) armClose_(); } // the guard starts only once a sheet was read since the close lap('pull');
+    if (opts.pull) pullBinomeFiles_(ctx, opts.force); lap('pull');
     ctx.iv.data.forEach(r => { if (r[ctx.iv.I.Code]) r[ctx.iv.I.Status] = statusOf_(ctx, r); });
     endFinishedCovers_(ctx); stampConfirmations_(ctx); lap('statuses');
     if (opts.timing) { timingAlerts_(ctx); oddValues_(ctx); closeAlerts_(ctx); } lap('timing');

@@ -1,6 +1,6 @@
 /* ---------- closing the interview phase (docs/admin-features.md › Closing the interview phase) ---------- */
 
-const CLOSE_KEY = 'INTERVIEW_CLOSE'; // script property {at (ms), by, armed}: set while the phase is closed; Reset clears it
+const CLOSE_KEY = 'INTERVIEW_CLOSE'; // script property {at (ms), by}: set while the phase is closed; Reset clears it
 const LOCKED_FIELDS = ['Rating', 'Final Affectation'];
 const CLOSE_MSG = 'The interview phase is closed: this interview form, Rating and Final Affectation are locked. Ask an admin to correct them.';
 
@@ -46,20 +46,17 @@ function closePreview_(ctx) {
   return out;
 }
 
-/** The sync's view of what is locked: codes with a form on file when it started, once a sync has run since the close. A form logged
- *  or a close made in this sync copies as usual and the guard starts with the next one, so an edit typed just before stays. */
+/** The sync's view of what is locked: {codes: those with a form on file when it started, bins: binome code -> its sheet was last read after
+ *  the close, at}. A sheet is guarded only from then on, so a form logged or an edit typed before the close is copied once as usual. */
 function closeGuard_(ctx) {
   const c = closeState_();
-  if (!c || !c.armed) return null;
-  const I = ctx.iv.I, g = {};
-  ctx.iv.data.forEach(r => { if (r[I.Code] && r[I.Binome] && r[I['Interview Submitted At']]) g[String(r[I.Code])] = true; });
-  return g;
+  if (!c) return null;
+  const I = ctx.iv.I, codes = {};
+  ctx.iv.data.forEach(r => { if (r[I.Code] && r[I.Binome] && r[I['Interview Submitted At']]) codes[String(r[I.Code])] = true; });
+  return { codes: codes, bins: {}, at: c.at };
 }
-/** After a sync that read the sheets: the guard starts with the next one. */
-function armClose_() {
-  const c = closeState_();
-  if (c && !c.armed) PropertiesService.getScriptProperties().setProperty(CLOSE_KEY, JSON.stringify(Object.assign(c, { armed: true })));
-}
+/** Is this candidate's row of binome b guarded in this sync? */
+const guarded_ = (ctx, b, code) => !!(ctx.guard && ctx.guard.codes[code] && ctx.guard.bins[b.code]);
 
 /** A locked row's Rating / Final Affectation read from the sheet differ from the Master's copy: write the Master's back with a note, one
  *  LOCKED_EDIT alert. Returns true when the row was restored (the Master keeps its values). v: the sheet row's cells, row: its sheet row. */
