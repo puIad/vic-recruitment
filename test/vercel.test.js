@@ -619,7 +619,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
     commit('docs/x.md', 'doc'); assert.strictEqual(run(base), 0, 'doc-only push is skipped');
     const doc = commit('docs/z.md', 'doc2'); assert.strictEqual(run(doc), 1, 'a redeploy of the same commit builds');
     commit('frontend/y', 'fe'); assert.strictEqual(run(base), 1, 'a frontend change builds');
-    assert.strictEqual(run(''), 1, 'no previous SHA builds'); assert.notStrictEqual(run('0'.repeat(40)), 0, 'unknown SHA builds');
+    assert.strictEqual(run(''), 1, 'no previous SHA builds'); assert.strictEqual(run('0'.repeat(40)), 1, 'unknown SHA builds'); assert.strictEqual(run('ac66aea2586ec6591b6d761ce53a5d0283d72b28'), 1, 'a SHA the shallow clone lacks builds: any other non-zero exit fails the deploy');
     }
     fs.rmSync(dir, { recursive: true, force: true });
   }
