@@ -317,6 +317,9 @@ export function AlertsCard({ code, alerts, onOpen, className }: { code: string; 
 
 /** The mails to this binome's members and covers, and the newest one in the header (docs/admin-features.md, Email and notification status). */
 export function MailsCard({ code, className }: { code: string; className?: string }) {
+  return <MailsCardFor key={code} code={code} className={className} /> // keyed: the last mail of the previous binome never shows
+}
+function MailsCardFor({ code, className }: { code: string; className?: string }) {
   const [last, setLast] = React.useState<MailLogOut["last"]>(null)
   return (
     <Card className={className}>

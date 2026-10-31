@@ -135,25 +135,25 @@ function mailStale_(ctx, x) {
 }
 
 /** Already sent by the path that writes the mark (Send rejections, the binome email catch-up): nothing left to resend. */
-function mailMarked_(ctx, x) {
+function mailMarked_(ctx, x, paired) {
   const kind = String(x.v[1]), to = lc_(x.v[2]), tokens = mailTokens_(x.v[3]);
   if (kind === 'REJECT') {
     const r = tokens.map(t => ctx.ivByCode[t]).filter(Boolean)[0];
     return !!r && /Rejection sent/.test(String(r[ctx.iv.I.Screening]));
   }
-  if (kind === 'PAIRED') return tokens.some(t => pairedSent_().indexOf(t + '|' + to) >= 0);
+  if (kind === 'PAIRED') return tokens.some(t => (paired || pairedSent_()).indexOf(t + '|' + to) >= 0);
   return false;
 }
 
 /** A failed DROP the next cycle sent, or a failed mail whose mark is set: closed as Resent. Returns the rows still failed. */
 function mailFailedOpen_(ctx, rows, write) {
-  const sent = {};
+  const sent = {}, paired = pairedSent_();
   rows.forEach(x => { if (x.v[5] === 'Sent') sent[x.v[1] + '|' + lc_(x.v[2])] = x.v[0]; });
   const open = [];
   rows.forEach(x => {
     if (x.v[5] !== 'Failed') return;
     const later = sent[x.v[1] + '|' + lc_(x.v[2])];
-    if ((ML_NO_RESEND.indexOf(String(x.v[1])) >= 0 && later && later > x.v[0]) || mailMarked_(ctx, x)) {
+    if ((ML_NO_RESEND.indexOf(String(x.v[1])) >= 0 && later && later > x.v[0]) || mailMarked_(ctx, x, paired)) {
       if (write) { x.v[5] = 'Resent'; x.v[8] = ''; mailLogPut_(x); }
       return;
     }
@@ -165,7 +165,7 @@ function mailLogPut_(x) {
   const sh = mailLogSheet_();
   sh.getRange(x.row, 6, 1, 1).setValue(x.v[5]);
   sh.getRange(x.row, 9, 1, 1).setValue(x.v[8]);
-  if (x.v[2] !== undefined) sh.getRange(x.row, 3, 1, 1).setValue(plain_(x.v[2]));
+  sh.getRange(x.row, 3, 1, 1).setValue(plain_(x.v[2]));
 }
 
 /** MAIL_FAILED resolves itself once every mail it lists is resent, dismissed or retried. In the timed sync, and after Resend. */
@@ -176,7 +176,7 @@ function mailFailedSettle_(ctx) {
   openAlerts.forEach(r => {
     const m = /^MAIL_FAILED\|(\d+)-(\d+)$/.exec(String(r[KI.Key]));
     if (!m) return;
-    if (!open.some(x => x.v[0].getTime() >= Number(m[1]) && x.v[0].getTime() <= Number(m[2]))) ctx.alerts.resolveWhere(x => x === r);
+    if (!open.some(x => x.v[0].getTime() >= Number(m[1]) - 1 && x.v[0].getTime() <= Number(m[2]) + 1)) ctx.alerts.resolveWhere(x => x === r);
   });
 }
 
@@ -204,6 +204,8 @@ function mailResendCore_(a, args) {
       const x = by[s.id];
       if (!x || x.v[5] !== 'Failed') return lines.push('A mail in the list was already handled (refresh the page).');
       if (ML_NO_RESEND.indexOf(String(x.v[1])) >= 0) return lines.push(x.v[2] + ': the next cycle retries it.');
+      const stale = mailStale_(ctx, x);
+      if (stale && !s.to) return lines.push(x.v[2] + ': ' + stale + '. Dismiss it instead.');
       if (mailMarked_(ctx, x)) { x.v[5] = 'Resent'; x.v[8] = ''; mailLogPut_(x); return lines.push(x.v[2] + ': already sent by another path.'); } // the mark was set since the preview
       const to = s.to || String(x.v[2]).trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return lines.push(to + ' is not an email address.');

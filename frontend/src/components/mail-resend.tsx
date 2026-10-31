@@ -49,6 +49,8 @@ export function ResendPanel() {
       await run<ResendOut>("mailResend", args, "Resend mail")
       refresh(true)
       load()
+    } catch {
+      /* run() already showed the failure */
     } finally {
       setWorking("")
     }
