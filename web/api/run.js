@@ -116,6 +116,10 @@ module.exports = async (req, res) => {
     return done(200, conflict ? { error: conflict[1], code: 'CONFLICT' } : { error: msg }, false);
   }
   const out = { value: j.response ? j.response.result : null };
+  // the preview lists what refuses going final; the pending check is only ours to make
+  if (fn === 'webRun' && args[0] === 'p1Final' && args[1] && args[1].op === 'preview' && out.value && out.value.result && Array.isArray(out.value.result.refusals)) {
+    try { if (await P.resultsOpen(Date.now())) out.value.result.refusals.push('A result is still a pending change or a dropped change nobody addressed.'); } catch (e) { /* the final click checks again */ }
+  }
   if (fn === 'webAccess' && !!s.acc !== !!(out.value && out.value.ok)) { s.acc = out.value && out.value.ok ? true : undefined; S.addCookie(res, S.sessionCookie(s)); }
   if (fn === 'webPulse' && (b.rec === 2 || (b.rec === 1 && out.value && out.value.pending === true))) {
     try { out.rec = await P.read(s.email, Date.now()); } catch (e) { /* the next flagged pulse reads it */ }
