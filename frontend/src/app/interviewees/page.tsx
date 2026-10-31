@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
-import { EyeOff, Eye, MoveRight, RotateCcw, Search, ShieldQuestionMark, Trash2, X } from "lucide-react"
+import { EyeOff, Eye, MoveRight, Pencil, RotateCcw, Search, ShieldQuestionMark, Trash2, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { DataTable } from "@/components/data-table/data-table"
@@ -99,9 +99,15 @@ function RiskBadge({ risk }: { risk: number }) {
 function RowAction({ iv }: { iv: Interviewee }) {
   const busy = useVic((s) => s.busy)
   const { deleteApplication } = useActions()
+  const openEdit = useUi((s) => s.openEditDialog)
   return (
     <div className="flex justify-end gap-1">
       <MainAction iv={iv} />
+      {iv.status !== "DECLINED" && iv.status !== "DUPLICATE" && (
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => openEdit({ code: iv.code })} aria-label={`Edit ${iv.code}`} title="Edit their data" className="text-muted-foreground">
+          <Pencil />
+        </Button>
+      )}
       <Button variant="ghost" size="sm" disabled={busy} onClick={() => deleteApplication(iv.code, iv.name, iv.binome)} aria-label={`Delete ${iv.code}`} title="Delete this application" className="text-muted-foreground hover:text-destructive">
         <Trash2 />
       </Button>

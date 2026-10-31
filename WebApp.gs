@@ -810,7 +810,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -854,6 +854,8 @@ function webRun(action, args) {
       case 'addCover': result = addCoverCore_(args); break;
       case 'endCover': result = endCoverCore_(args); break;
       case 'quick': result = quickCore_(String(args.op || ''), args); break;
+      case 'candidateGet': result = candidateGet_(args.code); break;
+      case 'editCandidate': result = editCandidateCore_(args.code, args.values); break;
       case 'binomeAccess': result = binomeAccessCore_(String(args.binome || ''), args.level, a.email); break;
       case 'restore': result = restoreCore_(args.codes); break;
       case 'deleteApplication': result = deleteApplicationCore_(args.code); break;

@@ -635,3 +635,21 @@ export type PendingChange =
   | { kind: "team"; email: string; value: boolean; seen: boolean; at: number }
   | { kind: "bfield"; binome: string; code: string; field: AdminGoldKey; value: CellValue; seen: CellValue; at: number }
   | { kind: "binome"; binome: string; op: BinomeOp; value: BinomeEntry["value"]; seen: BinomeEntry["seen"]; note: string; until: number | null; codes: string[]; at: number }
+
+/** webRun('candidateGet'): one candidate's twelve editable values (the Edit form) with the registration form's options */
+export interface CandidateData {
+  code: string
+  name: string
+  status: string
+  binome: string
+  values: Record<string, string>
+  fields: string[]
+  years: string[]
+  days: string[]
+}
+
+/** webRun('editCandidate'): move is set when their binome does not take the new 1st choice (nothing moved yet) */
+export interface EditResult {
+  text: string
+  move: { code: string; binome: string; dep: string } | null
+}

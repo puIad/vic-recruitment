@@ -3,13 +3,14 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { Command as CommandPrimitive } from "cmdk"
-import { Bell, CornerDownLeft, RefreshCw, Search, UserSearch, Users } from "lucide-react"
+import { Bell, CornerDownLeft, Pencil, RefreshCw, Search, UserSearch, Users } from "lucide-react"
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { pageIndex } from "@/config/nav"
 import { useActions } from "@/lib/vic/actions"
 import { alertLabel, STATUS_LABEL } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
+import { useUi } from "@/lib/vic/ui"
 import { useProfile } from "@/lib/vic/analytics"
 import { cn } from "@/lib/utils"
 import { MemberNames } from "@/components/member-name"
@@ -42,6 +43,7 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
   const refresh = useVic((s) => s.refresh)
   const { sync } = useActions()
   const showProfile = useProfile((s) => s.show)
+  const openEdit = useUi((s) => s.openEditDialog)
   const [q, setQ] = React.useState("")
 
   if (!open && q) setQ("")
@@ -90,6 +92,20 @@ export function CommandSearch({ open, onOpenChange }: { open: boolean; onOpenCha
                 </Item>
               ))}
             </Group>
+
+            {/* "edit it.07": every candidate who can be edited, straight into the Edit form */}
+            {/^edit\b/i.test(q.trim()) && state && !inBinome && (
+              <Group heading="Edit a candidate">
+                {state.interviewees.filter((i) => i.code && i.status !== "DECLINED" && i.status !== "DUPLICATE").map((i) => (
+                  <Item key={i.code} value={`edit ${i.code} ${i.name} ${i.binome}`} onSelect={() => { onOpenChange(false); openEdit({ code: i.code }) }}>
+                    <Pencil className="size-4 text-muted-foreground" />
+                    <span className="font-bold">{i.code}</span>
+                    <span className="truncate">{i.name}</span>
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">Edit their data</span>
+                  </Item>
+                ))}
+              </Group>
+            )}
 
             {searching && state && (
               <>

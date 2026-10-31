@@ -11,6 +11,7 @@ import { SyncStoppedBanner } from "@/components/sync-stopped-banner"
 import { TourProvider } from "@/components/tour/tour"
 import { ChangeMembersSheet } from "@/components/work-panels/change-members-sheet"
 import { MoveDialog } from "@/components/work-panels/move-dialog"
+import { EditDialog } from "@/components/work-panels/edit-dialog"
 import { ApplicantProfile } from "@/components/applicant-profile"
 import { useSidebarConfig } from "@/hooks/use-sidebar-config"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -79,6 +80,7 @@ export function AppShell() {
       <DropsDialog />
       {!member && <ChangeMembersSheet />}
       {!member && <MoveDialog />}
+      {!member && <EditDialog />}
       {!member && <ApplicantProfile />}
       </TourProvider>
     </SidebarProvider>

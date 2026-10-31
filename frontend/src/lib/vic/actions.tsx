@@ -2,6 +2,8 @@ import * as React from "react"
 import { toast } from "sonner"
 import { useConfirm } from "./confirm"
 import { useVic } from "./store"
+import { useUi } from "./ui"
+import { useAnalytics } from "./analytics"
 import { acceptAlerts } from "./pending"
 import { signInUrl } from "./api"
 import { MemberName, MemberNames } from "@/components/member-name"
@@ -14,7 +16,9 @@ import type {
   DraftPairOut,
   ChangePlan,
   Cover,
+  CandidateData,
   CoverCheck,
+  EditResult,
   FixMode,
   ImportConfirm,
   LockCheck,
@@ -353,6 +357,33 @@ export function useActions() {
         const out = await go("reassign", { code, binome }, `Move ${code}`)
         after()
         return !!out
+      },
+
+      /** The Edit form's values; null when the read failed (the failure was shown as a toast). */
+      async candidateGet(code: string) {
+        const out = await go<CandidateData>("candidateGet", { code }, `Read ${code}`)
+        return out?.result ?? null
+      },
+
+      /** Edit a candidate's data: a direct write, the admin waits for the reply. A new 1st choice their binome does not take offers the move. */
+      async editCandidate(c: CandidateData, values: Record<string, string>) {
+        const out = await go<EditResult>("editCandidate", { code: c.code, values }, `Edit ${c.code}`)
+        after()
+        void useAnalytics.getState().load(true)
+        const move = out?.result?.move
+        if (move) {
+          const ok = await confirm({
+            title: `Move ${c.name || c.code} to a binome that takes ${move.dep}?`,
+            body: (
+              <p>
+                The change is saved. <Mono>{move.binome}</Mono> does not take {move.dep}, so {c.name || c.code} stays there until you move them. Contacted, the date and the notes go along.
+              </p>
+            ),
+            okLabel: "Choose a binome",
+          })
+          if (ok) useUi.getState().openMoveDialog({ code: move.code })
+        }
+        return !!out?.result
       },
 
       async changeMember(args: MemberChangeArgs, hint: string) {
