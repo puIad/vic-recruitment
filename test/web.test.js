@@ -1557,6 +1557,17 @@ run('__props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
   m.call('webRun', 'interviewSave', { code: c2, answers: Object.assign(full('IT'), { intro: 5 }), seen: edited.stamp });
   as(ADMIN); m.call('webRun', 'sync');
   assert.notStrictEqual(cell(c2, 'Rating'), '7', 'a later form save updates it again, as before an admin touched it');
+  // an admin sets it to something else and back to what the form filled: the cell equals the form's own value, the mark stays and keeps it
+  const filled = cell(c2, 'Rating');
+  set(c2, [{ field: 'Rating', value: 2, seen: Number(filled) }]);
+  assert.deepStrictEqual(set(c2, [{ field: 'Rating', value: Number(filled), seen: 2 }]).fields, [{ field: 'Rating', value: Number(filled) }]);
+  as(mem);
+  const again = m.call('webRun', 'interviewGet', { code: c2 }).result;
+  const sv2 = m.call('webRun', 'interviewSave', { code: c2, answers: Object.assign(full('IT'), { intro: 1 }), seen: again.stamp }).result;
+  assert.deepStrictEqual(sv2.kept, ['Rating'], 'the save says the admin value stays');
+  as(ADMIN); m.call('webRun', 'sync');
+  assert.strictEqual(cell(c2, 'Rating'), filled, 'the marked cell stays even though it equals what the form filled last');
+  assert.strictEqual(logRows().filter(r => r[2] === c2 && r[3] === 'Form kept Rating' && r[4] === filled).length, 1, 'and the skip is logged');
   // no form yet: it empties the cell
   set(c1, [{ field: 'Rating', value: 4, seen: '9' }]);
   const f2 = m.call('webRun', 'adminFormFill', { code: c1, field: 'Rating' }).result;
