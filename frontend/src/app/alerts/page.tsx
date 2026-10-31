@@ -45,7 +45,7 @@ export default function AlertsPage() {
   const [params, setParams] = useSearchParams()
 
   const [filter, setFilter] = React.useState<Filter>("ALL")
-  const [q, setQ] = React.useState("")
+  const [q, setQ] = React.useState(params.get("q") || "") // the binome page links here with its code
   const [selected, setSelected] = React.useState<Set<string>>(new Set())
   const activeId = params.get("id")
   // ?type=A,B narrows the inbox to those kinds of alert (the Overview's to-do rows link here with it)

@@ -7,6 +7,7 @@ const MyBinome = lazy(() => import("@/app/my-binome/page"))
 const Interview = lazy(() => import("@/app/my-binome/interview/page"))
 const Alerts = lazy(() => import("@/app/alerts/page"))
 const Binomes = lazy(() => import("@/app/binomes/page"))
+const BinomeDetail = lazy(() => import("@/app/binomes/detail/page"))
 const Interviewees = lazy(() => import("@/app/interviewees/page"))
 const Team = lazy(() => import("@/app/team/page"))
 const Schedule = lazy(() => import("@/app/calendar/page"))
@@ -37,6 +38,8 @@ export const shellRoutes: RouteConfig[] = [
   { path: "/", element: <Overview /> },
   { path: "/alerts", element: <Alerts /> },
   { path: "/binomes", element: <Binomes /> },
+  /** one binome's page for any admin (docs/admin-features.md › One binome's panel and page) */
+  { path: "/binomes/:code", element: <BinomeDetail /> },
   { path: "/interviewees", element: <Interviewees /> },
   { path: "/team", element: <Team /> },
   /** an admin in a binome (nav shows it only then); the page reads the store's member */

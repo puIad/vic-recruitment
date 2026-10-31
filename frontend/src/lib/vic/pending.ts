@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useVic } from "./store"
-import type { AdminGoldKey, Alert, AlertEntry, BinomeEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
+import type { AdminGoldKey, Alert, AlertEntry, Binome, BinomeEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
 
 /**
  * The author's view of the alerts: the snapshot with their pending changes over it (docs/plans.md › Slice 2, issue 61).
@@ -221,6 +221,15 @@ export function useBinomeView() {
   const rec = useVic((s) => s.rec)
   const flash = useVic((s) => s.flash)
   return React.useMemo(() => binomeView(state, rec, flash), [state, rec, flash])
+}
+
+/** A binome as its author's screen shows it: their pending pause over the snapshot, with its mark. */
+export type BinomeRow = Binome & { mark?: Mark<PendingEntry> }
+/** Every binome as the author's screen shows it: the Binomes table, the binome panel and page. */
+export function useBinomeRows(): BinomeRow[] {
+  const binomes = useVic((s) => s.state?.binomes)
+  const over = useBinomeView()
+  return React.useMemo(() => (binomes ?? []).map((b) => (over[b.code] ? { ...b, status: over[b.code].status, pausedUntil: over[b.code].until, mark: over[b.code].mark } : b)), [binomes, over])
 }
 
 /* ---------- settings and My binome fields (docs/plans.md › Slice 3) ---------- */

@@ -55,7 +55,13 @@ const textCol = (key: SheetKey, wide = false): ColumnDef<Candidate> => ({
   },
 })
 
-function columns(open: (code: string) => void, fromSheet: boolean, member?: MemberState): ColumnDef<Candidate>[] {
+/** An admin looking at a binome's candidates (the binome page): the interview form column reads its date and source, every sheet
+ *  column is in View, and badge adds a mark beside the name (a live cover). */
+export type AdminTable = { badge?: (code: string) => React.ReactNode }
+/** Sheet columns the table has no column of its own for: the admin's View menu adds them. */
+const MORE_KEYS: SheetKey[] = ["Birth Date", "Facebook", "Discord", "Discovered VIC", "Why VIC", "Other Clubs", "Why this department", "Department Questions", "Anything to add"]
+
+function columns(open: (code: string) => void, fromSheet: boolean, member?: MemberState, admin?: AdminTable): ColumnDef<Candidate>[] {
   return [
     {
       id: "Code",
@@ -73,7 +79,12 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
       accessorFn: fullName,
       header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
       enableHiding: false,
-      cell: ({ getValue }) => <span className="block max-w-[16rem] truncate font-medium">{(getValue() as string) || "—"}</span>,
+      cell: ({ getValue, row }) => (
+        <span className="flex items-center">
+          <span className="block max-w-[16rem] truncate font-medium">{(getValue() as string) || "—"}</span>
+          {admin?.badge?.(cellText(row.original.Code))}
+        </span>
+      ),
     },
     // the interview form, next to the name so it shows on a phone without scrolling the table
     ...(member && member.interviewForm !== undefined
@@ -83,6 +94,23 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
             accessorFn: (c: Candidate) => (c.interview ? (c.interview.source === "Dashboard" ? 2 : 1) : 0),
             header: ({ column }) => <DataTableColumnHeader column={column} title="Interview form" />,
             cell: ({ row }) => <div data-tour="binome-interview-action" className="w-fit"><InterviewAction c={row.original} m={member} /></div>,
+          } satisfies ColumnDef<Candidate>,
+        ]
+      : []),
+    ...(admin
+      ? [
+          {
+            id: "Interview form",
+            accessorFn: (c: Candidate) => (c.interview ? [c.interview.at, c.interview.source].filter(Boolean).join(" · ") : ""),
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Interview form" />,
+            cell: ({ row, getValue }) =>
+              getValue() ? (
+                <Button variant="outline" size="sm" className="num whitespace-nowrap" onClick={() => open(cellText(row.original.Code))} title="Open the details to read the answers">
+                  {getValue() as string}
+                </Button>
+              ) : (
+                <span className="text-muted-foreground">Not in</span>
+              ),
           } satisfies ColumnDef<Candidate>,
         ]
       : []),
@@ -147,6 +175,7 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
     textCol("Registered"),
     textCol("Availability", true),
     textCol("Notes", true),
+    ...(admin ? MORE_KEYS.map((k) => textCol(k, true)) : []),
     {
       id: "actions",
       enableHiding: false,
@@ -161,12 +190,12 @@ function columns(open: (code: string) => void, fromSheet: boolean, member?: Memb
   ]
 }
 
-const HIDDEN = { Email: false, Phone: false, "1st Choice": false, "2nd Choice": false, Field: false, Year: false, Registered: false, Availability: false, Notes: false }
+const HIDDEN = { ...Object.fromEntries(MORE_KEYS.map((k) => [k, false])), Email: false, Phone: false, "1st Choice": false, "2nd Choice": false, Field: false, Year: false, Registered: false, Availability: false, Notes: false }
 
 /** member: the interview form column (absent on a script without it). */
-export function CandidatesTable({ candidates, fromSheet, onOpen, member }: { candidates: Candidate[]; fromSheet: boolean; onOpen: (code: string) => void; member?: MemberState }) {
+export function CandidatesTable({ candidates, fromSheet, onOpen, member, admin }: { candidates: Candidate[]; fromSheet: boolean; onOpen: (code: string) => void; member?: MemberState; admin?: AdminTable }) {
   const [q, setQ] = React.useState("")
-  const cols = React.useMemo(() => columns(onOpen, fromSheet, member), [onOpen, fromSheet, member])
+  const cols = React.useMemo(() => columns(onOpen, fromSheet, member, admin), [onOpen, fromSheet, member, admin])
   const data = React.useMemo(() => {
     const s = q.trim().toLowerCase()
     return candidates.filter((c) => !s || `${cellText(c.Code)} ${fullName(c)} ${cellText(c.Email)}`.toLowerCase().includes(s))
@@ -188,7 +217,7 @@ export function CandidatesTable({ candidates, fromSheet, onOpen, member }: { can
         <div className="space-y-1 py-6">
           <p className="font-bold">{candidates.length ? "No match" : "No candidates yet"}</p>
           <p className="text-sm text-muted-foreground">
-            {candidates.length ? "Nothing fits this search." : "Registrants are routed to your binome as they sign up. They show here and in your sheet."}
+            {candidates.length ? "Nothing fits this search." : admin ? "Registrants are routed to this binome as they sign up." : "Registrants are routed to your binome as they sign up. They show here and in your sheet."}
           </p>
         </div>
       }
@@ -196,7 +225,7 @@ export function CandidatesTable({ candidates, fromSheet, onOpen, member }: { can
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative w-full sm:w-72">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Code, name or e-mail" aria-label="Search your candidates" className="h-9 rounded-full pl-9" />
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Code, name or e-mail" aria-label={admin ? "Search the candidates" : "Search your candidates"} className="h-9 rounded-full pl-9" />
             {q && (
               <button type="button" onClick={() => setQ("")} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                 <X className="size-4" />
