@@ -220,6 +220,13 @@ const H = 3.6e6;
   assert.deepStrictEqual([seen.Contacted, seen.Rating, seen.Notes], ['Yes', 7.5, '=1+1 called'], 'from the patched slice');
   as(mem);
   assert(call('webPulse') > pv0);
+  // an admin's mark on a field goes when the binome's own edit reaches the sheet through this entry
+  as('');
+  call('webRun', 'adminSet', { code: codes[1], fields: [{ field: 'Contacted', value: 'Yes', seen: 'Not yet' }] });
+  as(mem);
+  assert.strictEqual(typeof call('webState').candidates.find(c => c.Code === codes[1]).setBy.Contacted.by, 'string', 'the slice carries the admin mark');
+  assert.deepStrictEqual(ends(apply(fd(codes[1], 'Contacted', 'No answer', 'Yes'))), ['applied']);
+  assert.strictEqual(call('webState').candidates.find(c => c.Code === codes[1]).setBy, undefined, 'an edit by the binome takes the mark off');
   // a retry, the partner typing the same, the partner typing something else
   assert.deepStrictEqual(ends(apply(fd(codes[0], 'Contacted', 'Yes', c0.Contacted))), ['met']);
   setCell(codes[0], 'Final Affectation', 'IT');

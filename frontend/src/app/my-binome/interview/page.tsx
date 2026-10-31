@@ -350,7 +350,9 @@ export default function InterviewPage() {
       clearDraft(ready.binome, ready.code)
       patchInterview(ready.code, out.result.interview)
       toast.success(ready.answers ? "Changes saved" : "Interview form submitted", {
-        description: "In your binome sheet now; the Interview Log, the status, Rating and Final Affectation follow at the next sync.",
+        description:
+          "In your binome sheet now; the Interview Log, the status, Rating and Final Affectation follow at the next sync." +
+          (out.result.kept?.length ? ` ${out.result.kept.join(" and ")} stay as an admin set ${out.result.kept.length > 1 ? "them" : "it"}.` : ""),
       })
       navigate(back)
     } catch (e) {

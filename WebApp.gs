@@ -163,11 +163,12 @@ function binSlices_(ctx) {
     out[b.code] = { v: API_VERSION, binome: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl,
       members: b.members.map(m => m.name || m.email), candidates: [], alerts: [], fromSheet: false };
   });
-  const L = ctx.log.I;
+  const L = ctx.log.I, marks = goldMarks_();
   ctx.iv.data.forEach(r => {
     const s = out[String(r[I.Binome]).trim()];
     if (!s || !r[I.Code] || isOut_(r[I.Status])) return;
     const c = candidate_(ivToFileRow_(ctx, r, ivCarry_(ctx, r)), r[I.Status]), at = r[I['Interview Submitted At']];
+    if (marks[String(r[I.Code]).trim()]) c.setBy = marks[String(r[I.Code]).trim()];
     // the form that counts: a dashboard one (log key DASH|…) is edited from My binome, a Google Form one only viewed there
     const lr = at ? ctx.log.data[Number(r[I['Interview Log Row']]) - 2] : null;
     if (at) c.interview = { at: fmt_(at, 'dd/MM HH:mm'), by: lr ? lc_(lr[L.Submitter]) : '',
@@ -236,11 +237,12 @@ function memberBook_(m) {
   return book;
 }
 function sliceFromSheet_(m) {
-  const book = memberBook_(m), sh = book.getSheets()[0], n = bfLastRow_(sh), done = tabInterviews_(book), tz = book.getSpreadsheetTimeZone();
+  const book = memberBook_(m), sh = book.getSheets()[0], n = bfLastRow_(sh), done = tabInterviews_(book), tz = book.getSpreadsheetTimeZone(), marks = goldMarks_();
   const rows = n < 2 ? [] : sh.getRange(2, BF_COL, n - 1, BF_H.length).getValues().filter(r => String(r[0]).trim());
   return { v: API_VERSION, binome: m.b, tag: '', status: '', fileUrl: book.getUrl(), members: [], alerts: [], fromSheet: true,
     candidates: rows.map(r => {
       const c = candidate_(r, '', tz), x = done[String(r[0]).trim()];
+      if (marks[String(r[0]).trim()]) c.setBy = marks[String(r[0]).trim()];
       // a form logged before the tab existed has no row there, only its mark in the Interview Form cell
       if (x || String(c['Interview Form']).trim()) c.interview = x || { at: '', by: '', source: 'Google Form' };
       return c;
@@ -370,7 +372,7 @@ function memberSet_(a, args) {
     const written = list.filter(x => !x.error && x.conflict === undefined);
     if (written.length) {
       SpreadsheetApp.flush();
-      const vals = goldPatch_(m.b, sh, row, code, written.map(x => x.field));
+      const vals = goldPatch_(m.b, sh, row, code, written.map(x => x.field), clearMarks_(code, written.map(x => x.field)));
       written.forEach(x => { x.now = vals[x.field]; });
     }
     if (!batch) {
@@ -385,11 +387,11 @@ function memberSet_(a, args) {
 function goldWrite_(sh, row, field, v) { sh.getRange(row, bfCol_(field)).setValue(field === 'Notes' && v ? "'" + v : v); }
 /** After a member's write is flushed: the next sync reads binome b's sheet (dirty), and its cached slice takes the cells as
  *  written (read back from the row). Returns {field: value} in the slice's form. memberSet_ and the apply entry share it. */
-function goldPatch_(b, sh, row, code, fields) {
+function goldPatch_(b, sh, row, code, fields, extra) {
   CacheService.getScriptCache().put('dirty:' + b, String(Date.now()), 21600);
   const rng = sh.getRange(row, BF_COL, 1, BF_H.length), F = idx_(BF_H), now = rng.getValues()[0], shown = rng.getDisplayValues()[0], vals = {};
   fields.forEach(k => { vals[k] = goldOf_(k, now[F[k]], shown[F[k]]); });
-  patchSlice_(b, code, vals);
+  patchSlice_(b, code, extra ? Object.assign({}, vals, extra) : vals); // extra: setBy, when an admin's mark changed with the write
   return vals;
 }
 /** The binome's cached slice takes the member's values ({field: value}, one candidate) and one new version. A slice not cached as published only gets a new
@@ -412,6 +414,137 @@ function patchSlice_(b, code, vals) {
   bins[b] = { h: h, v: o.v + 1 };
   PropertiesService.getScriptProperties().setProperty('SNAP_BIN', JSON.stringify(bins));
 }
+/* ---------- admins fill in a binome's columns (docs/admin-features.md): marks "set by", the write, the form fill ---------- */
+
+const MARKS_KEY = 'GOLD_MARKS';
+/** code -> {field: {by, at}}: which of a candidate's binome columns an admin set last, until the binome edits that field again.
+ *  Kept on the Master side (script properties) so the binome sheet's layout is unchanged; slices carry them as `setBy`. */
+function goldMarks_() { try { return JSON.parse(loadPropChunks_(MARKS_KEY) || '{}'); } catch (e) { return {}; } }
+/** The marks of `code` with `fields` taken off, saved. Returns {setBy: what is left} for goldPatch_'s extra, or null when there
+ *  was nothing to take off. The caller holds the members' lock (the marks are read, changed and saved whole). */
+function clearMarks_(code, fields) {
+  const all = goldMarks_(), mine = all[code];
+  if (!mine || !fields.some(k => mine[k])) return null;
+  fields.forEach(k => { delete mine[k]; });
+  if (!Object.keys(mine).length) delete all[code];
+  savePropChunks_(MARKS_KEY, JSON.stringify(all));
+  return { setBy: all[code] };
+}
+
+/** code's binome sheet, opened with the signed-in admin's own access: {b, f: sheetTarget_}. Throws when the candidate
+ *  is unknown or has no binome yet, or the admin can't open the sheet (naming it). */
+function adminSheetOf_(code) {
+  const t = loadTable_(TAB.IV, IV_H), I = t.I, x = t.data.filter(r => String(r[I.Code]).trim() === code)[0];
+  if (!x) throw new Error('Unknown code ' + code);
+  const b = String(x[I.Binome]).trim();
+  if (!b) throw new Error(code + ' has no binome yet: there are no columns to fill in.');
+  const f = binomeTargets_([b])[b];
+  if (f.gone) throw new Error(f.gone);
+  return { b: b, f: f };
+}
+/** The seven columns of one row as the slice holds them. */
+function goldValues_(sh, row) {
+  const rng = sh.getRange(row, BF_COL, 1, BF_H.length), F = idx_(BF_H), v = rng.getValues()[0], shown = rng.getDisplayValues()[0], out = {};
+  BF_EDITABLE.forEach(k => { out[k] = goldOf_(k, v[F[k]], shown[F[k]]); });
+  return out;
+}
+
+/** webRun('binomeColumnsGet', {code}): admins read one candidate's binome columns straight from the binome sheet, for the details
+ *  form: {binome, setBy, candidate: {Code, the seven values}}. No lock. */
+function binomeColumnsGet_(code) {
+  code = String(code || '').trim();
+  const t = adminSheetOf_(code), row = findFileRow_(t.f.sh, code);
+  if (row < 0) throw new Error(code + ' is no longer in the sheet of ' + t.b + '.');
+  return { binome: t.b, setBy: goldMarks_()[code] || {}, candidate: Object.assign({ Code: code }, goldValues_(t.f.sh, row)) };
+}
+
+/** webRun('adminSet', {code, fields: [{field, value, seen}]}): an admin sets the binome's columns of one candidate in that binome's
+ *  sheet, with their own access. memberSet_'s checks and answers; seen = the value their screen showed: a cell the binome changed
+ *  since is refused ({field, conflict: <current>}) and the others are written. A value the cell already holds is no change (no
+ *  mark, no log row). Each field written gets a mark {by, at} (an emptied cell none) and one Interviewee Changes row
+ *  `Admin set <field>`; the binome is marked dirty and its slice takes the values and the marks. A direct write, never a pending
+ *  change. Returns {code, fields: [{field, value} | {field, conflict} | {field, error}], setBy}. */
+function adminSet_(a, args) {
+  const code = String(args.code || '').trim();
+  const list = (Array.isArray(args.fields) ? args.fields : []).map(x => ({ field: String((x && x.field) || ''), value: x && x.value, seen: x && x.seen }));
+  if (!list.length || list.some((x, i) => BF_EDITABLE.indexOf(x.field) < 0 || list.findIndex(y => y.field === x.field) !== i)) throw new Error('Not allowed');
+  const t = adminSheetOf_(code), sh = t.f.sh;
+  list.forEach(x => { try { x.v = memberValue_(x.field, x.value, t.f.tz); } catch (e) { x.error = e.message; } });
+  const lock = memberLock_();
+  if (!lock.tryLock(10000)) throw new Error('BUSY: The sheet of ' + t.b + ' is busy with another edit. Nothing was changed: try again.');
+  let marks;
+  try {
+    if (bfLayout_(sh) !== 'v2') throw new Error('The header of the sheet of ' + t.b + ' was changed by hand: repair it before editing from here.');
+    const row = findFileRow_(sh, code);
+    if (row < 0) throw new Error(code + ' is no longer in the sheet of ' + t.b + '.');
+    const was = goldValues_(sh, row);
+    list.forEach(x => {
+      if (x.error) return;
+      const cur = goldText_(x.field, was[x.field]);
+      if (cur !== goldText_(x.field, x.seen)) { x.conflict = cur; return; }
+      x.now = was[x.field];
+      if (cur === goldText_(x.field, x.value)) return; // already what they want
+      goldWrite_(sh, row, x.field, x.v);
+      x.wrote = true;
+    });
+    const wrote = list.filter(x => x.wrote);
+    if (wrote.length) {
+      SpreadsheetApp.flush();
+      const all = goldMarks_(), mine = all[code] || {}, now = goldValues_(sh, row), at = fmt_(new Date(), 'dd/MM HH:mm');
+      wrote.forEach(x => {
+        x.old = was[x.field]; x.now = now[x.field];
+        if (goldText_(x.field, x.now) === '') delete mine[x.field]; else mine[x.field] = { by: String(a.email), at: at };
+      });
+      if (Object.keys(mine).length) all[code] = mine; else delete all[code];
+      savePropChunks_(MARKS_KEY, JSON.stringify(all));
+      goldPatch_(t.b, sh, row, code, wrote.map(x => x.field), { setBy: all[code] });
+    }
+    marks = goldMarks_()[code] || {};
+  } finally { lock.releaseLock(); }
+  list.filter(x => x.wrote).forEach(x => logIvChange_({ now: new Date() }, code, 'Admin set ' + x.field, goldText_(x.field, x.old), goldText_(x.field, x.now)));
+  return { code: code, setBy: marks, fields: list.map(x => (x.error ? { field: x.field, error: x.error }
+    : x.conflict !== undefined ? { field: x.field, conflict: x.conflict } : { field: x.field, value: x.now })) };
+}
+
+/** What the latest interview form of `code` holds for Rating or Final Affectation, as the sheet takes it: '' when there is no form
+ *  yet. Reads the binome sheet's Interview Answers row (Google Form copies and dashboard saves both land there). */
+function formValue_(book, code, field, tz) {
+  const got = answersRow_(book.getSheetByName(IA_TAB), code);
+  if (!got) return '';
+  const vals = got.v.slice(6, 6 + INTERVIEW_QUESTIONS.length);
+  try { return memberValue_(field, field === 'Rating' ? formRating_(vals) : formAffect_(vals[qIndex_(INTERVIEW_FINAL)]), tz); } catch (e) { return ''; }
+}
+
+/** webRun('adminFormFill', {code, field: 'Rating' | 'Final Affectation'}): Let the form fill it. Writes the latest form's value
+ *  (blank when there is no form yet) into the binome sheet at once, takes the mark off, logs `Form filled <field>`, and records
+ *  the value as what the form filled (Dashboard Interviews), so a later form save updates the cell again (fillFromForm_).
+ *  Returns {code, field, value, setBy}. */
+function adminFormFill_(a, args) {
+  const code = String(args.code || '').trim(), field = String(args.field || '');
+  if (['Rating', 'Final Affectation'].indexOf(field) < 0) throw new Error('Not allowed');
+  const t = adminSheetOf_(code), sh = t.f.sh;
+  const lock = memberLock_();
+  if (!lock.tryLock(10000)) throw new Error('BUSY: The sheet of ' + t.b + ' is busy with another edit. Nothing was changed: try again.');
+  let old, now, marks;
+  try {
+    if (bfLayout_(sh) !== 'v2') throw new Error('The header of the sheet of ' + t.b + ' was changed by hand: repair it before editing from here.');
+    const row = findFileRow_(sh, code);
+    if (row < 0) throw new Error(code + ' is no longer in the sheet of ' + t.b + '.');
+    const want = formValue_(sh.getParent(), code, field, t.f.tz); // read under the lock: a form saved a moment ago counts
+    old = goldValues_(sh, row)[field];
+    goldWrite_(sh, row, field, want);
+    SpreadsheetApp.flush();
+    now = goldPatch_(t.b, sh, row, code, [field], clearMarks_(code, [field]))[field];
+    marks = goldMarks_()[code] || {};
+    if (ss_().getSheetByName(TAB.DASH)) { // what the form filled, so a later form save updates the cell again; inside the lock, with the cell
+      const d = loadTable_(TAB.DASH, DASH_H), D = d.I, own = d.data.filter(r => String(r[DQ - 1]).trim() === code)[0];
+      if (own) { own[D[field === 'Rating' ? 'Filled Rating' : 'Filled Affectation']] = now; saveTable_(d); }
+    }
+  } finally { lock.releaseLock(); }
+  logIvChange_({ now: new Date() }, code, 'Form filled ' + field, goldText_(field, old), goldText_(field, now));
+  return { code: code, field: field, value: now, setBy: marks };
+}
+
 /** webRun('dropSlice', {binome}), load-test task 10: binome b's cached slice counts as gone, as dropSnap_ does to every binome
  *  after a failed publish, so its members' next webState reads their sheet (memberBook_) until the next sync republishes it.
  *  Owner only, TEST_MODE only; under the script lock, so no publish crosses it. */
@@ -521,7 +654,10 @@ function interviewSave_(a, args) {
     CacheService.getScriptCache().put('dirty:' + m.b, String(Date.now()), 21600);
     const interview = { at: Utilities.formatDate(first, tz, 'dd/MM HH:mm'), by: had ? had.submittedBy : me, source: 'Dashboard' };
     patchSlice_(m.b, code, { interview: interview });
-    return Object.assign({ code: code, interview: interview }, answersView_(answersRow_(tab, code).v, tz));
+    // Rating / Final Affectation an admin set stay as set when the form would put something else there (fillFromForm_)
+    const set = goldMarks_()[code] || {}, cells = goldValues_(sh, row), want = { Rating: formRating_(vals), 'Final Affectation': formAffect_(vals[qIndex_(INTERVIEW_FINAL)]) };
+    const kept = Object.keys(want).filter(k => set[k] && goldText_(k, cells[k]) !== '' && goldText_(k, cells[k]) !== goldText_(k, want[k]));
+    return Object.assign({ code: code, interview: interview, kept: kept }, answersView_(answersRow_(tab, code).v, tz));
   } finally { lock.releaseLock(); }
 }
 
@@ -810,7 +946,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -855,6 +991,9 @@ function webRun(action, args) {
       case 'endCover': result = endCoverCore_(args); break;
       case 'quick': result = quickCore_(String(args.op || ''), args); break;
       case 'candidateGet': result = candidateGet_(args.code); break;
+      case 'binomeColumnsGet': result = binomeColumnsGet_(args.code); break;
+      case 'adminSet': result = adminSet_(a, args); break;
+      case 'adminFormFill': result = adminFormFill_(a, args); break;
       case 'editCandidate': result = editCandidateCore_(args.code, args.values); break;
       case 'binomeAccess': result = binomeAccessCore_(String(args.binome || ''), args.level, a.email); break;
       case 'restore': result = restoreCore_(args.codes); break;

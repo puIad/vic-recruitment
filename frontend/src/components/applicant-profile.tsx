@@ -4,6 +4,7 @@ import { AlertCircle, CakeSlice, Check, ExternalLink, Pencil, RotateCw } from "l
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { BinomeColumns } from "@/components/binome-columns"
 import { MemberNames } from "@/components/member-name"
 import {
   ageOn,
@@ -187,6 +188,15 @@ function Profile({ row: r, tz }: { row: AnalyticsRow; tz: string }) {
             })}
           </ol>
         </Section>
+
+        {r.code && r.binome && (
+          <Section title="Binome's columns">
+            <p className="-mt-1 text-xs text-muted-foreground">
+              Written straight into {r.binome}'s sheet. Anything the binome typed can be replaced; a field they changed since this opened is refused.
+            </p>
+            <BinomeColumns key={r.code} code={r.code} />
+          </Section>
+        )}
 
         <Section title="About them">
           <dl className="grid grid-cols-[8.5rem_1fr] gap-x-4 gap-y-3 text-sm">

@@ -8,14 +8,24 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Spinner } from "@/lib/vic/confirm"
-import { useVic } from "@/lib/vic/store"
+import { displayName } from "@/lib/vic/format"
+import { useVic, type MemberSetResult } from "@/lib/vic/store"
 import { again, REASON, useMemberView, type Mark } from "@/lib/vic/pending"
-import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type CellValue, type FieldEntry, type GoldKey } from "@/lib/vic/types"
+import { AFFECTATION_OPTIONS, CONTACT_OPTIONS, GOLD_KEYS, type Candidate, type CellValue, type FieldEntry, type GoldKey, type SetBy } from "@/lib/vic/types"
 import { PendingMark } from "@/app/alerts/components/pending-mark"
 import { cn } from "@/lib/utils"
 import { draftKey } from "./gold-drafts"
 
 type Cell = string | number | boolean
+/** The binome's columns of one candidate: a Candidate, or what an admin reads from the binome sheet (WebApp.gs binomeColumnsGet). */
+export type GoldSource = Pick<Candidate, GoldKey | "Code" | "setBy">
+/** An admin filling the form in (docs/admin-features.md): where it saves, and Let the form fill it. Both keep the marks current. */
+export type AdminWrite = {
+  binome: string
+  save: (code: string, fields: { field: GoldKey; value: unknown; seen: unknown }[]) => Promise<MemberSetResult[]>
+  /** the value the form wrote into the cell */
+  fill: (k: "Rating" | "Final Affectation") => Promise<Cell>
+}
 type Phase = { s: "idle" } | { s: "error"; msg: string } | { s: "conflict"; theirs: string }
 /** base = the sheet's value the edit started from (sent as `seen`), draft = what the member has typed or picked. */
 type Field = { base: Cell | undefined; draft: string | boolean; phase: Phase }
@@ -66,12 +76,12 @@ function ratingProblem(d: string) {
 }
 
 const isDirty = (k: GoldKey, f: Field) => f.draft !== toDraft(k, f.base)
-const fieldsOf = (c: Candidate) =>
+const fieldsOf = (c: GoldSource) =>
   Object.fromEntries(GOLD_KEYS.map((k) => [k, { base: c[k], draft: toDraft(k, c[k]), phase: { s: "idle" } }])) as Fields
 
 /* Unsaved drafts live in this browser, per binome, candidate and field, so an expired session or a reload doesn't lose them (like the
    interview form, lib/vic/interview.ts). The base rides along: a restored draft is still checked against the sheet on Save. */
-function restoreDrafts(binome: string, c: Candidate, fields: Fields): Fields {
+function restoreDrafts(binome: string, c: GoldSource, fields: Fields): Fields {
   const next = { ...fields }
   for (const k of GOLD_KEYS) {
     try {
@@ -104,6 +114,10 @@ type Form = {
   revert: (k: GoldKey) => void
   useMine: (k: GoldKey) => void
   saveAll: () => void
+  /** an admin's form: Let the form fill it, and who they are talking about */
+  admin?: AdminWrite & { filling: GoldKey | null; fillFromForm: (k: "Rating" | "Final Affectation") => void }
+  /** who set which field (an admin), until the binome edits it again */
+  setBy: SetBy
   /** this candidate's pending marks, by field */
   marks: Partial<Record<GoldKey, Mark<FieldEntry>>>
 }
@@ -115,12 +129,14 @@ const FormCtx = React.createContext<Form | null>(null)
  * cell meanwhile, the script refuses that one and the field offers Keep theirs / Use mine.
  * Key it by candidate: switching candidates starts afresh. onDirty gets the count of unsaved fields as it changes.
  */
-export function GoldForm({ code, candidate, onDirty, children }: { code: string; candidate: Candidate; onDirty?: (n: number) => void; children: React.ReactNode }) {
+export function GoldForm({ code, candidate, onDirty, children, admin }: { code: string; candidate: GoldSource; onDirty?: (n: number) => void; children: React.ReactNode; admin?: AdminWrite }) {
   const memberSet = useVic((s) => s.memberSet)
   const patchMember = useVic((s) => s.patchMember)
   const allMarks = useMemberView().marks
-  const marks = Object.fromEntries(GOLD_KEYS.filter((k) => allMarks[`field:${code}:${k}`]).map((k) => [k, allMarks[`field:${code}:${k}`]]))
-  const binome = useVic((s) => s.member?.binome ?? "")
+  // an admin's form writes directly and has no pending marks; its drafts are kept apart from the same binome's My binome drafts
+  const marks = admin ? {} : Object.fromEntries(GOLD_KEYS.filter((k) => allMarks[`field:${code}:${k}`]).map((k) => [k, allMarks[`field:${code}:${k}`]]))
+  const own = useVic((s) => s.member?.binome ?? "")
+  const binome = admin ? `admin:${admin.binome}` : own
   const [fields, setFields] = React.useState(() => restoreDrafts(binome, candidate, fieldsOf(candidate)))
   React.useEffect(() => keepDrafts(binome, code, fields), [binome, code, fields])
   const [saving, setSaving] = React.useState(false)
@@ -157,24 +173,38 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
     setSaved(false)
     // pending changes: accepted at once, the fields show them with the pill; a failed accept is today's direct write
     const st = useVic.getState(), at = Date.now()
-    if (st.pendingOn && (await st.accept(todo.map((k) => ({ kind: "field" as const, code, field: k, value: toWire(k, fields[k].draft) as CellValue, seen: fields[k].base ?? "", at })))) === "ok") {
+    if (!admin && st.pendingOn && (await st.accept(todo.map((k) => ({ kind: "field" as const, code, field: k, value: toWire(k, fields[k].draft) as CellValue, seen: fields[k].base ?? "", at })))) === "ok") {
       todo.forEach((k) => put(k, { base: toWire(k, fields[k].draft) as CellValue, phase: { s: "idle" } }))
       setSaving(false)
       return
     }
-    const rs = await memberSet(code, todo.map((k) => ({ field: k, value: toWire(k, fields[k].draft), seen: fields[k].base })))
+    const rs = await (admin ? admin.save : memberSet)(code, todo.map((k) => ({ field: k, value: toWire(k, fields[k].draft), seen: fields[k].base })))
     todo.forEach((k, i) => {
       const r = rs[i]
       if ("ok" in r) put(k, { base: r.value, draft: toDraft(k, r.value), phase: { s: "idle" } })
       else if ("conflict" in r) {
         // the sheet holds theirs: it becomes the base (Use mine then writes over it), the draft stays
         const theirs = fromText(k, r.conflict)
-        patchMember(code, k, theirs)
+        if (!admin) patchMember(code, k, theirs)
         put(k, { base: theirs, phase: { s: "conflict", theirs: r.conflict } })
       } else put(k, { phase: { s: "error", msg: r.error } })
     })
     setSaving(false)
     setSaved(rs.every((r) => "ok" in r))
+  }
+
+  const [filling, setFilling] = React.useState<GoldKey | null>(null)
+  async function fillFromForm(k: "Rating" | "Final Affectation") {
+    if (!admin || saving || filling) return
+    setFilling(k)
+    try {
+      const v = await admin.fill(k)
+      put(k, { base: v, draft: toDraft(k, v), phase: { s: "idle" } })
+    } catch (e) {
+      put(k, { phase: { s: "error", msg: (e as Error).message } })
+    } finally {
+      setFilling(null)
+    }
   }
 
   const form: Form = {
@@ -186,6 +216,8 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
     revert: (k) => setFields((cur) => ({ ...cur, [k]: { ...cur[k], draft: toDraft(k, cur[k].base), phase: { s: "idle" } } })),
     useMine: (k) => put(k, { phase: { s: "idle" } }), // the next Save writes the draft over theirs
     saveAll,
+    admin: admin && { ...admin, filling, fillFromForm },
+    setBy: candidate.setBy ?? {},
     marks,
   }
 
@@ -208,7 +240,7 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
           <>
             <Button onClick={saveAll} disabled={saving || !!ratingProblem(String(fields.Rating.draft))}>
               {saving ? <Spinner className="size-4" /> : <Check />}{" "}
-              {saving ? "Saving to your sheet…" : dirty > 1 ? `Save ${dirty} changes` : "Save change"}
+              {saving ? (admin ? "Saving to the binome sheet…" : "Saving to your sheet…") : dirty > 1 ? `Save ${dirty} changes` : "Save change"}
             </Button>
             <Button variant="ghost" onClick={() => GOLD_KEYS.forEach(form.revert)} disabled={saving}>
               Discard
@@ -217,7 +249,7 @@ export function GoldForm({ code, candidate, onDirty, children }: { code: string;
           </>
         ) : saved ? (
           <p className="flex items-center gap-1.5 text-xs font-semibold text-success">
-            <Check className="size-3.5" /> Saved to your sheet
+            <Check className="size-3.5" /> {admin ? "Saved to the binome sheet" : "Saved to your sheet"}
           </p>
         ) : null}
       </div>
@@ -233,6 +265,8 @@ export function GoldField({ k }: { k: GoldKey }) {
   const dirty = isDirty(k, form.fields[k])
   const id = `gold-${code}-${k.replace(/\s+/g, "-")}`
   const set = (d: string | boolean) => form.setDraft(k, d)
+  const mark = form.setBy[k]
+  const them = form.admin ? "The binome" : "Your partner"
 
   const ratingError = k === "Rating" ? ratingProblem(String(draft)) : ""
   // Enter saves everything (Ctrl/Cmd+Enter in the notes box), Escape drops this field's edit
@@ -309,6 +343,18 @@ export function GoldField({ k }: { k: GoldKey }) {
     <div className="min-w-0 space-y-2">
       {control}
 
+      {form.admin && (k === "Rating" || k === "Final Affectation") && (
+        <Button size="sm" variant="ghost" className="-ml-2 h-7 text-xs" onClick={() => form.admin!.fillFromForm(k)} disabled={saving || !!form.admin.filling}
+          title="Writes the latest interview form's value now; later form saves update it again">
+          {form.admin.filling === k ? <Spinner className="size-3.5" /> : <RotateCcw className="size-3.5" />} Let the form fill it
+        </Button>
+      )}
+      {mark && !dirty && (
+        <p className="text-xs text-muted-foreground">
+          set by <b className="font-semibold text-foreground/80">{displayName(mark.by)}</b> · {mark.at}
+        </p>
+      )}
+
       <div aria-live="polite" className="empty:hidden">
         {form.marks[k] && form.marks[k]!.kind !== "dropped" && <PendingMark mark={form.marks[k]} />}
         <FieldDrop k={k} mark={form.marks[k]} />
@@ -326,7 +372,7 @@ export function GoldField({ k }: { k: GoldKey }) {
             <p className="flex items-start gap-2">
               <Users className="mt-0.5 size-4 shrink-0 text-warning" />
               <span>
-                <b className="font-bold">Your partner changed this to {theirsLabel(k, phase.theirs)}.</b>{" "}
+                <b className="font-bold">{them} changed this to {theirsLabel(k, phase.theirs)}.</b>{" "}
                 <span className="text-foreground/80">Nothing of yours was written here.</span>
               </span>
             </p>
