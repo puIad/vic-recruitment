@@ -324,7 +324,7 @@ function runCycle_(opts) {
 /** Trigger: any form linked to the master was submitted. */
 function onFormSubmitHandler(e) { runCycle_({ kind: 'form', pull: false, timing: false, tracker: true, wait: 120000 }); }
 
-/** Trigger: every N minutes. Also available from the menu. */
+/** Trigger: every N minutes. */
 function syncAll() {
   runCycle_({ kind: 'trigger', pull: true, timing: true, tracker: true, watch: true });
   // past runCycle_ = ok or busy; a cycle that throws leaves the stamp behind, so it counts as stopped
@@ -337,6 +337,7 @@ function integrityCheck() { const c = runCycle_({ kind: 'integrity', pull: true,
 /* ---------- the sync watch (docs/admin-features.md, When the timed sync stops) ---------- */
 
 const WATCHDOG_STALE_MS = 3 * 3.6e6;
+const projectUrl_ = () => 'https://script.google.com/home/projects/' + ScriptApp.getScriptId() + '/edit';
 const REAUTH_STEPS = 'open the project on script.google.com, pick reauthorize in the function list, press Run, tick every box.';
 
 /** How long without a SYNC_STAMP means the timed sync has stopped. frontend/src/lib/vic/sync-watch.ts holds the same rule. */
@@ -347,11 +348,11 @@ function reauthorize() { console.log('Authorized as ' + Session.getEffectiveUser
 
 /** Timed sync only: the watchdog stamps its runs, and a watchdog that stopped can't report itself. No stamp = not installed yet. */
 function watchdogAlert_(ctx) {
-  const at = Number(PropertiesService.getScriptProperties().getProperty('WATCHDOG_STAMP')), KI = ctx.alerts.table.I;
-  if (!at) return;
-  if (ctx.now.getTime() - at < WATCHDOG_STALE_MS) { ctx.alerts.resolveWhere(r => r[KI.Key] === 'WATCHDOG'); return; }
+  const ran = Number(PropertiesService.getScriptProperties().getProperty('WATCHDOG_STAMP')), KI = ctx.alerts.table.I;
+  if (!ran) return;
+  if (ctx.now.getTime() - ran < WATCHDOG_STALE_MS) { ctx.alerts.resolveWhere(r => r[KI.Key] === 'WATCHDOG'); return; }
   ctx.alerts.add({ severity: 'MEDIUM', type: 'WATCHDOG_STOPPED', code: '', binome: '', key: 'WATCHDOG',
-    msg: 'The sync watchdog has not run since ' + fmt_(new Date(at), 'dd/MM HH:mm') + ', so a stopped sync would mail nobody. The Master\'s owner re-authorizes it from their own account: ' + REAUTH_STEPS });
+    msg: 'The sync watchdog has not run since ' + fmt_(new Date(ran), 'dd/MM HH:mm') + ', so a stopped sync would mail nobody. The Master\'s owner re-authorizes it from their own account: ' + REAUTH_STEPS });
 }
 
 /** The stop or recovery mail, to the Master's owner and vic.rh. True when it reached at least one of them. */
@@ -361,7 +362,7 @@ function watchdogMail_(stopped, stamp) {
     mailP_('The timed sync has not finished a cycle since ' + since + '. New registrations and binome edits wait until someone presses Sync now, and the digest won\'t go out.'),
     mailP_('**vic.rh:** ' + REAUTH_STEPS + ' If it has still not finished a cycle after the next interval, run Setup from the Master\'s menu.'),
   ] : [mailP_('The timed sync finished a cycle at ' + since + '. Nothing more to do.')],
-    cta: stopped ? { label: 'Open the project', url: 'https://script.google.com/home/projects/' + ScriptApp.getScriptId() + '/edit' } : { label: 'Open the dashboard', url: DASHBOARD_URL },
+    cta: stopped ? { label: 'Open the project', url: projectUrl_() } : { label: 'Open the dashboard', url: DASHBOARD_URL },
     footer: mailTeamFooter_() });
   const owner = lc_(ss_().getOwner().getEmail()), rh = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
   return [owner, rh].filter((e, i, all) => e && all.indexOf(e) === i).map(e => mail_(e, '[VIC Recruitment] ' + title, html)).some(Boolean);

@@ -133,8 +133,8 @@ let firstRec = true
 /** the last seen mark: while drops are on screen it is refreshed once a minute, so the admins get no alert */
 let seenMark = 0
 const SEEN_MS = 60e3
-/** ms since the last cycle and when it was, measured by the script; script = the project's id, for the trigger owner */
-export type SyncPulse = { age: number; at: number; script?: string }
+/** ms since the last cycle and when it was, measured by the script; script = the project's link, for the trigger owner */
+type SyncPulse = { age: number; at: number; script?: string }
 type Pulse = number | { v: number; pending: boolean; bv?: number; sync?: SyncPulse }
 /** The pulse's answer: a number from an older script, {v, pending, bv?, sync?} from one that has the switch. */
 const pulseOf = (p: Pulse | null) => (p === null || typeof p === "number" ? { v: p, on: null, bv: null, sync: null } : { v: p.v, on: p.pending, bv: p.bv ?? null, sync: p.sync ?? null })

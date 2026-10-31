@@ -46,7 +46,7 @@ assert(pulse.sync.age >= 20 * MIN && pulse.sync.age < 21 * MIN, J(pulse));
 assert.strictEqual(pulse.sync.at, Number(stamp()));
 assert(!('script' in pulse.sync), 'an admin who is not vic.rh gets no project link');
 run(`ss_().addEditor(${J(RH)}); __as(${J(RH)})`);
-assert.strictEqual(call('webPulse', true).sync.script, run('ScriptApp.getScriptId()'), 'the trigger owner gets the project');
+assert.strictEqual(call('webPulse', true).sync.script, run('projectUrl_()'), 'the trigger owner gets the project');
 run(`__as(${J(OWNER)})`);
 { // members see nothing
   run(`__realAccess = access_; access_ = function () { return { ok: true, role: 'member', email: 'm@g.enp.edu.dz', owner: false, binome: 'B.01' }; }`);
@@ -95,7 +95,14 @@ run('__mailer = __mailerOk');
 assert.deepStrictEqual(mails(), [], 'the mailer is down');
 run('syncWatchdog()');
 assert.strictEqual(mails().length, 2, 'retried once the mailer is back');
-setStamp(1); run('syncWatchdog()'); clearMails();
+clearMails();
+run(`__sendOk = MailApp.sendEmail; MailApp.sendEmail = function (o) { if (o.to === ${J(RH)}) throw new Error('over quota'); __sendOk(o); }`);
+setStamp(1); run('syncWatchdog()'); // the recovery reaches the owner only
+run('MailApp.sendEmail = __sendOk');
+assert.deepStrictEqual(mails().map(m => m.to), [OWNER]);
+clearMails();
+run('syncWatchdog()');
+assert.deepStrictEqual(mails(), [], 'reached one of them: not sent again');
 
 // a broken run does not count as a run: the stamp stays behind so the 3 h alert fires
 run('__props.WATCHDOG_STAMP = "1"; __S = S_; S_ = function () { throw new Error("boom") }');

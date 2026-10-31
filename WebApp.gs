@@ -91,7 +91,7 @@ function photo_() {
  *  Members: their binome's version (SNAP_BIN). Someone no longer in MEMBER_MAP gets "Not allowed" at the next poll.
  *  withSwitch: {v, pending} (the owner's switch, Pending.gs) instead of the bare version, for admins and members.
  *  Admins also get sync: {age, at} (ms since the timed sync's last cycle, measured here so a wrong laptop clock can't fake a stop),
- *  plus script (the project id) for the trigger owner, who re-authorizes. No stamp yet = no field. */
+ *  plus script (the project's link) for the trigger owner, who re-authorizes. No stamp yet = no field. */
 function webPulse(withSwitch) {
   const a = access_();
   if (a.role === 'admin') {
@@ -102,7 +102,7 @@ function webPulse(withSwitch) {
     const stamp = Number(props.getProperty('SYNC_STAMP'));
     if (stamp) {
       out.sync = { age: Date.now() - stamp, at: stamp };
-      if (a.owner) out.sync.script = ScriptApp.getScriptId();
+      if (a.owner) out.sync.script = projectUrl_();
     }
     return out;
   }
