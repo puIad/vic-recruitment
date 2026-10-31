@@ -128,6 +128,7 @@ function binomeChanges_(changes) {
       }
       out.push(r);
     });
+    commitBase_(ctx); // detectEdits_ may have raised alerts with no key: the baseline holds what they report
     ctx.alerts.flush();
     sendNewIntervieweeMails_(ctx);
     buildTracker_(ctx);

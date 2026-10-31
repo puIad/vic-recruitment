@@ -243,6 +243,19 @@ const ivBinome = c => rows('Interviewees').find(r => r[I.Code] === c)[I.Binome];
   call('webRun', 'sync');
 }
 
+// ---- a hand edit seen by a change that writes nothing is in the baseline too: its INFO alert isn't written again ----
+{
+  const other = state().binomes.find(b => b.code !== code && b.status === 'ACTIVE').code;
+  const typed = () => alerts('MANUAL_EDIT', other).filter(a => /set to PAUSED/.test(a[A.Message])).length, n = typed();
+  setCell(other, 'Status', "'PAUSED'");
+  assert.deepStrictEqual(ends(apply({ binome: code, op: 'resume', value: 'ACTIVE', seen: 'PAUSED', note: '' })), ['met']);
+  assert.strictEqual(typed(), n + 1);
+  call('webRun', 'sync');
+  assert.strictEqual(typed(), n + 1, 'once');
+  setCell(other, 'Status', "'ACTIVE'");
+  call('webRun', 'sync');
+}
+
 // ---- the switch off: the same write through webRun; a member can't ----
 {
   const out = call('webRun', 'binomeStatus', { binome: code, op: 'pause', note: 'direct', until: Date.now() + DAY, codes: [] });
