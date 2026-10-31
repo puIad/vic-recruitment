@@ -17,6 +17,7 @@ function onOpen() {
     .addItem('Re-protect binome sheets (owner only)', 'reprotectBinomeSheets')
     .addItem('Send me the digest now', 'sendDailyDigest')
     .addSeparator()
+    .addItem('Install the sync watchdog (Master owner only)', 'installWatchdog')
     .addItem('Run setup again (safe)', 'setup')
     .addToUi();
 }
@@ -180,6 +181,16 @@ function installTriggers_(ss) {
   ScriptApp.newTrigger('syncAll').timeBased().everyMinutes(every).create();
   ScriptApp.newTrigger('sendDailyDigest').timeBased().atHour(Math.max(0, Math.min(23, num_(s.DIGEST_HOUR, 8))))
     .everyDays(1).inTimezone(s.TIMEZONE).create();
+}
+
+/** The watchdog runs on the Master owner's grant, so it must not share vic.rh's; Setup leaves it alone. Safe to run again. */
+function installWatchdog() {
+  const me = lc_(Session.getEffectiveUser().getEmail()), owner = lc_(ss_().getOwner().getEmail());
+  if (me !== owner) throw new Error('The watchdog must belong to the Master\'s owner: run this from ' + owner + '.');
+  ScriptApp.getProjectTriggers().forEach(t => { if (t.getHandlerFunction() === 'syncWatchdog') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('syncWatchdog').timeBased().everyMinutes(15).create();
+  syncWatchdog();
+  say_('The sync watchdog is installed: every 15 min, on ' + me + '.');
 }
 
 function cleanupAndOrder_(ss) {

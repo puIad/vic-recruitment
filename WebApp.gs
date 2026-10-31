@@ -89,14 +89,21 @@ function photo_() {
 /** Cheap change detector for the dashboard's live refresh. Admins: the version of the cached dashboard (SNAP_VER), which goes
  *  up only when what the dashboard shows changed (publishState_); a hand edit in the Master shows after the next sync.
  *  Members: their binome's version (SNAP_BIN). Someone no longer in MEMBER_MAP gets "Not allowed" at the next poll.
- *  withSwitch: {v, pending} (the owner's switch, Pending.gs) instead of the bare version, for admins and members. */
+ *  withSwitch: {v, pending} (the owner's switch, Pending.gs) instead of the bare version, for admins and members.
+ *  Admins also get sync: {age, at} (ms since the timed sync's last cycle, measured here so a wrong laptop clock can't fake a stop),
+ *  plus script (the project id) for the trigger owner, who re-authorizes. No stamp yet = no field. */
 function webPulse(withSwitch) {
   const a = access_();
   if (a.role === 'admin') {
-    const ver = Number(PropertiesService.getScriptProperties().getProperty('SNAP_VER') || 0);
+    const props = PropertiesService.getScriptProperties(), ver = Number(props.getProperty('SNAP_VER') || 0);
     if (!withSwitch) return ver; // pages before pending changes take the bare number
     const out = { v: ver, pending: pendingOn_() }, m = savedMemberMap_()[a.email], b = m && binMeta_()[m.b];
     if (b) out.bv = b.v; // an admin in a binome: a partner's edit refreshes their My binome (no Drive call here)
+    const stamp = Number(props.getProperty('SYNC_STAMP'));
+    if (stamp) {
+      out.sync = { age: Date.now() - stamp, at: stamp };
+      if (a.owner) out.sync.script = ScriptApp.getScriptId();
+    }
     return out;
   }
   if (a.role === 'member') { const b = binMeta_()[a.binome], ver = b ? b.v : 0; return withSwitch ? { v: ver, pending: pendingOn_() } : ver; }

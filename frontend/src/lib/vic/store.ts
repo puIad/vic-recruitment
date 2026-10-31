@@ -42,6 +42,8 @@ interface VicStore {
   pulse: number | null
   /** an admin in a binome: their binome's version (webPulse bv), so a partner's edit refreshes My binome */
   bv: number | null
+  /** the timed sync's last cycle (webPulse sync), for admins once it has stamped one */
+  sync: SyncPulse | null
   /** ms timestamp of the last successful state load (drives the "live" indicator) */
   loadedAt: number
   /** bumps each time the numbers actually changed: the header ring turns once */
@@ -131,9 +133,11 @@ let firstRec = true
 /** the last seen mark: while drops are on screen it is refreshed once a minute, so the admins get no alert */
 let seenMark = 0
 const SEEN_MS = 60e3
-type Pulse = number | { v: number; pending: boolean; bv?: number }
-/** The pulse's answer: a number from an older script, {v, pending, bv?} from one that has the switch. */
-const pulseOf = (p: Pulse | null) => (p === null || typeof p === "number" ? { v: p, on: null, bv: null } : { v: p.v, on: p.pending, bv: p.bv ?? null })
+/** ms since the last cycle and when it was, measured by the script; script = the project's id, for the trigger owner */
+export type SyncPulse = { age: number; at: number; script?: string }
+type Pulse = number | { v: number; pending: boolean; bv?: number; sync?: SyncPulse }
+/** The pulse's answer: a number from an older script, {v, pending, bv?, sync?} from one that has the switch. */
+const pulseOf = (p: Pulse | null) => (p === null || typeof p === "number" ? { v: p, on: null, bv: null, sync: null } : { v: p.v, on: p.pending, bv: p.bv ?? null, sync: p.sync ?? null })
 /** a poll stuck at Google ends after this, so the `polling` guard is released and the next tick runs */
 const POLL_TIMEOUT_MS = 20000
 let activityId = 0
@@ -157,6 +161,7 @@ export const useVic = create<VicStore>((set, get) => ({
   modals: 0,
   pulse: null,
   bv: null,
+  sync: null,
   loadedAt: 0,
   tick: 0,
   sessionEnds: 0,
@@ -225,6 +230,7 @@ export const useVic = create<VicStore>((set, get) => ({
         memberError: null,
         pulse: p,
         bv: pp.bv,
+        sync: pr ? pp.sync : cur.sync, // a failed pulse is no news about the sync
         pendingOn: pp.on ?? !!s.pending,
         loading: false,
         loadedAt: Date.now(),
@@ -274,6 +280,7 @@ export const useVic = create<VicStore>((set, get) => ({
       const p = pulseOf(r.value)
       if (r.rec) get().setRec(r.rec)
       if (p.on !== null && p.on !== get().pendingOn) set({ pendingOn: p.on })
+      if (p.sync || get().sync) set({ sync: p.sync })
       // the pulse only advances inside a successful refresh, so a failed one is retried, after its backoff
       if ((p.v !== pulse || p.bv !== bv) && !get().jobs.length && Date.now() >= retryAt) await get().refresh(true)
     } catch (e) {

@@ -17,6 +17,7 @@ import { useActions } from "@/lib/vic/actions"
 import { alertLabel, SEVERITY } from "@/lib/vic/format"
 import { useVic } from "@/lib/vic/store"
 import { useAlertView } from "@/lib/vic/pending"
+import { useSyncStop } from "@/lib/vic/sync-watch"
 import { useUi } from "@/lib/vic/ui"
 import { cn } from "@/lib/utils"
 import { togglePinned, useSidebarConfig } from "@/hooks/use-sidebar-config"
@@ -77,18 +78,30 @@ function LiveActivity() {
   const refresh = useVic((s) => s.refresh)
   const activity = useVic((s) => s.activity)
   const failed = !!activity[0]?.error // the newest action: the dot clears once a retry works
+  const stop = useSyncStop()
   return (
     <Popover>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="relative flex h-9 items-center gap-2 rounded-full px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-          aria-label={`Activity and live status. Last updated ${time}${failed ? ". The last action failed" : ""}`}
+          className={cn(
+            "relative flex h-9 items-center gap-2 rounded-full px-2.5 text-sm font-medium transition-colors",
+            stop ? "bg-danger-soft text-danger" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          )}
+          aria-label={`Activity and live status. ${stop ? `The timed sync has stopped, last cycle ${stop.time}` : `Last updated ${time}`}${failed ? ". The last action failed" : ""}`}
         >
           <MiniRing spinning={refreshing} tick={tick} />
           {failed && <span className="absolute left-7 top-1.5 size-2 rounded-full bg-danger ring-2 ring-background" aria-hidden="true" />}
           <span className="hidden md:inline">
-            <span className="font-bold text-foreground">Live</span> · updated {time}
+            {stop ? (
+              <>
+                <span className="font-bold">Sync stopped</span> · last cycle {stop.time}
+              </>
+            ) : (
+              <>
+                <span className="font-bold text-foreground">Live</span> · updated {time}
+              </>
+            )}
           </span>
         </button>
       </PopoverTrigger>

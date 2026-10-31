@@ -269,5 +269,5 @@ var MailApp = { sendEmail(o) { if (!/^<!DOCTYPE html>[\s\S]*vic-logo-white\.png/
 var Session = { getEffectiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; }, getActiveUser() { return { getEmail: () => 'admin@g.enp.edu.dz' }; } };
 var Utilities = { formatDate: (d, tz, p) => fmtDate(d, p), sleep() { } };
 var HtmlService = { createHtmlOutput: h => chain({ _html: h }) };
-var ScriptApp = { getOAuthToken() { return "token"; }, getProjectTriggers() { return __triggers; }, deleteTrigger() { }, newTrigger(h) { const c = chain({ create: () => { __triggers.push({ getHandlerFunction: () => h }); } }); return c; } };
+var ScriptApp = { getOAuthToken() { return "token"; }, getScriptId() { return "script-id"; }, getProjectTriggers() { return __triggers; }, deleteTrigger() { }, newTrigger(h) { const c = chain({ create: () => { __triggers.push({ getHandlerFunction: () => h }); } }); return c; } };
 var Logger = { log: console.log };
