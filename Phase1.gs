@@ -31,29 +31,34 @@ function p1IsOwner_(a) {
   return !!owner && lc_(a.email) === owner;
 }
 
-/** The last Phase 1 Result override row of each code in Interviewee Changes: code -> the proposal it was set against. */
+/** The last Phase 1 Result override row of each code in Interviewee Changes: code -> {proposal it was set against, its note}. */
 function p1SetAgainst_() {
   const sh = ss_().getSheetByName(TAB.IV_CHANGES), out = {};
   if (!sh) return out;
   const t = loadTable_(TAB.IV_CHANGES, IC_H), C = t.I;
-  t.data.forEach(r => { const m = /^Phase 1 Result set \(proposal: ([^)]*)\)/.exec(String(r[C.What])); if (m) out[String(r[C.Code]).trim()] = m[1]; });
+  t.data.forEach(r => { const m = /^Phase 1 Result set \(proposal: ([^)]*)\)(?:: ([\s\S]*))?$/.exec(String(r[C.What])); if (m) out[String(r[C.Code]).trim()] = { proposal: m[1], note: m[2] || '' }; else if (/^Phase 1 Result cleared/.test(String(r[C.What]))) delete out[String(r[C.Code]).trim()]; });
   return out;
 }
 
 /** webRun('p1View'): the candidates who need a result with their proposal, override and result, the accepted counts per department
- *  and what is left to decide. Returns {final, mails, counts, needs, rows: [{code, binome, status, proposal, override, result, needs, warn, changed}]}. */
+ *  and what is left to decide; also what the results view shows beside them, as of the last sync (rating, choices, the binome's
+ *  notes). Admins only (webRun). Returns {final, mails, counts, needs, rows: [{code, name, binome, status, c1, c2, rating (number or
+ *  null), notes, interviewed, proposal, override, note (the override's, admins only), result, needs, warn, changed}]}. */
 function p1View_() {
-  const iv = loadTable_(TAB.IV, IV_H), I = iv.I, fin = p1Final_(), against = fin ? {} : p1SetAgainst_();
+  const iv = loadTable_(TAB.IV, IV_H), I = iv.I, fin = p1Final_(), against = fin ? {} : p1SetAgainst_(), s = v => String(v == null ? '' : v).trim();
   const counts = {}; AFFECTATION_OPTIONS.forEach(o => { counts[o] = 0; });
   let needs = 0;
   const rows = [];
   iv.data.forEach(r => {
-    const code = String(r[I.Code]).trim();
+    const code = s(r[I.Code]);
     if (!code || p1NoResult_(r[I.Status])) return;
-    const proposal = p1Proposal_(I, r), override = p1Stored_(I, r), result = p1Result_(I, r, !!fin), need = result === '';
+    const proposal = p1Proposal_(I, r), override = p1Stored_(I, r), result = p1Result_(I, r, !!fin), need = result === '', set = override ? against[code] : undefined;
     if (need) needs++; else counts[result]++;
-    rows.push({ code: code, binome: String(r[I.Binome]).trim(), status: r[I.Status], proposal: proposal, override: override, result: result, needs: need,
-      warn: p1Warn_(I, r, result), changed: !fin && !!override && against[code] !== undefined && against[code] !== proposal });
+    const rating = s(r[I.Rating]) === '' ? null : Number(r[I.Rating]);
+    rows.push({ code: code, name: (s(r[I['First Name']]) + ' ' + s(r[I['Family Name']])).trim(), binome: s(r[I.Binome]), status: r[I.Status],
+      c1: p1Choices_(I, r)[0], c2: p1Choices_(I, r)[1], rating: isNaN(rating) ? null : rating, notes: s(r[I['Binome Notes']]),
+      interviewed: r[I.Status] === ST.INTERVIEWED || !!r[I['Interview Submitted At']], proposal: proposal, override: override, note: set ? set.note : '',
+      result: result, needs: need, warn: p1Warn_(I, r, result), changed: !fin && !!set && set.proposal !== proposal });
   });
   return { final: fin ? { at: fin.at, by: fin.by } : null, mails: resultMailsStarted_(), counts: counts, needs: needs, rows: rows };
 }

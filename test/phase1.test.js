@@ -28,6 +28,14 @@ assert.strictEqual(row(b).warn, true, 'HR is neither choice');
 assert.strictEqual(row(c).needs, true, 'no proposal, no override');
 assert(v.counts.IT >= 1 && v.needs >= 1);
 
+// what the results view shows beside the result: name, choices, rating, the binome's notes, whether they were interviewed
+setMaster(b, 'Rating', 7.5); setMaster(b, 'Binome Notes', 'Strong on the practical questions');
+v = call('p1View', {});
+assert.deepStrictEqual([row(b).c1, row(b).c2, row(b).rating, row(b).notes], ['IT', 'COMM', 7.5, 'Strong on the practical questions']);
+assert(row(b).name && row(b).name === [colOf(b, 'First Name'), colOf(b, 'Family Name')].join(' ').trim(), 'name = first + family name');
+assert.strictEqual(row(c).rating, null, 'no rating yet');
+assert.strictEqual(typeof row(c).interviewed, 'boolean');
+
 // an override, with a note, logged; the proposal later changing is shown
 let r = call('p1Set', { code: a, value: 'COMM', note: 'better fit', seen: '' });
 assert.strictEqual(r.end, 'applied');
@@ -38,6 +46,7 @@ setMaster(a, 'Final Affectation', 'FLER');
 v = call('p1View', {});
 assert.strictEqual(row(a).result, 'COMM', 'an override stays');
 assert.strictEqual(row(a).changed, true, 'the view shows the proposal changed');
+assert.strictEqual(call('p1View', {}).rows.find(x => x.code === a).note, 'better fit', 'the override note comes with the row (admins only)');
 // a stale seen is dropped with the sheet's value; a bad value is refused
 assert.deepStrictEqual(JSON.parse(J(call('p1Set', { code: a, value: 'IT', seen: 'HR' }))), { end: 'dropped', sheet: 'COMM' });
 assert.throws(() => call('p1Set', { code: a, value: 'NOPE' }), /must be one of/);

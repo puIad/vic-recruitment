@@ -164,6 +164,7 @@ export function again(e: PendingEntry, built: number | undefined, at: number): P
     return { kind: "alert", alert: e.alert, op: e.op, seen, at, until: e.until, built }
   }
   if (e.kind === "bmove") return null
+  if (e.kind === "result") return { kind: "result", code: e.code, value: e.value, seen: e.sheet ?? e.seen, note: e.note, at }
   if (e.kind === "binome") return { kind: "binome", binome: e.binome, op: e.op, value: e.value, seen: e.seen, note: e.note, until: e.until, codes: e.codes, at }
   if (e.kind === "setting") return { kind: "setting", key: e.key, value: e.value, seen: e.sheet ?? e.seen, at, built }
   if (e.kind === "team") return { kind: "team", email: e.email, value: e.value, seen: e.sheet === undefined ? e.seen : e.sheet === "true", at }

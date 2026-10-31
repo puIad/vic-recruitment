@@ -10,6 +10,7 @@
 //   Pending changes: Settings › General › Pending changes (admin@ is the owner); Redis and Queues are faked in memory. With it
 //   on, alert actions, Save settings and My binome saves (?as=member) take the pending path.
 //   --away = pending changes on, and three of admin@'s changes dropped while they were away: the next-visit dialog (slice 4).
+//   --results = ratings, notes, proposals and choices for the Results page (npm run mock -- --results).
 //   --screening = the default data with Screening on and a linked members sheet: applications held for review (dots, one
 //   word, a non-answer), a VIC member declined silently, one declined by an admin, one with a binome flagged (npm run mock -- --screening).
 const http = require('http'), crypto = require('crypto');
@@ -158,6 +159,23 @@ if (process.argv.includes('--away') && !empty) {
   put({ cell: 'alert:' + a.id, kind: 'alert', alert: a.id, op: 'resolve', value: 'RESOLVED', seen: 'OPEN', sheet: 'SNOOZED' });
   put({ cell: 'setting:DIGEST_HOUR', kind: 'setting', key: 'DIGEST_HOUR', value: 9, seen: 8, sheet: '7' });
   put({ cell: 'alert:' + st.alerts[1].id, kind: 'alert', alert: st.alerts[1].id, op: 'mute', value: 'MUTED', seen: 'OPEN', reason: 'retries ran out' });
+}
+// --results = candidates with ratings, notes, proposals and 2nd choices for the Results page (docs/admin-features.md › The results view);
+// a few have no proposal (Needs a decision) and a few were never interviewed. The interview phase stays open: close it in Maintenance.
+if (process.argv.includes('--results') && !empty) {
+  s.run(`(function () { var sh = master.getSheetByName('Interviewees'), d = sh.getDataRange().getValues(), I = idx_(IV_H), D = ['IT', 'COMM', 'FLER', 'HR'], n = 0;
+    function set(r, h, v) { sh.getRange(r + 1, I[h] + 1).setValue(v); }
+    for (var r = 1; r < d.length; r++) {
+      var code = String(d[r][I.Code]); if (!code || [ST.DUPLICATE, ST.DECLINED, ST.WITHDRAWN].indexOf(d[r][I.Status]) >= 0) continue;
+      var c1 = String(d[r][I['1st Choice']] || code.split('.')[0]).toUpperCase(), c2 = D[(D.indexOf(c1) + 1 + n % 3) % 4];
+      set(r, '1st Choice', c1); set(r, '2nd Choice', c2);
+      n++;
+      if (n % 5 === 0) continue; // never interviewed
+      var rating = Math.round((3.5 + (n * 7919 % 55) / 10) * 10) / 10;
+      set(r, 'Rating', rating); set(r, 'Interview Submitted At', new Date());
+      set(r, 'Binome Notes', ['Calm and clear, concrete examples.', 'Strong on practice, weak on availability.', 'Very motivated but vague on the department.', 'Needs prompting on most questions.'][n % 4]);
+      if (n % 7 !== 0) set(r, 'Final Affectation', rating < 5 ? 'Not accepted' : n % 11 === 0 ? D[(D.indexOf(c1) + 2) % 4] : n % 3 === 0 ? c2 : c1);
+    } })()`);
 }
 const api = { run: require('../web/api/run'), logout: require('../web/api/logout') };
 http.createServer((req, res) => {
