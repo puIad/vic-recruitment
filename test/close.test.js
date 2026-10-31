@@ -63,12 +63,18 @@ assert.throws(() => call('closePreview', {}), /Not allowed/);
 as(ADMIN);
 
 // ---- close: a direct write, one log row, the alert clears, both members of every binome are mailed once ----
+// a Rating typed just before the close, not yet synced: the first sync after the close copies it, no alert (its sheet is guarded from then on)
+put(c1, 'Rating', 8);
 const sent = outbox().length;
 let out = call('interviewClose', { op: 'close' }).result;
 assert.strictEqual(out.on, true);
 const closed = m.call('webState').close;
 assert.deepStrictEqual([closed.on, closed.by], [true, ADMIN]);
 assert.strictEqual(alerts('CLOSE_DUE').length, 0, 'closing clears the due alert');
+call('sync');
+assert.deepStrictEqual([masterOf(c1, 'Rating'), alerts('LOCKED_EDIT').length], [8, 0], 'an edit from before the close is kept');
+call('adminSet', { code: c1, fields: [{ field: 'Rating', value: 7, seen: '8' }] }); // back to 7 for what follows
+call('sync');
 assert.strictEqual(alerts('CLOSE_DUE', 'AUTO-RESOLVED').length + alerts('CLOSE_DUE', 'RESOLVED').length, 1);
 const mails = outbox().slice(sent).filter(x => /interview phase is closed/i.test(x.subject));
 const people = m.call('webState').binomes.filter(b => b.status === 'ACTIVE' || b.status === 'PAUSED').reduce((n, b) => n + b.people.length, 0);
