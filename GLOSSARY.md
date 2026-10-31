@@ -120,6 +120,16 @@ _Avoid_: delivered, received
 
 ## Results
 
+**Interview phase**:
+The time during which binomes can change every interview they have done. An admin closes it, usually around its scheduled
+close date, and can reopen it until results are final. Late interviews stay possible after it closes.
+_Avoid_: interview period, final (for the close)
+
+**Locked interview**:
+An interview with a form on file while the interview phase is closed. Its form, Rating and Final Affectation can be changed
+only by an admin; a change typed in the sheet is put back.
+_Avoid_: final interview, frozen, done (Interview Done alone locks nothing)
+
 **Proposal**:
 The department or Not accepted that a binome's Final Affectation says for a candidate. It becomes the candidate's
 phase-1 result unless the deliberation overrides it.

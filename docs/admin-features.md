@@ -95,9 +95,8 @@ Changes logs the skip. **Let the form fill it**, next to each of the two fields 
 values back right away (blank if there is no form yet), so later form saves update them again; it is logged and the mark
 goes. A binome can still change the two by hand, which also clears the mark.
 
-**After the interview phase.** Binomes edit their columns until the interview phase closes; after that, only admins
-change interviews already done. How the phase closes is
-[#183](https://github.com/puIad/vic-recruitment/issues/183).
+**After the interview phase.** Once the phase closes, only admins change Rating, Final Affectation and the form of an
+interview already done; binomes keep the other columns. See [Closing the interview phase](#closing-the-interview-phase).
 
 **Log.** One row per changed field in Interviewee Changes: `Admin set <field>`, old value, new value. It shows in Change
 history.
@@ -691,3 +690,86 @@ and a code change removes the banner after the season.
 **Deploy.** Asked before each one: clasp first (the stamp, `webPulse`, the watchdog, `reauthorize`), since older pages ignore the new
 field, then Vercel (the banner and the pill). The owner installs the watchdog trigger from their own account, and vic.rh tries the steps
 once.
+
+## Closing the interview phase
+
+Decided in [#183](https://github.com/puIad/vic-recruitment/issues/183) (owner, 2026-10-31). Binomes stop changing the results of
+interviews already done, late interviews stay possible, and admins keep every edit. [Make results final](#how-a-phase-1-result-is-decided)
+is refused until the phase is closed.
+
+**Who.** Every Master editor sets the date, closes and reopens. Members never see these controls.
+
+**Where.** A Maintenance row with the date, Close and Reopen, so this doesn't wait for the Results page. The banner below and the
+Results page's final bar link to it.
+
+**The date.** Optional, in Algiers time, and only a reminder: nothing locks by itself, and an admin can close with no date or before it.
+It is a setting, so changing it is a pending change. My binome shows it as soon as it is set.
+
+**When the date passes.** One HIGH `CLOSE_DUE` alert, mailed to admins and never to binomes, and a banner on every admin page. The alert
+comes from the sync, and the banner from the date itself, so it still shows if the sync has stopped. Both clear when someone closes or
+moves the date, and a new date can raise them again.
+
+**Closing.** A preview of counts first: forms that will lock, Interview Done ticked with no form (named, so admins can chase them), and
+candidates not interviewed yet. Nothing blocks the close. It is a direct write, kept in a script property with who and when, and a row
+in Member Changes logs it.
+
+**What locks.** A candidate with a form on file, a saved dashboard form or a logged Google Form, while the phase is closed. Interview Done
+without a form locks nothing, so the binome can still file it. On such a row three things lock:
+- the interview form;
+- Rating;
+- Final Affectation.
+
+Contacted, Interview Day, Time, Interview Done and Notes stay open. They can't change who gets a result: a candidate with a form stays
+`INTERVIEWED` whatever Contacted says.
+
+**Late interviews.** A candidate with no form is untouched: the binome fills everything in and saves the form, which locks those three at
+once. The first sync that logs a late form copies what it finds, as it does today, and guards the row from then on.
+
+**On the dashboard.** My binome shows the two fields and the form read-only on a locked row, with a line saying the interview phase is closed
+and to ask an admin. The script refuses too, so an old page can't get through: `memberSet_` answers that field with an error,
+`interviewSave_` throws, and a queued edit of Rating or Final Affectation is dropped with that reason. An unsynced form has no mark in the
+sheet yet, so the check reads the Interview Answers tab as well, only while closed. An admin in a binome is locked on My binome too and
+uses the candidate's details.
+
+**In the sheet: no range protection.** This replaces the range protection in the owner's first answer. The binome columns are holes in a
+sheet-wide protection, so locking one row means rewriting that sheet's holes. Only the sheet's owner can rewrite a protection, so an admin's
+click can't do it and the lock would wait on vic.rh's trigger. Re-protect and Repair would reopen every row. The Interview Answers tab has
+no protection at all, and a hand edit there refills Rating, so a check was needed either way. The sync does the job instead:
+- **Restoring.** Each sync that reads a sheet compares the locked rows' Rating and Final Affectation with the Master's copy. A difference is
+  written back, with a cell note saying to ask an admin. A hand edit in the Interview Answers tab is restored from Dashboard Interviews.
+- **The alert.** One MEDIUM `LOCKED_EDIT` naming the candidate, the field and what was typed, in the dashboard and the digest, with no mail
+  to the binome. An admin who types in the sheet is restored too, and the alert says to use the dashboard.
+- **Google Forms.** A second form raises `DUPLICATE_INTERVIEW` as today and the first still counts. An edited response changes neither field.
+- **The gap.** A hand edit shows until the next sync reads the sheet: at most one interval, since the edit moves Drive's last-updated.
+- **Edits typed before the close.** The sync after a close, or after a form is logged, copies as usual and the guard starts with the next
+  one. So an edit from before the close is kept, and one made in that interval is too.
+
+**Admins.** They change everything as before. Rating and Final Affectation use the [Binome's columns](#admins-fill-in-a-binomes-columns),
+and while closed that write also updates the Master's row in the same call, so the guard doesn't undo it. The interview form becomes
+editable from a candidate's details, reusing My binome's form with the admin's own access to the sheet. It is stamped as edited by them, with
+the usual `seen` check, and refills the two fields only where they still hold what the form wrote. A Google Form's answers stay read-only;
+the two fields are how an admin changes that outcome. This form edit works whether the phase is open or closed.
+
+**Reopening.** Every Master editor, with a required reason, logged like the close. Refused once results are final: Reopen results comes first.
+It clears the passed date and offers a new one, so `CLOSE_DUE` doesn't fire again at once. Rows unlock at once, and closing again later
+locks by the same rule. One wrong row doesn't need a reopen, since an admin can edit it directly.
+
+**Mail.** Closing and reopening each mail every member of an active or paused binome once, through `mail_()`, so they land in the
+[Mail Log](#email-and-notification-status). The close mail says what locks, that candidates not yet interviewed can still be interviewed, and
+to ask an admin for a correction.
+
+**Timing alerts.** `NOT_CONTACTED`, `NO_DATE` and `OVERDUE` stop being raised while the phase is closed. Open ones close at the next sync,
+through the usual auto-resolve, and they come back on a reopen. The candidates left show as Needs a decision in the Results view, and the
+close preview names how many.
+
+**Writes.** The date goes through pending changes and everything else is a direct write. The close state is in a script property, out of the
+Master, so no `MANUAL_EDIT`. Restores write only the binome sheet, back to the value the Master already holds. Reset clears the close state.
+
+**Size.** Medium: about 150 to 200 lines of script (state, alert, three refusals, guard, admin form save, two mails, silenced alerts), about 150
+of UI (Maintenance row, preview, banner, My binome's locked state, form in the details), and tests for the guard's timing. One build session
+plus review. It needs [Admins fill in a binome's columns](#admins-fill-in-a-binomes-columns) first, or admins couldn't fix Rating and Final
+Affectation on a locked row. If the Mail Log isn't in yet, the mails start logging when it lands.
+
+**Deploy.** Asked before each one: clasp first (the refusals don't depend on the page), then Vercel. No new scope, so vic.rh has nothing to
+re-approve, and the mailer does not change. Try a close and a reopen on the mock data of `test/webdev.js` before the live close. It must be
+live before the deliberation around 12 Nov.
