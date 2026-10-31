@@ -41,6 +41,9 @@ import { REPAIR_LABEL, repairOf, useQuick, type LocateTarget, type SnoozeFor } f
 import { useVic } from "@/lib/vic/store"
 import { useUi } from "@/lib/vic/ui"
 import type { Alert, AppView, FormView, QuickInfo, RegView } from "@/lib/vic/types"
+import { FormAnswers, FormsError } from "@/components/interview-forms"
+import { useFormsRead } from "@/lib/vic/forms"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { MemberName } from "@/components/member-name"
 import { REVIEW, TIMING } from "./alert-kinds"
@@ -125,6 +128,32 @@ function Who({ v }: { v: RegView }) {
         {v.binome ? ` · ${v.binome}` : " · no binome"} · registered {v.registered}
       </span>
     </p>
+  )
+}
+
+/** What the form(s) of a form alert answered, read when the alert opens (webRun interviewForms by the Interview Log key). Two keys sit
+ *  side by side (a duplicate's first and latest form). Nothing on a script that sends no key. */
+function AlertAnswers({ keys }: { keys: (string | undefined)[] }) {
+  const list = keys.filter((k): k is string => !!k)
+  if (!list.length) return null
+  return <AlertAnswersRead keys={list} />
+}
+function AlertAnswersRead({ keys }: { keys: string[] }) {
+  const { data, error, retry } = useFormsRead({ key: keys[keys.length - 1] })
+  if (error) return <FormsError error={error} retry={retry} />
+  if (!data) return <Skeleton className="h-32 rounded-xl" />
+  return (
+    <div className={cn("grid gap-3", keys.length > 1 && "sm:grid-cols-2")}>
+      {keys.map((k, i) => {
+        const form = data.forms.find((x) => x.key === k)
+        return (
+          <div key={k} className="min-w-0 space-y-2">
+            <p className="font-bold">{keys.length > 1 ? (i === 0 ? "First form's answers" : "Latest form's answers") : "Its answers"}</p>
+            {form ? <FormAnswers form={form} read={data} /> : <p className="text-sm text-muted-foreground">This form is no longer in the Interview Log.</p>}
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -421,7 +450,7 @@ function PickPanel({ a, f }: { a: Alert; f: FormView }) {
 function FormsPanel({ a, f, first }: { a: Alert; f: FormView; first?: FormView }) {
   const quick = useQuick()
   const { busy, pending, act } = useBusy()
-  if (!first) return <Well><FormFacts f={f} /></Well>
+  if (!first) return <><Well><FormFacts f={f} /></Well><AlertAnswers keys={[f.key]} /></>
   const keep = (which: "first" | "latest") => (
     <ActionButton id={which} pending={pending} busy={busy} icon={Check} variant="soft" onClick={act(which, () => quick.keepForm(a, which))}>
       Keep this one
@@ -435,6 +464,9 @@ function FormsPanel({ a, f, first }: { a: Alert; f: FormView; first?: FormView }
       <Well className="flex flex-col">
         <FormFacts f={f} title="Latest form" right={keep("latest")} />
       </Well>
+      <div className="sm:col-span-2">
+        <AlertAnswers keys={[first.key, f.key]} />
+      </div>
     </div>
   )
 }
@@ -660,13 +692,13 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     links.push({ key: "team", label: "Their Team row", target: "team" })
   } else if (log && a.type === "UNKNOWN_INTERVIEWEE") {
     hint = "Link the form to the candidate it was about, or ask its sender to send it again."
-    panel = <PickPanel key={a.id} a={a} f={log.form} />
+    panel = <><PickPanel key={a.id} a={a} f={log.form} /><AlertAnswers keys={[log.form.key]} /></>
     btn("mail", Mail, "Ask to send it again", () => quick.mail([a.id], "submitter"))
     links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (log && WHO.includes(a.type)) {
     const to = log.form.subBinome
     hint = a.type === "NOT_ASSIGNED" ? "Give the candidate to the binome that interviewed them." : "Keep it as it is, or move the candidate to the binome that really interviewed."
-    panel = <Well><FormFacts f={log.form} /></Well>
+    panel = <><Well><FormFacts f={log.form} /></Well><AlertAnswers keys={[log.form.key]} /></>
     if (a.type !== "NOT_ASSIGNED") btn("fine", Check, "It's fine, keep it", () => resolve([a.id]), "default")
     if (a.code && to && to !== a.binome) btn("move", MoveRight, `Move ${a.code} to ${to}…`, () => openMove({ code: a.code, binome: to, alertId: a.id }), a.type === "NOT_ASSIGNED" ? "default" : "outline")
     else if (a.code && a.type === "NOT_ASSIGNED") btn("move", MoveRight, "Pick a binome…", () => openMove({ code: a.code, alertId: a.id }), "default")

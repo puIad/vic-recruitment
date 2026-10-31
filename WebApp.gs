@@ -751,23 +751,26 @@ function buildState_(ctx) {
 
   const byStatus = {}; Object.keys(ST).forEach(k => { byStatus[ST[k]] = 0; });
   const byDep = {}; DEPTS.forEach(d => { byDep[d] = 0; });
-  const perBin = {};
+  const perBin = {}, blank = () => ({ assigned: 0, interviewed: 0, withdrew: 0, open: 0, contacted: 0, scheduled: 0, notContacted: 0, noDate: 0, overdue: 0 });
   lap('bPre'); const loadOf = loads_(ctx); // the load pickBinome compares (BALANCE_BY), for Settings › General
   ctx.iv.data.forEach(r => {
     if (!r[I.Code] && !r[I['Response Key']]) return;
     byStatus[r[I.Status]] = (byStatus[r[I.Status]] || 0) + 1;
     if (isOut_(r[I.Status])) return;
     if (byDep[r[I['1st Choice']]] !== undefined) byDep[r[I['1st Choice']]]++;
-    const p = r[I.Binome] && (perBin[r[I.Binome]] = perBin[r[I.Binome]] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 });
+    const p = r[I.Binome] && (perBin[r[I.Binome]] = perBin[r[I.Binome]] || blank());
     if (!p) return;
     p.assigned++;
     if (r[I.Status] === ST.INTERVIEWED) p.interviewed++;
     if (r[I.Status] === ST.WITHDRAWN) p.withdrew++;
+    if ([ST.CONTACTED, ST.SCHEDULED, ST.INTERVIEWED].indexOf(r[I.Status]) >= 0) p.contacted++;
+    if ([ST.SCHEDULED, ST.INTERVIEWED].indexOf(r[I.Status]) >= 0) p.scheduled++;
   });
 
   const open = ctx.alerts.table.data.filter(r => r[A.Status] === 'OPEN');
   const base = open.some(r => r[A.Type] === 'MANUAL_EDIT') ? loadBaseline_() : null;
-  open.forEach(r => { if (perBin[r[A.Binome]]) perBin[r[A.Binome]].open++; });
+  const TRACKED = { NOT_CONTACTED: 'notContacted', NO_DATE: 'noDate', OVERDUE: 'overdue' }; // the Tracker tab's alert columns
+  open.forEach(r => { const p = perBin[r[A.Binome]]; if (p) { p.open++; if (TRACKED[r[A.Type]]) p[TRACKED[r[A.Type]]]++; } });
   const alertCounts = { HIGH: 0, MEDIUM: 0, INFO: 0 };
   open.forEach(r => { alertCounts[r[A.Severity]] = (alertCounts[r[A.Severity]] || 0) + 1; });
 
@@ -808,11 +811,12 @@ function buildState_(ctx) {
     ivHistory: ivHistory,
     teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
     binomes: ctx.binomes.map(b => {
-      const p = perBin[b.code] || { assigned: 0, interviewed: 0, withdrew: 0, open: 0 };
+      const p = perBin[b.code] || blank();
       return { code: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
         people: b.members.map(m => ({ name: m.name, email: m.email })), access: (opened[b.code] || {}).level || '',
         byHand: b.status === 'DRAFT' && hand.indexOf(handKey_(b.members.map(m => m.email))) >= 0,
         assigned: p.assigned, interviewed: p.interviewed, withdrew: p.withdrew, open: p.open,
+        contacted: p.contacted, scheduled: p.scheduled, notContacted: p.notContacted, noDate: p.noDate, overdue: p.overdue,
         load: loadOf[b.code] || 0 };
     }),
     alertCounts: alertCounts,
@@ -946,7 +950,7 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -992,6 +996,7 @@ function webRun(action, args) {
       case 'quick': result = quickCore_(String(args.op || ''), args); break;
       case 'candidateGet': result = candidateGet_(args.code); break;
       case 'binomeColumnsGet': result = binomeColumnsGet_(args.code); break;
+      case 'interviewForms': result = interviewForms_(args); break;
       case 'adminSet': result = adminSet_(a, args); break;
       case 'adminFormFill': result = adminFormFill_(a, args); break;
       case 'editCandidate': result = editCandidateCore_(args.code, args.values); break;

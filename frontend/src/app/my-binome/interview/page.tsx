@@ -17,6 +17,7 @@ import { cellText } from "@/lib/vic/format"
 import {
   asText, branchOf, clearDraft, GUIDELINE_URL, missingOf, readDraft, sameAnswers, sectionsInPlay, toSend, useBinomeBase, writeDraft, type Answers,
 } from "@/lib/vic/interview"
+import { useProfile } from "@/lib/vic/analytics"
 import { useVic } from "@/lib/vic/store"
 import type { InterviewData, InterviewQuestion, InterviewSaved, InterviewSection, RunOut } from "@/lib/vic/types"
 import { cn } from "@/lib/utils"
@@ -255,6 +256,8 @@ export default function InterviewPage() {
   const navigate = useNavigate()
   const base = useBinomeBase(), back = base || "/"
   const member = useVic((s) => s.member)
+  const isAdmin = useVic((s) => s.gate.mode === "ok")
+  const showProfile = useProfile((s) => s.show)
   const user = useVic((s) => (s.member?.user || s.state?.user || "").toLowerCase())
   const adminLoaded = useVic((s) => s.gate.mode === "ok" && !s.loading)
   const patchInterview = useVic((s) => s.patchInterview)
@@ -548,10 +551,15 @@ export default function InterviewPage() {
                 <p className="text-xl font-extrabold text-heading">{fromForm ? "Sent with the Google Form" : "Not filled in yet"}</p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   {fromForm
-                    ? `This interview came in ${cand?.interview?.at ? "on " + cand.interview.at + " " : ""}before the dashboard kept a copy of the answers. They are in the Master's Interview Responses tab.`
+                    ? `This interview came in ${cand?.interview?.at ? "on " + cand.interview.at + " " : ""}before the dashboard kept a copy of the answers.${isAdmin ? "" : " They are in the Master's Interview Responses tab."}`
                     : "You can view this binome but not fill it in here, so the form opens in Google Forms with your binome and this candidate already filled in."}
                 </p>
               </div>
+              {fromForm && isAdmin && (
+                <Button onClick={() => showProfile(code)}>
+                  Read the answers <ArrowUpRight />
+                </Button>
+              )}
               {!fromForm && gform && (
                 <Button asChild>
                   <a href={gform} target="_blank" rel="noopener noreferrer">

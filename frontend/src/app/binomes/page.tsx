@@ -31,6 +31,8 @@ import { PauseDialog } from "./components/pause-dialog"
 import { TagDialog } from "./components/tag-dialog"
 
 const NONE: Binome[] = []
+/** The Tracker tab's counts: sortable, off until View turns them on. */
+const TRACKER_HIDDEN = { contacted: false, scheduled: false, withdrew: false, "not contacted": false, "no date": false, overdue: false }
 /** A binome as its author's screen shows it: their pending pause over the snapshot, with its mark. */
 type Row = Binome & { mark?: Mark<PendingEntry> }
 
@@ -156,6 +158,21 @@ const columns: ColumnDef<Row>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} title="Open alerts" />,
     cell: ({ row }) => <OpenChip code={row.original.code} open={row.original.open} />,
   },
+  ...(
+    [
+      ["contacted", "Contacted", "contacted"],
+      ["scheduled", "Scheduled", "scheduled"],
+      ["withdrew", "Withdrew", "withdrew"],
+      ["not contacted", "Not contacted", "notContacted"],
+      ["no date", "No date", "noDate"],
+      ["overdue", "Overdue", "overdue"],
+    ] as const
+  ).map(([id, title, k]): ColumnDef<Row> => ({
+    id,
+    accessorFn: (b) => b[k] ?? 0,
+    header: ({ column }) => <DataTableColumnHeader column={column} title={title} />,
+    cell: ({ row }) => <span className="num text-sm">{row.original[k] ?? 0}</span>,
+  })),
   { id: "actions", enableHiding: false, cell: ({ row }) => <div className="flex justify-end"><RowActions b={row.original} /></div> },
 ]
 
@@ -295,6 +312,7 @@ export default function BinomesPage() {
         loading={loading}
         getRowId={(b) => b.code}
         initialSorting={[]}
+        initialVisibility={TRACKER_HIDDEN}
         empty={
           <div className="space-y-1 py-6">
             <p className="font-bold">{binomes.length ? "No match" : "No binomes yet"}</p>
