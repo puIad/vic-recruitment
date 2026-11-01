@@ -268,6 +268,12 @@ function dropsSync_(ctx) {
   if (mailed.length) props.setProperty('DROPS_MAILED', JSON.stringify(mailed)); else props.deleteProperty('DROPS_MAILED');
   (out.alert || []).forEach(email => ctx.alerts.add({ severity: 'MEDIUM', type: 'DROPPED', code: '', binome: '', key: 'DROPPED|' + email,
     msg: email + ' has dashboard changes that never reached the sheet and has not answered them. They are asked on their next visit; check with them.' }));
+  // dashboard calls that should never fail (web/api/run.js): repeats or two people are an outage, one stray failure isn't. One alert and
+  // one mail per action and message; it stays open until someone resolves it, so a later failure of the same kind only mails after that.
+  (out.failed || []).filter(f => f.n >= 3 || f.accounts.length >= 2).forEach(f => ctx.alerts.add({ severity: 'HIGH', type: 'CALLS_FAILING', code: '', binome: '',
+    key: 'CALLS_FAILING|' + f.action + '|' + f.msg.slice(0, 80),
+    msg: f.n + ' dashboard calls (' + f.action + ') failed since the last sync, for ' + f.accounts.length + ' account(s) (' + f.accounts.slice(0, 5).join(', ') + (f.accounts.length > 5 ? ', ...' : '') +
+      '): "' + f.msg + '". Check My binome as a member who is not an admin. Resolve this once it is fixed.' }));
   const open = out.open || [], KI = ctx.alerts.table.I;
   ctx.alerts.resolveWhere(r => /^DROPPED\|/.test(r[KI.Key]) && open.indexOf(String(r[KI.Key]).slice(8)) < 0);
 }
