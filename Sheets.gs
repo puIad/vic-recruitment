@@ -3,6 +3,8 @@
  * ===========================================================================*/
 
 let _ssOpened = null; // the Master, found once per execution: each call was getActive + a Properties read + an open, ~20 per publish
+// A member's call must never read through this or S_(): they can't open the Master, and Google fails the whole call as it ends, even
+// when the script caught the refusal. Their data comes from their slice, script properties or their own binome sheet. CLAUDE.md has the rule.
 function ss_() {
   const t0 = Date.now();
   if (!_ssOpened) {

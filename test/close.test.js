@@ -53,28 +53,19 @@ assert.strictEqual(alerts('CLOSE_DUE').length, 1, 'raised once');
 
 // ---- a member's calls never open the Master: live (1 Nov 2026) every member's webState failed on it, though closeDate_ caught the refusal ----
 const adminClose = m.call('webState').close;
-run(`var __touched = [], __masterObj = __files[__props.MASTER_ID].obj;
-  __files[__props.MASTER_ID].obj = new Proxy(__masterObj, { get(t, k) {
-    if (typeof t[k] !== 'function' || ['getOwner', 'getEditors', 'getId'].indexOf(k) >= 0) return t[k]; // access_ asks these, Drive answers
-    return function () { __touched.push(k + ': ' + new Error().stack.split('\\n').slice(2, 5).join(' <')); throw new Error('You do not have permission to access the requested document.'); };
-  } })`);
-const untouched = (what, fn) => {
-  run('_settings = null; _ssOpened = null; __touched = []');
-  const out = fn();
-  assert.deepStrictEqual(JSON.parse(run('JSON.stringify(__touched)')), [], what + ' opened the Master');
-  return out;
-};
 as(mem);
-untouched('webAccess', () => m.call('webAccess'));
-untouched('webPulse', () => m.call('webPulse', true));
-assert.strictEqual(untouched('webState', () => m.call('webState')).close.date, adminClose.date, 'the date comes with the slice');
-untouched('memberSet', () => set(c3, [{ field: 'Notes', value: 'seen', seen: '' }]));
-untouched('interviewGet', () => get(c2));
-untouched('webApply', () => m.call('webApply', { v: 1, changes: [{ id: 'mm', kind: 'field', code: c3, field: 'Notes', value: 'seen twice', seen: 'seen', at: Date.now() }] }));
+// the mock itself, since every member test leans on it: a refusal the script catches still fails the call (seed.js)
+run('function __caughtRead() { try { S_(); } catch (e) { /* as closeDate_ did */ } return 1; }');
+assert.throws(() => m.call('__caughtRead'), /You do not have permission to access the requested document/);
+m.call('webAccess');
+m.call('webPulse', true);
+assert.strictEqual(m.call('webState').close.date, adminClose.date, 'the date comes with the slice');
+set(c3, [{ field: 'Notes', value: 'seen', seen: '' }]);
+get(c2);
+m.call('webApply', { v: 1, changes: [{ id: 'mm', kind: 'field', code: c3, field: 'Notes', value: 'seen twice', seen: 'seen', at: Date.now() }] });
 run('__cacheClear()');
-const fromSheet = untouched('webState from the sheet', () => m.call('webState'));
+const fromSheet = m.call('webState');
 assert.deepStrictEqual([fromSheet.fromSheet, fromSheet.close.date], [true, null], 'no slice, no date until the next sync');
-run('__files[__props.MASTER_ID].obj = __masterObj; _settings = null; _ssOpened = null');
 as(ADMIN);
 call('sync');
 put(c3, 'Notes', '');

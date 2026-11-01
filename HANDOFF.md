@@ -71,6 +71,10 @@ mock reseeds it and signs everyone out: open `/dev-login?as=…` again. More: [d
 
 - The mock can't catch Apps Script quirks (protections, validations, locale parsing, trigger auth): verify on the live
   Master in TEST_MODE.
+- A member's call that reads the Master fails as it ends, even when the script caught the refusal, and the log line has no
+  stack (2026-11-01: 20 hours of "You do not have permission to access the requested document." on My binome). The rule is
+  in [CLAUDE.md](CLAUDE.md); the mock enforces it in `m.call`. Removing someone's admin rights makes them an ordinary member at
+  their next call, which is the quickest way to see a member's view.
 - Admins can only change members / cover / apply fixes if they can edit the Binome Sheets folder.
 - The script runs on the `vic-recruitment` Cloud project, so Google APIs are not auto-enabled: "Permission denied while
   enabling APIs: X" = enable API X in that project (Drive is needed; see [docs/vercel.md](docs/vercel.md#rebuilding-the-google-cloud-side-if-ever-needed)).

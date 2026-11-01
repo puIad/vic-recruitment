@@ -15,7 +15,7 @@ function parseCloseDate_(text) {
   if (!d || isNaN(d) || +m[2] > 12 || +m[3] > 31 || +(m[4] || 0) > 23 || +(m[5] || 0) > 59) throw new Error('INTERVIEW_CLOSE_DATE must be YYYY-MM-DD or YYYY-MM-DD HH:mm, or empty.');
   return d;
 }
-function closeDate_() { try { return parseCloseDate_(S_().INTERVIEW_CLOSE_DATE); } catch (e) { return null; } }
+function closeDate_() { const raw = S_().INTERVIEW_CLOSE_DATE; try { return parseCloseDate_(raw); } catch (e) { return null; } } // the try is for a bad date only: never hide a refused read
 
 /** What pages show: {on, at, by, date (ms or null)}. A closed phase shows its date as a past reminder only. date: a member's, from
  *  their slice: their call must not open the Master, Google fails it even when the refusal is caught (live, 1 Nov 2026). */
