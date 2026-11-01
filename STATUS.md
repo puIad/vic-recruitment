@@ -6,7 +6,7 @@ else: [docs/](docs/README.md).
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
 
-**Script @205 / @206 from main `e4ba7a6` (2026-11-01).** The script runs main again, not `alert-live`: base a script hotfix on main. This put #195, #197 and #198's `locate` cleanup on the script three days before the close. #195 stays inert until its setup: Send results is refused while `JOIN_URL` and `JOIN_SECRET` are unset in the script properties, and the timed sync pushes nothing to vic-enp before the first result mail. vic-enp's part of #195 is merged on vic-enp's main and not deployed. The member check after the deploy is checked off (owner, 2026-11-01).
+**Script @205 / @206 from main `e4ba7a6` (2026-11-01).** The script runs main again, not `alert-live`: base a script hotfix on main. This put #195, #197 and #198's `locate` cleanup on the script three days before the close. #195 stays inert until its setup: Send results is refused while `JOIN_URL` and `JOIN_SECRET` are unset in the script properties, and the timed sync pushes nothing to vic-enp before the first result mail. vic-enp's part of #195 is in vic-enp's production (Vercel deploys its main; on 2026-11-01 `/api/join-sync` and `/api/join-clicks` answer there). The member check after the deploy is checked off (owner, 2026-11-01).
 
 **Add, edit and remove Team members (#197, live 2026-11-01, script @205 / @206).** Team page: Add member, a row menu (Correct name or email, Department and Pair As, Experienced, Not interviewing, Remove) and an Interviewing filter; the Binomes row menu has Correct for each member; Import after Lock merges. Code in `TeamEdit.gs`, tests in `test/team.test.js`. The pending change of kind `team` now takes a `field`. Never deploy a script older than @205: its apply entry would write a `field` change into the Experienced column.
 
@@ -27,8 +27,8 @@ Schedule, Analytics, Change history and the Overview are checked off (2026-11-01
 Every live check and test still marked open further down was checked off by the owner on 2026-11-01: everything
 works as intended. What remains is work, not checks:
 
-1. **Turn on result mails (#195).** After applications close (4 Nov 23:59 Algiers): deploy vic-enp's part (merged on its
-   main, not deployed), set `JOIN_URL` and `JOIN_SECRET` in the script properties, then Vercel. Send results is refused
+1. **Turn on result mails (#195).** After applications close (4 Nov 23:59 Algiers): vic-enp's part is already live in its
+   production, so set `JOIN_URL` and `JOIN_SECRET` in the script properties, then Vercel. Send results is refused
    until both are set.
 2. **Run Re-protect binome sheets** once on the real sheets (Maintenance, owner only). It has not been run yet.
 3. **Locate links:** the FILE_ERROR File ID and the INTEGRITY sheet spot still have no dashboard page, so their two
