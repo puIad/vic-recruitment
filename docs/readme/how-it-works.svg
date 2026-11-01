@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" width="1200" height="560" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>How VIC Recruitment works</title>
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#127dbb"/>
+      <stop offset="1" stop-color="#69c4af"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2b38"/>
+      <stop offset="1" stop-color="#141e27"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#69c4af"/>
+    </marker>
+    <style>
+      .card { fill: #1b2733; stroke: #2c3e4d; stroke-width: 1.5; }
+      .title { fill: #ffffff; font-size: 19px; font-weight: 700; }
+      .sub { fill: #9fb3c2; font-size: 14px; }
+      .label { fill: #69c4af; font-size: 12.5px; font-weight: 700; letter-spacing: 1.5px; }
+      .edge { stroke: #69c4af; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .edge-dash { stroke: #127dbb; stroke-width: 2; fill: none; stroke-dasharray: 6 6; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="560" rx="24" fill="url(#glow)"/>
+
+  <text x="60" y="62" class="label">IN</text>
+  <text x="510" y="62" class="label">THE MASTER</text>
+  <text x="900" y="62" class="label">OUT</text>
+
+  <!-- inputs -->
+  <rect x="40" y="86" width="300" height="88" rx="14" class="card"/>
+  <text x="62" y="124" class="title">Registration form</text>
+  <text x="62" y="150" class="sub">/apply on vic-enp, one-time code</text>
+
+  <rect x="40" y="196" width="300" height="88" rx="14" class="card"/>
+  <text x="62" y="234" class="title">Interview form</text>
+  <text x="62" y="260" class="sub">filled in by each binome</text>
+
+  <rect x="40" y="306" width="300" height="88" rx="14" class="card"/>
+  <text x="62" y="344" class="title">Team list</text>
+  <text x="62" y="370" class="sub">who interviews, by department</text>
+
+  <!-- core -->
+  <rect x="440" y="120" width="320" height="240" rx="20" fill="url(#brand)"/>
+  <rect x="443" y="123" width="314" height="234" rx="18" fill="#141e27" fill-opacity="0.82"/>
+  <text x="600" y="186" text-anchor="middle" class="title" style="font-size:26px">Master sheet</text>
+  <text x="600" y="218" text-anchor="middle" class="title" style="font-size:22px;fill:#69c4af">+ Apps Script</text>
+  <text x="600" y="262" text-anchor="middle" class="sub">routes candidates to binomes</text>
+  <text x="600" y="286" text-anchor="middle" class="sub">checks timing and hand edits</text>
+  <text x="600" y="310" text-anchor="middle" class="sub">syncs every few minutes</text>
+
+  <!-- outputs -->
+  <rect x="860" y="86" width="300" height="88" rx="14" class="card"/>
+  <text x="882" y="124" class="title">One sheet per binome</text>
+  <text x="882" y="150" class="sub">contact, date, time, notes</text>
+
+  <rect x="860" y="196" width="300" height="88" rx="14" class="card"/>
+  <text x="882" y="234" class="title">Alerts</text>
+  <text x="882" y="260" class="sub">late, missing or wrong, worst first</text>
+
+  <rect x="860" y="306" width="300" height="88" rx="14" class="card"/>
+  <text x="882" y="344" class="title">Emails and a daily digest</text>
+  <text x="882" y="370" class="sub">sent from the club's address</text>
+
+  <!-- edges in -->
+  <path d="M340 130 C 390 130, 400 190, 436 200" class="edge"/>
+  <path d="M340 240 L 436 240" class="edge"/>
+  <path d="M340 350 C 390 350, 400 290, 436 280" class="edge"/>
+  <!-- edges out -->
+  <path d="M760 200 C 800 190, 810 130, 856 130" class="edge"/>
+  <path d="M760 240 L 856 240" class="edge"/>
+  <path d="M760 280 C 800 290, 810 350, 856 350" class="edge"/>
+
+  <!-- dashboard -->
+  <rect x="440" y="430" width="320" height="96" rx="16" class="card" style="stroke:#127dbb"/>
+  <text x="600" y="470" text-anchor="middle" class="title">Dashboard on Vercel</text>
+  <text x="600" y="496" text-anchor="middle" class="sub">runs the script as the signed-in member</text>
+  <path d="M600 428 L 600 366" class="edge-dash"/>
+
+  <text x="40" y="478" class="sub">Google Drive sharing decides</text>
+  <text x="40" y="500" class="sub">who can see and do what.</text>
+</svg>
