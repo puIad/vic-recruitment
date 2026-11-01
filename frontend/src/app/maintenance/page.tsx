@@ -1,4 +1,4 @@
-import { Check, FileSpreadsheet, Mail, MailX, Play, RotateCcw, Send, Share2, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react"
+import { Check, FileSpreadsheet, Mail, MailCheck, MailX, Play, RotateCcw, Send, Share2, ShieldCheck, SlidersHorizontal, TriangleAlert, type LucideIcon } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
@@ -22,7 +22,7 @@ interface Tool {
 
 /** The old Maintenance tools, one row each. Setup installs triggers, so only the owner sees it (the script enforces it too). */
 export default function MaintenancePage() {
-  const { integrity, digest, reshare, setup, resetBinomes, rejections } = useActions()
+  const { integrity, digest, reshare, pairedMail, reprotect, setup, resetBinomes, rejections } = useActions()
   const busy = useVic((s) => s.busy)
   const jobs = useVic((s) => s.jobs), runs = (a: string) => jobs.some((j) => j.action === a)
   const owner = useVic((s) => !!s.access?.owner)
@@ -32,6 +32,8 @@ export default function MaintenancePage() {
     { action: "integrity", icon: FileSpreadsheet, button: Check, title: "Check integrity", label: "Check", run: integrity, text: "Syncs, then opens every binome sheet: missing or extra rows, moved tabs, lost protection, who can edit. Also runs with the daily digest. It stops in time for the web limit and resumes where it stopped." },
     { action: "digest", icon: Mail, button: Send, title: "Send me the digest now", label: "Send", run: digest, text: "Syncs, then emails the admins the daily summary." },
     { action: "reshare", icon: Share2, button: Share2, title: "Re-share binome sheets", label: "Re-share", run: reshare, text: "Adds current members as editors after you swap someone. Refuses while test mode is on." },
+    { action: "pairedMail", icon: MailCheck, button: Send, title: "Email binome members their binome", label: "Send…", run: pairedMail, text: "Lock already sends it. This repairs a failed send, or a binome locked before Lock sent it: the members not told yet get the New binome email, shown first. A failed send stays untold, so pressing it again retries only those." },
+    { action: "reprotect", icon: ShieldCheck, button: ShieldCheck, title: "Re-protect binome sheets", label: "Re-protect", run: reprotect, ownerOnly: true, text: "After adding an admin: protects again every binome sheet that misses them or the trigger account, and closes those sheets' protection alerts. Run it again if it runs out of time." },
     { action: "rejections", icon: MailX, button: Send, title: "Send rejections", label: "Send…", run: rejections, text: "Once recruitment closes: one polite email to each applicant declined at screening (never to VIC members), with the text shown first so you can edit it. Each one is marked as sent, so pressing it again reaches only those not emailed yet. Never automatic." },
     { action: "setup", icon: SlidersHorizontal, button: Play, title: "Run setup again", label: "Run", run: setup, ownerOnly: true, text: "Safe to repeat: re-checks tabs, form links and triggers, and re-applies the sync interval and digest hour after you change them in Settings." },
   ]

@@ -24,6 +24,7 @@ import type {
   ImportConfirm,
   LockCheck,
   NewBinomeCheck,
+  PairedPreview,
   Person,
   RejectionsPreview,
 } from "./types"
@@ -503,6 +504,49 @@ export function useActions() {
           okLabel: "Re-share",
         })
         if (ok) await go("reshare", {}, "Re-share")
+        after()
+      },
+      /** Maintenance › Email binome members their binome: the untold members beside the mail, all or nothing. */
+      async pairedMail() {
+        const p = (await go<PairedPreview>("pairedMail", {}, "Prepare binome emails"))?.result
+        if (!p) return
+        if (!p.count) {
+          await confirm({ title: "Nobody to email", body: <p>Every member of a locked binome has already been emailed their binome.</p>, okLabel: "OK" })
+          return
+        }
+        const ok = await confirm({
+          title: `Email ${p.count} member${p.count === 1 ? "" : "s"} their binome?`,
+          wide: true,
+          body: (
+            <div className="space-y-4">
+              {p.testMode && (
+                <p className="rounded-xl bg-warning-soft px-3 py-2 text-warning">
+                  <b>Test mode is on:</b> only admins are emailed. Non-admins are skipped and stay untold, so they get it once test mode is off.
+                </p>
+              )}
+              <ul className="space-y-1 text-sm">
+                {p.binomes.map((b) => (
+                  <li key={b.code}>
+                    <Mono>{b.code}</Mono>: {b.members.map((m) => `${m.name || m.email} <${m.email}>`).join(", ")}
+                  </li>
+                ))}
+              </ul>
+              <p className="font-semibold">{p.subject}</p>
+              <iframe title="Preview: New binome" sandbox="" srcDoc={p.html} className="h-[26rem] w-full rounded-xl border bg-white" />
+            </div>
+          ),
+          okLabel: `Send ${p.count} email${p.count === 1 ? "" : "s"}`,
+        })
+        if (ok) await go("pairedMail", { send: true }, "Email binome members")
+        after()
+      },
+      async reprotect() {
+        const ok = await confirm({
+          title: "Re-protect binome sheets?",
+          body: <p>For after adding an admin: every binome sheet whose protection misses the trigger account or an admin is protected again, so the sync and the dashboard can write their columns. Sheets already fine are left alone, and it is safe to repeat.</p>,
+          okLabel: "Re-protect",
+        })
+        if (ok) await go("reprotect", { budgetMs: 200000 }, "Re-protect", true) // ends before the 300 s limit; run it again for the rest
         after()
       },
       async resetBinomes(binomes: number, interviewees: number) {

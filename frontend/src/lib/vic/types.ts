@@ -268,6 +268,15 @@ export interface RejectionsPreview {
   testMode: boolean
 }
 
+/** webRun pairedMail without send: the members of locked binomes not told yet, and the New binome mail as the first gets it. */
+export interface PairedPreview {
+  count: number
+  binomes: { code: string; members: { name: string; email: string }[] }[]
+  subject: string
+  html: string
+  testMode: boolean
+}
+
 export interface TeamMember {
   name: string
   email: string
