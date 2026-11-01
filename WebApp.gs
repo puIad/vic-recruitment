@@ -995,10 +995,11 @@ function webRun(action, args) {
   if (a.role !== 'admin') throw new Error('Not allowed');
   _mailBy = a.email;
   if (action === 'setup' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can run Setup');
+  if (action === 'reprotect' && !a.owner) throw new Error('Only the owner (the account that runs the triggers) can re-protect the binome sheets');
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'p1View', 'mailLog', 'mailResendPreview'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'p1View', 'mailLog', 'mailResendPreview', 'pairedMail'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'rejections' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
@@ -1027,6 +1028,8 @@ function webRun(action, args) {
       case 'lockCheck': result = lockCheck_(); break;
       case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;
+      case 'pairedMail': result = args.send ? pairedSend_() : pairedPreview_(); break; // writes only PAIRED_SENT: no publish
+      case 'reprotect': reprotectBinomeSheets(); break;
       case 'resetBinomes': { result = resetBinomesCore_(args.phrase);
         if (!result) busy_();
         _webOut.push('Binomes reset. ' + result.binomes + ' binomes removed, ' + result.retired + ' sheets moved to the Retired binomes folder, ' +

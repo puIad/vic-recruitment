@@ -272,8 +272,11 @@ let oddCode;
   call('webRun', 'integrity');
   const noAdmin = open().filter(a => a.type === 'INTEGRITY' && a.binome === B1);
   assert(noAdmin.length === 1 && /does not list second\.admin@g\.enp\.edu\.dz/.test(noAdmin[0].msg) && /Sync now/.test(noAdmin[0].msg), JSON.stringify(noAdmin.map(a => a.msg)));
-  run('reprotectBinomeSheets()');
-  assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes('second.admin@g.enp.edu.dz')`), 'menu: the new admin listed');
+  // Maintenance › Re-protect: the owner rewrites it and its alert closes at once, without a full check
+  const rp = call('webRun', 'reprotect');
+  assert(/rewritten on 7 binome sheet\(s\); 0 already listed .*; 0 failed\.$/.test(rp.messages[0]), JSON.stringify(rp.messages));
+  assert(run(`__files["${f1}"].obj.sheets[0].protections[0].getEditors().map(u => u.getEmail()).includes('second.admin@g.enp.edu.dz')`), 'the new admin listed');
+  assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'its protection alert resolved');
   call('webRun', 'integrity');
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'every admin listed');
   run(`__files["${f1}"].obj.sheets[0].protections[0].__id = 'kept'`);
