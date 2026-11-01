@@ -14,7 +14,8 @@ import type { Alert, MailDraft, QuickOut, RepairKind } from "./types"
 
 export type MailTo = "binome" | "candidate" | "submitter"
 export type SnoozeFor = "4h" | "24h" | "3d" | "interview"
-export type LocateTarget = "form" | "iv" | "log" | "team" | "binomes" | "cell"
+// the sheet spots the dashboard still can't fix: a binome's File ID and a broken binome sheet
+export type LocateTarget = "binomes" | "cell"
 
 // ops after which the alerts they acted on leave the open list
 const LEAVES = new Set(["edit", "setCell", "exclude", "pickCandidate", "keepForm", "dupNew", "dupSeparate", "repair", "snooze", "mute", "approve", "decline"])

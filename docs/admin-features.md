@@ -43,8 +43,10 @@ results depend on that sign-in, so the answer arrives while the results build ca
   applications.
 - **No checkpoint.** If the build runs late, the deliberation moves; the order and scope stay.
 
-**Locate links.** The alert panels' six "Go to" targets stay until each one's edits and reads have shipped, and #198 then removes the ones
-no longer needed.
+**Locate links.** Done in #198 (2026-11-01). Of the alert panels' six "Go to" targets, two stay: the Binomes row's File ID on a
+FILE_ERROR and the spot in a binome sheet on an INTEGRITY alert, which still have no dashboard path. The form response, Interviewees,
+Interview Log and Team rows went, and so did the binome sheet cell on the timing and date alerts: the candidate's details, its Interview
+form section, the quick-fix panels and the Team page do those jobs. The script's `locate` op still answers all six.
 
 **After results.** What the next phase needs from phase-1 results goes to a phase-2 map, not this spec.
 
