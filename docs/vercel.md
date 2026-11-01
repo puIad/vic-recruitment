@@ -31,7 +31,8 @@ web/                the Vercel project root
   api/apply.js      the queue consumer (topic vic-apply): applies an author's pending changes through webApply, as them
   api/drops.js      the sync's call each cycle (slice 4), guarded by DROPS_SECRET: sweeps entries past their apply-by into
                     drops, takes back what the last sync mailed, returns the drops due an email and the authors due a
-                    DROPPED|<email> admin alert
+                    DROPPED|<email> admin alert; also hands over the failed calls api/run.js noted, for the HIGH
+                    CALLS_FAILING alert (3 failures or 2 accounts in a cycle)
   lib/pending.js    the author's record in Upstash Redis (REST pipeline), the accept step, the queue publish, the sync's sweep
   api/logout.js     marks this browser signed out; never revokes, so signing back in skips consent
   lib/session.js    AES-256-GCM seal/open (node:crypto), cookie helpers

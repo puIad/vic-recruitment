@@ -1,6 +1,7 @@
-// POST /api/drops {mailed} → {mail, alert, open}: the sync's call each cycle (docs/plans.md › Slice 4), from Apps Script as
+// POST /api/drops {mailed} → {mail, alert, open, failed}: the sync's call each cycle (docs/plans.md › Slice 4), from Apps Script as
 // the club account. Guarded by DROPS_SECRET (Bearer), the same value as the script property; unset here = 503, unset in the
-// script = no call. No cookie, no Google call: it reads and marks the pending-changes records only (web/lib/pending.js forSync).
+// script = no call. No cookie, no Google call: it reads and marks the pending-changes records (web/lib/pending.js forSync) and
+// takes the failed dashboard calls run.js noted (takeFailed).
 const crypto = require('crypto');
 const S = require('../lib/session'), P = require('../lib/pending');
 
@@ -15,7 +16,8 @@ module.exports = async (req, res) => {
   try { b = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {}; } catch (e) { return S.sendJson(res, 400, { error: 'Bad request' }); }
   try {
     const out = await P.forSync(b.mailed, Date.now());
-    console.log(JSON.stringify({ at: 'drops', mail: out.mail.length, alert: out.alert.length, open: out.open.length }));
+    out.failed = await P.takeFailed();
+    console.log(JSON.stringify({ at: 'drops', mail: out.mail.length, alert: out.alert.length, open: out.open.length, failed: out.failed.length }));
     S.sendJson(res, 200, out);
   } catch (e) {
     console.warn(JSON.stringify({ at: 'drops', error: String(e.message).slice(0, 200) }));

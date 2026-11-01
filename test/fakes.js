@@ -20,6 +20,9 @@ module.exports = function fakes(P) {
       case 'SADD': { const o = db[k] = h || new Set(); a.forEach(x => o.add(x)); return a.length; }
       case 'SREM': if (h) a.forEach(x => h.delete(x)); return a.length;
       case 'SMEMBERS': return h ? [...h] : [];
+      case 'RPUSH': { const o = db[k] = h || []; o.push(...a); return o.length; }
+      case 'LTRIM': if (h) db[k] = h.slice(a[0]); return 'OK'; // only LTRIM k -n -1: keep the last n
+      case 'LRANGE': return h ? h.slice() : [];
       case 'SCAN': { // SCAN cursor MATCH <prefix>* COUNT n: everything in one page
         const pre = a[1].replace(/\*$/, '');
         return ['0', Object.keys(db).filter(x => x.startsWith(pre) && live(x) !== undefined)];
