@@ -47,6 +47,12 @@ const assert = require('assert');
   assert.strictEqual(st.binomes[0].byHand, true);
   assert.strictEqual(row('kahina.remili@g.enp.edu.dz')[T.Notes], '', 'Notes rechecked');
 
+  // Remove waits for the document lock (the apply entry writes Team cells by row number): busy, nothing removed
+  run('__docLockBusy = true');
+  assert.throws(() => call('webRun', 'teamRemove', { email: 'houria@g.enp.edu.dz' }), /^Error: BUSY:/);
+  run('__docLockBusy = false');
+  assert(row('houria@g.enp.edu.dz'), 'still in the Team tab');
+
   // Remove: the row goes, the draft is dropped
   out = call('webRun', 'teamRemove', { email: 'houria@g.enp.edu.dz' }).result;
   assert(/left draft B\.01/.test(out.warning));
@@ -71,6 +77,11 @@ const assert = require('assert');
   assert.throws(() => call('webRun', 'teamFix', { email: e, newEmail: b.people[1].email }), /already in the Team tab/);
   const pv = call('webRun', 'teamFix', { email: e, newEmail: ne, dryRun: true }).result;
   assert.deepStrictEqual([pv.binome, pv.notice], [b.code, true]);
+  // the Binomes write fails: nothing else is written either
+  run("var __svB = MockRange.prototype.setValues; MockRange.prototype.setValues = function (v) { if (this.sh.name === 'Binomes') throw new Error('Service unavailable'); return __svB.call(this, v); }");
+  assert.throws(() => call('webRun', 'teamFix', { email: e, newEmail: ne }), /Nothing changed/);
+  run('MockRange.prototype.setValues = __svB');
+  assert(tab('Team').some(x => x[T.Email] === e) && !tab('Team').some(x => x[T.Email] === ne), 'the Team row kept the old address');
   call('webRun', 'teamFix', { email: e, newEmail: ne });
   const r = tab('Binomes').find(x => x[B.Binome] === b.code);
   assert([r[B['Email 1']], r[B['Email 2']]].includes(ne), 'Binomes row');

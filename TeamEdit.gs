@@ -1,7 +1,6 @@
 /* ---------- add, edit and remove Team members (docs/admin-features.md › Add, edit and remove Team members) ---------- */
 // The Binomes row stays the source of truth for who is in a binome: only Correct name or email reaches past the Team tab.
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PAIR_AS = ['HR', 'IT', 'COMM', 'FLER', 'ALL', 'SKIP'];
 /** The Team cells a pending change (kind 'team', field) or teamSet may write. */
 const TEAM_CELLS = ['Experienced', 'Exclude', 'Full Name', 'Department', 'Pair As'];
@@ -25,13 +24,9 @@ const teamCellText_ = (field, v) => (field === 'Experienced' || field === 'Exclu
 
 /** The Notes of Team row i, rechecked as the import writes them (an email fix clears its own warning). */
 function teamNotes_(ctx, i) {
-  const T = ctx.team.I, r = ctx.team.data[i], e = lc_(r[T.Email]), name = String(r[T['Full Name']]).trim(), notes = [];
-  if (!e) notes.push('Missing email: will not be paired');
-  else if (!EMAIL_RE.test(e)) notes.push('Invalid email');
-  else if (!emailMatchesName_(e, name)) notes.push('Email does not look like this person\'s (' + e + ')');
+  const T = ctx.team.I, r = ctx.team.data[i], e = lc_(r[T.Email]), name = String(r[T['Full Name']]).trim();
   const twin = ctx.team.data.filter((x, j) => j !== i && e && lc_(x[T.Email]) === e)[0];
-  if (twin) notes.push('Same email as ' + String(twin[T['Full Name']]).trim());
-  return notes.join('; ');
+  return [emailNote_(e, name), twin ? 'Same email as ' + String(twin[T['Full Name']]).trim() : ''].filter(Boolean).join('; ');
 }
 
 /** The locked binome holding this email, and the DRAFT rows holding it. */
@@ -83,7 +78,7 @@ function teamAdd_(a) {
     const T = ctx.team.I;
     if (!hasExpCol_(ctx)) throw new Error(NO_EXP_COL);
     if (ctx.team.data.some(r => lc_(r[T.Email]) === email)) throw new Error(email + ' is already in the Team tab.');
-    const row = [name, email, dept, pairAs, false, warnings.length ? 'Email does not look like this person\'s (' + email + ')' : '', experienced];
+    const row = [name, email, dept, pairAs, false, emailNote_(email, name), experienced];
     ctx.team.sh.getRange(ctx.team.sh.getLastRow() + 1, 1, 1, TEAM_H.length).setValues([row]);
     ctx.team.data.push(row);
     changesSheet_().appendRow([ctx.now, Session.getActiveUser().getEmail(), 'TEAM_ADD', '', '', '', name, email, '', a.reason || '', 'DONE']);
@@ -162,6 +157,8 @@ function teamFix_(a) {
     const view = { email: e, newEmail: ne, name: name, old: old, binome: b ? b.code : '', drafts: seats.drafts.map(r => String(r[B.Binome])),
       notice: !!b && ne !== e };
     if (a.dryRun) return view;
+    // the binome first: its Binomes write is the one that can fail and roll back, before anything else is written
+    let lines = b ? applyMemberPlans_(ctx, [plan], a.reason || 'correction', { fix: true }) : null;
     if (ti >= 0) {
       ctx.team.data[ti][T['Full Name']] = name; ctx.team.data[ti][T.Email] = ne;
       ctx.team.sh.getRange(ti + 2, 1, 1, 2).setValues([[name, ne]]);
@@ -177,12 +174,10 @@ function teamFix_(a) {
     if (seats.drafts.length && ne !== e) {
       PropertiesService.getScriptProperties().setProperty('DRAFT_HAND', JSON.stringify(handDrafts_().map(k => handKey_(k.split('|').map(x => (x === e ? ne : x))))));
     }
-    const issues = coverFix_(ctx, e, ne, name), by = Session.getActiveUser().getEmail();
-    let lines;
-    if (b) lines = applyMemberPlans_(ctx, [plan], a.reason || 'correction', { fix: true, old: e });
-    else {
-      changesSheet_().appendRow([ctx.now, by, 'TEAM_FIX', '', old, e, name, ne, '', a.reason || '', 'DONE']);
-      saveMemberMap_(ctx);
+    const issues = coverFix_(ctx, e, ne, name);
+    saveMemberMap_(ctx); // the covers' new address
+    if (!b) {
+      changesSheet_().appendRow([ctx.now, Session.getActiveUser().getEmail(), 'TEAM_FIX', '', old, e, name, ne, '', a.reason || '', 'DONE']);
       lines = [old + (ne !== e ? ' (' + e + ' → ' + ne + ')' : '') + (name !== old ? ' → ' + name : '') + ' corrected in the Team tab' +
         (seats.drafts.length ? ' and draft ' + view.drafts.join(', ') : '') + '.'];
     }
@@ -200,7 +195,10 @@ function teamRemove_(a) {
     const T = ctx.team.I, i = ctx.team.data.findIndex(r => lc_(r[T.Email]) === e);
     if (i < 0) throw new Error((e || 'That member') + ' is not in the Team tab.');
     const name = String(ctx.team.data[i][T['Full Name']]).trim() || e, seats = teamSeats_(ctx, e);
-    ctx.team.sh.deleteRow(i + 2);
+    // the document lock too: the apply entry writes Team cells by row number under it, and a delete shifts the rows below
+    const dl = LockService.getDocumentLock();
+    if (!dl.tryLock(10000)) busy_();
+    try { ctx.team.sh.deleteRow(i + 2); } finally { dl.releaseLock(); }
     ctx.team.data.splice(i, 1);
     const warning = dropDrafts_(ctx, seats.drafts, name);
     changesSheet_().appendRow([ctx.now, Session.getActiveUser().getEmail(), 'TEAM_REMOVED', seats.b ? seats.b.code : '', name, e, '', '', '', (a && a.reason) || '', 'DONE']);

@@ -24,6 +24,13 @@ function findTeamSource_(ss) {
   return named || sheets.filter(looks)[0] || null;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** The Team tab's Notes about one email (Import, Correct name or email): '' when it is fine. */
+function emailNote_(email, name) {
+  return !email ? 'Missing email: will not be paired' : !EMAIL_RE.test(email) ? 'Invalid email'
+    : !emailMatchesName_(email, name) ? 'Email does not look like this person\'s (' + email + ')' : '';
+}
+
 /** true if the email's local part plausibly belongs to that name (catches copy/paste mix-ups). */
 function emailMatchesName_(email, name) {
   return !nameTokens(name).length || emailNameHits(email, name) >= 1;
@@ -132,10 +139,7 @@ function teamRowsFrom_(vals, past) {
     const name = titleCase_((String(vals[r][cF] || '').trim() + ' ' + String(vals[r][cL] || '').trim()).trim());
     if (!email && !name) continue;
     const p = sectionToPair_(section);
-    const notes = [];
-    if (!email) notes.push('Missing email: will not be paired');
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) notes.push('Invalid email');
-    else if (!emailMatchesName_(email, name)) notes.push('Email does not look like this person\'s (' + email + ')');
+    const notes = [emailNote_(email, name)].filter(Boolean);
     if (email && seen[email]) notes.push('Same email as ' + seen[email]);
     if (email) seen[email] = name;
     rows.push([name, email, p.dep, p.pairAs, false, notes.join('; '), !!(past && email && past[email])]);

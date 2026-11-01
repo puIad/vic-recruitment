@@ -71,7 +71,7 @@ function memberPlan_(ctx, binomeText, outEmail, inName, inEmail, swapWith) {
   let inn = null;
   if (inEmail) {
     const name = String(inName || '').trim() || ctx.nameByEmail[inEmail] || '';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inEmail)) errors.push('Invalid email "' + inEmail + '".');
+    if (!EMAIL_RE.test(inEmail)) errors.push('Invalid email "' + inEmail + '".');
     if (!name) errors.push('Give the name of ' + inEmail + ' (not in the Team tab).');
     inn = { name: name, email: inEmail };
     if (inEmail !== outEmail && b.members.some(m => m.email === inEmail)) errors.push(inEmail + ' is already in ' + b.code + '.');

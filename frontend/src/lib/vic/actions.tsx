@@ -241,11 +241,7 @@ export function useActions() {
         return !!out
       },
       async teamSet(email: string, experienced: boolean) {
-        // a pending change when the owner's switch is on: the pill shows it at once and the next click needs no wait
-        if ((await useVic.getState().accept([{ kind: "team", email, value: experienced, seen: !experienced, at: Date.now() }])) === "ok") return true
-        const out = await go("teamSet", { email, experienced }, experienced ? "Mark experienced" : "Mark new")
-        await refresh(true)
-        return !!out
+        return A.teamCells(email, [{ field: "Experienced", value: experienced, seen: !experienced }])
       },
       /** Team cells (Department, Pair As, Not interviewing, a name for someone in no binome): pending changes when the owner's switch
        *  is on, else direct writes. direct: the cases a pending change can't do (Not interviewing for someone in a draft). */
