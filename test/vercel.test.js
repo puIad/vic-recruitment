@@ -566,6 +566,37 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       put('admin@g.enp.edu.dz', 'alert:A-7006', { state: 'dropped', droppedAt: now - 60e3, shown: now - 60e3 });
       r = await rpc(own, 'pendingMark', { seen: ['alert:A-7006'] });
       assert(r.json.value['alert:A-7006'].seenAt >= now, 'seen: seenAt moves');
+      // calls that should never fail: the proxy notes them, the sync reads them once; the page's answer doesn't change
+      const fetch1 = global.fetch; let reply = null;
+      global.fetch = async (u, i) => (reply && /:run$/.test(String(u)) ? reply : fetch1(u, i));
+      const thrown = msg => ({ ok: true, status: 200, json: async () => ({ error: { details: [{ errorMessage: msg }] } }) });
+      const say = async (rep, who, fn, ...args) => { reply = rep; const x = await rpc(sess(who), fn, ...args); reply = null; return x; };
+      const REFUSED = 'You do not have permission to access the requested document.', [m1, m2, m3] = ['m1', 'm2', 'm3'].map(n => n + '@g.enp.edu.dz');
+      r = await say(thrown(REFUSED), m1, 'webState');
+      assert.strictEqual(r.json.error, REFUSED, 'the page gets the same error');
+      await say(thrown(REFUSED), m1, 'webState');
+      await say(thrown(REFUSED), m2, 'webState');
+      await say(thrown('Not allowed'), m3, 'webPulse');
+      await say(thrown("Your binome sheet isn't shared with you yet."), m3, 'webState');
+      await say(thrown('BUSY: Another update is running.'), m3, 'webState');
+      await say(thrown('CONFLICT: 7'), m3, 'webRun', 'memberSet', {});
+      await say(thrown('Rating must be a number from 0 to 10, or empty.'), m3, 'webRun', 'memberSet', {});
+      await say(thrown('Unknown action: nope'), 'admin@g.enp.edu.dz', 'webRun', 'nope', {});
+      await say({ ok: false, status: 404, json: async () => ({ error: { status: 'NOT_FOUND', message: 'no deployment' } }) }, m3, 'webAccess');
+      await say({ ok: false, status: 404, json: async () => ({ error: { status: 'NOT_FOUND', message: 'no deployment' } }) }, m3, 'webRun', 'sync', {});
+      await say({ ok: false, status: 429, json: async () => ({ error: { status: 'RESOURCE_EXHAUSTED', message: 'quota' } }) }, m3, 'webState');
+      r = await drops({});
+      assert.deepStrictEqual(r.json.failed.map(f => [f.action, f.msg, f.n, f.accounts]), [
+        ['webState', REFUSED, 3, [m1, m2]],
+        ['webRun:nope', 'Unknown action: nope', 1, ['admin@g.enp.edu.dz']],
+        ['webAccess', 'Google Apps Script refused the call (NOT_FOUND).', 1, [m3]],
+      ], 'one entry per action and message; ordinary answers, a write refused by Google and the quota are left out');
+      assert.deepStrictEqual((await drops({})).json.failed, [], 'read once');
+      F.log.fail.redis = true;
+      r = await say(thrown(REFUSED), m1, 'webState');
+      assert.strictEqual(r.json.error, REFUSED, 'Redis down: the page still gets its answer');
+      F.log.fail.redis = false;
+      global.fetch = fetch1;
       F.log.fail.redis = true;
       assert.strictEqual((await drops({})).status, 502, 'Redis down: the sync skips this cycle');
       F.log.fail.redis = false;

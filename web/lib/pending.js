@@ -210,4 +210,23 @@ async function forSync(mailed, now) {
   return out;
 }
 
-module.exports = { FORMAT, LIVE, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync, resultsOpen, resultTextsOpen };
+const FAILED = 'failed'; // list of dashboard calls that should never fail, since the sync last read it
+const FAILED_KEEP = 500, FAILED_S = 24 * 3600; // bounded, and gone in a day if the sync has stopped
+
+/** run.js: one such call failed. The sync's next call takes it and raises the alert (Pending.gs dropsSync_). */
+async function noteFailed(action, msg, email) {
+  await redis([['RPUSH', FAILED, JSON.stringify({ action, msg: String(msg).slice(0, 200), email })], ['LTRIM', FAILED, -FAILED_KEEP, -1], ['EXPIRE', FAILED, FAILED_S]]);
+}
+/** The failed calls since the last read, one entry per action and message: {action, msg, n, accounts}.
+ *  shortcut: the read and the delete aren't atomic, so a failure between them is lost; a real outage repeats within seconds. */
+async function takeFailed() {
+  const [items] = await redis([['LRANGE', FAILED, 0, -1], ['DEL', FAILED]]), groups = {};
+  items.forEach(raw => {
+    const f = JSON.parse(raw), g = groups[f.action + '|' + f.msg] = groups[f.action + '|' + f.msg] || { action: f.action, msg: f.msg, n: 0, accounts: [] };
+    g.n++;
+    if (g.accounts.indexOf(f.email) < 0) g.accounts.push(f.email);
+  });
+  return Object.values(groups);
+}
+
+module.exports = { FORMAT, LIVE, SCRIPT_FORMAT, TOPIC, ENDED_MS, deps, redis, read, save, valid, accept, mark, forSync, resultsOpen, resultTextsOpen, noteFailed, takeFailed };
