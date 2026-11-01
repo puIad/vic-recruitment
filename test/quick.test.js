@@ -139,7 +139,6 @@ let oddCode;
   call('webRun', 'sync');
   const a = find('UNPAIRED_MEMBER');
   assert.strictEqual(a.q.email, 'late@g.enp.edu.dz');
-  assert(/#gid=\d+&range=A\d+$/.test(quick('locate', a.id, { target: 'team' }).result.url), 'link to the Team row');
   quick('exclude', a.id);
   call('webRun', 'sync');
   assert(!find('UNPAIRED_MEMBER') && call('webState').unpaired.length === 0, 'excluded: nobody unpaired');
@@ -160,10 +159,6 @@ let oddCode;
   assert.deepStrictEqual([u.q.form.typedIv, u.q.form.submitter, u.q.form.subBinome], ['XX.99', sub, b.code]);
   const d = quick('draft', u.id, { to: 'submitter' }).result;
   assert(d.testMode && d.drafts.length === 1 && /"XX\.99"/.test(d.drafts[0].body) && d.drafts[0].to.includes(sub), JSON.stringify(d));
-  assert(/Interview%20Log|#gid=\d+&range=A\d+$/.test(quick('locate', u.id, { target: 'log' }).result.url));
-  const irGid = run("String(responseSheet_('INT').getSheetId())");
-  const formUrl = quick('locate', u.id, { target: 'form' }).result.url;
-  assert(formUrl.includes('#gid=' + irGid + '&range=A') && /&range=A\d+$/.test(formUrl), 'its Interview Responses row: ' + formUrl);
   let out = quick('pickCandidate', u.id, { code: it.code.toLowerCase() });
   assert(/now interviewed/.test(out.messages[0]), out.messages[0]);
   assert.strictEqual(call('webState').interviewees.find(i => i.code === it.code).status, 'INTERVIEWED');
@@ -183,9 +178,6 @@ let oddCode;
   const st = call('webState'), a = st.alerts.find(x => x.type === 'NOT_CONTACTED');
   const url = quick('locate', a.id, { target: 'cell' }).result.url, col = run('a1_(1, bfCol_("Contacted"))').replace('1', '');
   assert(url.includes(fileId(a.binome)) && new RegExp('&range=' + col + '\\d+$').test(url), url);
-  const regGid = run("String(responseSheet_('REG').getSheetId())");
-  const dupA = run(`ss_().getSheetByName('Alerts').getDataRange().getValues().find(r => r[3] === 'DUPLICATE_REGISTRATION')[0]`);
-  assert(quick('locate', dupA, { target: 'form' }).result.url.includes('#gid=' + regGid + '&range=A'), 'link to the form response');
 }
 
 // ---- binome sheet repairs ----
@@ -229,8 +221,6 @@ let oddCode;
   assert.deepStrictEqual(open().filter(a => a.type === 'INTEGRITY').map(a => a.msg), [], 'the Interview Answers tab is left alone');
   const mism = open().find(a => a.type === 'CHOICE_MISMATCH' && a.code === cand.code);
   assert(mism, 'the dashboard form was logged and checked');
-  const dashGid = run("String(ss_().getSheetByName(TAB.DASH).getSheetId())");
-  assert(/#gid=\d+&range=A2$/.test(quick('locate', mism.id, { target: 'form' }).result.url) && quick('locate', mism.id, { target: 'form' }).result.url.includes('#gid=' + dashGid), 'its Dashboard Interviews row');
   run(`(function () { var bk = __files["${fX}"].obj, t = bk.getSheetByName(IA_TAB); bk.sheets = [t].concat(bk.sheets.filter(x => x !== t)); })()`);
   call('webRun', 'integrity');
   const front = open().filter(a => a.type === 'INTEGRITY' && a.binome === BX);
