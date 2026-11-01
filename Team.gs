@@ -371,7 +371,7 @@ function mailPairedBinomes() {
     ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
   pairedSend_();
 }
-/** The catch-up's send (menu and Maintenance): only PAIRED_SENT changes, nothing in the Master. Returns {sent, failed} or null (busy). */
+/** The catch-up's send (menu and Maintenance): marks PAIRED_SENT; the Master gets only the Mail Log rows (and MAIL_FAILED on a failed send). Returns {sent, failed} or null (busy). */
 function pairedSend_() {
   const r = withLock_(() => mailPaired_(loadCtx_()), 60000); // one sender at a time: two runs would mail the same members
   if (!r) { busy_(); return null; }
