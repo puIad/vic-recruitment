@@ -77,8 +77,8 @@ mock reseeds it and signs everyone out: open `/dev-login?as=…` again. More: [d
   their next call, which is the quickest way to see a member's view.
 - Failed dashboard calls raise a HIGH `CALLS_FAILING` alert: reads that throw anything but "Not allowed" or "isn't shared", and any
   call refused with a permission, authorization, protected-cell or unknown-action error, at 3 failures or 2 accounts in a sync cycle.
-  To test the whole path, signed in as an admin, run this 3 times in the browser console, then wait for the next sync:
-  `fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: 'webRun', args: ['alertTest', {}] }) })`.
+  To test the whole path, signed in as an admin, run this once in the browser console on the dashboard, then wait for the next sync:
+  `for (let i = 0; i < 3; i++) console.log(await (await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-VIC': '1' }, body: JSON.stringify({ fn: 'webRun', args: ['alertTest', {}] }) })).json())`.
   It fails harmlessly with "Unknown action" and mails `ADMIN_EMAIL`. Resolve the alert afterwards.
 - Admins can only change members / cover / apply fixes if they can edit the Binome Sheets folder.
 - The script runs on the `vic-recruitment` Cloud project, so Google APIs are not auto-enabled: "Permission denied while
