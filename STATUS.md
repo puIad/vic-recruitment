@@ -1,12 +1,12 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-10-24. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-11-01. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
 
-**Script @205 / @206 from main `e4ba7a6` (2026-11-01).** The script runs main again, not `alert-live`: base a script hotfix on main. This put #195, #197 and #198's `locate` cleanup on the script three days before the close. #195 stays inert until its setup: Send results is refused while `JOIN_URL` and `JOIN_SECRET` are unset in the script properties, and the timed sync pushes nothing to vic-enp before the first result mail. vic-enp's part of #195 is not deployed. Left: a non-admin's `webState` with `ok:true` in the Vercel logs after the deploy (not yet seen at 21:27 UTC; no failed call in the 50 min before).
+**Script @205 / @206 from main `e4ba7a6` (2026-11-01).** The script runs main again, not `alert-live`: base a script hotfix on main. This put #195, #197 and #198's `locate` cleanup on the script three days before the close. #195 stays inert until its setup: Send results is refused while `JOIN_URL` and `JOIN_SECRET` are unset in the script properties, and the timed sync pushes nothing to vic-enp before the first result mail. vic-enp's part of #195 is merged on vic-enp's main and not deployed. The member check after the deploy is checked off (owner, 2026-11-01).
 
 **Add, edit and remove Team members (#197, live 2026-11-01, script @205 / @206).** Team page: Add member, a row menu (Correct name or email, Department and Pair As, Experienced, Not interviewing, Remove) and an Interviewing filter; the Binomes row menu has Correct for each member; Import after Lock merges. Code in `TeamEdit.gs`, tests in `test/team.test.js`. The pending change of kind `team` now takes a `field`. Never deploy a script older than @205: its apply entry would write a `field` change into the Experienced column.
 
@@ -19,8 +19,24 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 **Where it stands, 2026-10-24.** Applications open **Monday 26 Oct 2026 at 18:00** and close **Thursday 5 Nov at
 18:00**, Algiers time (vic-enp decisions 130 and 147). Built and live: everything in the launch scope, the registration
 form at `/apply` (section below) and the Overview as the admin's to-do. The owner's launch steps are done (section
-below), and load-test task 10 is **signed off by the owner** without a fourth run. Left: the owner's live checks of
-Schedule, Analytics, Change history and the Overview. The sections below keep their dates.
+below), and load-test task 10 is **signed off by the owner** without a fourth run. The owner's live checks of
+Schedule, Analytics, Change history and the Overview are checked off (2026-11-01). The sections below keep their dates.
+
+## Left to do (2026-11-01)
+
+Every live check and test still marked open further down was checked off by the owner on 2026-11-01: everything
+works as intended. What remains is work, not checks:
+
+1. **Turn on result mails (#195).** After applications close (4 Nov 23:59 Algiers): deploy vic-enp's part (merged on its
+   main, not deployed), set `JOIN_URL` and `JOIN_SECRET` in the script properties, then Vercel. Send results is refused
+   until both are set.
+2. **Run Re-protect binome sheets** once on the real sheets (Maintenance, owner only). It has not been run yet.
+3. **Locate links:** the FILE_ERROR File ID and the INTEGRITY sheet spot still have no dashboard page, so their two
+   "Go to" links stay ([admin-features.md](docs/admin-features.md#build-order)).
+4. **After the season:** hand the Redis store over to vic.rh ([plans.md](docs/plans.md#after-the-season)).
+5. **Later, not planned:** the Binome view (members use the dashboard in place of their sheet).
+
+The 24 Oct mailer move is done: `/api/health` reports `mailer: ok` with `mailQuota`.
 
 ## Every mail leaves from vic.rh (2026-10-30)
 
@@ -48,7 +64,7 @@ recipients a day (`mailQuota` on the site's `/api/health`). When both scripts ch
   5 Nov, and `/apply` keeping a ticket on its way across a reload. The mailer's ping now reports
   `MailApp.getRemainingDailyQuota()` (this repo, `mailer/Code.gs`): it needs a mailer deploy (below).
 
-**Left, owner: move the mailer to a new URL** (2026-10-24). The old web app URL was written in
+**Done, owner: move the mailer to a new URL** (2026-10-24; `/api/health` shows `mailQuota` on 2026-11-01). The old web app URL was written in
 `docs/registration-form.md` until today and stays in this public repo's history, so the mailer moves to a new
 deployment, which also ships the quota in the ping. As `vic.rh`, before 26 Oct 18:00:
 
@@ -191,11 +207,11 @@ run 1 saw it twice). `memberBook_` read the sheet once behind `openById`, retrie
 "Your binome sheet isn't shared with you yet." The real error goes to the log (`memberBook_` warn). Cause inferred, not
 seen: Drive said yes, the first Spreadsheet read was refused. **Wrong cause** (load-test run 3, 2026-10-19, from the
 script's stack): the sheet opens fine, and `sliceFromSheet_` then formats its dates through `S_()`, which opens the Master;
-members can't open it. Fixed in [#104](https://github.com/puIad/vic-recruitment-2026/pull/104): the dates use the binome sheet's own timezone, and the member block of the web test refuses the Master. Not yet seen live: the next load-test run is the check.
+members can't open it. Fixed in [#104](https://github.com/puIad/vic-recruitment-2026/pull/104): the dates use the binome sheet's own timezone, and the member block of the web test refuses the Master. Checked off live by the owner (2026-11-01).
 
 The confirmation's settled wording and the "VIC Recruitment" sender on candidate mails are live
 ([#99](https://github.com/puIad/vic-recruitment-2026/pull/99), web app @108 / API @109 from `3a834de`, 2026-10-19).
-Owner's live check open: a TEST registration from an ADMIN_EMAIL address that is not on the Team, Sync now, the
+Owner's live check, checked off 2026-11-01: a TEST registration from an ADMIN_EMAIL address that is not on the Team, Sync now, the
 confirmation arrives from "VIC Recruitment" with the new text. The Settings › Emails editor is live
 ([#106](https://github.com/puIad/vic-recruitment-2026/pull/106), [#107](https://github.com/puIad/vic-recruitment-2026/pull/107); [plans.md](docs/plans.md), Email texts).
 Pending-changes slices 2–5 (#67–#70, [plans.md](docs/plans.md#pending-changes-the-build-plan)) are done.
@@ -456,8 +472,8 @@ script deploy): Schedule with This week on My binome ([#138](https://github.com/
 and Analytics with the applicant profile ([#139](https://github.com/puIad/vic-recruitment-2026/pull/139); no 2025
 curve, the 2025 file isn't on disk). Change history shows Interviewee Changes (Moved, Edit accepted filters), and
 `npm run test:ui` (`test/ui.smoke.js`) opens every page as an admin, an admin in a binome and a member
-([#140](https://github.com/puIad/vic-recruitment-2026/pull/140), live from `cdb8ab8`). The launch scope is built; none
-of it has been checked live by the owner yet.
+([#140](https://github.com/puIad/vic-recruitment-2026/pull/140), live from `cdb8ab8`). The launch scope is built and
+checked live by the owner (2026-11-01).
 
 ## Overview as the admin's to-do (#144, 2026-10-23)
 
@@ -475,7 +491,7 @@ deploy). The Overview reads only and links out (`lib/vic/overview.ts`, tested by
 - **Activity** moved to the top bar: an admin's live status opens it (Refresh inside), with a red dot when the last
   action failed.
 
-Not checked live by the owner yet. Not seen on screen at all: the layout before lock and the "All clear" state (the
+Checked live by the owner (2026-11-01). Not seen on screen at all: the layout before lock and the "All clear" state (the
 mock is locked with open alerts).
 
 ## Registration form at `/apply` (live 2026-10-22)
