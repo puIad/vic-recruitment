@@ -16,8 +16,8 @@ binome, interview-form check, alerts), with a dashboard at **https://vic-recruit
 
 **Pause and resume a binome (#186, built 2026-10-31, spec in [docs/admin-features.md](docs/admin-features.md#pause-and-resume-a-binome)).** Row menu on the Binomes page, code in `Pause.gs`. Deploy order: `clasp push` and both deployments, **vic.rh runs Setup** (Paused Until's date format and note; the first load adds its header if that column is empty, and a pause refuses while another header is there), then Vercel. A pending change of kind `binome`; moves that fail become `bmove` drops.
 
-**Where it stands, 2026-10-24.** Applications open **Monday 26 Oct 2026 at 18:00** and close **Thursday 5 Nov at
-18:00**, Algiers time (vic-enp decisions 130 and 147). Built and live: everything in the launch scope, the registration
+**Where it stands, 2026-10-24.** Applications open **Monday 26 Oct 2026 at 18:00** and close **Wednesday 4 Nov at
+23:59**, Algiers time (vic-enp decisions 130, 147 and 155; moved from 5 Nov 18:00 on 2026-11-01). Built and live: everything in the launch scope, the registration
 form at `/apply` (section below) and the Overview as the admin's to-do. The owner's launch steps are done (section
 below), and load-test task 10 is **signed off by the owner** without a fourth run. The owner's live checks of
 Schedule, Analytics, Change history and the Overview are checked off (2026-11-01). The sections below keep their dates.
