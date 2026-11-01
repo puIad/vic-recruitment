@@ -57,11 +57,21 @@ settings({ TEST_MODE: false });
 run('__outbox.length = 0');
 const todo = R('pairedTodo_(loadCtx_()).length');
 assert(todo > 0 && todo <= locked, 'members not told by the test-mode lock: ' + todo + ' of ' + locked);
-assert.deepStrictEqual(R('mailPaired_(loadCtx_())'), { sent: todo, failed: [] });
+// Maintenance › Email binome members their binome: the preview lists them by binome beside the mail, sends nothing
+const pv = call('webRun', 'pairedMail').result;
+assert.strictEqual(pv.count, todo);
+assert.strictEqual(pv.binomes.reduce((n, b) => n + b.members.length, 0), todo, 'every untold member listed under a binome');
+assert(pv.binomes.every(b => /^B\.\d\d$/.test(b.code) && b.members.every(m => /@/.test(m.email))), J(pv.binomes));
+assert(/You are in binome B\.\d\d$/.test(pv.subject) && /Open the dashboard/.test(pv.html) && pv.testMode === false, pv.subject);
+assert.strictEqual(paired().length, 0, 'the preview sends nothing');
+const sentOut = call('webRun', 'pairedMail', { send: true });
+assert.deepStrictEqual(JSON.parse(J(sentOut.result)), { sent: todo, failed: [] });
+assert(/^Sent \d+ emails?\.$/.test(sentOut.messages[0]), J(sentOut.messages));
 assert.strictEqual(paired().length, todo, 'one PAIRED per untold member');
 assert(paired().every(m => /Open the dashboard/.test(m.htmlBody)), 'with the dashboard button');
 run('__outbox.length = 0');
 assert.deepStrictEqual([R('mailPaired_(loadCtx_())').sent, R('pairedTodo_(loadCtx_()).length'), paired().length], [0, 0, 0], 'never twice');
+assert.strictEqual(call("webRun", "pairedMail").result.binomes.length, 0, 'the preview has nobody left');
 
 // ---- PAIRED from a live lock: every member of every locked binome, nothing left for the catch-up ----
 {

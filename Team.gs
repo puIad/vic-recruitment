@@ -346,9 +346,9 @@ function pairedTodo_(ctx) {
   return out;
 }
 /** The PAIRED mail for member m of binome `code` (names: both members), sent by Lock, the catch-up and Pair two…. */
-function pairedMail_(code, m, names, url) {
-  return mailSend_(m.email, mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: code, members: names },
-    { cta: mailDashboardCta_(), footer: mailTeamFooter_(url) }), code);
+function pairedMail_(code, m, names, url) { return mailSend_(m.email, pairedMailOf_(code, m, names, url), code); }
+function pairedMailOf_(code, m, names, url) {
+  return mailFrom_('PAIRED', { first: m.name.split(' ')[0], binome: code, members: names }, { cta: mailDashboardCta_(), footer: mailTeamFooter_(url) });
 }
 /** Send PAIRED to everyone pairedTodo_ lists. TEST_MODE skips non-admins and leaves them untold, so going live sends theirs.
  *  Returns {sent, failed[] (emails)}. */
@@ -369,9 +369,27 @@ function mailPairedBinomes() {
   if (!n) return say_('Every member of a locked binome has already been emailed their binome.');
   if (ui.alert('Email ' + n + ' members their binome?', 'Each gets "You are in binome B.NN" with their partner and the sheet link.',
     ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+  pairedSend_();
+}
+/** The catch-up's send (menu and Maintenance): only PAIRED_SENT changes, nothing in the Master. Returns {sent, failed} or null (busy). */
+function pairedSend_() {
   const r = withLock_(() => mailPaired_(loadCtx_()), 60000); // one sender at a time: two runs would mail the same members
-  if (!r) return busy_();
-  say_('Sent ' + r.sent + ' emails.' + (r.failed.length ? '\n\nNot sent (run this again later): ' + r.failed.join(', ') : ''));
+  if (!r) { busy_(); return null; }
+  say_(r.sent || r.failed.length ? 'Sent ' + r.sent + ' email' + (r.sent === 1 ? '' : 's') + '.' +
+    (r.failed.length ? '\n\nNot sent (run this again to retry them): ' + r.failed.join(', ') : '') +
+    (bool_(S_().TEST_MODE) ? '\n\nTest mode is on: non-admins were skipped and stay untold.' : '')
+    : 'Nobody was emailed: every member of a locked binome has been told' + (bool_(S_().TEST_MODE) ? ', or test mode skipped them.' : '.'));
+  return r;
+}
+/** webRun('pairedMail') without send: the untold members by binome and the New binome mail as the first of them gets it. Reads only. */
+function pairedPreview_() {
+  const todo = pairedTodo_(loadCtx_()), by = {}, binomes = [];
+  todo.forEach(t => {
+    if (!by[t.b.code]) binomes.push(by[t.b.code] = { code: t.b.code, members: [] });
+    by[t.b.code].members.push({ name: t.m.name, email: t.m.email });
+  });
+  const t = todo[0], m = t ? pairedMailOf_(t.b.code, t.m, t.b.members.map(x => x.name).join(' & '), t.b.fileUrl) : null;
+  return { count: todo.length, binomes: binomes, subject: m ? m.subject : '', html: m ? m.html : '', testMode: bool_(S_().TEST_MODE) };
 }
 
 function lockBinomesCore_(budgetMs) {
@@ -404,7 +422,7 @@ function lockBinomesCore_(budgetMs) {
   // leaving 2 for the save, alerts, mails (one per member of each binome that got someone), tracker and snapshot
   const c = runCycle_({ kind: 'post-lock', pull: false, timing: false, tracker: true, wait: 60000, assignBy: t0 + 240000 });
   say_('Locked ' + created + ' binomes.' + (stopped ? '\n\nPaused before the time limit: lock again to finish the rest.' : '') +
-    (mailed.failed.length ? '\n\nBinome email not sent to: ' + mailed.failed.join(', ') + ' (menu › Email binome members their binome).' : '') +
+    (mailed.failed.length ? '\n\nBinome email not sent to: ' + mailed.failed.join(', ') + ' (Maintenance › Email binome members their binome).' : '') +
     (c && c.leftWaiting ? '\n' + c.leftWaiting + ' waiting registrants will be assigned by the next sync.' : '\nAny waiting registrants have been assigned.'));
 }
 
