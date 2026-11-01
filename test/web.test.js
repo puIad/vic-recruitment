@@ -1134,7 +1134,7 @@ run('SpreadsheetApp.openById = __open; _ssOpened = null');
 run('var __drive = DriveApp.getFileById; DriveApp.getFileById = () => { throw new Error("No item with the given ID could be found.") }');
 assert.strictEqual(run('access_().reason'), 'NO_PROJECT', 'bound Master handed back to an account Drive says has no access → not "view only"');
 run('DriveApp.getFileById = __drive');
-run('ss_().addEditor("helper@g.enp.edu.dz"); __as("Helper@g.enp.edu.dz")');
+run('master.addEditor("helper@g.enp.edu.dz"); __as("Helper@g.enp.edu.dz")');
 assert.strictEqual(call('webState').user, 'Helper@g.enp.edu.dz', 'any editor of the Master gets in, no extra deployment');
 
 // Vercel front (scripts.run): webAccess never throws, domain + owner rules, setup owner-only, trigger owner guard
@@ -1162,7 +1162,7 @@ run('__as("helper@g.enp.edu.dz")');
 assert.deepStrictEqual([call('webAccess').owner, call('webState').owner], [true, true], 'the trigger owner is the owner, though only an editor of the Master');
 run('__as("admin@g.enp.edu.dz"); __props.TRIGGER_OWNER = "admin@g.enp.edu.dz"');
 // handover: property deleted, the club account (not the Master's owner) runs Setup and takes the triggers
-run('delete __props.TRIGGER_OWNER; __as("vic.rh@g.enp.edu.dz"); installTriggers_(ss_())');
+run('delete __props.TRIGGER_OWNER; master.addEditor("vic.rh@g.enp.edu.dz"); __as("vic.rh@g.enp.edu.dz"); installTriggers_(master)');
 assert.strictEqual(run('__props.TRIGGER_OWNER'), 'vic.rh@g.enp.edu.dz', 'an editor who is not the Master owner takes the triggers when the property is unset');
 run('__as("admin@g.enp.edu.dz")');
 run('var __et = ensureTabs_, __etn = 0; ensureTabs_ = function (ss) { __etn++; return __et(ss); }');

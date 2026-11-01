@@ -153,7 +153,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   r = await rpc(admin, 'webRun', 'memberSet');
   seed.run('webRun = __wr');
   assert.deepStrictEqual([r.status, r.json.code, r.json.error], [200, 'CONFLICT', 'No answer'], 'a conflict reaches the page as code CONFLICT, with the value now in the cell');
-  seed.run('ss_().addEditor("helper@g.enp.edu.dz")');
+  seed.run('master.addEditor("helper@g.enp.edu.dz")');
   r = await rpc(helper, 'webRun', 'setup');
   assert(/Only the owner/.test(r.json.error), 'editor cannot run setup through the proxy');
   r = await rpc(helper, 'webState');
@@ -225,10 +225,10 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
   // --- pending changes: the switch, the accept step, the consumer, the pulse flag, drop answers (fakes for Redis and Queues)
   {
     const own = sess('admin@g.enp.edu.dz');
-    seed.run(`(function () { var sh = ss_().getSheetByName('Alerts'), n = sh.getLastRow() + 1, t = new Date();
+    seed.run(`(function () { var sh = master.getSheetByName('Alerts'), n = sh.getLastRow() + 1, t = new Date();
       sh.getRange(n, 1, 4, 11).setValues(['A-9001', 'A-9002', 'A-9003', 'A-9004'].map(function (id) { return [id, t, 'HIGH', 'BAD_PHONE', '', '', 'x', '', 'OPEN', '', 'K|' + id]; })); })()`);
-    const status = id => seed.run(`ss_().getSheetByName('Alerts').getDataRange().getValues().filter(function (r) { return r[0] === '${id}'; })[0][8]`);
-    const setStatus = (id, st) => seed.run(`(function () { var sh = ss_().getSheetByName('Alerts'), d = sh.getDataRange().getValues();
+    const status = id => seed.run(`master.getSheetByName('Alerts').getDataRange().getValues().filter(function (r) { return r[0] === '${id}'; })[0][8]`);
+    const setStatus = (id, st) => seed.run(`(function () { var sh = master.getSheetByName('Alerts'), d = sh.getDataRange().getValues();
       for (var i = 1; i < d.length; i++) if (d[i][0] === '${id}') sh.getRange(i + 1, 9, 1, 2).setValues([['${st}', '${st}' === 'SNOOZED' ? new Date(Date.now() + 36e5) : '']]); })()`);
     const accept = (cookie, ...changes) => rpc(cookie, 'accept', { v: 1, changes: changes.map(c => Object.assign({ kind: 'alert', at: Date.now() }, c)) });
     const last = () => F.sent[F.sent.length - 1].payload;
@@ -370,7 +370,7 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
 
     // settings (slice 3): one cell per key, applied as the admin; typed then undone cancels; a refused value drops with no Apply mine anyway
     const set = (key, value, seen) => ({ kind: 'setting', key, value, seen });
-    const cellOf = k => seed.run(`String(ss_().getSheetByName('Settings').getDataRange().getValues().filter(function (r) { return r[0] === '${k}'; })[0][1])`);
+    const cellOf = k => seed.run(`String(master.getSheetByName('Settings').getDataRange().getValues().filter(function (r) { return r[0] === '${k}'; })[0][1])`);
     r = await accept(own, set('HOURS_NOT_CONTACTED', 30, 24));
     assert.deepStrictEqual([r.json.value['setting:HOURS_NOT_CONTACTED'].state, r.json.value['setting:HOURS_NOT_CONTACTED'].key], ['pending', 'HOURS_NOT_CONTACTED']);
     await deliver();

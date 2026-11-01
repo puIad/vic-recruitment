@@ -158,10 +158,10 @@ function candidate_(row, status, tz) { const c = { Status: status || '' }; BF_H.
 
 /** code -> what a member of that binome sees: its candidates, its open MEMBER_ALERTS, its members' names. */
 function binSlices_(ctx) {
-  const I = ctx.iv.I, A = ctx.alerts.table.I, out = {};
+  const I = ctx.iv.I, A = ctx.alerts.table.I, out = {}, due = closeDate_();
   activeOrPaused_(ctx).forEach(b => {
     out[b.code] = { v: API_VERSION, binome: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl,
-      members: b.members.map(m => m.name || m.email), candidates: [], alerts: [], fromSheet: false };
+      members: b.members.map(m => m.name || m.email), candidates: [], alerts: [], fromSheet: false, closeDate: due ? +due : undefined };
   });
   const L = ctx.log.I, marks = goldMarks_(), told = resultMailsStarted_(); // a result reaches a binome only once the first result mail has gone
   ctx.iv.data.forEach(r => {
@@ -224,7 +224,7 @@ function memberState_(a) {
     sl.alerts = sl.alerts.filter(x => m.codes.indexOf(x.code) >= 0);
   }
   return Object.assign(sl, { role: 'member', cover: !!m.cover, edit: !!a.edit && !m.cover, user: Session.getActiveUser().getEmail(), pending: pendingOn_(),
-    interviewForm: interviewFormUrl_(m.b), close: closeInfo_() });
+    interviewForm: interviewFormUrl_(m.b), close: closeInfo_(sl.closeDate || null) });
 }
 /** The binome sheet of a member view (asMember_), opened with the signed-in account's own access. */
 function memberBook_(m) {

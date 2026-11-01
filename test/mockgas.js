@@ -131,11 +131,26 @@ MockSS.prototype = {
   getOwner() { return { getEmail: () => 'admin@g.enp.edu.dz' }; },
 };
 
+// The Master as an account with no access meets it (live, 1 Nov 2026): the handle comes back, the first read is refused, and the whole
+// call still fails as it ends even when the script caught that refusal (seed.js's call raises __masterRefused). Asking Drive who owns or
+// edits it only throws: access_ does that for every account, in a try.
+var __masterRefused = null;
+function __masterFor(obj) {
+  if (!obj || obj.id !== __props.MASTER_ID) return obj;
+  return new Proxy(obj, { get(t, k) {
+    if (typeof t[k] !== 'function' || k === 'getId' || __roleOf(t.id)) return t[k]; // asked per read: a handle can outlive a test's change of user
+    return function () {
+      const msg = 'You do not have permission to access the requested document.';
+      if (k !== 'getOwner' && k !== 'getEditors') __masterRefused = msg;
+      throw new Error(msg);
+    };
+  } });
+}
 var SpreadsheetApp = {
   _active: null,
-  getActive() { return this._active; }, getActiveSpreadsheet() { return this._active; },
+  getActive() { return __masterFor(this._active); }, getActiveSpreadsheet() { return __masterFor(this._active); },
   // the bound Master is handed back to anyone (as in Apps Script); other files need access when the ACL is on
-  openById(id) { if (!__files[id] || (__acl && id !== __props.MASTER_ID && !__roleOf(id))) throw new Error('No file ' + id); return __files[id].obj; },
+  openById(id) { if (!__files[id] || (__acl && id !== __props.MASTER_ID && !__roleOf(id))) throw new Error('No file ' + id); return __masterFor(__files[id].obj); },
   create(t) { return new MockSS(t); },
   flush() { if (__flushErr) { const e = __flushErr; __flushErr = null; throw e; } }, // a refused write throws here, as in Apps Script
   newDataValidation() { return chain(); }, newConditionalFormatRule() { return chain(); },

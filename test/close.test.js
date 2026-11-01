@@ -51,6 +51,29 @@ assert(m.call('webState').close.date < Date.now());
 call('sync');
 assert.strictEqual(alerts('CLOSE_DUE').length, 1, 'raised once');
 
+// ---- a member's calls never open the Master: live (1 Nov 2026) every member's webState failed on it, though closeDate_ caught the refusal ----
+const adminClose = m.call('webState').close;
+as(mem);
+// the mock itself, since every member test leans on it: a refusal the script catches still fails the call (seed.js)
+run('function __caughtRead() { try { S_(); } catch (e) { /* as closeDate_ did */ } return 1; }');
+assert.throws(() => m.call('__caughtRead'), /You do not have permission to access the requested document/);
+m.call('webAccess');
+m.call('webPulse', true);
+assert.strictEqual(m.call('webState').close.date, adminClose.date, 'the date comes with the slice');
+set(c3, [{ field: 'Notes', value: 'seen', seen: '' }]);
+get(c2);
+m.call('webApply', { v: 1, changes: [{ id: 'mm', kind: 'field', code: c3, field: 'Notes', value: 'seen twice', seen: 'seen', at: Date.now() }] });
+run('__cacheClear()');
+const fromSheet = m.call('webState');
+assert.deepStrictEqual([fromSheet.fromSheet, fromSheet.close.date], [true, null], 'no slice, no date until the next sync');
+as(ADMIN);
+call('sync');
+put(c3, 'Notes', '');
+call('sync');
+as(mem);
+assert.strictEqual(m.call('webState').close.date, adminClose.date, 'the sync published the date again');
+as(ADMIN);
+
 // ---- the preview: counts, nothing written ----
 let pv = call('closePreview', {}).result;
 assert.strictEqual(pv.on, false);

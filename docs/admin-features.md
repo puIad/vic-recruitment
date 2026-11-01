@@ -764,7 +764,7 @@ is refused until the phase is closed.
 Results page's final bar link to it.
 
 **The date.** Optional, in Algiers time, and only a reminder: nothing locks by itself, and an admin can close with no date or before it.
-It is a setting, so changing it is a pending change. My binome shows it as soon as it is set.
+It is a setting, so changing it is a pending change. My binome shows it from the next sync, because members can't read Settings.
 
 **When the date passes.** One HIGH `CLOSE_DUE` alert, mailed to admins and never to binomes, and a banner on every admin page. The alert
 comes from the sync, and the banner from the date itself, so it still shows if the sync has stopped. Both clear when someone closes or

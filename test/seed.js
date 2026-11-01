@@ -35,9 +35,14 @@ function regRow(ts, collected, first, fam, typed, birth, phone, c1, c2) {
   // From here on, behave like a web-app execution
   run('SpreadsheetApp._active = null; SpreadsheetApp.getUi = function () { throw new Error("Cannot call SpreadsheetApp.getUi() from this context."); };');
 
+  // One call is one Apps Script execution: nothing an admin's call read is left for a member's, and a member's read of the Master
+  // fails the call as it ends, caught or not (mockgas.js)
+  const freshRun = new vm.Script('_settings = null; _ssOpened = null; __masterRefused = null');
   // google.script.run serialises results and rejects Dates: mimic that, so a Date leak fails loudly
   const call = (fn, ...args) => {
+    freshRun.runInContext(ctx);
     const out = ctx[fn](...args);
+    if (ctx.__masterRefused) throw new Error(ctx.__masterRefused);
     (function walk(v, path) {
       if (Object.prototype.toString.call(v) === '[object Date]') throw new Error(fn + ' returned a Date at ' + path);
       if (v && typeof v === 'object') Object.keys(v).forEach(k => walk(v[k], path + '.' + k));
