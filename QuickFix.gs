@@ -746,44 +746,13 @@ function a1_(row, col) {
 // the binome-sheet column an alert is about
 const CELL_FOR = { NOT_CONTACTED: 'Contacted', NO_DATE: 'Interview Date', BAD_DATE: 'Interview Date', OVERDUE: 'Interview Form', ODD_VALUE: 'Interview Date' };
 
-/** target: form (Registration Responses) | iv (Interviewees) | log (Interview Log) | team | binomes (File ID) | cell (binome sheet). */
+/** target: binomes (File ID) | cell (binome sheet). */
 function locateAlert_(id, target) {
   const ctx = loadCtx_(), A = ctx.alerts.table.I, I = ctx.iv.I, ss = ss_();
   const r = ctx.alerts.table.data.filter(x => String(x[A.ID]) === id)[0];
   if (!r) throw new Error(id + ' not found (refresh the page).');
   const ref = alertRef_(r, A), type = String(r[A.Type]);
   const at = (sh, row, col) => ss.getUrl() + '#gid=' + sh.getSheetId() + '&range=' + a1_(row, col);
-  if (target === 'form' && ref.kind === 'reg') {
-    const sh = responseSheet_('REG'), data = sh.getDataRange().getValues(), H = regHeaders_(data[0]), get = (row, i) => (i >= 0 ? row[i] : '');
-    for (let k = 1; k < data.length; k++) {
-      const ts = get(data[k], H.ts), email = String(get(data[k], H.collected)).trim().toLowerCase() || String(get(data[k], H.typed)).trim();
-      if (ts && (responseKey_(ts, email, k + 1) === ref.rk || serialKey_(ts, email) === ref.rk)) return at(sh, k + 1, 1); // serial: imported before keyTime_
-    }
-    throw new Error('their answer is not in Registration Responses any more.');
-  }
-  if (target === 'form' && ref.kind === 'log') {
-    // a dashboard form (key DASH|…) has its row in Dashboard Interviews, a Google Form one in Interview Responses
-    const dash = /^DASH\|/.test(ref.lk), sh = dash ? ss.getSheetByName(TAB.DASH) : responseSheet_('INT');
-    const data = sh && sh.getLastRow() > 1 ? sh.getDataRange().getValues() : [], H = data.length ? intHeaders_(data[0]) : null;
-    const kc = DASH_H.indexOf('Response Key'), get = (row, i) => (i >= 0 ? row[i] : '');
-    for (let k = 1; k < data.length; k++) {
-      const ts = get(data[k], H.ts);
-      if (dash ? String(data[k][kc]) === ref.lk : ts && responseKey_(ts, String(get(data[k], H.collected)).trim().toLowerCase(), k + 1) === ref.lk) return at(sh, k + 1, 1);
-    }
-    throw new Error('the form is not in ' + (dash ? TAB.DASH : TAB.INT_RESP) + ' any more.');
-  }
-  if (target === 'iv') {
-    const x = ref.kind === 'reg' ? ivByRk_(ctx, ref.rk) : ctx.ivByCode[ref.kind === 'iv' ? ref.code : String(r[A.Interviewee]).trim()];
-    if (x) return at(ctx.iv.sh, ctx.iv.data.indexOf(x) + 2, 1);
-  }
-  if (target === 'log') {
-    const i = ref.kind === 'log' ? logIndex_(ctx, ref.lk) : -1;
-    if (i >= 0) return at(ctx.log.sh, i + 2, 1);
-  }
-  if (target === 'team' && ref.kind === 'member') {
-    const T = ctx.team.I, i = ctx.team.data.findIndex(x => lc_(x[T.Email]) === ref.email);
-    if (i >= 0) return at(ctx.team.sh, i + 2, 1);
-  }
   const code = ref.kind === 'integ' ? ref.binome : String(r[A.Binome]).trim(), b = ctx.binByCode[code];
   if (target === 'binomes' && b) return at(ctx.bin.sh, ctx.bin.data.indexOf(b.row) + 2, ctx.bin.I['File ID'] + 1);
   if (target === 'cell') {

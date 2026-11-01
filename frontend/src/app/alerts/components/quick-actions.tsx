@@ -642,8 +642,6 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
       </ActionButton>
     )
 
-  // a form's own row: Interview Responses, or Dashboard Interviews for a form filled in the dashboard
-  const FORM_ROW: Link = { key: "form", label: "The form response", target: "form" }
   const reg = qOf(a, "reg")
   const iv = qOf(a, "iv")
   const log = qOf(a, "log")
@@ -653,49 +651,40 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     panel = <TypoPanel key={a.id} a={a} v={reg.iv} />
     btn("fine", Check, "Looks fine", () => resolve([a.id]))
     btn("mail", Mail, "Email the candidate", () => quick.mail([a.id], "candidate"))
-    links.push({ key: "form", label: "Their form response", target: "form" })
   } else if (reg && a.type === "EMAIL_MISMATCH") {
     hint = "Pick the address the recruitment should use."
     panel = <EmailChoice a={a} v={reg.iv} />
-    links.push({ key: "form", label: "Their form response", target: "form" })
   } else if (reg && ROUTING.includes(a.type)) {
     hint = a.type === "SAME_CHOICES" ? "They chose this department twice because they really want it. Nothing to fix; set a 2nd choice only if they ask for one." : "Set the department they belong in."
     panel = <RoutingPanel key={a.id} a={a} v={reg.iv} />
     if (a.type === "SAME_CHOICES") btn("fine", Check, "It's fine", () => resolve([a.id]), "default")
-    links.push({ key: "form", label: "Their form response", target: "form" }, { key: "iv", label: "Interviewees row", target: "iv" })
   } else if (reg && a.type === "DUPLICATE_REGISTRATION") {
     hint = "Compare the two submissions, then decide which answers stand."
     panel = <DuplicatePanel a={a} v={reg.iv} old={reg.old} />
-    links.push({ key: "form", label: "The new form response", target: "form" })
   } else if (reg && a.type === "NEEDS_REVIEW") {
     hint = "Screening held this application. Read the answers, then send it to a binome or keep it out."
     panel = <ReviewPanel key={a.id} v={reg.iv} app={reg.app} />
     btn("approve", ThumbsUp, "Approve", () => quick.approve([a]), "default")
     btn("decline", ThumbsDown, "Decline", () => quick.decline([a]))
-    links.push({ key: "form", label: "Their form response", target: "form" }, { key: "iv", label: "Interviewees row", target: "iv" })
   } else if (reg && a.type === "VIC_MEMBER") {
     hint = "They're on the VIC members list but already have a binome. Decline takes them out of its sheet; mute the alert to keep them."
     panel = <ReviewPanel key={a.id} v={reg.iv} app={reg.app} />
     btn("decline", ThumbsDown, "Decline", () => quick.decline([a]), "default")
     btn("keep", Check, "Keep them", () => quick.mute([a.id]))
-    links.push({ key: "iv", label: "Interviewees row", target: "iv" })
   } else if (TIMING.includes(a.type) && a.code) {
     hint = "Remind the binome, or hand the candidate to someone else."
     if (a.binome) btn("nudge", Send, "Nudge the binome", () => quick.mail([a.id], "binome"), "default")
     btn("move", MoveRight, "Move…", () => openMove({ code: a.code, alertId: a.id }))
     btn("cover", UserPlus, "Cover…", () => openMembers({ mode: "cover", codes: a.code, alertId: a.id }))
-    if (a.binome) links.push({ key: "cell", label: `Their row in ${a.binome}'s sheet`, target: "cell" })
   } else if (a.type === "UNPAIRED_MEMBER" && qOf(a, "member")) {
     const m = qOf(a, "member")!
     hint = "Leave them out of the binomes, or give them a seat."
     btn("exclude", UserX, "Exclude", () => quick.exclude(a), "default")
     btn("place", UserPlus, "Place in a binome…", () => openMembers({ mode: "replace", inEmail: m.email, inName: member?.name || "", alertId: a.id }))
-    links.push({ key: "team", label: "Their Team row", target: "team" })
   } else if (log && a.type === "UNKNOWN_INTERVIEWEE") {
     hint = "Link the form to the candidate it was about, or ask its sender to send it again."
     panel = <><PickPanel key={a.id} a={a} f={log.form} /><AlertAnswers keys={[log.form.key]} /></>
     btn("mail", Mail, "Ask to send it again", () => quick.mail([a.id], "submitter"))
-    links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (log && WHO.includes(a.type)) {
     const to = log.form.subBinome
     hint = a.type === "NOT_ASSIGNED" ? "Give the candidate to the binome that interviewed them." : "Keep it as it is, or move the candidate to the binome that really interviewed."
@@ -703,17 +692,12 @@ export function QuickActions({ alert: a }: { alert: Alert }) {
     if (a.type !== "NOT_ASSIGNED") btn("fine", Check, "It's fine, keep it", () => resolve([a.id]), "default")
     if (a.code && to && to !== a.binome) btn("move", MoveRight, `Move ${a.code} to ${to}…`, () => openMove({ code: a.code, binome: to, alertId: a.id }), a.type === "NOT_ASSIGNED" ? "default" : "outline")
     else if (a.code && a.type === "NOT_ASSIGNED") btn("move", MoveRight, "Pick a binome…", () => openMove({ code: a.code, alertId: a.id }), "default")
-    links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (log && a.type === "DUPLICATE_INTERVIEW") {
     hint = "Two forms for one interview. Choose the one that counts."
     panel = <FormsPanel a={a} f={log.form} first={log.first} />
-    links.push({ key: "log", label: "Latest form in the log", target: "log" }, FORM_ROW)
   } else if (iv && a.type === "ODD_VALUE") {
     hint = iv.check === "CONTACT" ? "They have a date, so they were probably contacted." : "Fix the date or time the binome typed, or snooze it if it is right."
     panel = <OddPanel key={a.id} a={a} q={iv} />
-    links.push({ key: "cell", label: `The cell in ${a.binome}'s sheet`, target: "cell" })
-  } else if (log && a.type === "ODD_VALUE") {
-    links.push({ key: "log", label: "Interview Log row", target: "log" }, FORM_ROW)
   } else if (a.type === "INTEGRITY" && qOf(a, "integ")) {
     const r = repairOf(a)
     hint = r ? "The script can put it right in the binome sheet." : "Fix it in the sheet; the alert closes at the next sheet check."
