@@ -11,6 +11,12 @@ const ACCEPT_LIFE_MS = 30 * 60e3; // the accept step seals a token with at least
 const TIMEOUT_MS = 285000; // under maxDuration 300 (vercel.json)
 const POLL_LIMIT_MS = 25000; // webAccess / webPulse: the page gives up on them at 20 s, so the function must not run on to 285 s
 const POLLS = ['webAccess', 'webPulse'];
+// Calls that should never fail, noted for the sync's HIGH alert (api/drops.js): only this side sees them, and a member locked out
+// shows nowhere else (1 Nov 2026: 20 hours). The reads, whatever they say but these two answers; anything else only on these words.
+const READS = ['webAccess', 'webState', 'webPulse'];
+const NOT_A_FAULT = /^(?:Error: )?(?:Not allowed|Your binome sheet isn't shared)/;
+const FAULT = /You do not have permission|Authorization is required|protected cell|Unknown action/i;
+const isFault = (fn, msg) => (READS.indexOf(fn) >= 0 ? !NOT_A_FAULT.test(msg) : FAULT.test(msg));
 // a token granted before the script gained a scope: scripts.run answers 403; signing in again shows Google's screen once
 const SCOPE_RE = /insufficient authentication scopes|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i;
 const NEW_SCOPE = 'The dashboard needs one more Google permission: sign in again and allow it.';
@@ -111,7 +117,9 @@ module.exports = async (req, res) => {
     console.warn(JSON.stringify({ at: 'run', status: r.status, gstatus: st, msg: String(j.error && j.error.message || '').slice(0, 200) }));
     if (r.status === 429 || st === 'RESOURCE_EXHAUSTED') // per-account "Execution requests per minute" quota: the page pauses its polls
       return done(429, { error: 'Google is limiting requests from this account for a minute. Nothing was changed.', code: 'RATE_LIMIT' }, false);
-    return done(502, { error: 'Google Apps Script refused the call (' + st + ').' }, false);
+    const refused = 'Google Apps Script refused the call (' + st + ').';
+    if (READS.indexOf(fn) >= 0) await P.noteFailed(action, refused, s.email).catch(() => {}); // the page's answer never waits on this working
+    return done(502, { error: refused }, false);
   }
   if (j.error) { // the script threw: details[0].errorMessage is our own Error message
     const d = (j.error.details || [])[0] || {};
@@ -119,6 +127,7 @@ module.exports = async (req, res) => {
     const busy = /^(?:Error: )?BUSY: ([\s\S]*)/.exec(msg); // the script's refused lock (busy_ in Sheets.gs): nothing was changed
     if (busy) return done(200, { error: busy[1], code: 'BUSY' }, false);
     const conflict = /^(?:Error: )?CONFLICT: ([\s\S]*)/.exec(msg); // memberSet: the partner changed that cell; error = its value now
+    if (!conflict && isFault(fn, msg)) await P.noteFailed(action, msg, s.email).catch(() => {});
     return done(200, conflict ? { error: conflict[1], code: 'CONFLICT' } : { error: msg }, false);
   }
   const out = { value: j.response ? j.response.result : null };

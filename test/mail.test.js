@@ -169,6 +169,32 @@ assert(/Daily digest · /.test(digest) && /New registrations <b/.test(digest) &&
   answer({ code: 200, body: { mail: [], alert: [], open: [] } });
   sync();
   assert.deepStrictEqual([dropAlerts()[0][8], fetched().pop().body.mailed], ['AUTO-RESOLVED', []], 'every drop addressed: resolved; the report was taken');
+  // dashboard calls that failed (web/api/run.js): repeats or two people raise one HIGH alert for the admins
+  const failedAlerts = () => R(`master.getSheetByName('Alerts').getDataRange().getValues().filter(function (r) { return r[3] === 'CALLS_FAILING'; })`);
+  const failed = (n, accounts) => answer({ code: 200, body: { mail: [], alert: [], open: [], failed: [{ action: 'webState', msg: 'You do not have permission to access the requested document.', n, accounts }] } });
+  failed(2, ['m1@g.enp.edu.dz']);
+  sync();
+  assert.strictEqual(failedAlerts().length, 0, 'one stray failure and its retry: no alert');
+  failed(3, ['m1@g.enp.edu.dz']);
+  run('__outbox.length = 0');
+  sync();
+  let fa = failedAlerts();
+  assert.deepStrictEqual([fa.length, fa[0][2], fa[0][8]], [1, 'HIGH', 'OPEN'], 'three failures: one HIGH alert');
+  assert(/3 dashboard calls \(webState\) failed.*m1@g\.enp\.edu\.dz.*You do not have permission/.test(fa[0][6]), fa[0][6]);
+  const adminMail = () => outbox().filter(x => /\(HIGH\)/.test(x.subject) && /You do not have permission/.test(x.htmlBody));
+  assert(adminMail().length >= 1, 'mailed to the admins');
+  failed(1, ['m1@g.enp.edu.dz', 'm2@g.enp.edu.dz']);
+  run('__outbox.length = 0');
+  sync();
+  assert.deepStrictEqual([failedAlerts().length, adminMail().length], [1, 0], 'still failing: the same alert, no second mail');
+  failed(1, Array.from({ length: 7 }, (_, i) => 'p' + i + '@g.enp.edu.dz'));
+  run(`var __af = master.getSheetByName('Alerts'), __ad = __af.getDataRange().getValues(); __ad.forEach(function (r, i) { if (r[3] === 'CALLS_FAILING') __af.getRange(i + 1, 9).setValue('RESOLVED'); })`);
+  run('__outbox.length = 0');
+  sync();
+  fa = failedAlerts();
+  assert.deepStrictEqual([fa.length, fa[1][8], adminMail().length >= 1, /p4@.*\.\.\./.test(fa[1][6]), /p5@/.test(fa[1][6])], [2, 'OPEN', true, true, false], 'resolved, then failing again: a new alert and mail; five accounts named at most');
+  answer({ code: 200, body: { mail: [], alert: [], open: [] } });
+  sync();
   run(`delete __props.DROPS_SECRET; __fetch = function () { throw new Error('no network in the mock'); }`);
 }
 
