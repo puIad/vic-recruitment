@@ -30,6 +30,7 @@ interface DataTableProps<TData, TValue> {
   /** shown when the filtered data is empty */
   empty?: React.ReactNode
   initialSorting?: SortingState
+  initialFilters?: ColumnFiltersState
   initialVisibility?: VisibilityState
   pageSize?: number
   /** a stable id per row (default: index), so selection survives refreshes */
@@ -46,13 +47,14 @@ export function DataTable<TData, TValue>({
   loading,
   empty,
   initialSorting = [],
+  initialFilters = [],
   initialVisibility = {},
   pageSize = 10,
   getRowId,
   onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(initialVisibility)
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(initialFilters)
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize })
 

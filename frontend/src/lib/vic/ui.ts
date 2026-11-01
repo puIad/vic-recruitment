@@ -42,6 +42,11 @@ interface UiStore {
   editDialog: { open: boolean; code: string; field?: string; nonce: number } | null
   openEditDialog: (o: { code: string; field?: string }) => void
   closeEditDialog: () => void
+  /** Add member, Correct name or email, Department & Pair As (team-dialog.tsx) */
+  teamDialog: { open: boolean; mode: "add" | "fix" | "dept"; email?: string; resume?: boolean; nonce: number } | null
+  /** resume: Not interviewing turned off on a SKIP row, which needs a real Pair As */
+  openTeamDialog: (o: { mode: "add" | "fix" | "dept"; email?: string; resume?: boolean }) => void
+  closeTeamDialog: () => void
 }
 
 /** Small UI flags shared between the header, the shell and the pages that open the two work panels. */
@@ -68,4 +73,7 @@ export const useUi = create<UiStore>((set, get) => ({
   editDialog: null,
   openEditDialog: (o) => set({ editDialog: { ...o, open: true, nonce: (get().editDialog?.nonce ?? 0) + 1 } }),
   closeEditDialog: () => set((s) => (s.editDialog ? { editDialog: { ...s.editDialog, open: false } } : s)),
+  teamDialog: null,
+  openTeamDialog: (o) => set({ teamDialog: { ...o, open: true, nonce: (get().teamDialog?.nonce ?? 0) + 1 } }),
+  closeTeamDialog: () => set((s) => (s.teamDialog ? { teamDialog: { ...s.teamDialog, open: false } } : s)),
 }))

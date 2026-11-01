@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useVic } from "./store"
-import type { AdminGoldKey, Alert, AlertEntry, Binome, BinomeEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, WebState } from "./types"
+import type { AdminGoldKey, Alert, AlertEntry, Binome, BinomeEntry, CellValue, FieldEntry, HeldAlert, MemberState, PendingChange, PendingEntry, PendingRec, SettingEntry, Severity, TeamField, WebState } from "./types"
 
 /**
  * The author's view of the alerts: the snapshot with their pending changes over it (docs/plans.md › Slice 2, issue 61).
@@ -167,7 +167,7 @@ export function again(e: PendingEntry, built: number | undefined, at: number): P
   if (e.kind === "result") return { kind: "result", code: e.code, value: e.value, seen: e.sheet ?? e.seen, note: e.note, at }
   if (e.kind === "binome") return { kind: "binome", binome: e.binome, op: e.op, value: e.value, seen: e.seen, note: e.note, until: e.until, codes: e.codes, at }
   if (e.kind === "setting") return { kind: "setting", key: e.key, value: e.value, seen: e.sheet ?? e.seen, at, built }
-  if (e.kind === "team") return { kind: "team", email: e.email, value: e.value, seen: e.sheet === undefined ? e.seen : e.sheet === "true", at }
+  if (e.kind === "team") return { kind: "team", email: e.email, field: e.field, value: e.value, seen: e.sheet === undefined ? e.seen : typeof e.value === "boolean" ? e.sheet === "true" : e.sheet, at }
   if (e.kind === "bfield") return { kind: "bfield", binome: e.binome, code: e.code, field: e.field, value: e.value, seen: e.sheet ?? e.seen, at }
   return { kind: "field", code: e.code, field: e.field, value: e.value, seen: e.sheet ?? e.seen, at }
 }
@@ -191,10 +191,25 @@ export const REASON: Record<string, string> = {
 export function teamView(state: WebState | null, rec: PendingRec): Record<string, boolean> {
   const out: Record<string, boolean> = {}, built = state?.built ?? 0
   Object.values(rec).forEach((e) => {
-    if (e.kind !== "team") return
-    if (e.state === "pending" || ((e.state === "applied" || e.state === "met") && !(e.wrote !== undefined && built >= e.wrote))) out[e.email] = e.value
+    if (e.kind !== "team" || e.field) return
+    if (e.state === "pending" || ((e.state === "applied" || e.state === "met") && !(e.wrote !== undefined && built >= e.wrote))) out[e.email] = e.value === true
   })
   return out
+}
+
+/** email → field → the value the author's screen shows over the snapshot's Team list, for every Team cell (as teamView). */
+export function teamCellsView(state: WebState | null, rec: PendingRec): Record<string, Partial<Record<TeamField, boolean | string>>> {
+  const out: Record<string, Partial<Record<TeamField, boolean | string>>> = {}, built = state?.built ?? 0
+  Object.values(rec).forEach((e) => {
+    if (e.kind !== "team") return
+    if (e.state === "pending" || ((e.state === "applied" || e.state === "met") && !(e.wrote !== undefined && built >= e.wrote))) (out[e.email] ||= {})[e.field || "Experienced"] = e.value
+  })
+  return out
+}
+export function useTeamCells() {
+  const state = useVic((s) => s.state)
+  const rec = useVic((s) => s.rec)
+  return React.useMemo(() => teamCellsView(state, rec), [state, rec])
 }
 export function useTeamView() {
   const state = useVic((s) => s.state)

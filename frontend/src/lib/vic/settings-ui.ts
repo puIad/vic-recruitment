@@ -204,6 +204,7 @@ export const MAIL_UI: Record<string, { label: string; help: string; icon: Lucide
   ALERT: { label: "Alert mail to a binome", help: "Sent to a binome (and whoever covers) when an alert concerns them.", icon: Siren, switch: "NOTIFY_BINOME_ON_ALERT" },
   JOINED: { label: "Joined a binome", help: "Sent to a member who joins a binome after the lock.", icon: UserRoundPlus },
   LEFT: { label: "Left a binome", help: "Sent to a member who leaves a binome after the lock.", icon: UserMinus },
+  EMAIL_FIXED: { label: "Email address corrected", help: "Sent to the new address only when an admin corrects a binome member's email (Correct name or email).", icon: MailCheck, vars: { old: "The address it replaces" } },
   PAIRED: { label: "New binome", help: "Sent to both members of a binome created after the lock.", icon: Users2 },
   COVER: { label: "You cover", help: "Sent to a person who covers candidates for a binome.", icon: Handshake },
   COVERED: { label: "Someone covers for you", help: "Sent to the members of a binome when someone covers for them.", icon: MailMinus },

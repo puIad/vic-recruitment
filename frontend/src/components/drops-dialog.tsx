@@ -25,7 +25,7 @@ function describe(e: PendingEntry, state: WebState | null) {
   if (e.kind === "binome") return { icon: PauseCircle, what: `Binome ${e.binome}`, mine: { pause: "Pause", resume: "Resume", date: "Change resume date" }[e.op], sheet: undefined }
   if (e.kind === "bmove") return { icon: UserRound, what: `${e.code} · move out of ${e.binome}`, mine: "Move to another binome", sheet: undefined }
   if (e.kind === "setting") return { icon: Settings2, what: `Setting ${e.key}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
-  if (e.kind === "team") return { icon: UserRound, what: `${e.email} · Experienced`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet === "true") }
+  if (e.kind === "team") return { icon: UserRound, what: `${e.email} · ${e.field === "Exclude" ? "Not interviewing" : e.field || "Experienced"}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : typeof e.value === "boolean" ? text(e.sheet === "true") : text(e.sheet) }
   if (e.kind === "result") return { icon: UserRound, what: `${e.code} · Phase 1 result`, mine: e.value || "Follow the binome", sheet: e.sheet === undefined ? undefined : e.sheet || "Follow the binome" }
   if (e.kind === "bfield") return { icon: UserRound, what: `${e.code} (${e.binome}) · ${e.field}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }
   return { icon: UserRound, what: `${e.code} · ${e.field}`, mine: text(e.value), sheet: e.sheet === undefined ? undefined : text(e.sheet) }

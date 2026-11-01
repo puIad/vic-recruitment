@@ -27,6 +27,9 @@ import type {
   PairedPreview,
   Person,
   RejectionsPreview,
+  TeamField,
+  TeamFixPlan,
+  TeamMember,
 } from "./types"
 
 /** The old dashboard's ACTIONS table, carried over one for one: same script actions, same previews, same confirmations. */
@@ -177,8 +180,36 @@ export function useActions() {
 
       async importTeam(link: string) {
         const out = await go<ImportConfirm | null>("importTeam", { link }, "Import team")
-        if (out && out.result && out.result.confirm) {
-          const r = out.result
+        const r = out?.result
+        if (r && r.merge) {
+          const add = r.add || [], skipped = r.skipped || []
+          if (!add.length) toast("Nobody new to add", { description: `Everyone in “${r.source}” is already in the Team tab.` })
+          else if (
+            await confirm({
+              title: `Add ${add.length} new member${add.length > 1 ? "s" : ""}?`,
+              wide: true,
+              body: (
+                <>
+                  <p>Binomes are locked, so the import only adds people whose email is new. The rows already in the Team tab don't change, and nobody is emailed.</p>
+                  <ul className="mt-2 space-y-1">
+                    {add.map((m) => (
+                      <li key={m.email}>
+                        <b>{m.name || m.email}</b> · {m.pairAs}
+                        {m.experienced ? " · experienced" : ""}
+                        {m.back && <span className="text-warning"> · coming back after a removal</span>}
+                        {m.notes && <span className="text-warning"> · {m.notes}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                  {skipped.length > 0 && <p className="mt-2 text-muted-foreground">Skipped, no valid email: {skipped.map((x) => x.name || x.email).join(", ")}.</p>}
+                  <p className="mt-2 text-muted-foreground">Each one shows as without a binome until you place them.</p>
+                </>
+              ),
+              okLabel: "Add them",
+            })
+          )
+            await go("importTeam", { link, merge: true }, "Import team")
+        } else if (r && r.confirm) {
           const ok = await confirm({
             title: "Replace the Team tab?",
             body: (
@@ -210,10 +241,85 @@ export function useActions() {
         return !!out
       },
       async teamSet(email: string, experienced: boolean) {
-        // a pending change when the owner's switch is on: the pill shows it at once and the next click needs no wait
-        if ((await useVic.getState().accept([{ kind: "team", email, value: experienced, seen: !experienced, at: Date.now() }])) === "ok") return true
-        const out = await go("teamSet", { email, experienced }, experienced ? "Mark experienced" : "Mark new")
+        return A.teamCells(email, [{ field: "Experienced", value: experienced, seen: !experienced }])
+      },
+      /** Team cells (Department, Pair As, Not interviewing, a name for someone in no binome): pending changes when the owner's switch
+       *  is on, else direct writes. direct: the cases a pending change can't do (Not interviewing for someone in a draft). */
+      async teamCells(email: string, cells: { field: TeamField; value: boolean | string; seen: boolean | string }[], direct = false) {
+        const at = Date.now()
+        if (!direct && (await useVic.getState().accept(cells.map((c) => ({ kind: "team" as const, email, field: c.field === "Experienced" ? undefined : c.field, value: c.value, seen: c.seen, at }))) ) === "ok") return true
+        let ok = true
+        for (const c of cells) {
+          const out = await go<{ warning?: string }>("teamSet", { email, field: c.field, value: c.value }, "Team")
+          if (!out) { ok = false; break }
+          if (out.result?.warning) toast(out.result.warning)
+        }
         await refresh(true)
+        return ok
+      },
+      /** Add member: a direct write; check = the suggested Pair As and Experienced, writing nothing. */
+      async teamAddCheck(email: string, name: string, dept: string) {
+        const out = await go<{ pairAs: string; experienced: boolean; warnings: string[] }>("teamAdd", { email, name, dept, dryRun: true }, "Check member")
+        return out?.result || null
+      },
+      async teamAdd(m: { name: string; email: string; dept: string; pairAs: string; experienced: boolean }) {
+        const out = await go<{ name: string }>("teamAdd", m, `Add ${m.name}`)
+        await refresh(true)
+        if (out) toast(`${m.name} added to the team`, { description: "They show as without a binome until you place them." })
+        return !!out
+      },
+      /** Correct name or email: the plan first, then the write. */
+      async teamFix(email: string, newName: string, newEmail: string) {
+        const pv = await go<TeamFixPlan>("teamFix", { email, newName, newEmail, dryRun: true }, "Check correction")
+        const p = pv?.result
+        if (!p) return false
+        const ok = await confirm({
+          title: "Correct this member?",
+          body: (
+            <>
+              <p>
+                {p.old !== p.name && <>Name: <s className="text-muted-foreground">{p.old}</s> → <b>{p.name}</b>. </>}
+                {p.email !== p.newEmail && <>Email: <s className="text-muted-foreground">{p.email}</s> → <b>{p.newEmail}</b>.</>}
+              </p>
+              {p.binome ? (
+                <p className="mt-2">
+                  Carried to <b>{p.binome}</b>: its row, sheet title and banner
+                  {p.email !== p.newEmail ? <>, the sheet's sharing and the dashboard. The old address loses the sheet and counts as a former member; the new one gets one short email.</> : ". Nobody is emailed."}
+                </p>
+              ) : (
+                <p className="mt-2">Written in the Team tab{p.drafts.length ? ` and draft ${p.drafts.join(", ")}` : ""}. Nobody is emailed.</p>
+              )}
+            </>
+          ),
+          okLabel: "Correct",
+        })
+        if (!ok) return false
+        const out = await go<TeamFixPlan>("teamFix", { email, newName, newEmail }, "Correct member")
+        await refresh(true)
+        if (out?.result?.done) toast("Corrected", { description: out.result.done.join(" ") })
+        return !!out
+      },
+      async teamRemove(m: TeamMember, binome: string, draft: string) {
+        const ok = await confirm({
+          title: `Remove ${m.name || m.email} from the team?`,
+          body: binome ? (
+            <p>
+              They stay in <b>{binome}</b>, with their access and candidates: the binome is not touched. Use Change members to take them out of it.
+            </p>
+          ) : draft ? (
+            <p>
+              Draft <b>{draft}</b> is dropped and their partner is free again.
+            </p>
+          ) : (
+            <p>Their row leaves the Team tab and every picker. Import can bring them back.</p>
+          ),
+          okLabel: "Remove",
+          danger: true,
+        })
+        if (!ok) return false
+        const out = await go<{ warning?: string }>("teamRemove", { email: m.email }, `Remove ${m.name || m.email}`)
+        await refresh(true)
+        if (out?.result?.warning) toast(out.result.warning)
         return !!out
       },
       /** Pause, resume or change the resume date: a pending change when the owner's switch is on, else the direct write. */

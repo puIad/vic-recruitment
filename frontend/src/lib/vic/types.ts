@@ -283,6 +283,11 @@ export interface TeamMember {
   pairAs: string
   /** has interviewed before (Team tab › Experienced; Import ticks the 2025 team); absent on an older script */
   experienced?: boolean
+  /** Not interviewing (Team tab › Exclude): kept in the list, left out of every picker; absent on an older script (which left them out) */
+  exclude?: boolean
+  dept?: string
+  /** the import's warnings (Team tab › Notes), read-only */
+  notes?: string
 }
 
 export interface Unpaired extends TeamMember {
@@ -594,6 +599,25 @@ export interface ImportConfirm {
   existing: number
   incoming: number
   source: string
+  /** after Lock: the merge's preview (rows whose email is new; back = removed from the Team tab before) */
+  merge?: boolean
+  add?: { name: string; email: string; pairAs: string; experienced: boolean; notes: string; back: boolean }[]
+  skipped?: { name: string; email: string; why: string }[]
+}
+
+/** A Team cell a pending change or teamSet writes (TEAM_CELLS in TeamEdit.gs) */
+export type TeamField = "Experienced" | "Exclude" | "Full Name" | "Department" | "Pair As"
+
+/** webRun('teamFix', {dryRun}): what Correct name or email would do */
+export interface TeamFixPlan {
+  email: string
+  newEmail: string
+  name: string
+  old: string
+  binome: string
+  drafts: string[]
+  notice: boolean
+  done?: string[]
 }
 
 export interface ChangePlan {
@@ -691,12 +715,13 @@ export interface FieldEntry extends EntryBase {
   value: CellValue
   seen: CellValue
 }
-/** An admin's Experienced tick of one Team member */
+/** An admin's change to one Team cell of one member: the Experienced tick when field is absent */
 export interface TeamEntry extends EntryBase {
   kind: "team"
   email: string
-  value: boolean
-  seen: boolean
+  field?: Exclude<TeamField, "Experienced">
+  value: boolean | string
+  seen: boolean | string
 }
 export type AdminGoldKey = "Contacted" | "Interview Date" | "Interview Time"
 /** An admin's Fix of Contacted or the interview date / time, in that binome's sheet */
@@ -742,7 +767,7 @@ export type PendingChange =
   | { kind: "alert"; alert: string; op: AlertEntry["op"]; seen: AlertEntry["seen"]; at: number; until?: number; built?: number }
   | { kind: "setting"; key: string; value: CellValue; seen: CellValue; at: number; built?: number }
   | { kind: "field"; code: string; field: GoldKey; value: CellValue; seen: CellValue; at: number }
-  | { kind: "team"; email: string; value: boolean; seen: boolean; at: number }
+  | { kind: "team"; email: string; field?: Exclude<TeamField, "Experienced">; value: boolean | string; seen: boolean | string; at: number }
   | { kind: "result"; code: string; value: string; seen: string; note?: string; at: number }
   | { kind: "bfield"; binome: string; code: string; field: AdminGoldKey; value: CellValue; seen: CellValue; at: number }
   | { kind: "binome"; binome: string; op: BinomeOp; value: BinomeEntry["value"]; seen: BinomeEntry["seen"]; note: string; until: number | null; codes: string[]; at: number }

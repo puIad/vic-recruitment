@@ -1,7 +1,7 @@
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
 import type { ColumnDef } from "@tanstack/react-table"
-import { ArrowRightLeft, Building2, CalendarClock, ExternalLink, KeyRound, MoveRight, MoreHorizontal, PauseCircle, PlayCircle, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
+import { ArrowRightLeft, Building2, CalendarClock, ExternalLink, KeyRound, MoveRight, MoreHorizontal, PauseCircle, PenLine, PlayCircle, Repeat, Search, UserRoundX, UsersRound, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { OpenChip } from "@/components/open-chip"
@@ -51,6 +51,7 @@ function RowActions({ b }: { b: Row }) {
   const open = React.useContext(DialogCtx)
   const openSheet = useUi((s) => s.openMemberSheet)
   const openMove = useUi((s) => s.openMoveDialog)
+  const openTeam = useUi((s) => s.openTeamDialog)
   const locked = b.status !== "DRAFT"
   return (
     <DropdownMenu>
@@ -98,6 +99,12 @@ function RowActions({ b }: { b: Row }) {
         <DropdownMenuItem disabled={!locked} className="cursor-pointer" onSelect={() => openMove({ binome: b.code })}>
           <MoveRight /> Move an interviewee here…
         </DropdownMenuItem>
+        {b.people.filter((p) => p.email).length > 0 && <DropdownMenuSeparator />}
+        {b.people.filter((p) => p.email).map((p) => (
+          <DropdownMenuItem key={p.email} className="cursor-pointer" onSelect={() => openTeam({ mode: "fix", email: p.email })}>
+            <PenLine /> Correct {p.name || p.email}…
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   )

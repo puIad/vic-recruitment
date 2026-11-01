@@ -834,7 +834,7 @@ function buildState_(ctx) {
       codes: c.codes, live: coverLive_(ctx, c), reason: c.reason })),
     history: history,
     ivHistory: ivHistory,
-    teamList: teamMembers_(ctx).filter(m => !m.exclude).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced })),
+    teamList: teamMembers_(ctx).map(m => ({ name: m.name, email: m.email, pairAs: m.pairAs, experienced: m.experienced, exclude: m.exclude, dept: m.dept, notes: m.notes })),
     binomes: ctx.binomes.map(b => {
       const p = perBin[b.code] || blank();
       return { code: b.code, tag: b.tag, status: b.status, pausedUntil: ms_(b.pausedUntil), fileUrl: b.fileUrl, members: b.members.map(m => m.name || m.email),
@@ -1022,11 +1022,14 @@ function webRun(action, args) {
       case 'editApply': result = editFixCore_('apply', args.ids); break;
       case 'editRevert': result = editFixCore_('revert', args.ids); break;
       case 'editAccept': result = editFixCore_('accept', args.ids); break;
-      case 'importTeam': result = importTeamCore_(args.link, !!args.replace); break;
+      case 'importTeam': result = importTeamCore_(args.link, !!args.replace, !!args.merge); break;
       case 'draft': draftCore_(!!args.keep); break; // keep: Draw the rest; without: Redraw all
       case 'draftPair': result = draftPair_(args); break;
       case 'draftUnpair': result = draftUnpair_(args); break;
       case 'teamSet': result = teamSet_(args); break;
+      case 'teamAdd': result = teamAdd_(args); break;
+      case 'teamFix': result = teamFix_(args); break;
+      case 'teamRemove': result = teamRemove_(args); break;
       case 'lockCheck': result = lockCheck_(); break;
       case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;
