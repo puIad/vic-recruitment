@@ -1031,7 +1031,7 @@ function webRun(action, args) {
       case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;
       case 'pairedMail': result = args.send ? pairedSend_() : pairedPreview_(); break; // writes only PAIRED_SENT: no publish
-      case 'reprotect': reprotectBinomeSheets(); break;
+      case 'reprotect': reprotectBinomeSheets(args.budgetMs); break;
       case 'resetBinomes': { result = resetBinomesCore_(args.phrase);
         if (!result) busy_();
         _webOut.push('Binomes reset. ' + result.binomes + ' binomes removed, ' + result.retired + ' sheets moved to the Retired binomes folder, ' +

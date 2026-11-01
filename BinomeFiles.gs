@@ -246,8 +246,9 @@ function protectBinomeSheet_(sh) {
 /** Menu, run as the sheets' owner (only a protection's owner can rewrite it): protect again every binome sheet whose protection
  *  misses the trigger account or an admin, so the sync and the dashboard can write the columns they fill. Run it again after
  *  adding an admin. Safe to repeat: sheets already fine are skipped. */
-function reprotectBinomeSheets() {
-  const t0 = Date.now(); // the budget counts from here, lock wait included, so a dashboard run ends before Vercel's 300 s
+function reprotectBinomeSheets(budgetMs) {
+  // the budget counts from here, lock wait included; the dashboard passes 200 s, as for Lock, so the publish after it ends before Vercel's 300 s
+  const t0 = Date.now(), budget = Number(budgetMs) || 240000;
   const me = lc_(Session.getEffectiveUser().getEmail()), trig = lc_(PropertiesService.getScriptProperties().getProperty('TRIGGER_OWNER') || '');
   let owner = ''; try { owner = lc_(ss_().getOwner().getEmail()); } catch (e) { /* shared drive */ }
   if (me !== owner) return say_('Only the owner of the Master (' + (owner || 'unknown') + ') can re-protect the binome sheets.');
@@ -257,7 +258,7 @@ function reprotectBinomeSheets() {
   const msg = withLock_(() => {
     const ctx = loadCtx_(), errs = [], late = [], ok = {}; let done = 0, fine = 0;
     ctx.binomes.filter(b => b.fileId && b.status !== 'DRAFT').forEach(b => {
-      if (Date.now() - t0 > 240000) { late.push(b.code); return; }
+      if (Date.now() - t0 > budget) { late.push(b.code); return; }
       try { const sh = binomeSheet_(ctx, b); if (listed(sh)) fine++; else { protectBinomeSheet_(sh); done++; } ok[b.code] = true; } catch (e) { errs.push(b.code + ': ' + e.message); }
     });
     // the protection alerts of the sheets now fine close here, not at the next full check; a sheet not reached keeps its alert

@@ -546,7 +546,7 @@ export function useActions() {
           body: <p>For after adding an admin: every binome sheet whose protection misses the trigger account or an admin is protected again, so the sync and the dashboard can write their columns. Sheets already fine are left alone, and it is safe to repeat.</p>,
           okLabel: "Re-protect",
         })
-        if (ok) await go("reprotect", {}, "Re-protect", true)
+        if (ok) await go("reprotect", { budgetMs: 200000 }, "Re-protect", true) // ends before the 300 s limit; run it again for the rest
         after()
       },
       async resetBinomes(binomes: number, interviewees: number) {
