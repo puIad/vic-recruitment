@@ -17,9 +17,10 @@ function parseCloseDate_(text) {
 }
 function closeDate_() { try { return parseCloseDate_(S_().INTERVIEW_CLOSE_DATE); } catch (e) { return null; } }
 
-/** What pages show: {on, at, by, date (ms or null)}. A closed phase shows its date as a past reminder only. */
-function closeInfo_() {
-  const c = closeState_(), d = closeDate_();
+/** What pages show: {on, at, by, date (ms or null)}. A closed phase shows its date as a past reminder only. date: a member's, from
+ *  their slice: their call must not open the Master, Google fails it even when the refusal is caught (live, 1 Nov 2026). */
+function closeInfo_(date) {
+  const c = closeState_(), d = date === undefined ? closeDate_() : date;
   return { on: !!c, at: c ? c.at : null, by: c ? c.by : '', date: d ? +d : null };
 }
 
