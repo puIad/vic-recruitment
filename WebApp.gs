@@ -1000,9 +1000,9 @@ function webRun(action, args) {
   args = args || {};
   // what may have written the Master: published at the end. sync / integrity / digest publish inside their own cycle
   // dropSlice: a publish would put the dropped slice straight back
-  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'p1View', 'mailLog', 'mailResendPreview', 'resultClicks', 'pairedMail'].indexOf(action) < 0 && !args.dryRun &&
+  const wrote = ['sync', 'integrity', 'digest', 'lockCheck', 'membersRefresh', 'pendingSwitch', 'dropSlice', 'mailPreview', 'candidateGet', 'binomeColumnsGet', 'interviewForms', 'binomeView', 'closePreview', 'p1View', 'mailLog', 'mailResendPreview', 'resultClicks'].indexOf(action) < 0 && !args.dryRun &&
     !(action === 'resultsMail' && args.op !== 'send' && args.op !== 'test') && !(action === 'resultMailOne' && args.op !== 'send') &&
-    !(action === 'rejections' && !args.send) &&
+    !(action === 'rejections' && !args.send) && !(action === 'pairedMail' && !args.send) &&
     !(action === 'quick' && ['locate', 'draft'].indexOf(String(args.op)) >= 0) && !(action === 'binomeAccess' && !args.level);
   let refused = false, outcome = 'ok'; // BUSY: nothing was changed, and the lock holder publishes
   _webOut = [];
@@ -1030,7 +1030,7 @@ function webRun(action, args) {
       case 'lockCheck': result = lockCheck_(); break;
       case 'lock': lockBinomesCore_(args.budgetMs); break;
       case 'reshare': reshareBinomeFiles(); break;
-      case 'pairedMail': result = args.send ? pairedSend_() : pairedPreview_(); break; // writes only PAIRED_SENT: no publish
+      case 'pairedMail': result = args.send ? pairedSend_() : pairedPreview_(); break;
       case 'reprotect': reprotectBinomeSheets(args.budgetMs); break;
       case 'resetBinomes': { result = resetBinomesCore_(args.phrase);
         if (!result) busy_();
