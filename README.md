@@ -9,18 +9,24 @@ wrong, and gives the team one dashboard over all of it.
 It is an internal tool. Candidates never see it; they apply through the public landing page in
 [vic-enp](https://github.com/puIad/vic-enp).
 
+<p align="center">
+  <img src="docs/readme/overview.webp" alt="The dashboard's Overview: a to-do list of alerts by kind, the pipeline strip with 42 registrants, and the binomes that are behind" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/readme/tour.webp" alt="A walk through the dashboard: Overview, an alert with its quick fix, Binomes, a candidate's panel, Schedule, Results, then dark mode" width="88%">
+</p>
+
+<sub>Every screen on this page runs on the local mock (`npm run mock -- --results` in `frontend/`): the people, codes and numbers are made up.</sub>
+
 ## How it works
 
 A Google Sheet (the **Master**) is the database, an Apps Script bound to it does the work, and a web dashboard on
 Vercel calls that script on behalf of whoever is signed in, so Google Drive sharing decides who can do what.
 
-```
-Registration form ─┐                         ┌─► one Google Sheet per binome
-Interview form ────┼─► Master + Apps Script ─┤      (contact, date, time, notes)
-Team list ─────────┘    (sync every few min) └─► alerts, emails, a daily digest
-                              ▲
-        Vercel dashboard ─────┘ runs the script as the signed-in member
-```
+<p align="center">
+  <img src="docs/readme/how-it-works.svg" alt="The registration form, interview form and team list feed the Master sheet and its Apps Script, which produces one sheet per binome, alerts, and emails with a daily digest. The Vercel dashboard runs the script as the signed-in member." width="100%">
+</p>
 
 - **Binomes.** The interviewers work in pairs called binomes: one member of the HR team plus one member of another
   department, drawn at random. Each binome gets its own Google Sheet with its candidates in it.
@@ -31,6 +37,40 @@ Team list ─────────┘    (sync every few min) └─► alert
   silently breaks sharing or history.
 - **Screening and changes after lock.** The team can hold or decline low-effort applications, replace or swap a
   binome member, add a temporary cover, or move a candidate to another binome, each with a preview first.
+
+## A look around
+
+| | |
+|---|---|
+| <img src="docs/readme/alerts.webp" alt="Alerts: an inbox of what needs a person, worst first, with quick fixes"> | <img src="docs/readme/binomes.webp" alt="Binomes: every pair of interviewers, their status, progress and open alerts"> |
+| **Alerts.** What the script found that needs a person, worst first, many with a quick fix beside them. | **Binomes.** Every pair of interviewers, how far they are and what's open, with changes previewed before they apply. |
+| <img src="docs/readme/schedule.webp" alt="Schedule: a week calendar of interviews coloured by department"> | <img src="docs/readme/results.webp" alt="Results: candidates ranked by rating with the binome's proposal and notes"> |
+| **Schedule.** Every interview the binomes set in their sheets, by week, coloured by first choice. | **Results.** Everyone who needs a result, best rating first, with the binome's proposal and notes. |
+| <img src="docs/readme/analytics.webp" alt="Analytics: registrations so far and per day"> | <img src="docs/readme/team.webp" alt="Team: the interviewers, their pairing and experience"> |
+| **Analytics.** Registrations over time, who applied, and how fast each binome moves. | **Team.** The interviewers, who is paired, who is experienced, and who isn't interviewing. |
+
+### Light and dark
+
+| | |
+|---|---|
+| <img src="docs/readme/overview.webp" alt="Overview in light mode"> | <img src="docs/readme/overview-dark.webp" alt="Overview in dark mode"> |
+| <img src="docs/readme/binomes.webp" alt="Binomes in light mode"> | <img src="docs/readme/binomes-dark.webp" alt="Binomes in dark mode"> |
+
+### What a member sees
+
+An interviewer who isn't an admin gets **My binome**: their own candidates and open alerts, nothing else. With edit
+access they fill in their columns from here, and it writes straight into their binome sheet.
+
+<p align="center">
+  <img src="docs/readme/member.webp" alt="My binome on a desktop: the binome's candidates, their stages and what needs the member" width="70%">
+  &nbsp;
+  <img src="docs/readme/member-phone.webp" alt="My binome on a phone" width="22%">
+</p>
+
+<p align="center">
+  <img src="docs/readme/overview-phone.webp" alt="The admin Overview on a phone, in dark mode" width="26%">
+  <br><sub>The admin Overview on a phone</sub>
+</p>
 
 ## What's in the repo
 
