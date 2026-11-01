@@ -243,7 +243,7 @@ console.log('MAIL OK');
 // ---- editable mail texts (MAILS, Settings › Emails) ----
 {
   const keys = R('SETTINGS_DEFAULTS.map(function (r) { return r[0]; })'), mk = R('MAILS.reduce(function (a, m) { return a.concat(m.fields.map(function (f) { return "MAIL_" + m.id + "_" + f[0].toUpperCase(); })); }, [])');
-  assert.strictEqual(mk.length, 55, '55 fields');
+  assert.strictEqual(mk.length, 58, '58 fields');
   assert(mk.every(k => keys.includes(k) && k.length <= 41 && /^[A-Z_]+$/.test(k)), 'every field has its Settings row, within the pending key pattern');
   assert.strictEqual(new Set(keys).size, keys.length, 'keys unique');
   // blank rows = today's text; an edit reaches the mail, escaped
@@ -258,7 +258,7 @@ console.log('MAIL OK');
   assert.throws(() => settings({ MAIL_CONFIRM_ABOVE: 'x'.repeat(2001) }), /over 2000/);
   settings({ MAIL_CONFIRM_HEADING: run("mailDef_('CONFIRM').fields[1][1]") });
   assert.strictEqual(call('webState').settingsAll.find(x => x.key === 'MAIL_CONFIRM_HEADING').value, '', 'default text saved blank');
-  assert(call('webState').mails.length === 17, 'webState.mails');
+  assert(call('webState').mails.length === 18, 'webState.mails');
   // preview: sample data, nothing written, send reaches only the caller
   run('__outbox.length = 0');
   const pv = call('webRun', 'mailPreview', { id: 'COVERED', texts: { text: 'Hi {first}, {cover} covers {codes}' } }).result;

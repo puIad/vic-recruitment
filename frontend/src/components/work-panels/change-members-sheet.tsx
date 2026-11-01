@@ -292,7 +292,7 @@ function Form({ init, state }: { init: MemberSheetOpen; state: WebState }) {
         </Field>
 
         <datalist id="vic-team-emails">
-          {state.teamList.map((m) => (
+          {state.teamList.filter((m) => !m.exclude).map((m) => (
             <option key={m.email} value={m.email}>
               {m.name + " · " + m.pairAs}
             </option>

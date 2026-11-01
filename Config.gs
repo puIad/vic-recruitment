@@ -90,6 +90,10 @@ const MAILS = [
     ['subject', '[VIC Recruitment] You left binome {binome}'],
     ['heading', 'You left binome {binome}'],
     ['text', 'Hi {first},\n\nYou are no longer a member of binome **{binome}**{replaced}. Thanks for your help!']] },
+  { id: 'EMAIL_FIXED', name: 'Email address corrected', to: 'binome', vars: ['first', 'binome', 'old'], fields: [
+    ['subject', '[VIC Recruitment] Binome {binome} now uses this address'],
+    ['heading', 'Your address is corrected'],
+    ['text', 'Hi {first},\n\nYour address in binome **{binome}** was corrected from {old} to this one. The binome sheet and the dashboard now use it.']] },
   { id: 'PAIRED', name: 'New binome', to: 'binome', vars: ['first', 'binome', 'members'], fields: [
     ['subject', '[VIC Recruitment] You are in binome {binome}'],
     ['heading', 'You are in binome {binome}'],

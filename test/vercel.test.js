@@ -505,7 +505,14 @@ assert.strictEqual((await invoke('run', { method: 'POST', cookie: admin, origin:
       await deliver();
       const rec2 = (await pulse(own, 2)).json.rec;
       assert.deepStrictEqual([rec2[tc].state, rec2[bc].state], ['applied', 'applied'], 'applied as the admin');
-      for (const bad of [{ kind: 'team', email: m.email, value: 'yes', seen: false }, bf('Rating', 5, ''), { kind: 'bfield', binome: 'nope', code, field: 'Contacted', value: 'Yes', seen: '' }])
+      // a Team cell besides the tick: its own cell, the field carried to the script
+      const pa = { kind: 'team', email: m.email, field: 'Pair As', value: m.pairAs === 'HR' ? 'IT' : 'HR', seen: m.pairAs };
+      r = await accept(own, pa);
+      assert.deepStrictEqual([r.json.value[tc + ':Pair As'].state, r.json.value[tc + ':Pair As'].field], ['pending', 'Pair As']);
+      await deliver();
+      assert.strictEqual((await recOf(own, tc + ':Pair As')).state, 'applied', 'Pair As applied');
+      for (const bad of [{ kind: 'team', email: m.email, value: 'yes', seen: false }, { kind: 'team', email: m.email, field: 'Notes', value: 'x', seen: '' },
+        { kind: 'team', email: m.email, field: 'Exclude', value: 'yes', seen: false }, bf('Rating', 5, ''), { kind: 'bfield', binome: 'nope', code, field: 'Contacted', value: 'Yes', seen: '' }])
         assert.strictEqual((await accept(own, bad)).json.code, 'DIRECT', JSON.stringify(bad));
     }
 

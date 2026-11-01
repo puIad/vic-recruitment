@@ -57,6 +57,7 @@ const KIND: Record<string, string> = {
   PAIRED: "New binome",
   JOINED: "Joined a binome",
   LEFT: "Left a binome",
+  EMAIL_FIXED: "Email address corrected",
   COVER: "You cover",
   COVERED: "Someone covers for you",
   BINOME_PAUSED: "Binome paused",

@@ -34,8 +34,8 @@ function pendingSwitch_(a, on) {
  *    at their next poll.
  *  - {id, kind: 'result', code, value, seen, note?, at} (admins): one candidate's Phase 1 Result override ('' clears it), compared to the
  *    override the author saw (Phase1.gs); refused once the results are final.
- *  - {id, kind: 'team', email, value, seen, at} (admins): the Team tab's Experienced tick of one member (teamSet_'s cell),
- *    true or false; the drafts holding them get their note again.
+ *  - {id, kind: 'team', email, field?, value, seen, at} (admins): one Team cell of one member (teamSet_'s cells, TEAM_CELLS):
+ *    Experienced (the default, true or false; the drafts holding them get their note again), Exclude, Full Name, Department, Pair As.
  *  - {id, kind: 'bfield', binome, code, field, value, seen, at} (admins): Contacted, Interview Date or Interview Time of one
  *    candidate in that binome's sheet (the alerts' Fix, setCell_), compared and written as a member's field; the Master takes
  *    it at the next sync, which reads that sheet (dirty).
@@ -184,19 +184,26 @@ function binomeTargets_(codes) {
   return out;
 }
 
-/** The Experienced tick of one Team member: written only while it still shows what the author saw. */
+/** One Team cell (field, Experienced by default): written only while it still shows what the author saw. A name for someone in a
+ *  binome is dropped: Correct name or email carries it to the binome. */
 function applyTeam_(tw, c, id) {
-  const t = tw.t, T = t.I, e = lc_(c.email), drop = reason => ({ id: id, end: 'dropped', reason: reason });
-  if (typeof c.value !== 'boolean') return drop('Experienced must be true or false.');
-  if (!hasExpCol_({ team: t })) return drop(NO_EXP_COL);
+  const t = tw.t, T = t.I, e = lc_(c.email), field = c.field || 'Experienced', drop = reason => ({ id: id, end: 'dropped', reason: reason });
+  let v;
+  try { v = teamCellValue_(field, c.value); } catch (x) { return drop(x.message); }
+  if (field === 'Experienced' && !hasExpCol_({ team: t })) return drop(NO_EXP_COL);
   const i = t.data.findIndex(r => lc_(r[T.Email]) === e);
   if (i < 0) return drop(e + ' is not in the Team tab any more.');
-  const cur = bool_(t.data[i][T.Experienced]);
-  if (cur === c.value) return { id: id, end: 'met' };
-  if (cur !== (c.seen === true)) return { id: id, end: 'dropped', sheet: String(cur) }; // another admin changed it (as text, like the other kinds)
-  t.sh.getRange(i + 2, T.Experienced + 1).setValue(c.value);
-  t.data[i][T.Experienced] = c.value;
-  tw.wrote.push(e);
+  if (field === 'Full Name') {
+    const bt = tw.bin || (tw.bin = loadTable_(TAB.BINOMES, BIN_H)), B = bt.I;
+    if (bt.data.some(r => lc_(r[B['Email 1']]) === e || lc_(r[B['Email 2']]) === e)) return drop('They are in a binome now: use Correct name or email.');
+  }
+  const cur = teamCellText_(field, t.data[i][T[field]]);
+  if (cur === teamCellText_(field, v)) return { id: id, end: 'met' };
+  if (cur !== teamCellText_(field, c.seen)) return { id: id, end: 'dropped', sheet: cur }; // another admin changed it (as text, like the other kinds)
+  // shortcut: Not interviewing for someone in a draft keeps the draft here (the page sends that case as a direct write)
+  t.sh.getRange(i + 2, T[field] + 1).setValue(v);
+  t.data[i][T[field]] = v;
+  if (field === 'Experienced') tw.wrote.push(e);
   return { id: id, end: 'applied' };
 }
 
@@ -287,7 +294,7 @@ function dropsMail_(ctx, drops) {
     const a = d.kind === 'alert' ? rows[d.alert] : null;
     const what = d.kind === 'alert' ? 'Alert ' + d.alert + (a ? ' · ' + a[KI.Type] + (a[KI.Interviewee] ? ' · ' + a[KI.Interviewee] : '') : '')
       : d.kind === 'binome' ? 'Binome ' + d.binome : d.kind === 'bmove' ? d.code + ' · move out of ' + d.binome
-      : d.kind === 'setting' ? 'Setting ' + d.key : d.kind === 'team' ? 'Team · ' + d.email + ' · Experienced' : d.code + ' · ' + d.field;
+      : d.kind === 'setting' ? 'Setting ' + d.key : d.kind === 'team' ? 'Team · ' + d.email + ' · ' + (d.field || 'Experienced') : d.code + ' · ' + d.field;
     const mine = d.kind === 'alert' ? DROP_OP[d.op] || d.op : d.kind === 'binome' ? BINOME_OP[d.op] || d.op : d.kind === 'bmove' ? 'Move to another binome' : text(d.value);
     const sheet = d.kind === 'alert' ? DROP_STATUS[d.sheet] || d.sheet : text(d.sheet);
     return mailH_(what) + mailList_([['You asked', mine], d.reason ? ['Why', DROP_REASON[d.reason] || d.reason] : ['The sheet now', sheet]]);

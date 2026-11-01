@@ -39,13 +39,21 @@ function importTeam() {
   if (resp.getSelectedButton() !== ui.Button.OK) return;
   const text = resp.getResponseText().trim();
   const res = importTeamCore_(text, false);
+  if (res.merge) {
+    if (!res.add.length) return say_('Everyone in "' + res.source + '" is already in the Team tab.');
+    if (ui.alert('Add ' + res.add.length + ' new members?', res.add.map(m => '• ' + m.name + ' (' + m.pairAs + ')' + (m.back ? ', coming back after a removal' : '') +
+      (m.notes ? ': ' + m.notes : '')).join('\n'), ui.ButtonSet.YES_NO) === ui.Button.YES) importTeamCore_(text, false, true);
+    return;
+  }
   if (!res.confirm) return;
   const ok = ui.alert('Replace the Team tab?', 'The Team tab already has ' + res.existing + ' members. Replace them with ' + res.incoming + ' imported members?', ui.ButtonSet.YES_NO);
   if (ok === ui.Button.YES) importTeamCore_(text, true);
 }
 
-/** Import without dialogs. If the Team tab has members and replace is false, writes nothing and returns {confirm:true,…}. */
-function importTeamCore_(text, replace) {
+/** Import without dialogs. If the Team tab has members and replace is false, writes nothing and returns {confirm:true,…}.
+ *  Once binomes are locked it merges instead (replace is refused until a Reset): rows match by email and existing rows never change;
+ *  without merge it returns the preview {merge:true, add[], skipped[], source}, with merge it appends the new rows. Nobody is mailed. */
+function importTeamCore_(text, replace, merge) {
   text = String(text || '').trim();
   const local = findTeamSource_(ss_());
   let src;
@@ -59,6 +67,11 @@ function importTeamCore_(text, replace) {
   const sh = ss_().getSheetByName(TAB.TEAM);
   // Import writes column G: refused while it is someone else's column, as teamSet is (hasExpCol_)
   if (addMissingColumns_(sh, TEAM_H)[TEAM_H.indexOf('Experienced')] !== 'Experienced') throw new Error(NO_EXP_COL);
+  const bin = loadTable_(TAB.BINOMES, BIN_H);
+  if (bin.data.some(r => ['ACTIVE', 'PAUSED'].indexOf(String(r[bin.I.Status]).trim().toUpperCase()) >= 0)) {
+    if (replace) throw new Error('Binomes are locked: Import only adds new people now. Replace opens again after a Reset.');
+    return importMerge_(src, merge);
+  }
   const used = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 2).getValues().filter(r => String(r[0]).trim() || String(r[1]).trim()).length : 0;
   if (used && !replace) return { confirm: true, existing: used, incoming: teamRowsFrom_(src.getDataRange().getValues()).length, source: src.getName() };
   const past = pastTeam_(), rows = teamRowsFrom_(src.getDataRange().getValues(), past);
@@ -72,6 +85,28 @@ function importTeamCore_(text, replace) {
     '\n\nReview "Pair As" (HR side / IT, COMM, FLER side / ALL = board lead / SKIP), tick "Exclude" for anyone not interviewing and ' +
     '"Experienced" for anyone else who has interviewed before, then pair the binomes.');
   return { done: true };
+}
+
+/** Import after Lock: the source's rows whose email is not in the Team tab yet. write false = the preview only. */
+function importMerge_(src, write) {
+  const past = pastTeam_(), rows = teamRowsFrom_(src.getDataRange().getValues(), past), back = removedEmails_();
+  return withLock_(() => {
+    const t = loadTable_(TAB.TEAM, TEAM_H), have = {}, add = [], skipped = [];
+    t.data.forEach(r => { if (lc_(r[t.I.Email])) have[lc_(r[t.I.Email])] = true; });
+    rows.forEach(r => {
+      if (!EMAIL_RE.test(r[1])) return skipped.push({ name: r[0], email: r[1], why: r[1] ? 'invalid email' : 'no email' });
+      if (have[r[1]]) return;
+      have[r[1]] = true;
+      add.push(r);
+    });
+    const view = { merge: true, source: src.getName(), skipped: skipped,
+      add: add.map(r => ({ name: r[0], email: r[1], pairAs: r[3], experienced: r[6], notes: r[5], back: !!back[r[1]] })) };
+    if (!write) return view;
+    if (add.length) t.sh.getRange(t.sh.getLastRow() + 1, 1, add.length, TEAM_H.length).setValues(add);
+    say_('Added ' + add.length + ' new member' + (add.length === 1 ? '' : 's') + ' from "' + src.getName() + '"; the rows already in the Team tab did not change.' +
+      (add.length ? ' Each one shows as without a binome until placed.' : '') + (skipped.length ? '\nSkipped (no valid email): ' + skipped.map(x => x.name || x.email).join(', ') : ''));
+    return Object.assign(view, { done: true });
+  }, 60000) || busy_();
 }
 
 /** Emails of the 2025 organizing team (CONFIG.TEAM_DB_DEFAULT_ID), who have interviewed before; null when it can't be read. */
@@ -121,7 +156,7 @@ function teamMembers_(ctx) {
     let pairAs = String(r[T['Pair As']]).trim().toUpperCase();
     if (!pairAs) pairAs = sectionToPair_(r[T.Department]).pairAs;
     return { name: String(r[T['Full Name']]).trim(), email: String(r[T.Email]).trim().toLowerCase(), pairAs: pairAs,
-      exclude: bool_(r[T.Exclude]), experienced: exp && bool_(r[T.Experienced]) };
+      exclude: bool_(r[T.Exclude]), experienced: exp && bool_(r[T.Experienced]), dept: String(r[T.Department]).trim(), notes: String(r[T.Notes]).trim() };
   });
 }
 
@@ -273,24 +308,6 @@ function draftUnpair_(args) {
     keepHand_(ctx);
     return { removed: code, members: [r[B['Member 1']], r[B['Member 2']]].map(String).filter(s => s.trim()) };
   });
-}
-
-/** webRun('teamSet', {email, experienced}): tick or untick Experienced for one Team member (open after Lock too). A draft
- *  holding them gets its note again ("Both members are new"). */
-function teamSet_(args) {
-  const e = lc_(args.email), on = args.experienced === true;
-  if (typeof args.experienced !== 'boolean') throw new Error('Experienced must be true or false.');
-  const res = withLock_(() => {
-    const ctx = loadCtx_(), T = ctx.team.I, i = ctx.team.data.findIndex(r => lc_(r[T.Email]) === e);
-    if (!hasExpCol_(ctx)) throw new Error(NO_EXP_COL);
-    if (i < 0) throw new Error((e || 'That member') + ' is not in the Team tab.');
-    ctx.team.data[i][T.Experienced] = on;
-    ctx.team.sh.getRange(i + 2, T.Experienced + 1).setValue(on);
-    const who = draftNotes_(ctx, [e]);
-    return { email: e, experienced: on, name: who[e].name };
-  });
-  if (!res) busy_();
-  return res;
 }
 
 /** The drafts holding one of these members get their note again ("Both members are new"), after their Experienced tick

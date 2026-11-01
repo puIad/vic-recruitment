@@ -203,7 +203,10 @@ function teamEdits_(ctx) {
   const locked = activeOrPaused_(ctx);
   if (!locked.length) return;
   const C = idx_(MC_H), brought = {};
-  loadChanges_().forEach(r => { if (r[C['In Email']]) brought[lc_(r[C['In Email']])] = true; });
+  loadChanges_().forEach(r => {
+    if (r[C['In Email']]) brought[lc_(r[C['In Email']])] = true;
+    if (r[C.Type] === 'TEAM_REMOVED') brought[lc_(r[C['Out Email']])] = true; // removed on purpose from the Team page
+  });
   locked.forEach(b => b.members.forEach(m => {
     if (m.email && names[m.email] === undefined && !brought[m.email]) flagEdit_(ctx, 'EDIT|team|missing|' + m.email, 'INFO', '', b.code,
       (m.name || m.email) + ' (' + m.email + ') is in ' + b.code + ' but no longer in the Team tab. Put them back in the Team tab (unpaired-member checks rely on it).');

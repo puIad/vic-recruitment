@@ -88,8 +88,9 @@ function memberPlan_(ctx, binomeText, outEmail, inName, inEmail, swapWith) {
   return { errors: errors, warnings: warnings, b: b, slot: slot, out: out, inn: inn };
 }
 
-/** Write the planned seats, then fix files, sharing, history, alerts and emails. plans: [{b, slot, out, inn}] */
-function applyMemberPlans_(ctx, plans, reason) {
+/** Write the planned seats, then fix files, sharing, history, alerts and emails. plans: [{b, slot, out, inn}]. opts.fix: Correct name
+ *  or email (TeamEdit.gs), the same person: a new address gets one short notice instead of JOINED and LEFT, and counts as told. */
+function applyMemberPlans_(ctx, plans, reason, opts) {
   const B = ctx.bin.I, s = S_(), by = Session.getActiveUser().getEmail();
   // All seats or none: if a write fails (e.g. the second row of a swap), put back the rows already written.
   const touched = [];
@@ -158,6 +159,12 @@ function applyMemberPlans_(ctx, plans, reason) {
     ctx.alerts.add({ severity: 'INFO', type: 'MEMBER_CHANGED', status: 'AUTO-FIXED', code: '', binome: b.code,
       msg: what + ' by ' + by + (reason ? ' (' + reason + ')' : ''), key: '' });
     if (same) return;
+    if (opts && opts.fix) {
+      mailSend_(p.inn.email, mailFrom_('EMAIL_FIXED', { first: p.inn.name.split(' ')[0], binome: b.code, old: p.out.email },
+        { cta: mailDashboardCta_(), footer: mailTeamFooter_(b.fileUrl) }), b.code);
+      pairedMark_([b.code + '|' + p.inn.email]); // #173: the catch-up never sends this address its binome again
+      return;
+    }
     const pending = ctx.iv.data.filter(r => r[I.Binome] === b.code && PENDING_STATUSES.indexOf(r[I.Status]) >= 0);
     const members = b.members.map(m => m.name).join(' & ');
     if (p.inn && mailSend_(p.inn.email, mailFrom_('JOINED', { first: p.inn.name.split(' ')[0], binome: b.code, members: members }, {

@@ -23,10 +23,10 @@ export function pairWarning(a: string, b?: string) {
   return ""
 }
 
-/** Team members who can still be paired: not excluded (teamList leaves them out), not SKIP, in no binome or draft. */
+/** Team members who can still be paired: interviewing (not excluded, not SKIP), in no binome or draft. */
 export function freeMembers(s: WebState): TeamMember[] {
   const taken = new Set(s.binomes.flatMap((b) => b.people.map((p) => lc(p.email))))
-  return s.teamList.filter((m) => m.email && m.pairAs !== "SKIP" && !taken.has(lc(m.email)))
+  return s.teamList.filter((m) => m.email && !m.exclude && m.pairAs !== "SKIP" && !taken.has(lc(m.email)))
 }
 
 export type Mix = "mixed" | "both" | "new" | "alone"
@@ -52,7 +52,7 @@ export function experienceOf(team: TeamMember[], overrides: Record<string, boole
 export function draftCounts(s: WebState, isExp = experienceOf(s.teamList)) {
   const drafts: Binome[] = s.binomes.filter((b) => b.status === "DRAFT")
   const free = freeMembers(s)
-  const pool = s.teamList.filter((m) => m.pairAs !== "SKIP")
+  const pool = s.teamList.filter((m) => !m.exclude && m.pairAs !== "SKIP")
   return {
     drafts: drafts.length,
     byHand: drafts.filter((b) => b.byHand).length,
