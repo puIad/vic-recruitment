@@ -2,15 +2,14 @@ import { CakeSlice } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { dayLabel, fieldLabel, median, MONTH_NAMES, useProfile } from "@/lib/vic/analytics"
-import { share } from "../baseline-2025"
+import { pctOf, share } from "../baseline-2025"
 import type { Model } from "../model"
 import { axis } from "./chart-style"
 import { BarList, Figure, Key, Panel, type BarItem } from "./kit"
-import { vsTip } from "./vs-tip"
+import { vsCfg, vsTip } from "./vs-tip"
 import { Nothing } from "./registrations"
 
 const cfg = { count: { label: "Applicants", color: "var(--chart-1)" } } satisfies ChartConfig
-const vsCfg = { pct: { label: "2026" }, pct25: { label: "2025" } } satisfies ChartConfig
 const OVERALL = ["", "1st prépa", "2nd prépa", "1st specialty", "2nd specialty", "3rd specialty"]
 
 export function YearCard({ m }: { m: Model }) {
@@ -18,15 +17,15 @@ export function YearCard({ m }: { m: Model }) {
   const known = m.prepa + m.special
   const known25 = y ? y.prepa + y.special : 0
   // with 2025 in, both years are drawn as shares of those who gave a year: the totals differ too much for counts
-  const data = m.byOverall.map((x, i) => ({ ...x, label: `Year ${x.y}`, sub: OVERALL[x.y], pct: share(x.count, known), pct25: y ? share(y.byOverall[i], known25) : 0, n25: y ? y.byOverall[i] : 0 }))
+  const data = m.byOverall.map((x, i) => ({ ...x, label: `Year ${x.y}`, sub: OVERALL[x.y], pct: pctOf(x.count, known), pct25: y ? pctOf(y.byOverall[i], known25) : 0, n25: y ? y.byOverall[i] : 0 }))
   return (
     <Panel
       title="Year of study"
       description={`Overall year at ENP: the count starts again after prépa, so a 1st-year specialty student is in year 3.${y ? " Bars are shares of those who gave a year, 2025 in grey." : ""}`}
     >
       <div className="mb-4 flex flex-wrap gap-x-10 gap-y-3">
-        <Figure value={m.prepa} label={`in prépa${y ? ` · ${share(y.prepa, known25)}% in 2025` : ""}`} />
-        <Figure value={m.special} label={`in a specialty${y ? ` · ${share(y.special, known25)}% in 2025` : ""}`} />
+        <Figure value={m.prepa} label={`in prépa${y ? ` · ${share(m.prepa, known)}% (${share(y.prepa, known25)}% in 2025)` : ""}`} />
+        <Figure value={m.special} label={`in a specialty${y ? ` · ${share(m.special, known)}% (${share(y.special, known25)}% in 2025)` : ""}`} />
         {known < m.live.length && <Figure value={m.live.length - known} label="year not given" />}
       </div>
       {known ? (

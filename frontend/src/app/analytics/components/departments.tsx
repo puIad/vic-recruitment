@@ -11,7 +11,8 @@ export function DemandCard({ m }: { m: Model }) {
     .sort((a, b) => b.first - a.first)
     .map((d) => ({ key: d.dept, label: d.dept, value: d.first, value2: d.second, color: deptColor(d.dept), was: y ? share(y.demand[d.dept]?.[0] ?? 0, y.total) : undefined }))
   const top = m.demand.reduce((b, d) => (d.first > b.first ? d : b), m.demand[0])
-  const in25 = (n: number) => (y ? ` · ${share(n, y.total)}% in 2025` : "")
+  // this year's share beside 2025's, so the two compare without dividing by hand
+  const in25 = (now: number, then?: number) => (y ? ` · ${share(now, m.live.length)}% (${share(then ?? 0, y.total)}% in 2025)` : "")
   return (
     <Panel
       title="Department demand"
@@ -22,8 +23,8 @@ export function DemandCard({ m }: { m: Model }) {
       className="lg:col-span-2"
     >
       <div className="mb-5 flex flex-wrap gap-x-10 gap-y-3">
-        <Figure value={m.sameChoice} label={`chose the same department twice${y ? in25(y.sameChoice) : ""}`} />
-        <Figure value={m.noSecond} label={`gave no 2nd choice${y ? in25(y.noSecond) : ""}`} />
+        <Figure value={m.sameChoice} label={`chose the same department twice${in25(m.sameChoice, y?.sameChoice)}`} />
+        <Figure value={m.noSecond} label={`gave no 2nd choice${in25(m.noSecond, y?.noSecond)}`} />
       </div>
       <BarList items={items} total={y ? m.live.length : undefined} />
       <div className="mt-4 flex gap-4">

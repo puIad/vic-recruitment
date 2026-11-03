@@ -4,11 +4,11 @@ import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { Input } from "@/components/ui/input"
 import { useProfile, wordCount } from "@/lib/vic/analytics"
-import { share } from "../baseline-2025"
+import { pctOf } from "../baseline-2025"
 import type { Model } from "../model"
 import { axis } from "./chart-style"
-import { BarList, Figure, Key, Panel } from "./kit"
-import { vsTip } from "./vs-tip"
+import { BarList, Figure, Panel, VsKey } from "./kit"
+import { vsCfg, vsTip } from "./vs-tip"
 import { Nothing } from "./registrations"
 
 const cfg = { count: { label: "Answers", color: "var(--chart-1)" } } satisfies ChartConfig
@@ -24,7 +24,7 @@ export function WordsCard({ m, onPick }: { m: Model; onPick: (w: string) => void
 export function LengthCard({ m }: { m: Model }) {
   const y = m.y25
   // with 2025 in, both years are shares of their own answers
-  const data = m.byLength.map((b, i) => ({ ...b, pct: share(b.count, m.whys.length), pct25: y ? share(y.byLength[i], y.whys) : 0, n25: y ? y.byLength[i] : 0 }))
+  const data = m.byLength.map((b, i) => ({ ...b, pct: pctOf(b.count, m.whys.length), pct25: y ? pctOf(y.byLength[i], y.whys) : 0, n25: y ? y.byLength[i] : 0 }))
   return (
     <Panel title="Answer length" description={`Words per answer to “Why do you want to be part of VIC?”${y ? " Bars are shares of each year's answers, 2025 in grey." : ""}`}>
       <div className="mb-4 flex flex-wrap gap-x-10 gap-y-3">
@@ -33,7 +33,7 @@ export function LengthCard({ m }: { m: Model }) {
       </div>
       {m.whys.length ? (
         <>
-          <ChartContainer config={y ? { pct: { label: "2026", color: "var(--chart-1)" }, pct25: { label: "2025", color: "var(--muted-foreground)" } } : cfg} className="aspect-auto h-44 w-full">
+          <ChartContainer config={y ? vsCfg : cfg} className="aspect-auto h-44 w-full">
             <BarChart data={data} margin={{ left: y ? -4 : -12, right: 4, top: 8 }} accessibilityLayer>
               <CartesianGrid vertical={false} stroke="var(--border)" />
               <XAxis dataKey="label" {...axis} />
@@ -47,10 +47,7 @@ export function LengthCard({ m }: { m: Model }) {
             </BarChart>
           </ChartContainer>
           {y && (
-            <div className="mt-3 flex gap-4">
-              <Key color="var(--chart-1)">2026</Key>
-              <Key color="var(--muted-foreground)" pale>2025</Key>
-            </div>
+            <VsKey />
           )}
         </>
       ) : (

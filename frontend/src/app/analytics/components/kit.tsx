@@ -117,6 +117,18 @@ function Bar({ value, top, color, total, pale, was, wasGap }: { value: number; t
   )
 }
 
+/** The legend under a 2026-vs-2025 share chart. */
+export function VsKey() {
+  return (
+    <div className="mt-3 flex gap-4">
+      <Key color="var(--chart-1)">2026</Key>
+      <Key color="var(--muted-foreground)" pale>
+        2025
+      </Key>
+    </div>
+  )
+}
+
 /** A swatch beside a word: the identity channel next to text that stays in ink. */
 export function Key({ color, children, pale, line }: { color: string; children: React.ReactNode; pale?: boolean; line?: boolean }) {
   return (

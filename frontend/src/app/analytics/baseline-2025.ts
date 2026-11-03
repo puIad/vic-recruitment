@@ -6,6 +6,8 @@ export const REG_2025_DAILY: number[] | null = [5, 53, 24, 15, 14, 16, 23, 27, 3
 
 /** n of total as a whole %, for setting a 2025 share beside this year's */
 export const share = (n: number, total: number) => (total ? Math.round((n * 100) / total) : 0)
+/** n of total in %, unrounded: chart bars, where a whole % would flatten small buckets (vsTip rounds for display) */
+export const pctOf = (n: number, total: number) => (total ? (n * 100) / total : 0)
 
 /** 2025's side of the other cards, from the same file and counted with the model's own rules (overall year, the heard
  *  options, words per answer). Counts only. null = the cards show 2026 alone. */

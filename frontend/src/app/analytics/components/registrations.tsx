@@ -4,11 +4,11 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "rec
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { dayLabel, hours } from "@/lib/vic/analytics"
 import { cn } from "@/lib/utils"
-import { share } from "../baseline-2025"
+import { pctOf } from "../baseline-2025"
 import type { Model } from "../model"
 import { axis } from "./chart-style"
-import { Figure, Key, Panel } from "./kit"
-import { vsTip } from "./vs-tip"
+import { Figure, Key, Panel, VsKey } from "./kit"
+import { vsCfg, vsTip } from "./vs-tip"
 
 const dayCfg = { count: { label: "Registrations", color: "var(--chart-1)" } } satisfies ChartConfig
 const raceCfg = {
@@ -113,7 +113,7 @@ export function PerHourCard({ m }: { m: Model }) {
   const peak25 = y ? y.byHour.indexOf(Math.max(...y.byHour)) : 0
   const hh = (h: number) => `${String(h).padStart(2, "0")}:00`
   // with 2025 in, both years are shares of their own registrations, so the shapes compare
-  const data = m.byHour.map((x) => ({ ...x, pct: share(x.count, total), pct25: y ? share(y.byHour[x.h], y.total) : 0, n25: y ? y.byHour[x.h] : 0 }))
+  const data = m.byHour.map((x) => ({ ...x, pct: pctOf(x.count, total), pct25: y ? pctOf(y.byHour[x.h], y.total) : 0, n25: y ? y.byHour[x.h] : 0 }))
   return (
     <Panel
       title="Hour of the day"
@@ -124,7 +124,7 @@ export function PerHourCard({ m }: { m: Model }) {
     >
       {total ? (
         <>
-          <ChartContainer config={y ? { pct: { label: "2026", color: "var(--chart-1)" }, pct25: { label: "2025", color: "var(--muted-foreground)" } } : dayCfg} className="aspect-auto h-48 w-full">
+          <ChartContainer config={y ? vsCfg : dayCfg} className="aspect-auto h-48 w-full">
             <BarChart data={data} margin={{ left: y ? -4 : -12, right: 4, top: 8 }} accessibilityLayer barCategoryGap={y ? 1 : 2} barGap={0}>
               <CartesianGrid vertical={false} stroke="var(--border)" />
               <XAxis dataKey="h" {...axis} interval={2} tickFormatter={(h) => `${String(h).padStart(2, "0")}h`} />
@@ -143,10 +143,7 @@ export function PerHourCard({ m }: { m: Model }) {
             </BarChart>
           </ChartContainer>
           {y && (
-            <div className="mt-3 flex gap-4">
-              <Key color="var(--chart-1)">2026</Key>
-              <Key color="var(--muted-foreground)" pale>2025</Key>
-            </div>
+            <VsKey />
           )}
         </>
       ) : (
