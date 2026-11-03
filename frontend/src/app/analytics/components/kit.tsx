@@ -52,6 +52,8 @@ export interface BarItem {
   color?: string
   /** a second, paler bar under the first (department 2nd choice) */
   value2?: number
+  /** 2025's share for the same row, in %: shown after the value, next to this year's share */
+  was?: number
   onClick?: () => void
 }
 
@@ -80,8 +82,8 @@ export function BarList({ items, max, total, empty = "Nothing yet", className }:
                 <span className="truncate font-medium" title={typeof i.label === "string" ? i.label : undefined}>{i.label}</span>
               </span>
               <span className="flex min-w-0 flex-col gap-1">
-                <Bar value={i.value} top={top} color={i.color} total={total} />
-                {i.value2 !== undefined && <Bar value={i.value2} top={top} color={i.color} pale />}
+                <Bar value={i.value} top={top} color={i.color} total={total} was={i.was} />
+                {i.value2 !== undefined && <Bar value={i.value2} top={top} color={i.color} pale wasGap={i.was !== undefined} />}
               </span>
             </Row>
           </li>
@@ -91,7 +93,8 @@ export function BarList({ items, max, total, empty = "Nothing yet", className }:
   )
 }
 
-function Bar({ value, top, color, total, pale }: { value: number; top: number; color?: string; total?: number; pale?: boolean }) {
+/** wasGap: keep the 2025 column's width empty, so a 2nd bar's value lines up with the 1st's */
+function Bar({ value, top, color, total, pale, was, wasGap }: { value: number; top: number; color?: string; total?: number; pale?: boolean; was?: number; wasGap?: boolean }) {
   return (
     <span className="flex min-w-0 items-center gap-2">
       <span className="relative h-2.5 min-w-0 flex-1">
@@ -104,6 +107,12 @@ function Bar({ value, top, color, total, pale }: { value: number; top: number; c
         {value}
         {total ? <span className="font-normal text-muted-foreground"> · {Math.round((value * 100) / total)}%</span> : null}
       </span>
+      {was !== undefined && (
+        <span className="num w-14 shrink-0 text-right text-xs text-muted-foreground" title="Share in 2025">
+          2025 {was}%
+        </span>
+      )}
+      {wasGap && <span className="w-14 shrink-0" aria-hidden="true" />}
     </span>
   )
 }

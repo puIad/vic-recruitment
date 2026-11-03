@@ -4,9 +4,11 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "rec
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { dayLabel, hours } from "@/lib/vic/analytics"
 import { cn } from "@/lib/utils"
+import { share } from "../baseline-2025"
 import type { Model } from "../model"
 import { axis } from "./chart-style"
 import { Figure, Key, Panel } from "./kit"
+import { vsTip } from "./vs-tip"
 
 const dayCfg = { count: { label: "Registrations", color: "var(--chart-1)" } } satisfies ChartConfig
 const raceCfg = {
@@ -55,7 +57,7 @@ export function RaceCard({ m }: { m: Model }) {
       {m.race.length ? (
         <>
           <ChartContainer config={raceCfg} className="aspect-auto h-60 w-full">
-            <LineChart data={m.race} margin={{ left: -12, right: 12, top: 8 }} accessibilityLayer>
+            <LineChart data={m.race} margin={{ left: -4, right: 12, top: 8 }} accessibilityLayer>
               <CartesianGrid vertical={false} stroke="var(--border)" />
               <XAxis dataKey="n" {...axis} tickFormatter={(n) => `Day ${n}`} minTickGap={24} />
               <YAxis {...axis} width={40} allowDecimals={false} />
@@ -107,21 +109,46 @@ export function PerDayCard({ m }: { m: Model }) {
 export function PerHourCard({ m }: { m: Model }) {
   const peak = m.byHour.reduce((b, h) => (h.count > b.count ? h : b), m.byHour[0])
   const total = m.byHour.reduce((t, h) => t + h.count, 0)
+  const y = m.y25
+  const peak25 = y ? y.byHour.indexOf(Math.max(...y.byHour)) : 0
+  const hh = (h: number) => `${String(h).padStart(2, "0")}:00`
+  // with 2025 in, both years are shares of their own registrations, so the shapes compare
+  const data = m.byHour.map((x) => ({ ...x, pct: share(x.count, total), pct25: y ? share(y.byHour[x.h], y.total) : 0, n25: y ? y.byHour[x.h] : 0 }))
   return (
     <Panel
       title="Hour of the day"
-      description={total ? `Most register around ${String(peak.h).padStart(2, "0")}:00, ${(m.tz.split("/").pop() || m.tz).replace(/_/g, " ")} time. The best hour to post.` : "When in the day people register."}
+      description={
+        (total ? `Most register around ${hh(peak.h)}, ${(m.tz.split("/").pop() || m.tz).replace(/_/g, " ")} time. The best hour to post.` : "When in the day people register.") +
+        (y ? ` In 2025 the peak was ${hh(peak25)}. Bars are shares of each year's registrations, 2025 in grey.` : "")
+      }
     >
       {total ? (
-        <ChartContainer config={dayCfg} className="aspect-auto h-48 w-full">
-          <BarChart data={m.byHour} margin={{ left: -12, right: 4, top: 8 }} accessibilityLayer barCategoryGap={2}>
-            <CartesianGrid vertical={false} stroke="var(--border)" />
-            <XAxis dataKey="h" {...axis} interval={2} tickFormatter={(h) => `${String(h).padStart(2, "0")}h`} />
-            <YAxis {...axis} width={40} allowDecimals={false} />
-            <ChartTooltip cursor={{ fill: "var(--accent)" }} content={<ChartTooltipContent labelFormatter={(_, p) => `${String(p?.[0]?.payload?.h).padStart(2, "0")}:00 to ${String(p?.[0]?.payload?.h).padStart(2, "0")}:59`} />} />
-            <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} maxBarSize={24} />
-          </BarChart>
-        </ChartContainer>
+        <>
+          <ChartContainer config={y ? { pct: { label: "2026", color: "var(--chart-1)" }, pct25: { label: "2025", color: "var(--muted-foreground)" } } : dayCfg} className="aspect-auto h-48 w-full">
+            <BarChart data={data} margin={{ left: y ? -4 : -12, right: 4, top: 8 }} accessibilityLayer barCategoryGap={y ? 1 : 2} barGap={0}>
+              <CartesianGrid vertical={false} stroke="var(--border)" />
+              <XAxis dataKey="h" {...axis} interval={2} tickFormatter={(h) => `${String(h).padStart(2, "0")}h`} />
+              <YAxis {...axis} width={40} allowDecimals={false} tickFormatter={y ? (v) => `${v}%` : undefined} />
+              <ChartTooltip
+                cursor={{ fill: "var(--accent)" }}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, p) => `${String(p?.[0]?.payload?.h).padStart(2, "0")}:00 to ${String(p?.[0]?.payload?.h).padStart(2, "0")}:59`}
+                    formatter={y ? vsTip({ pct: ["2026", "count"], pct25: ["2025", "n25"] }) : undefined}
+                  />
+                }
+              />
+              <Bar dataKey={y ? "pct" : "count"} fill={y ? "var(--color-pct)" : "var(--color-count)"} radius={[4, 4, 0, 0]} maxBarSize={24} />
+              {y && <Bar dataKey="pct25" fill="var(--color-pct25)" fillOpacity={0.45} radius={[4, 4, 0, 0]} maxBarSize={24} />}
+            </BarChart>
+          </ChartContainer>
+          {y && (
+            <div className="mt-3 flex gap-4">
+              <Key color="var(--chart-1)">2026</Key>
+              <Key color="var(--muted-foreground)" pale>2025</Key>
+            </div>
+          )}
+        </>
       ) : (
         <Nothing />
       )}
