@@ -1,23 +1,32 @@
 import { DEPTS, deptColor, fieldLabel } from "@/lib/vic/analytics"
 import { cn } from "@/lib/utils"
+import { share } from "../baseline-2025"
 import type { Model } from "../model"
 import { heat } from "./chart-style"
 import { BarList, Figure, Key, Panel } from "./kit"
 
 export function DemandCard({ m }: { m: Model }) {
-  const items = [...m.demand].sort((a, b) => b.first - a.first).map((d) => ({ key: d.dept, label: d.dept, value: d.first, value2: d.second, color: deptColor(d.dept) }))
+  const y = m.y25
+  const items = [...m.demand]
+    .sort((a, b) => b.first - a.first)
+    .map((d) => ({ key: d.dept, label: d.dept, value: d.first, value2: d.second, color: deptColor(d.dept), was: y ? share(y.demand[d.dept]?.[0] ?? 0, y.total) : undefined }))
   const top = m.demand.reduce((b, d) => (d.first > b.first ? d : b), m.demand[0])
+  // this year's share beside 2025's, so the two compare without dividing by hand
+  const in25 = (now: number, then?: number) => (y ? ` · ${share(now, m.live.length)}% (${share(then ?? 0, y.total)}% in 2025)` : "")
   return (
     <Panel
       title="Department demand"
-      description={m.live.length && top.first ? `${top.dept} is the most asked first choice, by ${Math.round((top.first * 100) / m.live.length)}% of applicants.` : "1st and 2nd choices per department."}
+      description={
+        (m.live.length && top.first ? `${top.dept} is the most asked first choice, by ${Math.round((top.first * 100) / m.live.length)}% of applicants.` : "1st and 2nd choices per department.") +
+        (y ? " The right column is each department's share of 1st choices in 2025." : "")
+      }
       className="lg:col-span-2"
     >
       <div className="mb-5 flex flex-wrap gap-x-10 gap-y-3">
-        <Figure value={m.sameChoice} label="chose the same department twice" />
-        <Figure value={m.noSecond} label="gave no 2nd choice" />
+        <Figure value={m.sameChoice} label={`chose the same department twice${in25(m.sameChoice, y?.sameChoice)}`} />
+        <Figure value={m.noSecond} label={`gave no 2nd choice${in25(m.noSecond, y?.noSecond)}`} />
       </div>
-      <BarList items={items} />
+      <BarList items={items} total={y ? m.live.length : undefined} />
       <div className="mt-4 flex gap-4">
         <Key color="var(--foreground)">1st choice</Key>
         <Key color="var(--foreground)" pale>2nd choice</Key>

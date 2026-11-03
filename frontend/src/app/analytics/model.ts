@@ -16,7 +16,7 @@ import {
   wordCount,
 } from "@/lib/vic/analytics"
 import type { AnalyticsRow } from "@/lib/vic/types"
-import { REG_2025_DAILY } from "./baseline-2025"
+import { BASE_2025, REG_2025_DAILY } from "./baseline-2025"
 
 export interface Row extends AnalyticsRow {
   key: string
@@ -194,6 +194,8 @@ export function buildModel(raw: AnalyticsRow[], tz: string, team: string[], now 
     daily,
     race,
     has2025: cum2025.length > 0,
+    /** 2025's side of the other cards, or null */
+    y25: BASE_2025,
     byHour,
     byOverall,
     prepa,

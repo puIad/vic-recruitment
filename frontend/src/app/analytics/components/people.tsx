@@ -2,37 +2,49 @@ import { CakeSlice } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from "recharts"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
 import { dayLabel, fieldLabel, median, MONTH_NAMES, useProfile } from "@/lib/vic/analytics"
+import { pctOf, share } from "../baseline-2025"
 import type { Model } from "../model"
 import { axis } from "./chart-style"
-import { BarList, Figure, Key, Panel } from "./kit"
+import { BarList, Figure, Key, Panel, type BarItem } from "./kit"
+import { vsCfg, vsTip } from "./vs-tip"
 import { Nothing } from "./registrations"
 
 const cfg = { count: { label: "Applicants", color: "var(--chart-1)" } } satisfies ChartConfig
 const OVERALL = ["", "1st prépa", "2nd prépa", "1st specialty", "2nd specialty", "3rd specialty"]
 
 export function YearCard({ m }: { m: Model }) {
-  const data = m.byOverall.map((x) => ({ ...x, label: `Year ${x.y}`, sub: OVERALL[x.y] }))
+  const y = m.y25
   const known = m.prepa + m.special
+  const known25 = y ? y.prepa + y.special : 0
+  // with 2025 in, both years are drawn as shares of those who gave a year: the totals differ too much for counts
+  const data = m.byOverall.map((x, i) => ({ ...x, label: `Year ${x.y}`, sub: OVERALL[x.y], pct: pctOf(x.count, known), pct25: y ? pctOf(y.byOverall[i], known25) : 0, n25: y ? y.byOverall[i] : 0 }))
   return (
-    <Panel title="Year of study" description="Overall year at ENP: the count starts again after prépa, so a 1st-year specialty student is in year 3.">
+    <Panel
+      title="Year of study"
+      description={`Overall year at ENP: the count starts again after prépa, so a 1st-year specialty student is in year 3.${y ? " Bars are shares of those who gave a year, 2025 in grey." : ""}`}
+    >
       <div className="mb-4 flex flex-wrap gap-x-10 gap-y-3">
-        <Figure value={m.prepa} label="in prépa" />
-        <Figure value={m.special} label="in a specialty" />
+        <Figure value={m.prepa} label={`in prépa${y ? ` · ${share(m.prepa, known)}% (${share(y.prepa, known25)}% in 2025)` : ""}`} />
+        <Figure value={m.special} label={`in a specialty${y ? ` · ${share(m.special, known)}% (${share(y.special, known25)}% in 2025)` : ""}`} />
         {known < m.live.length && <Figure value={m.live.length - known} label="year not given" />}
       </div>
       {known ? (
-        <ChartContainer config={cfg} className="aspect-auto h-48 w-full">
-          <BarChart data={data} margin={{ left: -12, right: 4, top: 8 }} accessibilityLayer>
+        <ChartContainer config={y ? vsCfg : cfg} className="aspect-auto h-48 w-full">
+          <BarChart data={data} margin={{ left: y ? -4 : -12, right: 4, top: 8 }} accessibilityLayer>
             <CartesianGrid vertical={false} stroke="var(--border)" />
             <XAxis dataKey="label" {...axis} />
-            <YAxis {...axis} width={40} allowDecimals={false} />
-            <ChartTooltip cursor={{ fill: "var(--accent)" }} content={<ChartTooltipContent labelFormatter={(_, p) => `${p?.[0]?.payload?.label} · ${p?.[0]?.payload?.sub}`} />} />
-            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={24}>
+            <YAxis {...axis} width={40} allowDecimals={false} tickFormatter={y ? (v) => `${v}%` : undefined} />
+            <ChartTooltip
+              cursor={{ fill: "var(--accent)" }}
+              content={<ChartTooltipContent labelFormatter={(_, p) => `${p?.[0]?.payload?.label} · ${p?.[0]?.payload?.sub}`} formatter={y ? vsTip({ pct: ["2026", "count"], pct25: ["2025", "n25"] }) : undefined} />}
+            />
+            <Bar dataKey={y ? "pct" : "count"} radius={[4, 4, 0, 0]} maxBarSize={24}>
               {/* prépa and specialty years read apart: the same blue, the specialty years a step deeper */}
               {data.map((d) => (
                 <Cell key={d.y} fill={d.y <= 2 ? "var(--chart-1)" : "var(--chart-3)"} />
               ))}
             </Bar>
+            {y && <Bar dataKey="pct25" fill="var(--muted-foreground)" fillOpacity={0.45} radius={[4, 4, 0, 0]} maxBarSize={24} />}
           </BarChart>
         </ChartContainer>
       ) : (
@@ -41,17 +53,23 @@ export function YearCard({ m }: { m: Model }) {
       <div className="mt-3 flex gap-4">
         <Key color="var(--chart-1)">Prépa</Key>
         <Key color="var(--chart-3)">Specialty</Key>
+        {y && (
+          <Key color="var(--muted-foreground)" pale>
+            2025
+          </Key>
+        )}
       </div>
     </Panel>
   )
 }
 
 export function FieldCard({ m }: { m: Model }) {
+  const y = m.y25
   return (
-    <Panel title="Field of study" description={`${m.byField.length} fields. The code is the form's; the name beside it is ours.`}>
+    <Panel title="Field of study" description={`${m.byField.length} fields. The code is the form's; the name beside it is ours.${y ? " The right column is the field's share in 2025." : ""}`}>
       <BarList
         total={m.live.length}
-        items={m.byField.map(([f, n]) => ({ key: f, tag: f === "—" ? undefined : f, label: f === "—" ? "Not given" : fieldLabel(f), value: n }))}
+        items={m.byField.map(([f, n]) => ({ key: f, tag: f === "—" ? undefined : f, label: f === "—" ? "Not given" : fieldLabel(f), value: n, was: y ? share(y.byField[f] ?? 0, y.total) : undefined }))}
       />
     </Panel>
   )
@@ -148,12 +166,15 @@ export function BirthdaysCard({ m }: { m: Model }) {
 
 export function HeardCard({ m }: { m: Model }) {
   const show = useProfile((s) => s.show)
-  const items = [...m.heardCount].sort((a, b) => b.count - a.count).map((h) => ({ key: h.option, label: h.option, value: h.count }))
-  if (m.others.length) items.push({ key: "other", label: "Other (typed)", value: m.others.length })
+  const y = m.y25
+  const items: BarItem[] = [...m.heardCount]
+    .sort((a, b) => b.count - a.count)
+    .map((h) => ({ key: h.option, label: h.option, value: h.count, was: y ? share(y.heard[h.option] ?? 0, y.heardAnswered) : undefined }))
+  if (m.others.length) items.push({ key: "other", label: "Other (typed)", value: m.others.length, was: y ? share(y.heardOther, y.heardAnswered) : undefined })
   return (
     <Panel
       title="How they heard of VIC"
-      description={`Several boxes can be ticked, so the bars add up to more than ${m.heardAnswered}. Other answers naming a member, or a member's name, count as referrals.`}
+      description={`Several boxes can be ticked, so the bars add up to more than ${m.heardAnswered}. Other answers naming a member, or a member's name, count as referrals.${y ? " The right column is 2025's share." : ""}`}
       className="lg:col-span-2"
     >
       <div className="grid gap-8 md:grid-cols-2">
