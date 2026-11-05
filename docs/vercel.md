@@ -151,7 +151,7 @@ The invocations are the number to watch (Vercel › Usage); CPU and memory grow 
   - Store: Upstash Redis Free from the Vercel Marketplace, us-east-1 next to iad1 (recreated there on 2026-10-18 after a
     first install in Frankfurt), connected to this project only. Env vars `KV_REST_API_URL` / `KV_REST_API_TOKEN` (the
     code also takes `UPSTASH_REDIS_REST_*`). The record only ever adds fields: every deployment shares it.
-  - A bad script deploy: `npm run rollback -- <version>` (only versions named "apply entry").
+  - A bad script deploy: `npm run rollback -- <version>` (only versions named "apply entry", from @205 on).
   - Added 2026-10-26: `team` (the Team tab's Experienced cell, then the draft notes, as `teamSet_`) and `bfield` (Contacted,
     Interview Date or Interview Time in any binome sheet, the cells `setCell_` writes; the Master takes them at the next sync,
     which reads that sheet). A Fix sends its cells and the alert's Resolve in one accept step. Their drops have no row of
