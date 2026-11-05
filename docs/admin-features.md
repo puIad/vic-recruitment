@@ -665,7 +665,8 @@ as an https link. Each accepted mail's button carries that candidate's own signe
 identifies the candidate and holds no department.
 - **On a click** vic-enp records the time of the candidate's first click and redirects straight to the group of their current department.
   There is no page in between. A candidate now Not accepted, or a token it doesn't know, gets a short "this link is no longer active"
-  page. A test-mode token records nothing.
+  page. A test-mode token records nothing and opens a "Test link OK" page (vic-enp#126): a wrong JOIN_SECRET shows there as
+  "no longer active", before any real mail.
 - **What vic-enp holds.** The four links and each told candidate's code and current department, pushed by the script at send and at each
   correction. A changed link goes with the next sync, and it also fixes mails already sent. A failed push at send sends nothing. A
   candidate who withdraws after being told keeps a working link.
