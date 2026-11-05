@@ -29,7 +29,8 @@ Repo: https://github.com/puIad/vic-recruitment-2026 (its own repo, not the AI-OS
    `appsscript.json`, is lost unless it is in git first. (Without `--force`, a live manifest that differs, even by line endings, made clasp print
    "Skipping push." and the deploy re-cut the old code: 2026-10-07.)
    A bad script deploy: `npm run rollback -- <version>` puts both deployments back on that version (`npx clasp versions`
-   lists them); it refuses a version from before the pending-changes apply entry (named "apply entry" by the deploy).
+   lists them); it refuses a version from before the pending-changes apply entry (named "apply entry" by the deploy), and any
+   version before @205, whose apply entry writes a Team change's field into the Experienced column.
 3. Dashboard changes: Vercel builds and deploys `main` by itself. A green Vercel check is not proof; open the build log
    and look for the `npm --prefix ../frontend ci` and Vite lines (tens of seconds, not under a second). Before pushing
    a change to what Vercel builds, build it from a clean clone: `.gitignore` once hid files the local build used.
