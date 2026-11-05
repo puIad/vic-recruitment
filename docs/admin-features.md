@@ -23,7 +23,7 @@ build sessions, each plus review, and every deploy is asked first.
 | 8 | [#192](https://github.com/puIad/vic-recruitment/issues/192) | [Email and notification status](#email-and-notification-status) | M to L, 1.5 | clasp, Vercel | Must |
 | 9 | [#193](https://github.com/puIad/vic-recruitment/issues/193) | [How a phase-1 result is decided](#how-a-phase-1-result-is-decided) | M to L, 1.5 | clasp, Vercel | Must |
 | 10 | [#194](https://github.com/puIad/vic-recruitment/issues/194) | [The results view](#the-results-view) | M, 1 | clasp, Vercel | Must |
-| 11 | [#195](https://github.com/puIad/vic-recruitment/issues/195) | [Telling candidates their result](#telling-candidates-their-result) | L, 2 | vic-enp after 4 Nov 23:59, clasp, Vercel | Must |
+| 11 | [#195](https://github.com/puIad/vic-recruitment/issues/195) | [Telling candidates their result](#telling-candidates-their-result) | L, 2 | vic-enp after 5 Nov 23:59, clasp, Vercel | Must |
 | | **Cut line: about 14.5 sessions above** | | | | |
 | 12 | [#196](https://github.com/puIad/vic-recruitment/issues/196) | [Buttons for the menu-only actions](#buttons-for-the-menu-only-actions) | S, 0.5 | clasp, Vercel | No |
 | 13 | [#197](https://github.com/puIad/vic-recruitment/issues/197) | [Add, edit and remove Team members](#add-edit-and-remove-team-members) | L, 2 | clasp, Vercel | No |
@@ -665,7 +665,8 @@ as an https link. Each accepted mail's button carries that candidate's own signe
 identifies the candidate and holds no department.
 - **On a click** vic-enp records the time of the candidate's first click and redirects straight to the group of their current department.
   There is no page in between. A candidate now Not accepted, or a token it doesn't know, gets a short "this link is no longer active"
-  page. A test-mode token records nothing.
+  page. A test-mode token records nothing and opens a "Test link OK" page (vic-enp#126): a wrong JOIN_SECRET shows there as
+  "no longer active", before any real mail.
 - **What vic-enp holds.** The four links and each told candidate's code and current department, pushed by the script at send and at each
   correction. A changed link goes with the next sync, and it also fixes mails already sent. A failed push at send sends nothing. A
   candidate who withdraws after being told keeps a working link.
@@ -686,7 +687,7 @@ made from it won't include them.
 **Writes.** Result Told is written by the script, so no pending change and no `MANUAL_EDIT`. Dialog edits to the texts are a direct
 write to Settings. All of this touches the Master only.
 
-**Deploy.** After applications close on 4 Nov 23:59 (moved from 5 Nov 18:00 on 2026-11-01), since vic-enp takes live registrations until then, asked before each one: vic-enp
+**Deploy.** After applications close on 5 Nov 23:59 (moved to 4 Nov 23:59 on 2026-11-01, then to 5 Nov 23:59 on 2026-11-03), since vic-enp takes live registrations until then, asked before each one: vic-enp
 first (the route, the push, the read and the secret), then clasp (the mails, the send, the column), then Vercel (the bar, the filter,
 Settings). The mailer does not change. Before results week, run one test-mode send, one live send to a test address, and a click.
 
