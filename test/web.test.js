@@ -245,6 +245,12 @@ assert(/Unknown code/.test(out.messages[0]));
   const inSheet = code => run(`(function () { var ctx = loadCtx_(); return findFileRow_(binomeSheet_(ctx, ctx.binByCode[${JSON.stringify(del.binome)}]), ${JSON.stringify(code)}); })()`);
   assert(inSheet(del.code) > 0, 'in its binome sheet before');
   const before = regRows();
+  // the document lock held (an override or an admin's fix saving Interviewees by row number): refused before anything is written
+  run('__docLockBusy = true');
+  assert.throws(() => call('webRun', 'deleteApplication', { code: del.code }), /BUSY/, 'refused while the document lock is held');
+  run('__docLockBusy = false');
+  assert.deepStrictEqual([call('webState').interviewees.some(x => x.code === del.code), inSheet(del.code) > 0, regRows(), run('heldCodes_().indexOf(' + JSON.stringify(del.code) + ')')],
+    [true, true, before, -1], 'nothing deleted and its code not held');
   run('__outbox.length = 0');
   out = call('webRun', 'deleteApplication', { code: del.code });
   assert(new RegExp(del.code.replace('.', '\\.') + ' .* deleted everywhere').test(out.messages[0]), out.messages[0]);

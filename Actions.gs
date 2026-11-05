@@ -109,11 +109,17 @@ function deleteApplication_(ctx, code) {
   if (!r) throw new Error('Unknown code ' + code);
   const key = String(r[I['Response Key']]).trim(), name = (r[I['First Name']] + ' ' + r[I['Family Name']]).trim();
   const b = ctx.binByCode[r[I.Binome]], kept = [];
-  holdCode_(code);
-  // the Master's row: found again by key (by code for a row typed by hand), as rows may have moved since the load
-  const n = ctx.iv.sh.getLastRow() - 1, cells = n > 0 ? ctx.iv.sh.getRange(2, 1, n, IV_H.length).getValues() : [];
-  const at = cells.findIndex(x => (key ? String(x[I['Response Key']]).trim() === key : String(x[I.Code]).trim() === code));
-  if (at >= 0) ctx.iv.sh.deleteRow(at + 2);
+  // the document lock too, as teamRemove_: Phase 1 overrides and an admin's fix after the close save Interviewees by row
+  // number under it, and a delete between their read and their write would put a row over the one below it
+  const dl = LockService.getDocumentLock();
+  if (!dl.tryLock(10000)) busy_(); // nothing written yet
+  try {
+    holdCode_(code);
+    // the Master's row: found again by key (by code for a row typed by hand), as rows may have moved since the load
+    const n = ctx.iv.sh.getLastRow() - 1, cells = n > 0 ? ctx.iv.sh.getRange(2, 1, n, IV_H.length).getValues() : [];
+    const at = cells.findIndex(x => (key ? String(x[I['Response Key']]).trim() === key : String(x[I.Code]).trim() === code));
+    if (at >= 0) ctx.iv.sh.deleteRow(at + 2);
+  } finally { dl.releaseLock(); } // released before the binome sheet: removeFromBinomeFile_ takes the same lock
   const i = ctx.iv.data.indexOf(r);
   ctx.iv.data.splice(i, 1); ctx.iv.orig.splice(i, 1);
   indexCtx_(ctx);
