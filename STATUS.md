@@ -1,10 +1,12 @@
 # STATUS — VIC Recruitment 2026
 
-Updated 2026-11-01. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
+Updated 2026-11-05. Where things stand and what's next. How to work on it: [HANDOFF.md](HANDOFF.md). Everything
 else: [docs/](docs/README.md).
 
 Apps Script + Google Sheets automation of the VIC 2026 recruitment (binomes, registration routing, one sheet per
 binome, interview-form check, alerts), with a dashboard at **https://vic-recruitment.vercel.app**.
+
+**Script @207 / @208 from main `6aaa940` (2026-11-05).** The fixes of the 2026-11-05 audit: Delete application takes the document lock around its row delete ([#224](https://github.com/puIad/vic-recruitment/pull/224), the only script change since @205), rollback refuses versions before @205 ([#223](https://github.com/puIad/vic-recruitment/pull/223)), and nine unused dashboard components and four packages are gone ([#225](https://github.com/puIad/vic-recruitment/pull/225), live on Vercel). The live HEAD matched `e4ba7a6` before the push, and a timed sync ran on the new code three minutes after it. vic-enp's part ([#125](https://github.com/puIad/vic-enp/pull/125): every ticket together capped at 500 a day; [#126](https://github.com/puIad/vic-enp/pull/126): the test mail's join link opens its own page) waits for its merge freeze to end at 00:59 on 6 Nov.
 
 **Script @205 / @206 from main `e4ba7a6` (2026-11-01).** The script runs main again, not `alert-live`: base a script hotfix on main. This put #195, #197 and #198's `locate` cleanup on the script three days before the close. #195 stays inert until its setup: Send results is refused while `JOIN_URL` and `JOIN_SECRET` are unset in the script properties, and the timed sync pushes nothing to vic-enp before the first result mail. vic-enp's part of #195 is in vic-enp's production (Vercel deploys its main; on 2026-11-01 `/api/join-sync` and `/api/join-clicks` answer there). The member check after the deploy is checked off (owner, 2026-11-01).
 
