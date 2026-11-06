@@ -1,11 +1,20 @@
 import * as React from "react"
 import { useSearchParams } from "react-router-dom"
-import { BellOff, CheckCheck, CircleCheck, Search, Send, ThumbsDown, ThumbsUp, Wrench, X } from "lucide-react"
+import { BellOff, CheckCheck, CircleCheck, ListFilter, Search, Send, ThumbsDown, ThumbsUp, Wrench, X } from "lucide-react"
 
 import { BaseLayout } from "@/components/layouts/base-layout"
 import { RingSlot } from "@/components/brand/motifs"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -91,11 +100,26 @@ export default function AlertsPage() {
     else next.delete("id")
     setParams(next, { replace: true })
   }
-  const clearTypes = () => {
+  const setTypes = (t: Set<string> | null) => {
     const next = new URLSearchParams(params)
-    next.delete("type")
+    if (t && t.size) next.set("type", Array.from(t).join(","))
+    else next.delete("type")
     setParams(next, { replace: true })
     clear()
+  }
+  const clearTypes = () => setTypes(null)
+  // the kinds the Kind menu offers: every kind in the current list (open or muted), worst-count first
+  const kinds = React.useMemo(() => {
+    const n = new Map<string, number>()
+    ;(isMuted ? muted : alerts).forEach((a) => n.set(a.type, (n.get(a.type) || 0) + 1))
+    types?.forEach((t) => n.has(t) || n.set(t, 0))
+    return Array.from(n).sort((a, b) => b[1] - a[1] || alertLabel(a[0]).localeCompare(alertLabel(b[0])))
+  }, [alerts, muted, isMuted, types])
+  const toggleType = (t: string) => {
+    const n = new Set(types || [])
+    if (n.has(t)) n.delete(t)
+    else n.add(t)
+    setTypes(n)
   }
   // with an alert open, up/down walk the list instead of scrolling it (typing fields and menus keep their arrows)
   React.useEffect(() => {
@@ -159,6 +183,39 @@ export default function AlertsPage() {
               <span className="num text-xs font-bold opacity-80">{n}</span>
             </button>
           ))}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Filter by kind of alert"
+                className={cn(
+                  "ml-auto inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors",
+                  types ? "border-primary text-primary" : "bg-background hover:bg-accent"
+                )}
+              >
+                <ListFilter className="size-4" /> Kind
+                {types && <span className="num text-xs font-bold">{types.size}</span>}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-80 w-72 overflow-auto">
+              <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">Show only these kinds, then select all to fix them together</DropdownMenuLabel>
+              {kinds.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">No alerts to filter.</p>}
+              {kinds.map(([t, n]) => (
+                <DropdownMenuCheckboxItem key={t} checked={!!types?.has(t)} onSelect={(e) => e.preventDefault()} onCheckedChange={() => toggleType(t)}>
+                  <span className="truncate">{alertLabel(t)}</span>
+                  <span className="num ml-auto pl-3 text-xs font-bold text-muted-foreground">{n}</span>
+                </DropdownMenuCheckboxItem>
+              ))}
+              {types && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={clearTypes}>
+                    <X /> Every kind
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {types && (
           <p className="flex items-center gap-2 text-sm">
