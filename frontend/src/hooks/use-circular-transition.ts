@@ -45,10 +45,11 @@ export function useCircularTransition(): CircularTransitionHook {
   }, [])
 
   const toggleTheme = useCallback((event: React.MouseEvent) => {
-    // Get precise click coordinates - use clientX/clientY directly like tweakcn
+    // Grow from the button's centre (a keyboard press reports clientX/clientY as 0,0)
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
     const coords = {
-      x: event.clientX,
-      y: event.clientY
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2
     }
 
     startTransition(coords, () => {
