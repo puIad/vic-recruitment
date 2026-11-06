@@ -58,7 +58,9 @@ export function useThemeManager() {
     const inlineStyles = root.style
     for (let i = inlineStyles.length - 1; i >= 0; i--) {
       const property = inlineStyles[i]
-      if (property.startsWith('--')) {
+      // --x/--y are the dark-mode reveal origin (use-circular-transition); the mode flip
+      // re-applies the palette mid-transition, so wiping them would recentre the circle
+      if (property.startsWith('--') && property !== '--x' && property !== '--y') {
         root.style.removeProperty(property)
       }
     }

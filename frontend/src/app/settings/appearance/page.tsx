@@ -3,7 +3,7 @@ import { BaseLayout } from "@/components/layouts/base-layout"
 import { LayoutTab } from "@/components/theme-customizer/layout-tab"
 import { ThemeTab } from "@/components/theme-customizer/theme-tab"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useCircularTransition } from "@/hooks/use-circular-transition"
+import { centreOf, useCircularTransition } from "@/hooks/use-circular-transition"
 import { useTheme } from "@/hooks/use-theme"
 import { useUi } from "@/lib/vic/ui"
 import { cn } from "@/lib/utils"
@@ -61,7 +61,7 @@ export default function AppearanceSettings() {
                   type="button"
                   role="radio"
                   aria-checked={on}
-                  onClick={(e) => startTransition({ x: e.clientX, y: e.clientY }, () => setTheme(m.mode))}
+                  onClick={(e) => startTransition(centreOf(e.currentTarget), () => setTheme(m.mode))}
                   className={cn("cursor-pointer space-y-3 rounded-2xl border p-4 text-left transition-colors", on ? "border-primary bg-accent" : "hover:border-primary/40 hover:bg-muted/50")}
                 >
                   <Preview mode={m.mode} />
