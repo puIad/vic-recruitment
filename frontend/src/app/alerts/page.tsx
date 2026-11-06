@@ -197,7 +197,7 @@ export default function AlertsPage() {
                 {types && <span className="num text-xs font-bold">{types.size}</span>}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-80 w-72 overflow-auto" data-lenis-prevent>
+            <DropdownMenuContent align="end" className="max-h-80 w-72 overflow-auto">
               <DropdownMenuLabel className="text-xs font-semibold text-muted-foreground">Show only these kinds, then select all to fix them together</DropdownMenuLabel>
               {kinds.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">No alerts to filter.</p>}
               {kinds.map(([t, n]) => (
