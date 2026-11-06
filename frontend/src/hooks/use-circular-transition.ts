@@ -9,6 +9,12 @@ interface CircularTransitionHook {
   isTransitioning: () => boolean
 }
 
+// Reveal origin for a control: its centre, so a keyboard press (clientX/clientY 0,0) works too
+export function centreOf(el: HTMLElement) {
+  const rect = el.getBoundingClientRect()
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+}
+
 export function useCircularTransition(): CircularTransitionHook {
   const { theme, setTheme } = useTheme()
   const isTransitioningRef = useRef(false)
@@ -45,14 +51,7 @@ export function useCircularTransition(): CircularTransitionHook {
   }, [])
 
   const toggleTheme = useCallback((event: React.MouseEvent) => {
-    // Grow from the button's centre (a keyboard press reports clientX/clientY as 0,0)
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    const coords = {
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2
-    }
-
-    startTransition(coords, () => {
+    startTransition(centreOf(event.currentTarget as HTMLElement), () => {
       setTheme(theme === "dark" ? "light" : "dark")
     })
   }, [theme, setTheme, startTransition])
