@@ -1,0 +1,22 @@
+# vic-recruitment
+
+> Internal tool for the 2026 recruitment of the Vision & Innovation Club (VIC) at the École Nationale Polytechnique, Algiers. Routes every candidate to a pair of interviewers, tracks where each candidate stands, raises alerts when something is late or wrong, and gives the recruitment team one dashboard. Google Apps Script backend on Google Sheets, React dashboard in frontend/.
+
+## Docs
+
+- [README.md](https://github.com/puIad/vic-recruitment/blob/main/README.md): what it does and how it runs
+- [STATUS.md](https://github.com/puIad/vic-recruitment/blob/main/STATUS.md): current state
+- [HANDOFF.md](https://github.com/puIad/vic-recruitment/blob/main/HANDOFF.md): handoff notes
+- [GLOSSARY.md](https://github.com/puIad/vic-recruitment/blob/main/GLOSSARY.md): domain vocabulary
+- [PRODUCT.md](https://github.com/puIad/vic-recruitment/blob/main/PRODUCT.md): product intent
+- [DESIGN.md](https://github.com/puIad/vic-recruitment/blob/main/DESIGN.md): design system
+- [CLAUDE.md](https://github.com/puIad/vic-recruitment/blob/main/CLAUDE.md): project instructions for agents
+
+## Source
+
+- [Matching.gs](https://github.com/puIad/vic-recruitment/blob/main/Matching.gs): candidate to interviewer-pair matching
+- [Screening.gs](https://github.com/puIad/vic-recruitment/blob/main/Screening.gs): screening
+- [Interviews.gs](https://github.com/puIad/vic-recruitment/blob/main/Interviews.gs): interviews
+- [frontend](https://github.com/puIad/vic-recruitment/tree/main/frontend): React dashboard
+- [mailer](https://github.com/puIad/vic-recruitment/tree/main/mailer): mail sender script
+- [test](https://github.com/puIad/vic-recruitment/tree/main/test): test suite
