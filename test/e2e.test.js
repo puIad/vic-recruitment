@@ -407,6 +407,14 @@ assert.strictEqual(run('JSON.stringify(__formulas)'), '[]', 'written as live for
   run('__asMember("")');
   assert.strictEqual(sliceC.candidates.find(c => c.Code === C).interview.source, 'Google Form');
 
+  // Sync now re-reads every form: an unchanged one with a text answer is left alone (the Master copy keeps a literal
+  // apostrophe on its text, which once made every form an edit "by hand" and Sync now take 20+ minutes, 2026-11-16)
+  const logRows = log().length, edA = dash().find(r => r[3] === A)[D['Edited By']];
+  const age = () => run('delete __props.FILE_READ'); // a sheet read in the last FORCE_FRESH_S is not read again
+  age(); run('syncAllForce()'); age(); run('syncAllForce()');
+  assert.deepStrictEqual([dash().find(r => r[3] === A)[D['Edited By']], tabOf(A).find(r => r[0] === A)[5], log().length], [edA, edA, logRows],
+    'an unchanged form is not stamped by hand');
+
   // a hand edit of the tab: an edit "by hand", stamped in the tab too
   run(`(function () { var t = __files[${J(binOf(B).fileId)}].obj.getSheetByName(IA_TAB), r = answersRow_(t, ${J(B)}); t.getRange(r.row, IA_H.indexOf('Introduce yourself') + 1).setValue(1); })()`);
   run('syncAllForce()');
