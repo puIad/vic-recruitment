@@ -233,8 +233,11 @@ function syncAnswers_(ctx, b, book, rows) {
     const d = dashTable_(ctx), D = d.I, vals = v.slice(6, 6 + INTERVIEW_QUESTIONS.length);
     const copy = d.data.filter(x => t(x[CODE]) === code)[0];
     const at = saveToken_(v[4], v[5], v[2], v[3]), was = copy ? saveToken_(copy[D['Edited At']], copy[D['Edited By']], copy[D.Timestamp], copy[D['Email Address']]) : '';
+    // the copy keeps a text's apostrophe (plain_ doubles the one written below, Sheets eats one): compared without it, or every
+    // form with a text answer is an edit "by hand" on each Sync now (20+ minutes for ~300 forms, 2026-11-16)
+    const same = copy && vals.every((x, j) => t(x) === t(copy[DQ + j]).replace(/^'/, ''));
     // closed phase, a locked row changed in the tab and not saved from the dashboard (a hand edit): put back from the Master's copy
-    if (copy && guarded_(ctx, b, code) && at === was && !vals.every((x, j) => t(x) === t(copy[DQ + j]).replace(/^'/, ''))) { // the copy keeps a text's apostrophe
+    if (copy && guarded_(ctx, b, code) && at === was && !same) {
       try {
         if (!tab) tab = (ctx.books[b.fileId] = ctx.books[b.fileId] || SpreadsheetApp.openById(b.fileId)).getSheetByName(IA_TAB);
         tab.getRange(k + 2, 1, 1, IA_H.length).setValues([answersCells_([code, 'Dashboard', copy[D.Timestamp], copy[D['Email Address']], copy[D['Edited At']], copy[D['Edited By']]],
@@ -244,7 +247,7 @@ function syncAnswers_(ctx, b, book, rows) {
       } catch (e) { console.warn('Locked form of ' + code + ' not restored: ' + e); }
       return;
     }
-    if (copy && vals.every((x, j) => t(x) === t(copy[DQ + j]))) {
+    if (same) {
       // same answers: only who saved last, or the binome after a move, catches up
       if (at !== was || t(copy[BIN]) !== b.code) { copy[D['Edited At']] = v[4]; copy[D['Edited By']] = v[5]; copy[BIN] = b.code; }
       return;
