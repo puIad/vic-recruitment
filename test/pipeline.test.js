@@ -26,6 +26,10 @@ assert(fe.length > 0 && fe.every(a => a.severity === 'HIGH'), J(fe));
 bins.forEach(b => refuse(b, false));
 call('webRun', 'sync');
 assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed once the sheets accept writes');
+{ // assignRow_'s own "Cannot write X" alerts close once X has a binome (settleFileAlerts_ parses that message)
+  const A = run('idx_(ALERT_H)'), wrote = run(`master.getSheetByName('Alerts').getDataRange().getValues().slice(1)`).filter(x => /^Cannot write /.test(x[A.Message]));
+  assert(wrote.length && wrote.every(x => x[A.Status] === 'AUTO-RESOLVED'), '"Cannot write" closed: ' + J(wrote.map(x => x[A.Status])));
+}
 
 // 1b: an interview form for a candidate whose sheet refuses the mark is still logged
 {
