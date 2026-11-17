@@ -294,7 +294,7 @@ function alertBuffer_(ctx) {
       // one copy of each alert per person, even if they are admin + member + cover, or cover the same interviewee twice
       const push = (email, a) => { const list = perRecipient[email] = perRecipient[email] || []; if (list.indexOf(a) < 0) list.push(a); };
       // numbered from the highest ID there is: rows deleted by hand never free an ID (two rows with one ID can't be saved or closed)
-      let n = t.data.concat(live).reduce((m, r) => Math.max(m, Number(String(r[I.ID]).replace(/^A-/, '')) || 0), 0);
+      let n = topAlertId_(t);
       const rows = fresh.map(a => {
         n++;
         a.id = 'A-' + String(n).padStart(4, '0'); // the Mail Log's Concerns
@@ -330,16 +330,25 @@ function alertBuffer_(ctx) {
   };
 }
 
+/** The highest alert number in use, on the tab as it is now and in what this run loaded: another run may have added rows
+ *  since the load, and a number taken from the load alone could give out one of theirs again. */
+function topAlertId_(t) {
+  const num = r => Number(String(r[t.I.ID]).replace(/^A-/, '')) || 0, last = t.sh.getLastRow();
+  const live = last > 1 ? t.sh.getRange(2, t.I.ID + 1, last - 1, 1).getValues().map(r => Number(String(r[0]).replace(/^A-/, '')) || 0) : [];
+  return Math.max(0, ...live, ...t.data.map(num));
+}
+
 /** Rows that share an ID can't be saved or closed (saveTable_ keys the Alerts tab on its ID), so an alert raised twice
  *  under one ID stayed open for good. Each extra row gets a new ID, written straight into its cell, and a second open row
  *  for a key that is already open is closed as a copy. Returns true when it closed one (the table then needs saving). */
 function dedupeAlertRows_(t, ctx) {
   const I = t.I, seen = {}, open = {};
-  let n = t.data.reduce((m, r) => Math.max(m, Number(String(r[I.ID]).replace(/^A-/, '')) || 0), 0), closed = false;
+  let n = 0, closed = false;
   t.data.forEach((r, i) => {
     const id = String(r[I.ID]);
     if (id && seen[id]) {
       if (i >= t.orig.length || String(t.sh.getRange(i + 2, I.ID + 1).getValue()) !== id) return; // rows moved since the load: leave it
+      if (!n) n = topAlertId_(t);
       const fresh = 'A-' + String(++n).padStart(4, '0');
       t.sh.getRange(i + 2, I.ID + 1).setValue(fresh);
       r[I.ID] = fresh; t.orig[i][I.ID] = fresh;
