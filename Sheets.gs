@@ -277,7 +277,15 @@ function alertBuffer_(ctx) {
     },
     touch: function () { dirty = true; },
     flush: function () {
+      if (dedupeAlertRows_(t, ctx)) dirty = true;
       if (dirty) saveTable_(t, true);
+      if (!fresh.length) return;
+      // the tab as it is now, not as this run loaded it: an alert another run wrote meanwhile is not written again, and
+      // its ID is not given out twice (three runs that each missed the others wrote FILE|B.27 as A-0540, 16/11)
+      const live = t.sh.getLastRow() > 1 ? t.sh.getRange(2, 1, t.sh.getLastRow() - 1, ALERT_H.length).getValues() : [];
+      const taken = {};
+      live.forEach(r => { if (r[I.Key] && (r[I.Status] === 'OPEN' || HELD_STATUSES.indexOf(r[I.Status]) >= 0)) taken[r[I.Key]] = true; });
+      for (let k = fresh.length - 1; k >= 0; k--) if (fresh[k].key && taken[fresh[k].key]) fresh.splice(k, 1);
       if (!fresh.length) return;
       const s = S_();
       const minRank = SEV_RANK[String(s.INSTANT_EMAIL_MIN_SEVERITY).toUpperCase()] || SEV_RANK.MEDIUM;
@@ -286,7 +294,7 @@ function alertBuffer_(ctx) {
       // one copy of each alert per person, even if they are admin + member + cover, or cover the same interviewee twice
       const push = (email, a) => { const list = perRecipient[email] = perRecipient[email] || []; if (list.indexOf(a) < 0) list.push(a); };
       // numbered from the highest ID there is: rows deleted by hand never free an ID (two rows with one ID can't be saved or closed)
-      let n = t.data.reduce((m, r) => Math.max(m, Number(String(r[I.ID]).replace(/^A-/, '')) || 0), 0);
+      let n = t.data.concat(live).reduce((m, r) => Math.max(m, Number(String(r[I.ID]).replace(/^A-/, '')) || 0), 0);
       const rows = fresh.map(a => {
         n++;
         a.id = 'A-' + String(n).padStart(4, '0'); // the Mail Log's Concerns
@@ -320,6 +328,30 @@ function alertBuffer_(ctx) {
       fresh.length = 0;
     },
   };
+}
+
+/** Rows that share an ID can't be saved or closed (saveTable_ keys the Alerts tab on its ID), so an alert raised twice
+ *  under one ID stayed open for good. Each extra row gets a new ID, written straight into its cell, and a second open row
+ *  for a key that is already open is closed as a copy. Returns true when it closed one (the table then needs saving). */
+function dedupeAlertRows_(t, ctx) {
+  const I = t.I, seen = {}, open = {};
+  let n = t.data.reduce((m, r) => Math.max(m, Number(String(r[I.ID]).replace(/^A-/, '')) || 0), 0), closed = false;
+  t.data.forEach((r, i) => {
+    const id = String(r[I.ID]);
+    if (id && seen[id]) {
+      if (i >= t.orig.length || String(t.sh.getRange(i + 2, I.ID + 1).getValue()) !== id) return; // rows moved since the load: leave it
+      const fresh = 'A-' + String(++n).padStart(4, '0');
+      t.sh.getRange(i + 2, I.ID + 1).setValue(fresh);
+      r[I.ID] = fresh; t.orig[i][I.ID] = fresh;
+    }
+    if (id) seen[id] = true;
+  });
+  t.data.forEach(r => {
+    const k = r[I.Key];
+    if (!k || r[I.Status] !== 'OPEN') return;
+    if (open[k]) { r[I.Status] = 'AUTO-RESOLVED'; r[I['Resolved At']] = ctx.now; closed = true; } else open[k] = true;
+  });
+  return closed;
 }
 
 let _mailsSent = 0; // calls of mail_() since runCycle_ reset it (TEST_MODE skips count too)

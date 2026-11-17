@@ -126,4 +126,42 @@ assert(ivRows().every(r => r[IV.Binome] && r[IV.Status] === 'ASSIGNED'), 'placed
   assert.strictEqual(keys(), J([]), 'a serial-keyed row deleted by hand is not imported again');
 }
 
+// 7: file errors close themselves once the problem is gone; IDs given out twice are repaired; an alert another run wrote is not written again
+{
+  const A = run('idx_(ALERT_H)');
+  const rows = () => run(`master.getSheetByName('Alerts').getDataRange().getValues().slice(1)`);
+  const push = (id, type, bin, code, msg, key) => run(`master.getSheetByName('Alerts').cells.push([${J(id)}, new Date(), 'HIGH', ${J(type)}, ${J(code)}, ${J(bin)}, ${J(msg)}, '', 'OPEN', '', ${J(key)}])`);
+  const r = ivRows().filter(x => x[IV.Binome]).pop(), bin = r[IV.Binome], code = r[IV.Code];
+  // the B.27 case: the same "cannot open" alert on three rows under one ID, and a "cannot mark" for a candidate since marked
+  ['A-0900', 'A-0900', 'A-0900'].forEach(id => push(id, 'FILE_ERROR', bin, '', 'Cannot open the file of ' + bin + ': Exception: timed out', 'FILE|' + bin));
+  push('A-0901', 'FILE_ERROR', bin, code, 'Cannot mark ' + code + ' in the file of ' + bin + ': Exception: x', 'FILE|' + bin + '|' + code);
+  push('A-0902', 'FILE_ERROR', bin, '', 'Cannot write NOPE.01 into the file of ' + bin + ': Exception: x', 'FILE|' + bin + '|stays');
+  const touch = () => run(`__touch(${J(fileId(bin))})`); // Drive's "last updated" moves: the sync reads the sheet again
+  touch(); call('webRun', 'sync');
+  const ids = rows().map(x => x[A.ID]);
+  assert.strictEqual(new Set(ids).size, ids.length, 'every alert has its own ID: ' + J(ids.filter((v, i) => ids.indexOf(v) !== i)));
+  const opens = rows().filter(x => x[A.Key] === 'FILE|' + bin && /timed out/.test(x[A.Message]));
+  assert.strictEqual(opens.length, 3, 'the three rows are kept');
+  assert(opens.every(x => x[A.Status] === 'AUTO-RESOLVED' && !!x[A['Resolved At']]), 'closed once the sheet was read: ' + J(opens.map(x => x[A.Status])));
+  const mark = rows().find(x => x[A.Key] === 'FILE|' + bin + '|' + code);
+  assert.strictEqual(mark[A.Status], 'OPEN', 'the mark is not in the sheet yet: stays open');
+  run(`(function(){var c=__files[${J(fileId(bin))}].obj.sheets[0].cells; c.forEach(function(x){ if (x[BFI.Code]===${J(code)}) x[BFI['Interview Done']]=true; });})()`);
+  touch(); call('webRun', 'sync');
+  assert.strictEqual(rows().find(x => x[A.Key] === 'FILE|' + bin + '|' + code)[A.Status], 'AUTO-RESOLVED', 'closed once Interview Done is ticked');
+  assert.strictEqual(rows().find(x => x[A.Key] === 'FILE|' + bin + '|stays')[A.Status], 'OPEN', 'a key it does not know stays open');
+  // two open rows for one key: the copy closes
+  push('A-0950', 'TEST_COPY', bin, '', 'copy test', 'COPY|x'); push('A-0951', 'TEST_COPY', bin, '', 'copy test', 'COPY|x');
+  call('webRun', 'sync');
+  assert.strictEqual(J(rows().filter(x => x[A.Key] === 'COPY|x').map(x => x[A.Status]).sort()), J(['AUTO-RESOLVED', 'OPEN']), 'one stays open: ' + J(rows().filter(x => x[A.Key] === 'COPY|x')));
+  // a run that loaded the tab before another wrote the same alert writes it no second time
+  const before = rows().length;
+  run(`(function(){var ctx=loadCtx_(); ctx.alerts.add({severity:'HIGH', type:'FILE_ERROR', binome:${J(bin)}, msg:'Cannot open the file of ${bin}: late', key:'RACE|1'});
+    master.getSheetByName('Alerts').cells.push(['A-0999', new Date(), 'HIGH', 'FILE_ERROR', '', ${J(bin)}, 'written by another run', '', 'OPEN', '', 'RACE|1']);
+    ctx.alerts.add({severity:'INFO', type:'FILE_ERROR', binome:${J(bin)}, msg:'other', key:'RACE|2'}); ctx.alerts.flush();})()`);
+  const after = rows();
+  assert.strictEqual(after.length, before + 2, 'the other run\'s row and RACE|2 only');
+  assert.strictEqual(after.filter(x => x[A.Key] === 'RACE|1').length, 1, 'RACE|1 once');
+  assert.strictEqual(after.find(x => x[A.Key] === 'RACE|2')[A.ID], 'A-1000', 'numbered after the highest ID on the tab');
+}
+
 console.log('pipeline OK');

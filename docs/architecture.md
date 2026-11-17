@@ -122,13 +122,17 @@ Any missed trigger self-heals: unprocessed form rows are picked up by the next r
 | `NO_BINOME`, `UNPAIRED_MEMBER` | registration / team check | yes |
 | `SAME_CHOICES` (INFO: they really want that department), `INVALID_CHOICE`, `BAD_EMAIL`, `EMAIL_MISMATCH`, `EXTERNAL_EMAIL`, `BAD_PHONE`, `BAD_BIRTHDATE`, `MISSING_NAME`, `DUPLICATE_REGISTRATION` | registration check | no |
 | `UNKNOWN_INTERVIEWEE`, `BINOME_MISMATCH`, `BACKUP_INTERVIEWER`, `DUPLICATE_INTERVIEW`, `NOT_ASSIGNED`, `CHOICE_MISMATCH`, `AUTOCORRECTED` | interview check | no |
-| `FILE_ERROR` | any file write/share that failed | no (REVOKE one: yes) |
+| `FILE_ERROR` | any file write/share that failed | "Cannot open the file": yes, at the next read of that sheet; "Cannot write X": yes, once X has a binome; "Cannot mark X": yes, once Interview Done is ticked for X; REVOKE: yes; the rest: no |
 | `MEMBER_CHANGED`, `COVER_ADDED`, `REASSIGNED` | the tools (INFO, AUTO-FIXED) | — |
 | `MANUAL_EDIT` | baseline compare, Team check | yes, once undone; or via the fix buttons |
 | `ODD_VALUE` | odd-value check | yes (form ones: no) |
 | `INTEGRITY` | full sheet check | yes, at the next clean check of that binome |
 | `NEEDS_REVIEW` (MEDIUM), `VIC_MEMBER` (MEDIUM: a member with a binome), `MEMBERS_SHEET` (HIGH: the sheet can't be read) | `screenWaiting_` | yes |
 | `VIC_MEMBER_DECLINED` | screening (INFO, AUTO-FIXED: history only, emailed to nobody) | — |
+
+An alert keeps one ID for life: `saveTable_` keys the Alerts tab on it, so two rows with one ID can't be saved or closed.
+`flush` numbers new alerts from the highest ID on the tab as it is when it writes, and skips one whose key is already
+open there. A row found sharing an ID gets a new one (`dedupeAlertRows_`), and a second open row for a key closes as a copy.
 
 ## Quick actions (Alerts page)
 
