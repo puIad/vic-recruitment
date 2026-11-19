@@ -27,6 +27,7 @@ function pullBinomeFiles_(ctx, force) {
   files.filter(b => unchanged(b) && ctx.now.getTime() - (readAt[b.fileId] || 0) > REREAD_MINUTES * 60000)
     .sort((a, b) => (readAt[a.fileId] || 0) - (readAt[b.fileId] || 0)).slice(0, REREAD_MAX).forEach(b => { reread[b.fileId] = true; });
   ctx.opened = {}; // binome code -> why its sheet was opened this run (logged by runCycle_)
+  const readOk = {}, done = {}; // codes of the sheets read this run; binome code -> codes marked Interview Done in its sheet
   const toRead = files.filter(b => !unchanged(b) || upgrade[b.fileId] || reread[b.fileId]);
   let pre = {};
   try { pre = prefetchBinomeFiles_(ctx, toRead); } catch (e) { console.warn('Prefetch failed, opening the sheets one by one: ' + e); }
@@ -46,6 +47,9 @@ function pullBinomeFiles_(ctx, force) {
       const n = bfLastRow_(sh);
       if (n >= 2) { const rng = sh.getRange(2, BF_COL, n - 1, BF_H.length); vals = rng.getValues(); disp = rng.getDisplayValues(); }
     }
+    readOk[b.code] = true;
+    done[b.code] = {};
+    vals.forEach(v => { if (v[F['Interview Done']] === true) done[b.code][String(v[F.Code]).trim()] = true; });
     if (vals.length) {
       const read = {};
       vals.forEach((v, k) => {
@@ -83,6 +87,29 @@ function pullBinomeFiles_(ctx, force) {
     readAt[b.fileId] = ctx.now.getTime();
   });
   props.setProperties({ FILE_SEEN: JSON.stringify(seen), FILE_READ: JSON.stringify(readAt) });
+  settleFileAlerts_(ctx, readOk, done);
+}
+
+/** Closes the FILE_ERROR alerts whose problem this run shows is gone (AUTO-RESOLVED, Resolved At = now):
+ *  - "Cannot open the file of B": B's sheet was read this run;
+ *  - "Cannot write X into the file of B": X has a binome now, and no write to B failed this run;
+ *  - "Cannot mark X in the file of B": X is marked Interview Done in B's sheet.
+ *  readOk: binome code -> its sheet was read; done: binome code -> {code: true} for the rows marked Interview Done.
+ *  Other FILE_ERRORs (sharing, a cover's access, a lost row) still close by hand or with Retry. */
+function settleFileAlerts_(ctx, readOk, done) {
+  const A = ctx.alerts.table.I, I = ctx.iv.I, bad = ctx.badBinomes || {};
+  ctx.alerts.resolveWhere(r => {
+    if (r[A.Type] !== 'FILE_ERROR') return false;
+    const bin = String(r[A.Binome]).trim(), key = String(r[A.Key]), msg = String(r[A.Message]);
+    if (!bin || !readOk[bin] || bad[bin]) return false;
+    if (key === 'FILE|' + bin) {
+      if (/^Cannot open the file of /.test(msg)) return true;
+      const w = msg.match(/^Cannot write (\S+) into the file of /), x = w && ctx.ivByCode[w[1]];
+      return !!(x && String(x[I.Binome]).trim());
+    }
+    const m = key.match(/^FILE\|([^|]+)\|(.+)$/);
+    return !!(m && m[1] === bin && /^Cannot mark /.test(msg) && done[bin] && done[bin][m[2]]);
+  });
 }
 
 /** The binome sheets of list read in one parallel round of Sheets API calls (opened one by one, 32 sheets took ~36 s):
