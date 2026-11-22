@@ -1056,11 +1056,11 @@ const liveOf = r => shared(JSON.parse(JSON.stringify(r('liveState_(freshCtx_())'
     assert.deepStrictEqual([ivVal('Contacted'), ivVal('Rating')], ['Not yet', ''], 'control: without the mark, a lagging Drive hides the edit');
     lag(); m.run(`__cache['dirty:${b1.code}'] = ${J(dirtyAt)}`); m.run('syncAll()');
     assert.deepStrictEqual([ivVal('Contacted'), ivVal('Interview Date'), ivVal('Interview Time'), ivVal('Interview Done'), ivVal('Rating'), ivVal('Final Affectation'), ivVal('Binome Notes'), ivVal('Status')],
-      ['Yes', '15/10/2026', '14:30', 'true', '8', 'IT', '=1+1, called twice', 'SCHEDULED'], 'the Master has every edit');
+      ['Yes', '15/10/2026', '14:30', 'true', '8', 'IT', '=1+1, called twice', 'INTERVIEWED'], 'the Master has every edit (Done and IT: done)');
     assert.strictEqual(m.run(`'dirty:${b1.code}' in __cache`), false, 'read: the mark goes');
     assert(binV() > vw, 'the slice version went up');
     as(mem);
-    assert.strictEqual(m.call('webState').candidates.find(c => c.Code === code2).Status, 'SCHEDULED');
+    assert.strictEqual(m.call('webState').candidates.find(c => c.Code === code2).Status, 'INTERVIEWED');
     // a write landing after the read started stays dirty, and its patched slice is kept until a sync reads it
     as('admin@g.enp.edu.dz');
     lag(); m.run(`__cache['dirty:${b1.code}'] = String(Date.now() + 60000)`);

@@ -25,7 +25,9 @@ const resValid_ = result => AFFECTATION_OPTIONS.indexOf(result) >= 0;
 const resNext_ = d => String(S_()['RESULT_NEXT_' + d] || '').trim();
 const resGroup_ = d => String(S_()['RESULT_GROUP_' + d] || '').trim();
 /** The mail a result calls for: a department is accepted; Not accepted splits on whether the interview happened. */
-const resKind_ = (status, result) => DEPTS.indexOf(result) >= 0 ? 'RESULT_YES' : status === ST.INTERVIEWED ? 'RESULT_NO' : 'RESULT_NO_NI';
+const resKind_ = (interviewed, result) => DEPTS.indexOf(result) >= 0 ? 'RESULT_YES' : interviewed ? 'RESULT_NO' : 'RESULT_NO_NI';
+/** Really interviewed: a form on file or Interview Done ticked (INTERVIEWED alone can come from a Final Affectation). */
+const resInterviewed_ = (I, r) => !!r[I['Interview Submitted At']] || r[I['Interview Done']] === true;
 
 /* ---------- the join link ---------- */
 
@@ -114,7 +116,7 @@ function resCorrected_() {
 function resCand_(I, r) {
   const s = v => String(v == null ? '' : v).trim(), email = s(r[I.Email]);
   return { code: s(r[I.Code]), name: (s(r[I['First Name']]) + ' ' + s(r[I['Family Name']])).trim(), first: s(r[I['First Name']]) || 'there',
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '', status: r[I.Status], interviewed: r[I.Status] === ST.INTERVIEWED,
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '', status: r[I.Status], interviewed: resInterviewed_(I, r),
     result: p1Stored_(I, r), told: resTold_(I, r), proposal: p1Proposal_(I, r) };
 }
 
@@ -139,7 +141,7 @@ function resAudience_(iv) {
  *  texts ({kind: {field: text}}) and nexts ({dept: text}) as typed in the dialog, before they are saved. */
 function resMail_(c, o) {
   o = o || {};
-  const kind = resKind_(c.status, c.result), yes = kind === 'RESULT_YES';
+  const kind = resKind_(c.interviewed, c.result), yes = kind === 'RESULT_YES';
   const next = o.nexts && o.nexts[c.result] != null ? String(o.nexts[c.result]).trim() : resNext_(c.result);
   const lead = o.replaces ? (o.replacesText != null ? String(o.replacesText) : String(S_().RESULT_REPLACES || '')).trim() : '';
   return mailFrom_(kind, { first: c.first, code: c.code, department: c.result, next: next },
@@ -183,13 +185,13 @@ function resSamples_(iv, o) {
   const I = iv.I, fin = p1Final_(), pick = (test, label) => { const r = iv.data.filter(x => String(x[I.Code]).trim() && !p1NoResult_(x[I.Status]) && test(x, p1Result_(I, x, !!fin)))[0]; return r ? Object.assign(resCand_(I, r), { result: p1Result_(I, r, !!fin) }) : null; };
   const out = [];
   DEPTS.forEach(d => {
-    const c = pick((x, res) => res === d) || { code: RES_SAMPLE.code, first: RES_SAMPLE.first, status: ST.INTERVIEWED, result: d, name: '', email: '' };
+    const c = pick((x, res) => res === d) || { code: RES_SAMPLE.code, first: RES_SAMPLE.first, status: ST.INTERVIEWED, interviewed: true, result: d, name: '', email: '' };
     out.push({ kind: 'RESULT_YES', label: 'Accepted into ' + d, code: c.code, name: c.name, mail: resMail_(c, Object.assign({}, o, { test: true })) });
   });
   [['Not accepted, interviewed', ST.INTERVIEWED], ['Not accepted, not interviewed', ST.ASSIGNED]].forEach(s => {
-    const c = pick((x, res) => res === 'Not accepted' && (s[1] === ST.INTERVIEWED) === (x[I.Status] === ST.INTERVIEWED)) ||
-      { code: RES_SAMPLE.code, first: RES_SAMPLE.first, status: s[1], result: 'Not accepted', name: '', email: '' };
-    out.push({ kind: resKind_(c.status, 'Not accepted'), label: s[0], code: c.code, name: c.name, mail: resMail_(c, Object.assign({}, o, { test: true })) });
+    const c = pick((x, res) => res === 'Not accepted' && (s[1] === ST.INTERVIEWED) === resInterviewed_(I, x)) ||
+      { code: RES_SAMPLE.code, first: RES_SAMPLE.first, status: s[1], interviewed: s[1] === ST.INTERVIEWED, result: 'Not accepted', name: '', email: '' };
+    out.push({ kind: resKind_(c.interviewed, 'Not accepted'), label: s[0], code: c.code, name: c.name, mail: resMail_(c, Object.assign({}, o, { test: true })) });
   });
   return out;
 }
@@ -209,7 +211,7 @@ function resultsMailCore_(a, args) {
   if (op === 'preview') {
     const iv = loadTable_(TAB.IV, IV_H), aud = resAudience_(iv), I = iv.I, counts = { RESULT_YES: {}, RESULT_NO: 0, RESULT_NO_NI: 0 };
     DEPTS.forEach(d => { counts.RESULT_YES[d] = 0; });
-    aud.send.forEach(c => { const k = resKind_(c.status, c.result); if (k === 'RESULT_YES') counts.RESULT_YES[c.result]++; else counts[k]++; });
+    aud.send.forEach(c => { const k = resKind_(c.interviewed, c.result); if (k === 'RESULT_YES') counts.RESULT_YES[c.result]++; else counts[k]++; });
     const refusals = [];
     if (!p1Final_()) refusals.push('The results are not final.');
     resRefusals_(aud.send, o.nexts).forEach(x => refusals.push(x));

@@ -122,7 +122,7 @@ assert.strictEqual(cyc[0].opened[bin01], 'upgrade');
 run(`__files["${fileId}"].obj.sheets[0].cells[1][BFI.Notes] = 'edited again'; __touch("${fileId}");`);
 assert.strictEqual(syncCycles()[0].opened[bin01], 'changed', 'edited sheet opened as changed');
 console.log('IT.01 after sync:', it01[2], it01[19], it01[21], it01[22], it01[23]);
-assert.strictEqual(it01[2], 'SCHEDULED');
+assert.strictEqual(it01[2], 'INTERVIEWED', 'a Final Affectation (IT) makes it done, with no form yet');
 const IVX = run('idx_(IV_H)');
 assert.deepStrictEqual([it01[IVX['Why VIC']], it01[IVX['Department Questions']]], ['To learn', 'Do you have any experience with Graphic Design? Yes'], 'registration extras kept');
 assert.strictEqual(frows.find(r => r[BFI.Code] === 'IT.01')[BFI['Department Questions']], 'Do you have any experience with Graphic Design? Yes', 'and shown in the sheet');
@@ -189,6 +189,7 @@ assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'nothing new after the lab
 const comm = ivOf('COMM.01'), commFile = bins.find(r => r[0] === comm[1])[8];
 const notContacted = () => run('master.getSheetByName("Alerts").getDataRange().getValues()').find(a => a[3] === 'NOT_CONTACTED' && a[4] === 'COMM.01');
 assert.strictEqual(notContacted()[8], 'OPEN');
+const interviewedBefore = run('master.getSheetByName("Tracker").getRange(3, 3).getValue()');
 run(`(function(){ var f = __files["${commFile}"].obj.sheets[0];
   f.cells.forEach(function(r){ if (r[BFI.Code] !== 'COMM.01') return;
     r[BFI.Contacted] = 'Yes'; r[BFI['Interview Date']] = new Date(Date.now() + 24 * 3600e3); r[BFI['Interview Time']] = '10:00';
@@ -198,19 +199,20 @@ q = quietSync();
 assert(wrote(q).Interviewees && wrote(q).Alerts && wrote(q).Tracker && q.moved, 'binome edit written: ' + q.w);
 let c1 = ivOf('COMM.01');
 assert.deepStrictEqual([c1[IVX.Status], c1[IVX.Contacted], c1[IVX['Interview Time']], c1[IVX['Interview Done']], c1[IVX.Rating], c1[IVX['Final Affectation']], c1[IVX['Binome Notes']]],
-  ['SCHEDULED', 'Yes', '10:00', true, 7, 'COMM', 'very motivated'], 'binome edit visible');
+  ['INTERVIEWED', 'Yes', '10:00', true, 7, 'COMM', 'very motivated'], 'binome edit visible: Interview Done and a Final Affectation make it done');
+assert.notStrictEqual(run('master.getSheetByName("Tracker").getRange(3, 3).getValue()'), interviewedBefore, 'Tracker counts it done');
 assert(c1[IVX['Interview At']] instanceof run('Date') && c1[IVX['Interview Date']], 'date read');
 assert.strictEqual(notContacted()[8], 'AUTO-RESOLVED', 'alert resolved and written');
 q = quietSync();
 assert.deepStrictEqual([q.w, q.moved], ['{}', false], 'nothing new after the edit, yet wrote ' + q.w);
-// an interview form: INTERVIEWED, and the Tracker counts it
+// an interview form: INTERVIEWED, counted once
 const bComm = bins.find(r => r[0] === comm[1]);
 run(`master.getSheetByName('Interview Responses').cells.push([new Date(), '${bComm[2]}', '${bComm[0]}', 'COMM.01', 'intro', 'COMM', 'COMM', '']);`);
-const interviewedBefore = run('master.getSheetByName("Tracker").getRange(3, 3).getValue()');
+const interviewedDone = run('master.getSheetByName("Tracker").getRange(3, 3).getValue()');
 q = quietSync('onFormSubmitHandler({})');
-assert(wrote(q)['Interview Log'] && wrote(q).Interviewees && wrote(q).Tracker, 'form written: ' + q.w);
+assert(wrote(q)['Interview Log'] && wrote(q).Interviewees, 'form written: ' + q.w);
 assert.strictEqual(ivOf('COMM.01')[IVX.Status], 'INTERVIEWED');
-assert.notStrictEqual(run('master.getSheetByName("Tracker").getRange(3, 3).getValue()'), interviewedBefore, 'Tracker counts the interview');
+assert.strictEqual(run('master.getSheetByName("Tracker").getRange(3, 3).getValue()'), interviewedDone, 'the form does not count it twice');
 // a new registration (bad birth date: an alert raised): appended, assigned, alerted, counted
 run(`reg.cells.push(regRow(new Date(), 'new1@g.enp.edu.dz', 'Nadia', 'Nouvelle', 'new1@g.enp.edu.dz', '27/10/2025', '0555000111', 'HR', 'IT'))`);
 q = quietSync();
