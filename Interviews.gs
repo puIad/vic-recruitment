@@ -198,6 +198,18 @@ function copyFormToTab_(ctx, b, code, ts, sub, vals) {
   });
 }
 
+/** The answers of one Google Form response (in INTERVIEW_QUESTIONS order) by its Interview Log key, or null. */
+function googleFormVals_(key) {
+  const sh = responseSheet_('INT');
+  if (!sh || sh.getLastRow() < 2) return null;
+  const data = sh.getDataRange().getValues(), H = intHeaders_(data[0]), Q = questionCols_(data[0]);
+  for (let k = 1; k < data.length; k++) {
+    const ts = H.ts >= 0 ? data[k][H.ts] : '';
+    if (ts && responseKey_(ts, String(H.collected >= 0 ? data[k][H.collected] : '').trim().toLowerCase(), k + 1) === key) return Q.map(c => (c >= 0 ? data[k][c] : ''));
+  }
+  return null;
+}
+
 /* ---------- the dashboard's forms: Interview Answers tabs → Dashboard Interviews (Master) → the Interview Log ---------- */
 
 const DQ = 2 + INTERVIEW_CODE_TITLES.length; // first question column of Dashboard Interviews; the two codes sit just before it

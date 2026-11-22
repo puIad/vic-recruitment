@@ -163,6 +163,8 @@ let oddCode;
   assert(/now interviewed/.test(out.messages[0]), out.messages[0]);
   assert.strictEqual(call('webState').interviewees.find(i => i.code === it.code).status, 'INTERVIEWED');
   assert.strictEqual(sheetRow(b.code, it.code)[BFI['Interview Done']], true);
+  assert.strictEqual(sheetRow(b.code, it.code)[BFI['Final Affectation']], 'IT', 'the linked form fills Final Affectation');
+  assert(/Final Affectation IT from the form/.test(out.messages[0]), out.messages[0]);
 
   const dup = find('DUPLICATE_INTERVIEW', x => x.code === it2.code);
   assert(dup.q.first && dup.q.first.row < dup.q.form.row, 'both forms shown');

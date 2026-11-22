@@ -162,6 +162,8 @@ function statusOf_(ctx, r) {
   if (!r[I.Binome]) return r[I.Status] === ST.HELD ? ST.HELD : ST.UNASSIGNED;
   if (r[I['Interview Submitted At']]) return ST.INTERVIEWED;
   if (c === 'Withdrew') return ST.WITHDRAWN;
+  // done without a form on file: Interview Done ticked, or a Final Affectation already decided
+  if (r[I['Interview Done']] === true || String(r[I['Final Affectation']] || '').trim()) return ST.INTERVIEWED;
   if (r[I['Interview At']] instanceof Date) return ST.SCHEDULED;
   if (c === 'Yes' || c === 'No answer') return ST.CONTACTED;
   return ST.ASSIGNED;
@@ -181,7 +183,9 @@ function timingAlerts_(ctx) {
     }
     if (!code || !(r[I['Registered At']] instanceof Date)) return;
     const at = r[I['Interview At']];
-    const issues = timingIssues({ code: code, status: r[I.Status], registeredAt: r[I['Registered At']], assignedAt: r[I['Assigned At']], contacted: r[I.Contacted],
+    // done with no form on file (Interview Done or a Final Affectation) and a date passed: still OVERDUE, so the form gets filed
+    const st = r[I.Status] === ST.INTERVIEWED && !r[I['Interview Submitted At']] && at instanceof Date ? ST.SCHEDULED : r[I.Status];
+    const issues = timingIssues({ code: code, status: st, registeredAt: r[I['Registered At']], assignedAt: r[I['Assigned At']], contacted: r[I.Contacted],
       interviewAt: at === '' ? null : at, interviewLabel: fmt_(at), submittedAt: r[I['Interview Submitted At']] }, ctx.now, lim);
     // closed phase: late contacts, dates and forms stop being alerts (open ones close below, and come back on a reopen)
     issues.filter(x => !closed || ['NOT_CONTACTED', 'NO_DATE', 'OVERDUE'].indexOf(x.type) < 0).forEach(x => {

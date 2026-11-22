@@ -33,8 +33,8 @@ assert(codes.length >= 8, 'seed has candidates');
 const dept = ['IT', 'COMM', 'FLER', 'HR'];
 codes.forEach((c, i) => { setMaster(c, 'Final Affectation', dept[i % 4]); setMaster(c, 'Status', 'ASSIGNED'); setMaster(c, 'Email', c.toLowerCase().replace('.', '_') + '@g.enp.edu.dz'); });
 const [niv, nni, gone, badAddr] = codes.slice(-4);
-setMaster(niv, 'Final Affectation', 'Not accepted'); setMaster(niv, 'Status', 'INTERVIEWED');
-setMaster(nni, 'Final Affectation', 'Not accepted');
+setMaster(niv, 'Final Affectation', 'Not accepted'); setMaster(niv, 'Status', 'INTERVIEWED'); setMaster(niv, 'Interview Done', true);
+setMaster(nni, 'Final Affectation', 'Not accepted'); setMaster(nni, 'Status', 'INTERVIEWED'); // as the sync now sets it: a decision alone
 setMaster(gone, 'Status', 'DECLINED'); setMaster(gone, 'Final Affectation', '');
 setMaster(badAddr, 'Email', 'not-an-address');
 const owner = run('lc_(ss_().getOwner().getEmail())');

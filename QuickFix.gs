@@ -497,7 +497,24 @@ function pickCandidate_(ctx, ref, codeText) {
   if (x[I['Interview Submitted At']]) return 'form linked to ' + code + ', who already had a form (Interview Log row ' + x[I['Interview Log Row']] + '): that first one still counts.';
   x[I['Interview Submitted At']] = row[L['Submitted At']]; x[I['Interview Log Row']] = i + 2; x[I.Status] = ST.INTERVIEWED;
   const b = ctx.binByCode[x[I.Binome]];
-  return 'form linked to ' + code + ', now interviewed' + (b ? markOrAlert_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)') : '') + '.';
+  return 'form linked to ' + code + ', now interviewed' + (b ? markOrAlert_(ctx, b, code, '✅ ' + fmt_(row[L['Submitted At']], 'dd/MM HH:mm') + ' (linked by an admin)') +
+    fillLinked_(ctx, b, code, row) : '') + '.';
+}
+
+/** A Google Form linked by an admin fills its candidate's sheet as a matched one does: the Interview Answers copy, Rating and Final
+ *  Affectation (sent by another binome, it matched nobody, so nothing was filled). '' or the note to add to the reply. */
+function fillLinked_(ctx, b, code, row) {
+  const L = ctx.log.I, key = String(row[L['Response Key']]).trim();
+  if (/^DASH\|/.test(key)) return '';
+  try {
+    const vals = googleFormVals_(key);
+    if (!vals) return '; its answers were not found in Interview Responses: fill Rating and Final Affectation by hand';
+    copyFormToTab_(ctx, b, code, row[L['Submitted At']], lc_(row[L.Submitter]), vals);
+    const f = fillFromForm_(ctx, b, code, vals, {});
+    return f['Final Affectation'] ? '; Final Affectation ' + f['Final Affectation'] + ' from the form' : '';
+  } catch (e) {
+    return '; the form could not fill the sheet of ' + b.code + ' (' + e.message + '): fill Rating and Final Affectation by hand';
+  }
 }
 
 /** The interview mark in b's sheet after the Master already changed: a sheet that refuses it raises the alert whose Repair writes

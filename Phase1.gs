@@ -58,7 +58,7 @@ function p1View_() {
     const rating = s(r[I.Rating]) === '' ? null : Number(r[I.Rating]);
     rows.push({ code: code, name: (s(r[I['First Name']]) + ' ' + s(r[I['Family Name']])).trim(), binome: s(r[I.Binome]), status: r[I.Status],
       c1: p1Choices_(I, r)[0], c2: p1Choices_(I, r)[1], rating: isNaN(rating) ? null : rating, notes: s(r[I['Binome Notes']]),
-      interviewed: r[I.Status] === ST.INTERVIEWED || !!r[I['Interview Submitted At']], proposal: proposal, override: override, note: set ? set.note : '',
+      interviewed: resInterviewed_(I, r), proposal: proposal, override: override, note: set ? set.note : '',
       result: result, needs: need, warn: p1Warn_(I, r, result), changed: !fin && !!set && set.proposal !== proposal, told: resTold_(I, r), owed: false,
       phone: s(r[I.Phone]), email: s(r[I.Email]) });
   });
